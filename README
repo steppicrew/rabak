@@ -1,0 +1,74 @@
+
+Welcome! This is Rabak, a backup tool
+
+
+Requirements
+============
+You need Linux or Cygwin.
+Other plattforms may work too. I didn't try.
+
+You need rsync. I know rabak does't work before version 2.6.4.
+Maybe even a newer one is requires. The newer the better.
+
+You need Perl, I don't know which version. Probably >= 5.8
+
+You need the Mail::Send perl module. Fetch it from CPAN:
+cpan -i Mail::Send
+
+To use faster-dupemerge, you will need this the Perl module
+Digest::SHA1. To install it do this:
+cpan -i Digest::SHA1
+
+
+Installation
+============
+Make a directory /usr/local/rabak and copy the contents of this
+directory there.
+
+
+Quick Start
+===========
+Change to the installation directory:
+cd /usr/local/rabak
+
+Look at the documentation:
+perldoc RabakLib::Doc
+
+Make a test backup:
+./rabak backup test
+
+Have a look at the result:
+ls -lA test-bak
+
+Read the documentation:
+perldoc RabakLib::Doc
+
+Configure Rabak:
+nano -w rabak.cf
+
+The 'cd' is a bit awkward, I know. I'll find a trick to let
+Rabak find it's libraries later.
+
+
+Feature Tests
+=============
+You can test more features by doing:
+
+cd stuff
+sh testdev-make
+cd ..
+./rabak -c rabak.cf.dist backup test1
+./rabak -c rabak.cf.dist -i Tue backup test2
+./rabak -c rabak.cf.dist -i Tue2 backup test2
+
+TODO: be more verbose
+
+
+Developers
+==========
+You can extend Rabak and add backup types. Have a look into
+the RabakLib/Type directory.
+
+
+Have fun!
+Dietrich Raisin

@@ -1,0 +1,13 @@
+
+As you see this is version 0.1, and there's things missing:
+
+- Documentation is not complete
+--- Explain faster-dupemerge
+- More backup types
+- Proper exit codes
+- Make ACLs work
+- No passwords into rabak.cf
+- Various TODOs in the library.
+- Set mount options in config file
+- Explain wrapper
+

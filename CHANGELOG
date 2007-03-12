@@ -1,0 +1,6 @@
+Version 0.2 -> 0.3
+====================
+
+- uebergabe optionale parameter fuer mounttyp, mountoptionen und rsync
+- optionaler test auf freien mindestspeicher im target und ggf. warnung
+- bugfixes bei mysql und postgres

@@ -1,0 +1,44 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+use File::Find;
+use File::Path;
+use File::Copy;
+
+my $base= "/cygwin/f";
+
+# my @dirs= ("/cygwin/f/bak");
+my @dirs= ("$base/Backup");
+
+mkdir "$base/_";
+
+find(\&wanted, @dirs);
+
+sub wanted {
+    my $filename= $_;
+    
+    return if -d $_;
+    
+    my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
+         $atime,$mtime,$ctime,$blksize,$blocks)
+	         = stat($filename);
+
+    return if $blocks == 0 || $nlink != 1;
+
+    my $path = "$base/_" . substr($File::Find::dir, length($base));
+
+    mkpath $path;
+
+    # print $File::Find::dir . "/$_", " => ", "$path/$_", "\n";
+
+    my $ok= move($File::Find::dir . "/$_", "$path/$_");
+    
+    die "move" unless $ok;
+    rmdir $File::Find::dir;
+    
+    # print "$path\n";
+
+    print "$nlink - $filename - $File::Find::dir\n";
+    # die;
+}

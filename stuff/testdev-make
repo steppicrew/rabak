@@ -1,0 +1,29 @@
+#!/bin/sh
+
+BASEDIR="../test-data"
+
+function mk_target {
+    DEVI="$1"
+    DEVN="$2"
+
+    dd if=/dev/zero of="$BASEDIR/dev_$DEVN" count=600
+    mknod "$BASEDIR/dev.$DEVN" b 7 $DEVI
+    losetup "$BASEDIR/dev.$DEVN" "$BASEDIR/dev_$DEVN"
+    mkfs -t ext2 "$BASEDIR/dev.$DEVN"
+
+    mkdir "$BASEDIR/mnt_$DEVN"
+    mount "$BASEDIR/dev.$DEVN" "$BASEDIR/mnt_$DEVN"
+}
+
+mk_target "0" "loop0"
+mkdir "$BASEDIR/mnt_loop0/rabak"
+echo "Tue" > "$BASEDIR/mnt_loop0/rabak/dayofweek.ids"
+
+mk_target "1" "loop1"
+mkdir "$BASEDIR/mnt_loop1/rabak"
+echo "Mon" > "$BASEDIR/mnt_loop1/rabak/dayofweek.ids"
+echo "Fri" >> "$BASEDIR//mnt_loop1/rabak/dayofweek.ids"
+
+mk_target "2" "boot"
+
+mkdir "$BASEDIR//mnt_target"

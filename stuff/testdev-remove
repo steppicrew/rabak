@@ -1,0 +1,19 @@
+#!/bin/sh
+
+BASEDIR="../test-data"
+
+function rm_target {
+    DEVI="$1"
+    DEVN="$2"
+    umount "$BASEDIR/mnt_$DEVN"
+    losetup -d "$BASEDIR/dev.$DEVN"
+    rmdir "$BASEDIR/mnt_$DEVN"
+    rm "$BASEDIR/dev_$DEVN"
+    rm "$BASEDIR/dev.$DEVN"
+}
+
+rm_target "0" "loop0"
+rm_target "1" "loop1"
+rm_target "2" "boot"
+
+rmdir "$BASEDIR/mnt_target"
