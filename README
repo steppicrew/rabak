@@ -35,7 +35,7 @@ Look at the documentation:
 perldoc RabakLib::Doc
 
 Make a test backup:
-./rabak backup test
+./rabak -c rabak.cf.dist backup test
 
 Have a look at the result:
 ls -lA test-bak
