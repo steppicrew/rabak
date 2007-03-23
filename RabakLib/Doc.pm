@@ -166,6 +166,12 @@ Now lets add a mount point:
 This tells B<rabak> to mount C</dev/sda1> before starting backing up C<full>, and
 to unmount when done.
 
+You can specify file system type and additional mount options with
+  samba.mount.device= //sambaserver/share
+  samba.mount.directory= /mnt/samba
+  samba.mount.type= cifs
+  samba.mount.opts= "username=$smb_user,password=$smb_passwd,ro"
+
 Probably you want to use the same mount point for several backup sets. So you can
 use a variable to define it. Replace the last addition by this code:
 
@@ -194,6 +200,9 @@ You can use variables to define exclude sets and glue them together:
   exclude_fileserver = *.bak
 
   full.exclude = $exclude_common $exclude_fileserver
+  
+Additional rsync options (like "-acl") can be specified with
+  mybackup.rsync_opts = "-acl"
 
 To make sure you use the right backup device you can define a target group:
   mybackup.targetgroup = mytargetgroup
@@ -226,6 +235,14 @@ Now you can have both disks plugged in and with
 the 1st disk will be used on Mon, Wed and Fri
 an the 2nd disk will be used on Tue, Thu and Sat.
 On Sunday ther will be an error.
+
+Finally you can configure a notification mail when the free space on the target
+device drops below a given value with
+  full.target_discfree_threshold = 10%
+
+valid units are 'B'yte, 'K' (default), 'M'ega, 'G'iga and '%'.
+the check is performed after completing the backup job and a mail to rabak admin
+is sent, if free space is below 10%.
 
 
 TODO: Explain the following features:
