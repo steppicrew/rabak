@@ -106,7 +106,7 @@ mount_fritz.type= cifs
 mount_fritz.opts= "username=$smb_user,password=$smb_passwd,ro"
 mount_fritz.unmount= 1
 
-sample.title =  Gesamtsystem
+sample.title = Gesamtsystem
 sample.source = /
 sample.target = $bak_dir
 sample.exclude = $exclude_std

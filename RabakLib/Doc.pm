@@ -82,7 +82,7 @@ That's why you will need at least two drives. You still want redundancy.
 Swap drives every week and put one in a place safe from fire or theft.
 Using three drives is highly recommended.
 Things may awfully go wrong once in 2 1/2 years.
-Using more than three drives has no benefits.
+Using more than three drives probably has no benefits.
 
 =head2 Features
 
@@ -104,8 +104,6 @@ Or keep every Monday backup and remove the others.
 * If your backup target is a mounted device, then set your target to a subdirectory and not
 to the root of the device. In this way, if a mount fails, the writing of files fails too.
 So no files are written to your (unmounted) mount point.
-
-=head2 Drawbacks
 
 * Workstations can't be backed up directly. This is how to do it: Install a hard drive into the
 server and copy the workstation data on that. Then configure B<rabak> to backup this hard drive.
@@ -136,7 +134,7 @@ and write a log file to C</mnt/sda1/2006-09-log/2006-09-24.test.log>:
 
   rabak -p backup mybackup
 
-To make the actual backup, leave away the C<-p> switch:
+To make the actual backup, drop the C<-p> switch:
 
   rabak backup mybackup
 
@@ -204,22 +202,33 @@ You can use variables to define exclude sets and glue them together:
 Additional rsync options (like "-acl") can be specified with
   mybackup.rsync_opts = "-acl"
 
-To make sure you use the right backup device you can define a target group:
-  mybackup.targetgroup = mytargetgroup
+=head2 Target Groups
 
-If you specify a mount point with
+If you have multiple backup devices attached your system you may want to
+assure that the data is written to the right media. The media may not have
+a fixed device name and may only be identifiable by it's contents.
+To do so, you can group them and set up I<firstof> mount rules.
+
+First you choose a name for a target group, e.g. "byweekday".
+In your backup set you set the target group attribute:
+  mybackup.targetgroup = byweekday
+
+Then you mark a mount point as target group:
   mount1.istarget = 1
 
-then - after mounting - there has to be a file named C<mytargetgroup.ids> in the
-target directory. If not, the device is unmounted and the next one is tried (if it
-was one of I<firstof>).
+This means, that C<rabak> will - after mounting - check the device for mount
+point C<mount1> for the existance of a file named C<byweekday.ids> (in the
+target directory). The mount fails if it can't be found. If I<firstof> is was
+used, the next mount point is tried.
 
-Additionally you can put target ids in this file - one per line - and specify
-an id at the command line with switch "-i". The backup will be done on the device
-containing the id in the target group file.
+=head3 Target Id's
+
+Additionally you can put target ids in the file C<byweekday.ids> (one per line)
+and specify an id at the command line with switch "-i". The backup will be done
+on the device containing the id in the target group file.
 
 Example:
-On one disk there is a file I<bak/mytargetgroup.ids> with
+On one disk there is a file I<bak/byweekday.ids> containing
   Mon
   Wed
   Fri
@@ -229,12 +238,14 @@ and on another disk the same file contains
   Thu
   Sat
 
-Now you can have both disks plugged in and with
-  raback -i "`date "+%a"`" backup mybackup
+Now you can have both disks plugged in and do:
+  rabak -i "`date "+%a"`" backup mybackup
 
-the 1st disk will be used on Mon, Wed and Fri
-an the 2nd disk will be used on Tue, Thu and Sat.
-On Sunday ther will be an error.
+The first disk will be used on Mon, Wed and Fri.
+The second disk will be used on Tue, Thu and Sat.
+On Sunday no mount point can be found and rabak will fail for this backup set.
+
+=head2 Notification Mails
 
 Finally you can configure a notification mail when the free space on the target
 device drops below a given value with

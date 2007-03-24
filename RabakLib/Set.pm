@@ -73,7 +73,9 @@ sub new {
 
 # TODO: split my to shift
 sub _need_value {
-    my ($self, $sField)= @_;
+    my $self= shift;
+    my $sField= shift;
+
     return "Required value \"" . $self->{'name'} . ".$sField\" missing." unless defined $self->{$sField} && !ref $self->{$sField};
     return undef;
 }
@@ -153,32 +155,32 @@ sub xlog_pretending {
     $self->xlog("");
 }
 
+sub _mail {
+    my $self= shift;
+    my ($sSubject, @aBody) = @_;
+
+    return 0 unless $self->get_value('email');
+
+    my $oMail = new Mail::Send Subject => $sSubject, To => $self->get_value('email');
+    # $msg->cc('user@host');
+    my $fh = $oMail->open;
+    print $fh join("\n", @aBody);
+    $fh->close;
+
+    return 1;
+}
+
 sub _mail_log {
     my $self= shift;
 
-    if ($self->get_value('email')) {
-
-        my $oMail = new Mail::Send Subject => 'Rabak Result', To => $self->get_value('email');
-        # $msg->cc('user@host');
-        my $fh = $oMail->open;
-        print $fh join("\n", @{ $self->{'.LOG'} });
-        $fh->close;
-    }
+    return $self->_mail('Rabak Result', @{ $self->{'.LOG'} });
 }
 
 sub _mail_warning {
     my $self= shift;
-    my ($subject, @body) = @_;
-    
+    my ($sSubject, @aBody) = @_;
 
-    if ($self->get_value('email')) {
-
-        my $oMail = new Mail::Send Subject => "RABAK WARNING: $subject", To => $self->get_value('email');
-        # $msg->cc('user@host');
-        my $fh = $oMail->open;
-        print $fh join("\n", @body);
-        $fh->close;
-    }
+    return $self->_mail("RABAK WARNING: $sSubject", @aBody);
 }
 
 sub _remove_old {

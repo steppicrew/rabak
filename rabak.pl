@@ -10,7 +10,7 @@ use RabakLib::Set;
 use Data::Dumper;
 use Getopt::Std;
 
-our $VERSION= "0.2";
+our $VERSION= "0.3.1";
 our $DEBUG= 0;
 
 $Getopt::Std::STANDARD_HELP_VERSION= 1;
@@ -54,7 +54,7 @@ sub cmd_backup {
 }
 
 # -----------------------------------------------------------------------------
-#  COMMAND: CFSHOW
+#  COMMAND: CONF
 # -----------------------------------------------------------------------------
 
 sub cmd_conf {
@@ -86,7 +86,7 @@ sub cmd_rmfile {
 # -----------------------------------------------------------------------------
 
 sub cmd_doc {
-    die "Not implemented. Try perldoc RabakLib::Doc";
+    die "Not implemented. Try \"perldoc RabakLib::Doc\"";
 }
 
 # -----------------------------------------------------------------------------

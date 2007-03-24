@@ -24,7 +24,7 @@ sub run {
     my $sPassPar = "";
 
     $sUser =~ s/[^a-z0-9_]//g;        # simple taint
-    $sPassword =~ s/\\\"//g;            # simple taint
+    $sPassword =~ s/\\\"//g;          # simple taint
     $sPassPar = "-p\"$sPassword\"" if $sPassword;
 
     my %sValidDb= ();
