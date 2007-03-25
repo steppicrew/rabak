@@ -41,7 +41,7 @@ __END__
 
 rabak - A reliable rsync based backup system, simple to configure, simple to run, simple to restore data
 
-=head1 SYSNOPSIS
+=head1 SYNOPSIS
 
 C<rabak backup myserver>
 
@@ -221,10 +221,10 @@ point C<mount1> for the existance of a file named C<byweekday.ids> (in the
 target directory). The mount fails if it can't be found. If I<firstof> is was
 used, the next mount point is tried.
 
-=head3 Target Id's
+=head3 Target Values
 
-Additionally you can put target ids in the file C<byweekday.ids> (one per line)
-and specify an id at the command line with switch "-i". The backup will be done
+Additionally you can put target values in the file C<byweekday.ids> (one per line)
+and specify a value at the command line with switch "-i". The backup will be done
 on the device containing the id in the target group file.
 
 Example:
