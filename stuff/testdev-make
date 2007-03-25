@@ -1,15 +1,18 @@
 #!/bin/sh
 
+# Produces a test environment. You can easily get rid of it again
+# with the testdev-remove script.
+
 BASEDIR="../test-data"
 
 function mk_target {
     DEVI="$1"
     DEVN="$2"
 
-    dd if=/dev/zero of="$BASEDIR/dev_$DEVN" count=600
+    dd if=/dev/zero of="$BASEDIR/dev_$DEVN" count=3000
     mknod "$BASEDIR/dev.$DEVN" b 7 $DEVI
     losetup "$BASEDIR/dev.$DEVN" "$BASEDIR/dev_$DEVN"
-    mkfs -t ext2 "$BASEDIR/dev.$DEVN"
+    mkfs -t ext2 -N 500 "$BASEDIR/dev.$DEVN"
 
     mkdir "$BASEDIR/mnt_$DEVN"
     mount "$BASEDIR/dev.$DEVN" "$BASEDIR/mnt_$DEVN"
