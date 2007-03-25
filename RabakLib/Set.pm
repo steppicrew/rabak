@@ -322,6 +322,21 @@ sub _mount {
     return $sTargetInfo . "Mounted$sMountDevice$sMountDir";
 }
 
+sub _mkdir {
+    my $self= shift;
+    my $sDir= shift;
+
+    return 1 if $self->get_value('switch.pretend');
+
+    # TODO: set MASK ?
+    return 1 if mkdir $sDir;
+
+    return 1 if $! == 17; # file exists is ok
+
+    $self->xerror("WARNING! Mkdir '$sDir' failed: $!");
+    return 0;
+}
+
 sub backup {
     my $self= shift;
 
@@ -412,10 +427,10 @@ sub backup {
 
     my $sLogFile= "$sBakMonth-log/$sBakDay.$sBakSet.log";
 
-    mkdir "$sBakDir/$sBakMonth.$sBakSet" unless $self->get_value('switch.pretend');
+    $self->_mkdir("$sBakDir/$sBakMonth.$sBakSet");
 
     if (!$self->get_value('switch.pretend') && $self->get_value('switch.logging')) {
-        mkdir "$sBakDir/$sBakMonth-log" unless $self->get_value('switch.pretend');
+        $self->_mkdir("$sBakDir/$sBakMonth-log");
 
         my $sLogLink= "$sBakMonth.$sBakSet/$sBakDay.$sBakSet.log";
 
@@ -431,7 +446,7 @@ sub backup {
             symlink "../$sLogFile", "$sBakDir/$sLogLink";
         }
         else {
-            $self->{'.LOGFILE'}= 0;
+            undef $self->{'.LOGFILE'};
             $self->set_value('switch.logging', 0);
             $self->xerror("WARNING! Can't open log file \"$sBakDir/$sLogFile\" ($!). Going on without...");
         }
@@ -444,7 +459,7 @@ sub backup {
     $self->{full_target}= "$sBakDir/$sTarget";
     # $self->{bak_dirs}= \@sBakDir;
 
-    mkdir $self->{full_target} unless $self->get_value('switch.pretend');
+    $self->_mkdir($self->{full_target});
 
     $self->xlog("Backup $sBakDay exists, using subset.") if $sSubSet;
     $self->xlog("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->{title});
