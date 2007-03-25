@@ -1,5 +1,11 @@
-Version 0.2 -> 0.3
-====================
+rabak-0.3.1
+
+- Added INCLUDE directive for config files
+- Minor Bug fixes
+- Updated sample config files
+- Updated docs
+
+rabak-0.3
 
 - uebergabe optionale parameter fuer mounttyp, mountoptionen und rsync
 - optionaler test auf freien mindestspeicher im target und ggf. warnung
