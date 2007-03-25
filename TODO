@@ -10,4 +10,4 @@ As you see this is version 0.1, and there's things missing:
 - Various TODOs in the library.
 - Set mount options in config file
 - Explain wrapper
-
+- implement post processing with faster-dupemerge
