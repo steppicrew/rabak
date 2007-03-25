@@ -1,0 +1,68 @@
+
+# Rabak standard config file
+
+# For details see: perldoc RabakLib::Doc
+
+# The syntax is quite similar to postfix config files.
+
+# =======================================================================================
+#       GLOBAL SWITCHES
+# =======================================================================================
+
+switch.logging = 1
+
+# =======================================================================================
+#       GLOBAL VARIABLES
+# =======================================================================================
+
+exclude_unix =
+    $bak_base
+    /dev/
+    /proc/
+    /sys/
+    /usr/portage/
+    /mnt/backup/
+    /mnt/cdrom/
+    /mnt/floppy/
+    /mnt/netlogon/
+    /usr/src/
+    /usr/local/src/
+    /var/amavis/
+    /var/cache/edb/
+    /var/cache/samba/
+    /var/db/pkg/
+    /var/dcc/map
+    /var/eix/
+    /var/lib/slocate/
+    /var/lib/clamav/
+    /var/lib/dhcp/
+    /var/lib/init.d/
+    /var/spool/cups/
+    /var/spool/postfix/
+    /var/log/
+    /var/run/
+    .ccache/
+
+exclude_win =
+    Thumbs.db
+    RECYCLER/
+    GoogleEarthCache/
+    Anwendungsdaten/Sun/Java/Deployment/cache/
+    Anwendungsdaten/Adobe/FileBrowser/
+    Lokale?Einstellungen/Temp/
+    Lokale?Einstellungen/Temporary?Internet?Files/
+
+exclude_common =
+    tmp/
+    Trash/
+    *.bak
+    *~
+    *.lock
+
+exclude_std =
+    $bak_base
+    $exclude_unix
+    $exclude_win
+    $exclude_common
+
+# EOF
