@@ -2,6 +2,14 @@
 
 use strict;
 
+=head1 DESCRIPTION
+
+Move out single linked files from one directory to another.
+Use this if you want to remove a backup directory and save all
+unique files inside of it.
+
+=cut
+
 use File::Find;
 use File::Path;
 use File::Copy;
