@@ -13,7 +13,7 @@ use Storable qw(dclone);
 
 =head1 NAME
 
-RabakCf - Read Conf Files
+RabakLib::ConfFile - Read Conf Files
 
 =head1 SYNOPSYS
 
@@ -73,32 +73,59 @@ sub read_file {
     my $self= shift;
     my $sFile= shift;
 
-    my $fin;
-
-    $self->{FILE}= $sFile;
     $self->{CONF}= RabakLib::Conf->new();
     $self->{ERROR}= undef;
+    $self->_read_file($sFile);
+}
 
-    open $fin, $sFile or $self->_error("Can't open config file \"$sFile\"");
+sub _read_file {
+    my $self= shift;
+    my $sFile= shift;
+    my $iIncludeLine= shift || 0;
+
+    my $fin;
+
+    my $sOpener= $self->{FILE};
+
+    $self->{FILE}= $sFile;
+
+    unless (open ($fin, $sFile)) {
+        my $sMsg= "Can't open config file \"$sFile\"";
+        $sMsg .= ", included in \"$sOpener\", line $iIncludeLine" if $sOpener;
+        $self->_error($sMsg);
+    }
+
     my $sName= '';
     my $iLine= 0;
     while (my $sLine= <$fin>) {
 	$iLine++;
 	next if $sLine =~ /^#/;
 
-	$sLine =~ s/^(\s+)//;
-	my $bIndent= 1 if $1;
-	$sName= '' unless $bIndent;
+        my $bIndent= 0;
+        if ($sLine =~ s/^(\s+)//) {
+    	    $bIndent = 1 
+        }
+        else {
+            $sName= '';
+        }
+
 	$sLine =~ s/\s+$//;
 	next if $sLine eq '';
 
+        # TODO: add to documentation
+        last if $sLine =~ /^END\s*$/;
 
-        last if $sLine eq 'END';
-
+        # TODO: add to documentation
+        if ($sLine =~ /^INCLUDE\s+(.+)/) {
+            $self->_read_file($1, $iLine);
+            $self->{FILE}= $sFile;
+            next;
+        }
 
         my $sValue;
 	if ($bIndent) {
             $self->_error("Unexpected value", $iLine, $sLine) unless $sName;
+
             $sValue= $sLine;
 	}
 	else {
