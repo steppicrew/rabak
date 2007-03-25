@@ -82,7 +82,7 @@ sub set_value {
     my @sName= split(/\./, $sName);
     $sName= pop @sName;
     for (@sName) {
-        $self->{$_}= RabackConf->new() unless ref $self->{$_};
+        $self->{$_}= RabakLib::Conf->new() unless ref $self->{$_};
         $self= $self->{$_};
     }
     # TODO: only allow assignment of undef to refs?
