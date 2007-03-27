@@ -582,8 +582,13 @@ BACKUP_FAILED:
 use File::Path;
 
 sub rm_file {
+
+    die "The current rm_file is flawed. It will be available again in the next release!";
+
     my $self= shift;
     my @sFileMask= shift || ();
+
+    # print Dumper(\@sFileMask);
 
     map { $self->xerror("Every filemask MUST start with \"/\"!", 2) unless /^\//; } @sFileMask;
 
@@ -601,11 +606,17 @@ sub rm_file {
     # TODO: Make a better check!
     $self->xerror("Can't remove! \"$sBakSet.target\" is empty or points to file system root.", 3) if $sBakDir eq '' || $sBakDir eq '/';
 
-    my @sBakDir= $self->collect_bakdirs($self);
+    my @sBakDir= $self->collect_bakdirs();
+
+    # print Dumper(\@sBakDir);
+
     foreach my $sBakDir (@sBakDir) {
         foreach my $sFileMask (@sFileMask) {
             while (<$sBakDir$sFileMask>) {
                 my $sFound= $_;
+
+                # print "**$sBakDir :: $sFileMask :: $_**\n";
+
                 $sFound =~ s/^$sBakDir//;
                 if (-d $_) {
                     $aDirs{$sFound}= () unless defined $aDirs{$sFound};
@@ -627,10 +638,16 @@ sub rm_file {
     map {
         $self->xlog("Removing " . scalar @{ $aDirs{$_} } . " directories: $_");
         !$self->get_value('switch.pretend') && rmtree($aDirs{$_}, $self->{'.$DEBUG'});
+
+        # print Dumper($aDirs{$_});
+
     } sort { $a cmp $b } keys %aDirs;
 
     map {
         $self->xlog("Removing " . scalar @{ $aFiles{$_} } . " files: $_");
+
+        # print Dumper($aFiles{$_});
+
         !$self->get_value('switch.pretend') && unlink(@{ $aFiles{$_} });
     } sort { $a cmp $b } keys %aFiles;
 
