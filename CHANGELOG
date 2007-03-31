@@ -1,3 +1,6 @@
+rabak-0.3.2
+- cleaned up RabakLib::Conf and RabakLib::Set. Is more perl-oo-ish now.
+
 rabak-0.3.1
 
 - Added INCLUDE directive for config files
