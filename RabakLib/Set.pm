@@ -27,7 +27,7 @@ sub new {
     my $self;
     # print Dumper($sName); die;
     if ($sName && defined $hConf->{VALUES}{$sName}) {
-        $self= $class->SUPER::new($hConf->{VALUES}{$sName});
+        $self= $class->SUPER::new($sName, $hConf->{VALUES}{$sName});
         $self->{ERROR}= $bSkipValidation ? undef : $self->_validate();
     }
     else {

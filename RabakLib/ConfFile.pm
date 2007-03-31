@@ -57,6 +57,25 @@ sub conf {
     return $self->{CONF};
 }
 
+sub print_set_list {
+    my $self= shift;
+
+    print "Available backup sets in \"" . $self->filename() . "\":\n";
+    my $bFound= 0;
+    my $oConf= $self->{CONF};
+    foreach (sort keys %{ $oConf->{VALUES} }) {
+        next unless ref $oConf->{VALUES}{$_}
+            && defined $oConf->{VALUES}{$_}->{VALUES}{title}
+            && defined $oConf->{VALUES}{$_}->{VALUES}{source}
+            && defined $oConf->{VALUES}{$_}->{VALUES}{target};
+        print "  $_ - " . $oConf->{VALUES}{$_}->{VALUES}{title}
+            . ", backs up \"" . $oConf->{VALUES}{$_}->{VALUES}{source}
+            . "\" to \"" . $oConf->{VALUES}{$_}->{VALUES}{target} . "\"\n";
+        $bFound= 1;
+    }
+    print "None.\n" unless $bFound;
+}
+
 sub _error {
     my $self= shift;
     my ($sMsg, $iLine, $sLine)= @_;
@@ -73,7 +92,7 @@ sub read_file {
     my $self= shift;
     my $sFile= shift;
 
-    $self->{CONF}= RabakLib::Conf->new();
+    $self->{CONF}= RabakLib::Conf->new($sFile);
     $self->{ERROR}= undef;
     $self->_read_file($sFile);
 }
@@ -148,7 +167,7 @@ sub _read_file {
                     $self->_error("Variable \"" . substr($sErrKey, 1) . "\" is not a structure", $iLine, $sLine);
                 }
             }
-            $hConf->{VALUES}{$sKey}= RabakLib::Conf->new() unless $hConf->{VALUES}{$sKey};
+            $hConf->{VALUES}{$sKey}= RabakLib::Conf->new($sKey) unless $hConf->{VALUES}{$sKey};
             $hConf= $hConf->{VALUES}{$sKey};
             $sKey= $_;
         }

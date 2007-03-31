@@ -63,15 +63,8 @@ sub cmd_backup {
 sub cmd_conf {
     my $sBakSet= shift @ARGV || '';
     if ($sBakSet eq '') {
-        _conf_read();
-        print "Available backup sets:\n";
-        my $bFound= 0;
-        foreach (sort keys %{ $oConf }) {
-            next unless ref $oConf->{$_} && defined $oConf->{$_}{title} && defined $oConf->{$_}{source} && defined $oConf->{$_}{target};
-            print "  $_ - " . $oConf->{$_}{title} . ", backs up \"" . $oConf->{$_}{source} . "\" to \"" . $oConf->{$_}{target} . "\"\n";
-            $bFound= 1;
-        }
-        print "None. Configuration expected in file \"" . $oConfFile->filename() . "\"\n" unless $bFound;
+        $oConfFile= _conf_read();
+        $oConfFile->print_set_list();
         exit 0;
     }
     my $hBakSet= _cmd_setup($sBakSet, 1);
@@ -121,7 +114,7 @@ sub _conf_read {
         'switch.logging' => $opt_l,
 	'switch.targetid' => $opt_i,
     });
-    return $oConf;
+    return $oConfFile;
 }
 
 sub _cmd_setup {

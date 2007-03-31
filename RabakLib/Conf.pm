@@ -32,11 +32,10 @@ Format very similar to postfix config files:
 
 sub new {
     my $class = shift;
+    my $sName= shift || '';
     my $self= shift || {};
     $self->{DEFAULTS}= {};
-
-# die Dumper($self);
-
+    $self->{NAME}= $sName;
     $self->{VALUES}= {} unless ref $self->{VALUES};
     bless $self, $class;
 }
@@ -86,7 +85,7 @@ sub set_value {
     my @sName= split(/\./, $sName);
     $sName= pop @sName;
     for (@sName) {
-        $self->{VALUES}{$_}= RabakLib::Conf->new() unless ref $self->{VALUES}{$_};
+        $self->{VALUES}{$_}= RabakLib::Conf->new($_) unless ref $self->{VALUES}{$_};
         $self= $self->{VALUES}{$_};
     }
 

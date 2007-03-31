@@ -12,9 +12,10 @@ use RabakLib::Set;
 
 sub new {
     my $class = shift;
-    my $hConf= shift || {};
+    my $oConfFile= shift || {};
     my $self= {
-        CONF => $hConf,
+        CONF_FILE => $oConfFile,
+        CONF => $oConfFile->conf(),
         SET => '',
     };
     bless $self, $class;
@@ -23,15 +24,7 @@ sub new {
 sub do_set_list {
     my $self= shift;
 
-    print "Available backup sets:\n";
-    my $bFound= 0;
-    my $oConf= $self->{CONF};
-    foreach (sort keys %{ $oConf }) {
-        next unless ref $oConf->{$_} && defined $oConf->{$_}{title} && defined $oConf->{$_}{source} && defined $oConf->{$_}{target};
-        print "  $_ - " . $oConf->{$_}{title} . ", backs up \"" . $oConf->{$_}{source} . "\" to \"" . $oConf->{$_}{target} . "\"\n";
-        $bFound= 1;
-    }
-    print "None." unless $bFound;
+    $self->{CONF_FILE}->print_set_list();
 }
 
 sub do_set {
@@ -39,8 +32,8 @@ sub do_set {
     my $sSet= shift || '';
 
     my $oConf= $self->{CONF};
-    if (defined $oConf->{$sSet}) {
-        $self->{SET}= $sSet;
+    if (defined $oConf->{VALUES}{$sSet}) {
+        $self->{SET}= $oConf->{VALUES}{$sSet};
         return;
     }
 
@@ -58,7 +51,7 @@ sub loop() {
     my $self= shift;
 
     while (1) {
-        print $self->{SET};
+        print $self->{SET}{NAME} if $self->{SET};
         print '> ';
         my $line= <STDIN>;
 
