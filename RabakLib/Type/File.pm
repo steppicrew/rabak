@@ -67,7 +67,7 @@ sub run {
         . " --filter=\". $sRulesFile\""
     ;
 
-    $sFlags .= " --verbose -i" if $self->get_value('.DEBUG');
+    $sFlags .= " --verbose -i" if $self->{DEBUG};
     $sFlags .= " --dry-run" if $self->get_value('switch.pretend');
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
 
@@ -82,6 +82,8 @@ sub run {
     my $sRsyncCmd= "rsync $sFlags \"$sSrc\" \"$sDestDir\"";
 
     $self->xlog("Running: $sRsyncCmd");
+
+    # print Dumper($self); die;
 
     @_= grep !/^([^\/]+\/)+$/, `$sRsyncCmd 2>&1`;
     $self->xlog(join('', @_));

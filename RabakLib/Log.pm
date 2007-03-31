@@ -15,6 +15,7 @@ sub new {
     my $class= shift;
     my $hConf= shift;
     my $self= {
+        ERRORCODE => 0,
         HAS_ERRORS => 0,
         CONF => $hConf,
     };
@@ -44,7 +45,7 @@ sub xerror {
 
     # $self->{HAS_ERRORS}= 1;
 
-    $self->{'.ERRORCODE'}= 9;
+    $self->{ERRORCODE}= 9;
 }
 
 sub start {
@@ -59,9 +60,9 @@ sub xlog {
     return if $self->{CONF}->get_value('switch.quiet');
 
     print "$sMessage\n";
-    return unless $self->{'.LOGFILE'} && $self->get_value('switch.logging') && !$self->get_value('switch.pretend');
+    return unless $self->{LOGFILE} && $self->get_value('switch.logging') && !$self->get_value('switch.pretend');
 
-    my $fwLog= $self->{'.LOGFILE'};
+    my $fwLog= $self->{LOGFILE};
     print $fwLog _timestr() . "\t$sMessage\n";
 }
 

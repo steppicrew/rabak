@@ -15,8 +15,8 @@ sub new {
     my $class = shift;
     my $oSet= shift;
     my $self= {
-        '.ERRORCODE' => 0,
-        '.DEBUG' => 0,
+        ERRORCODE => 0,
+        DEBUG => 0,
         SET => $oSet,
     };
     bless $self, $class;

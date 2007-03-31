@@ -23,25 +23,26 @@ sub new {
     my $bSkipValidation= shift;
 
     my $self;
-    if ($sName && defined $hConf->{$sName}) {
-        $self= $class->SUPER::new($hConf->{$sName});
-        $self->{'.ERROR'}= $bSkipValidation ? undef : $self->_validate();
+    # print Dumper($sName); die;
+    if ($sName && defined $hConf->{VALUES}{$sName}) {
+        $self= $class->SUPER::new($hConf->{VALUES}{$sName});
+        $self->{ERROR}= $bSkipValidation ? undef : $self->_validate();
     }
     else {
         $self= $class->SUPER::new();
-        $self->{'.ERROR'}= "No set \"$sName\" defined";
+        $self->{ERROR}= "No set \"$sName\" defined";
         $bSkipValidation= 1;
     }
-    $self->{'.ERRORCODE'}= 0;
-    $self->{'.DEBUG'}= 0;
-    $self->{'.CONF'}= $hConf;
-    $self->{'.NAME'}= $sName;
-    $self->{'.LOGFILE'}= undef;
-    $self->{'.LOG'}= ();
-    $self->{'.LOGPREFIX'}= '';
+    $self->{ERRORCODE}= 0;
+    $self->{DEBUG}= 0;
+    $self->{CONF}= $hConf;
+    $self->{NAME}= $sName;
+    $self->{LOGFILE}= undef;
+    $self->{LOG}= ();
+    $self->{LOGPREFIX}= '';
 
     # my $xx= "file://C:/etc/passwd";
-    # my $uri= URI->new($xx); # self->{source});
+    # my $uri= URI->new($xx); # self->{VALUES}{source});
     # print Dumper($uri);
 
     # print "\n" . $uri->scheme;
@@ -50,33 +51,32 @@ sub new {
     # print "\n" . $uri->fragment;
     # exit;
 
-    if (defined $self->{source} && !ref $self->{source} && $self->{source} =~ /^([a-z]+):(.*)/) {
-        $self->{type}= $1;
-        $self->{source}= $2;
+    if (defined $self->{VALUES}{source} && !ref $self->{VALUES}{source} && $self->{VALUES}{source} =~ /^([a-z]+):(.*)/) {
+        $self->{VALUES}{type}= $1;
+        $self->{VALUES}{source}= $2;
     }
     else {
-        $self->{type}= 'file' unless defined $self->{type} || ref $self->{type};
+        $self->{VALUES}{type}= 'file' unless defined $self->{VALUES}{type} || ref $self->{VALUES}{type};
     }
 
     unless ($bSkipValidation) {
-        $self->{'.ERROR'}= $self->_validate();
+        $self->{ERROR}= $self->_validate();
 
         # TODO: fix
-        # if ($self->{type} !~ /^(file|pgsql|mysql)$/) {
-        #     return "Backup set type of \"$sName.source\" must be \"file\", \"pgsql\" or \"mysql\". (" . $self->{source} . ")";
+        # if ($self->{VALUES}{type} !~ /^(file|pgsql|mysql)$/) {
+        #     return "Backup set type of \"$sName.source\" must be \"file\", \"pgsql\" or \"mysql\". (" . $self->{VALUES}{source} . ")";
         # }
     }
-    $self->{name}= $sName;
+    $self->{VALUES}{name}= $sName;
 
     bless $self, $class;
 }
 
-# TODO: split my to shift
 sub _need_value {
     my $self= shift;
     my $sField= shift;
 
-    return "Required value \"" . $self->{'name'} . ".$sField\" missing." unless defined $self->{$sField} && !ref $self->{$sField};
+    return "Required value \"" . $self->{VALUES}{name} . ".$sField\" missing." unless defined $self->{VALUES}{$sField} && !ref $self->{VALUES}{$sField};
     return undef;
 }
 
@@ -92,7 +92,7 @@ sub get_value {
     my $sDefault= shift;
 
     my $sResult= $self->SUPER::get_value($sName);
-    $sResult= $self->{'.CONF'}->get_value($sName) unless defined $sResult && $sResult ne '*default*';
+    $sResult= $self->{CONF}->get_value($sName) unless defined $sResult && $sResult ne '*default*';
     $sResult= $sDefault unless defined $sResult && $sResult ne '*default*';
     $sResult= undef unless defined $sResult && $sResult ne '*default*';
     return  $sResult;
@@ -103,7 +103,7 @@ sub get_node {
     my $sName= shift;
 
     my $hResult= $self->SUPER::get_node($sName);
-    $hResult= $self->{'.CONF'}->get_node($sName) unless defined $hResult;
+    $hResult= $self->{CONF}->get_node($sName) unless defined $hResult;
     return  $hResult;
 }
 
@@ -123,7 +123,7 @@ sub xerror {
     $self->xlog($sMessage);
 
     exit $iExit if $iExit;
-    $self->{'.ERRORCODE'}= 9;
+    $self->{ERRORCODE}= 9;
 }
 
 sub xlog {
@@ -134,14 +134,14 @@ sub xlog {
     # our $fwLog;
     return if $self->get_value('switch.quiet');
 
-    push @{ $self->{'.LOG'} }, $sMessage;
+    push @{ $self->{LOG} }, $sMessage;
 
-    $sMessage= $self->{'.LOGPREFIX'} . $sMessage;
+    $sMessage= $self->{LOGPREFIX} . $sMessage;
 
     print "# $sMessage\n";
-    return unless $self->{'.LOGFILE'} && $self->get_value('switch.logging') && !$self->get_value('switch.pretend');
+    return unless $self->{LOGFILE} && $self->get_value('switch.logging') && !$self->get_value('switch.pretend');
 
-    my $fwLog= $self->{'.LOGFILE'};
+    my $fwLog= $self->{LOGFILE};
     my $sName= $self->get_value('name');
     print $fwLog _timestr() . "\t$sName\t$sMessage\n";
 }
@@ -173,7 +173,7 @@ sub _mail {
 sub _mail_log {
     my $self= shift;
 
-    return $self->_mail('Rabak Result', @{ $self->{'.LOG'} });
+    return $self->_mail('Rabak Result', @{ $self->{LOG} });
 }
 
 sub _mail_warning {
@@ -193,7 +193,7 @@ sub _remove_old {
         splice @sBakDir, 0, $iCount;
         foreach (@sBakDir) {
             $self->xlog("Removing \"$_\"");
-            rmtree($_, $self->{'.$DEBUG'}) unless $self->get_value('switch.pretend');
+            rmtree($_, $self->{DEBUG}) unless $self->get_value('switch.pretend');
         }
     }
 }
@@ -204,14 +204,14 @@ sub _remove_old {
 
 sub get_bakset_target {
     my $self= shift;
-    return File::Spec->rel2abs($self->{target});
+    return File::Spec->rel2abs($self->{VALUES}{target});
 }
 
 sub collect_bakdirs {
     my $self= shift;
     my $sSubSetBakDay= shift || 0;
 
-    my $sBakSet= $self->{name};
+    my $sBakSet= $self->{VALUES}{name};
     my $sBakDir= get_bakset_target($self);
     my @sBakDir= ();
     my $sSubSet= '';
@@ -265,11 +265,11 @@ sub _mount {
     my $arAllMount= shift;
 
     my @aResult= ();
-    my $sMountDevice= $oMount->{device} || '';
-    my $sMountDir= $oMount->{directory} || '';
-    my $bTestTargetId= $oMount->{istarget} || '';
-    my $sMountType= $oMount->{type} || '';
-    my $sMountOpts= $oMount->{opts} || '';
+    my $sMountDevice= $oMount->{VALUES}{device} || '';
+    my $sMountDir= $oMount->{VALUES}{directory} || '';
+    my $bTestTargetId= $oMount->{VALUES}{istarget} || '';
+    my $sMountType= $oMount->{VALUES}{type} || '';
+    my $sMountOpts= $oMount->{VALUES}{opts} || '';
     my $sUnmount= $sMountDevice ne '' ? $sMountDevice : $sMountDir;
 
     $sMountDevice= " \"$sMountDevice\"" if $sMountDevice;
@@ -292,8 +292,8 @@ sub _mount {
 
     my $sTargetInfo= "";
 
-    if ($bTestTargetId && $self->{targetgroup}) {
-	my $sTargetIdName= get_bakset_target($self) . "/" . $self->{targetgroup} . ".ids";
+    if ($bTestTargetId && $self->{VALUES}{targetgroup}) {
+	my $sTargetIdName= get_bakset_target($self) . "/" . $self->{VALUES}{targetgroup} . ".ids";
 	my $bWrongTarget= !-r $sTargetIdName;
 	my $sTargetIds= 'file does not exist';
 	my $sExpectedTargetId = $self->get_value('switch.targetid') || '';
@@ -313,11 +313,11 @@ sub _mount {
 	    }
 	    return "$sError\n# Unmounted \"$sUnmount\"";
 	}
-        $sTargetInfo= "Found desired value \"" . $sExpectedTargetId . "\" for targetgroup \"" . $self->{targetgroup} . "\"\n# ";
+        $sTargetInfo= "Found desired value \"" . $sExpectedTargetId . "\" for targetgroup \"" . $self->{VALUES}{targetgroup} . "\"\n# ";
     }
 
     # We want to unmount in reverse order:
-    unshift @{ $arUnmount }, $sUnmount if $oMount->{unmount};
+    unshift @{ $arUnmount }, $sUnmount if $oMount->{VALUES}{unmount};
 
     return $sTargetInfo . "Mounted$sMountDevice$sMountDir";
 }
@@ -341,9 +341,9 @@ sub backup {
     my $self= shift;
 
     my $iErrorCode= 0;
-    my $sBakSet= $self->{name};
-    my $sSourceDir= $self->{source};
-    my $sBakType= $self->{type};
+    my $sBakSet= $self->{VALUES}{name};
+    my $sSourceDir= $self->{VALUES}{source};
+    my $sBakType= $self->{VALUES}{type};
     my $sBakDir= get_bakset_target($self);
     my $sBakMonth= strftime("%Y-%m", localtime);
     my $sBakDay= strftime("%Y-%m-%d", localtime);
@@ -358,11 +358,11 @@ sub backup {
     my @sUnmount= ();
     my @sWarnOnUnmount= ();
 
-    if ($self->{mount}) {
+    if ($self->{VALUES}{mount}) {
 
 	# If the 'mount' setting is a node, then just do one mount:
-        if (ref $self->{mount}) {
-	    push @sMountError, $self->_mount($self->{mount}, \@sUnmount, \@sWarnOnUnmount);
+        if (ref $self->{VALUES}{mount}) {
+	    push @sMountError, $self->_mount($self->{VALUES}{mount}, \@sUnmount, \@sWarnOnUnmount);
         }
         else {
 	
@@ -371,7 +371,7 @@ sub backup {
 	    # possible one. We need that if we want to mount a USB device which hasn't got
 	    # a fixed name.
             my $iFirstOf= 0;
-            for my $sToken (split(/\s+/, $self->{mount})) {
+            for my $sToken (split(/\s+/, $self->{VALUES}{mount})) {
                 if ($iFirstOf == 0 && $sToken eq 'firstof') {
                     $iFirstOf= 1;
                     next;
@@ -409,7 +409,7 @@ sub backup {
             }
         }
 
-        $self->xlog("Mounting done. More information after log file initialization...");
+        $self->xlog("All mounts completed. More information after log file initialization...");
     }
 
     # map { $self->xerror($_); } @sMountError; print Dumper(@sWarnOnUnmount); goto BACKUP_FAILED;
@@ -435,7 +435,7 @@ sub backup {
         my $sLogLink= "$sBakMonth.$sBakSet/$sBakDay.$sBakSet.log";
 
         my $bExists= -f "$sBakDir/$sLogFile";
-        if (open ($self->{'.LOGFILE'}, ">>$sBakDir/$sLogFile")) {
+        if (open ($self->{LOGFILE}, ">>$sBakDir/$sLogFile")) {
             if ($bExists) {
 
                 # TODO: only to file
@@ -446,7 +446,7 @@ sub backup {
             symlink "../$sLogFile", "$sBakDir/$sLogLink";
         }
         else {
-            undef $self->{'.LOGFILE'};
+            undef $self->{LOGFILE};
             $self->set_value('switch.logging', 0);
             $self->xerror("WARNING! Can't open log file \"$sBakDir/$sLogFile\" ($!). Going on without...");
         }
@@ -454,17 +454,17 @@ sub backup {
 
     ($sSubSet, @sBakDir)= $self->collect_bakdirs($sBakDay);
 
-    $self->{unique_target}= "$sBakDay$sSubSet.$sBakSet";
-    my $sTarget= "$sBakMonth.$sBakSet/" . $self->{unique_target};
-    $self->{full_target}= "$sBakDir/$sTarget";
-    # $self->{bak_dirs}= \@sBakDir;
+    $self->{VALUES}{unique_target}= "$sBakDay$sSubSet.$sBakSet";
+    my $sTarget= "$sBakMonth.$sBakSet/" . $self->{VALUES}{unique_target};
+    $self->{VALUES}{full_target}= "$sBakDir/$sTarget";
+    # $self->{VALUES}{bak_dirs}= \@sBakDir;
 
-    $self->_mkdir($self->{full_target});
+    $self->_mkdir($self->{VALUES}{full_target});
 
     $self->xlog("Backup $sBakDay exists, using subset.") if $sSubSet;
-    $self->xlog("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->{title});
+    $self->xlog("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->{VALUES}{title});
     $self->xlog("Logging to: $sBakDir/$sLogFile") if $self->get_value('switch.logging');
-    $self->xlog("Source: " . $self->{type} . ":" . $self->{source});
+    $self->xlog("Source: " . $self->{VALUES}{type} . ":" . $self->{VALUES}{source});
 
     map { $self->xerror($_); } @sMountError;
 
@@ -475,9 +475,9 @@ sub backup {
         require "RabakLib/Type/" . ucfirst($sBakType) . ".pm";
         my $sClass= "RabakLib::Type::" . ucfirst($sBakType);
         my $oBackup= $sClass->new($self);
-        $self->{'.LOGPREFIX'}= "[$sBakType] ";
+        $self->{LOGPREFIX}= "[$sBakType] ";
         $iErrorCode= $oBackup->run(@sBakDir);
-        $self->{'.LOGPREFIX'}= "";
+        $self->{LOGPREFIX}= "";
     };
 
     if ($@) {
@@ -494,14 +494,13 @@ sub backup {
     }
 
     $self->_remove_old(@sBakDir) unless $iErrorCode;    # only remove old if backup was done
+
     unless ($self->get_value('switch.pretend')) {
         unlink "$sBakDir/current.$sBakSet";
         symlink "$sTarget", "$sBakDir/current.$sBakSet";
         unlink "$sBakDir/current-log.$sBakSet";
         symlink "$sLogFile", "$sBakDir/current-log.$sBakSet";
     }
-
-BACKUP_FAILED:
 
     # check for disc space
     my $space_threshold = $self->get_value('target_discfree_threshold') || '';
@@ -525,8 +524,9 @@ BACKUP_FAILED:
         }
     }
 
+BACKUP_FAILED:
 
-    map { $self->xerror($_); } @sMountError;
+    # map { $self->xerror($_); } @sMountError;
 
     my %sWarnOnUnmount;
     map { $sWarnOnUnmount{$_}= 1; } @sWarnOnUnmount;
@@ -552,8 +552,8 @@ BACKUP_FAILED:
     # ATTENTION! QUICK HACK!
     # TODO: Can't unmount if log file is open
 
-    close $self->{'.LOGFILE'} if defined $self->{'.LOGFILE'};
-    $self->{'.LOGFILE'}= undef;
+    close $self->{LOGFILE} if defined $self->{LOGFILE};
+    $self->{LOGFILE}= undef;
 
     for (@sUnmount2) {
         my $sResult= `umount "$_" 2>&1`;
@@ -600,7 +600,7 @@ sub rm_file {
     my %aFiles= ();
     my %iFoundMask= ();
 
-    my $sBakSet= $self->{name};
+    my $sBakSet= $self->{VALUES}{name};
     my $sBakDir= $self->get_bakset_target($self);
 
     # TODO: Make a better check!
@@ -629,7 +629,7 @@ sub rm_file {
                     $iFoundMask{$sFileMask}++;
                 }
                 else {
-                    print "??: $_\n" if $self->{'.DEBUG'};
+                    print "??: $_\n" if $self->{DEBUG};
                 }
             }
         }
@@ -637,7 +637,7 @@ sub rm_file {
 
     map {
         $self->xlog("Removing " . scalar @{ $aDirs{$_} } . " directories: $_");
-        !$self->get_value('switch.pretend') && rmtree($aDirs{$_}, $self->{'.$DEBUG'});
+        !$self->get_value('switch.pretend') && rmtree($aDirs{$_}, $self->{DEBUG});
 
         # print Dumper($aDirs{$_});
 

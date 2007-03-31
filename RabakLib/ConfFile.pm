@@ -15,9 +15,9 @@ use Storable qw(dclone);
 
 RabakLib::ConfFile - Read Conf Files
 
-=head1 SYNOPSYS
+=head1 SYNOPSIS
 
-Format very similar to postfix config files:2
+Format very similar to postfix config files:
 
     key1 = value1
     key2 = multi
@@ -137,38 +137,38 @@ sub _read_file {
 
         my @aKeys= split(/\./, $sName);
         my $sKey= shift @aKeys;
-        my $xr= $self->{CONF};
+        my $hConf= $self->{CONF};
 
         my $sErrKey= '';
         for (@aKeys) {
             $sErrKey .= ".$sKey";
-            if (defined $xr->{$sKey} && !ref $xr->{$sKey}) {
+            if (defined $hConf->{VALUES}{$sKey} && !ref $hConf->{VALUES}{$sKey}) {
                 $self->_expand();
-                if (!ref $xr->{$sKey}) {
+                if (!ref $hConf->{VALUES}{$sKey}) {
                     $self->_error("Variable \"" . substr($sErrKey, 1) . "\" is not a structure", $iLine, $sLine);
                 }
             }
-            $xr->{$sKey}= RabakLib::Conf->new() unless $xr->{$sKey};
-            $xr= $xr->{$sKey};
+            $hConf->{VALUES}{$sKey}= RabakLib::Conf->new() unless $hConf->{VALUES}{$sKey};
+            $hConf= $hConf->{VALUES}{$sKey};
             $sKey= $_;
         }
 
         $sErrKey .= ".$sKey";
-        if (ref $xr->{$sKey}) {
+        if (ref $hConf->{VALUES}{$sKey}) {
             $self->_error("Can't assign string, variable \"" . substr($sErrKey, 1) . "\" is a structure", $iLine, $sLine);
         }
 
         # In case of a multiline, we need a newline at the end of each line
         if ($bIndent) {
-            $xr->{$sKey}= '' unless defined $xr->{$sKey};
-            $xr->{$sKey} .= "\n" if length($xr->{$sKey}) && substr($xr->{$sKey}, -1) ne "\n";
-            $xr->{$sKey} .= "$sValue\n";
+            $hConf->{VALUES}{$sKey}= '' unless defined $hConf->{VALUES}{$sKey};
+            $hConf->{VALUES}{$sKey} .= "\n" if length($hConf->{VALUES}{$sKey}) && substr($hConf->{VALUES}{$sKey}, -1) ne "\n";
+            $hConf->{VALUES}{$sKey} .= "$sValue\n";
         }
         else {
-            $xr->{$sKey}= $sValue;
+            $hConf->{VALUES}{$sKey}= $sValue;
         }
 
-	# $xr->{$sKey}= (defined $xr->{$sKey} && $bIndent && $xr->{$sKey} ne '') ? $xr->{$sKey} . "\n$sValue" : $sValue;
+	# $hConf->{$sKey}= (defined $hConf->{$sKey} && $bIndent && $hConf->{$sKey} ne '') ? $hConf->{$sKey} . "\n$sValue" : $sValue;
     }
 
     $self->_expand();
@@ -190,22 +190,22 @@ sub _expand {
 
 sub __expand {
     my $self= shift;
-    my $xr= shift;
+    my $hConf= shift;
     my $sKey= shift;
 
-    for (keys %{ $xr }) {
-        if (ref($xr->{$_})) {
-            $self->__expand($xr->{$_}, "$sKey.$_");
+    for (keys %{ $hConf->{VALUES} }) {
+        if (ref($hConf->{VALUES}{$_})) {
+            $self->__expand($hConf->{VALUES}{$_}, "$sKey.$_");
             next;
         }
-        if ($xr->{$_} =~ /^\$($sIdent)$/s) {
-            my $xr1= $self->_line_expand(substr("$sKey.$_", 1), $1, 1);
-            if ($xr1) {
-                $xr->{$_}= dclone($xr1);
+        if ($hConf->{VALUES}{$_} =~ /^\$($sIdent)$/s) {
+            my $hConf1= $self->_line_expand(substr("$sKey.$_", 1), $1, 1);
+            if ($hConf1) {
+                $hConf->{VALUES}{$_}= dclone($hConf1);
                 next;
             }
         }
-        $xr->{$_} =~ s/\$($sIdent)/$self->_line_expand(substr("$sKey.$_", 1), $1, 0)/ges;
+        $hConf->{VALUES}{$_} =~ s/\$($sIdent)/$self->_line_expand(substr("$sKey.$_", 1), $1, 0)/ges;
     }
 }
 
@@ -220,36 +220,36 @@ sub _line_expand {
     my $bWantStructure= shift;
     my @aKeys= split(/\./, $sName);
     my $sKey= shift @aKeys;
-    my $xr= $self->{CONF};
+    my $hConf= $self->{CONF};
     my $sErrKey= '';
     for (@aKeys) {
         $sErrKey .= ".$sKey";
-        if (!ref $xr->{$sKey}) {
+        if (!ref $hConf->{VALUES}{$sKey}) {
             $self->{ERROR}= "Failed to expand \"$sName0\": \"\$" . substr($sErrKey, 1) . "\" is not a structure"; 
             return $bWantStructure ? undef : '$'.$sName;
         }
-        $xr= $xr->{$sKey};
+        $hConf= $hConf->{VALUES}{$sKey};
         $sKey= $_;
     }
     $sErrKey .= ".$sKey";
     if ($bWantStructure) {
-        return undef if !ref $xr->{$sKey};
+        return undef if !ref $hConf->{VALUES}{$sKey};
     }
     else {
-        if (!defined $xr->{$sKey}) {
+        if (!defined $hConf->{VALUES}{$sKey}) {
             $self->{ERROR}= "Failed to expand \"$sName0\": \"\$" . substr($sErrKey, 1) . "\" is not defined"; 
             return '$'.$sName;
         }
-        if (ref $xr->{$sKey}) {
+        if (ref $hConf->{VALUES}{$sKey}) {
             $self->{ERROR}= "Failed to expand \"$sName0\": \"\$" . substr($sErrKey, 1) . "\" is a structure"; 
             return '$'.$sName;
         }
     }
-    if ('$'.$sName eq $xr->{$sKey}) {
+    if ('$'.$sName eq $hConf->{VALUES}{$sKey}) {
         $self->_error("Recursion occured while expanding \"$sName\"");
     }
     $self->{DID_EXPAND}= 1;
-    return $xr->{$sKey};
+    return $hConf->{VALUES}{$sKey};
 }
 
 1;

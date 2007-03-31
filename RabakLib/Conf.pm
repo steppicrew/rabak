@@ -33,7 +33,11 @@ Format very similar to postfix config files:
 sub new {
     my $class = shift;
     my $self= shift || {};
-    $self->{'.DEFAULTS'}= {};
+    $self->{DEFAULTS}= {};
+
+# die Dumper($self);
+
+    $self->{VALUES}= {} unless ref $self->{VALUES};
     bless $self, $class;
 }
 
@@ -42,7 +46,7 @@ sub new {
 sub set_defaults {
     my $self= shift;
     my $hDefaults= shift;
-    $self->{'.DEFAULTS'}= $hDefaults;
+    $self->{DEFAULTS}= $hDefaults;
 }
 
 sub get_value {
@@ -50,15 +54,15 @@ sub get_value {
     my $sName= shift;
     my $sDefault= shift || undef;
 
-    return $self->{'.DEFAULTS'}{$sName} if defined $self->{'.DEFAULTS'}{$sName};
+    return $self->{DEFAULTS}{$sName} if defined $self->{DEFAULTS}{$sName};
 
     my @sName= split(/\./, $sName);
     $sName= pop @sName;
     for (@sName) {
-        return $sDefault unless ref $self->{$_};
-        $self= $self->{$_};
+        return $sDefault unless ref $self->{VALUES}{$_};
+        $self= $self->{VALUES}{$_};
     }
-    return $self->{$sName} unless ref $self->{$sName};
+    return $self->{VALUES}{$sName} unless ref $self->{VALUES}{$sName};
     return $sDefault;
 }
 
@@ -68,8 +72,8 @@ sub get_node {
 
     my @sName= split(/\./, $sName);
     for (@sName) {
-        return undef unless ref $self->{$_};
-        $self= $self->{$_};
+        return undef unless ref $self->{VALUES}{$_};
+        $self= $self->{VALUES}{$_};
     }
     return $self;
 }
@@ -82,24 +86,25 @@ sub set_value {
     my @sName= split(/\./, $sName);
     $sName= pop @sName;
     for (@sName) {
-        $self->{$_}= RabakLib::Conf->new() unless ref $self->{$_};
-        $self= $self->{$_};
+        $self->{VALUES}{$_}= RabakLib::Conf->new() unless ref $self->{VALUES}{$_};
+        $self= $self->{VALUES}{$_};
     }
+
     # TODO: only allow assignment of undef to refs?
-    $self->{$sName}= $sValue;
+    $self->{VALUES}{$sName}= $sValue;
 }
 
 sub show {
     my $self= shift;
     my $sKey= shift;
-    for (sort keys %{ $self }) {
+    for (sort keys %{ $self->{VALUES} }) {
         next if $_ =~ /^\./;
-        if (ref($self->{$_})) {
-  # print Dumper($self->{$_}); die;
-            $self->{$_}->show("$sKey.$_");
+        if (ref($self->{VALUES}{$_})) {
+            # print Dumper($self->{VALUES}{$_}); die;
+            $self->{VALUES}{$_}->show("$sKey.$_");
             next;
         }
-        my $sValue= $self->{$_};
+        my $sValue= $self->{VALUES}{$_};
         $sValue =~ s/\n/\n\t/g;
         print "$sKey.$_ = $sValue\n";
     }
