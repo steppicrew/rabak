@@ -1,11 +1,13 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 # See Licence.txt for licence
 
+use warnings;
 use strict;
 
 use RabakLib::ConfFile;
 use RabakLib::Set;
+use RabakLib::Admin;
 
 use Data::Dumper;
 use Getopt::Std;
@@ -15,8 +17,8 @@ our $DEBUG= 0;
 
 $Getopt::Std::STANDARD_HELP_VERSION= 1;
 
-our $hConfFile;
-our $hConf;
+our $oConfFile;
+our $oConf;
 # our $iErrorCode= 0;
 
 our $opt_q;
@@ -40,6 +42,7 @@ cmd_backup() if $sCmd eq 'backup';
 cmd_conf()   if $sCmd eq 'conf';
 cmd_rmfile() if $sCmd eq 'rmfile';
 cmd_doc()    if $sCmd eq 'doc';
+cmd_admin()  if $sCmd eq 'admin';
 
 usage(); # dies when done
 
@@ -63,18 +66,22 @@ sub cmd_conf {
         _conf_read();
         print "Available backup sets:\n";
         my $bFound= 0;
-        foreach (sort keys %{ $hConf }) {
-            next unless ref $hConf->{$_} && defined $hConf->{$_}{title} && defined $hConf->{$_}{source} && defined $hConf->{$_}{target};
-            print "  $_ - " . $hConf->{$_}{title} . ", backs up \"" . $hConf->{$_}{source} . "\" to \"" . $hConf->{$_}{target} . "\"\n";
+        foreach (sort keys %{ $oConf }) {
+            next unless ref $oConf->{$_} && defined $oConf->{$_}{title} && defined $oConf->{$_}{source} && defined $oConf->{$_}{target};
+            print "  $_ - " . $oConf->{$_}{title} . ", backs up \"" . $oConf->{$_}{source} . "\" to \"" . $oConf->{$_}{target} . "\"\n";
             $bFound= 1;
         }
-        print "None. Configuration expected in file \"" . $hConfFile->filename() . "\"\n" unless $bFound;
+        print "None. Configuration expected in file \"" . $oConfFile->filename() . "\"\n" unless $bFound;
         exit 0;
     }
     my $hBakSet= _cmd_setup($sBakSet, 1);
     $hBakSet->show($sBakSet);
     exit 0;
 }
+
+# -----------------------------------------------------------------------------
+#  COMMAND: RMFILE
+# -----------------------------------------------------------------------------
 
 sub cmd_rmfile {
     my $hBakSet= _cmd_setup(shift @ARGV);
@@ -90,19 +97,31 @@ sub cmd_doc {
 }
 
 # -----------------------------------------------------------------------------
+#  COMMAND: ADMIN
+# -----------------------------------------------------------------------------
+
+sub cmd_admin {
+    # TODO: use command line switches
+    my $oAdmin= RabakLib::Admin->new(_conf_read());
+    # print Dumper($oAdmin); die;
+    _exit($oAdmin->loop());
+}
+
+# -----------------------------------------------------------------------------
 #  HELPER FUNCTIONS
 # -----------------------------------------------------------------------------
 
 sub _conf_read {
-    $hConfFile= RabakLib::ConfFile->new($opt_c ? $opt_c : 'rabak.cf');
-    $hConf= $hConfFile->conf();
-    $hConf->set_defaults({
+    $oConfFile= RabakLib::ConfFile->new($opt_c ? $opt_c : 'rabak.cf');
+    $oConf= $oConfFile->conf();
+    $oConf->set_defaults({
         'switch.pretend' => $opt_p,
         # 'switch.verbose' => $opt_v,
         'switch.quiet' => $opt_q,
         'switch.logging' => $opt_l,
 	'switch.targetid' => $opt_i,
     });
+    return $oConf;
 }
 
 sub _cmd_setup {
@@ -110,12 +129,12 @@ sub _cmd_setup {
     my $bSkipChecks= shift;
 
     _conf_read();
-    my $hSet= RabakLib::Set->new($hConf, $sBakSet, $bSkipChecks);
-    if ($hSet->{'.ERROR'}) {
-        print $hSet->{'.ERROR'} . "\n";
+    my $oSet= RabakLib::Set->new($oConf, $sBakSet, $bSkipChecks);
+    if ($oSet->{ERROR}) {
+        print $oSet->{ERROR} . "\n";
         _exit(3);
     }
-    return $hSet;
+    return $oSet;
 }
 
 # exitcodes:
