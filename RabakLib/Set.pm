@@ -212,7 +212,7 @@ sub collect_bakdirs {
     my $sSubSetBakDay= shift || 0;
 
     my $sBakSet= $self->{VALUES}{name};
-    my $sBakDir= get_bakset_target($self);
+    my $sBakDir= $self->get_bakset_target();
     my @sBakDir= ();
     my $sSubSet= '';
 
@@ -249,7 +249,7 @@ sub collect_bakdirs {
 }
 
 # -----------------------------------------------------------------------------
-#  Backup
+#  Little Helpers
 # -----------------------------------------------------------------------------
 
 # @param $oMount
@@ -293,7 +293,7 @@ sub _mount {
     my $sTargetInfo= "";
 
     if ($bTestTargetId && $self->{VALUES}{targetgroup}) {
-	my $sTargetIdName= get_bakset_target($self) . "/" . $self->{VALUES}{targetgroup} . ".ids";
+	my $sTargetIdName= $self->get_bakset_target() . "/" . $self->{VALUES}{targetgroup} . ".ids";
 	my $bWrongTarget= !-r $sTargetIdName;
 	my $sTargetIds= 'file does not exist';
 	my $sExpectedTargetId = $self->get_value('switch.targetid') || '';
@@ -337,32 +337,24 @@ sub _mkdir {
     return 0;
 }
 
-sub backup {
+# -----------------------------------------------------------------------------
+#  Mount & Unmount
+# -----------------------------------------------------------------------------
+
+sub mount {
     my $self= shift;
 
-    my $iErrorCode= 0;
-    my $sBakSet= $self->{VALUES}{name};
-    my $sSourceDir= $self->{VALUES}{source};
-    my $sBakType= $self->{VALUES}{type};
-    my $sBakDir= get_bakset_target($self);
-    my $sBakMonth= strftime("%Y-%m", localtime);
-    my $sBakDay= strftime("%Y-%m-%d", localtime);
-    my $sSubSet= "";
-    my @sBakDir= ();
-
-    $self->xlog_pretending();
-
     # Collect all mount errors, we want to output them later
-    my @sMountError= ();
-    my @sFirstOfMountError= ();
+    my @sMountMessage= ();
+    my @sFirstOfMountMessage= ();
     my @sUnmount= ();
-    my @sWarnOnUnmount= ();
+    my @sAllMount= ();
 
     if ($self->{VALUES}{mount}) {
 
 	# If the 'mount' setting is a node, then just do one mount:
         if (ref $self->{VALUES}{mount}) {
-	    push @sMountError, $self->_mount($self->{VALUES}{mount}, \@sUnmount, \@sWarnOnUnmount);
+	    push @sMountMessage, $self->_mount($self->{VALUES}{mount}, \@sUnmount, \@sAllMount);
         }
         else {
 	
@@ -378,52 +370,118 @@ sub backup {
                 }
                 if ($iFirstOf && $sToken eq ';') {
 		    if ($iFirstOf != 2) {
-			push @sMountError, "WARNING! None of the \"firstof\" mount points could be mounted. Results:";
-    			push @sMountError, @sFirstOfMountError;
-			push @sMountError, "WARNING! -- SNIP --";
+			push @sMountMessage, "WARNING! None of the \"firstof\" mount points could be mounted. Results:";
+    			push @sMountMessage, @sFirstOfMountMessage;
+			push @sMountMessage, "WARNING! -- SNIP --";
 		    }
 		    else {
 			# Don't give a warning on failing unmounts if mount point is one of 'firstof' and
-			# there was a succesful mount. This removes the failed unmounts from @sWarnOnUnmount:
-			splice @sWarnOnUnmount, $#sWarnOnUnmount - $#sFirstOfMountError - 1, $#sFirstOfMountError + 1;
+			# there was a succesful mount. This removes the failed unmounts from @sAllMount:
+			splice @sAllMount, $#sAllMount - $#sFirstOfMountMessage - 1, $#sFirstOfMountMessage + 1;
 		    }
                     $iFirstOf= 0;
-		    @sFirstOfMountError= ();
+		    @sFirstOfMountMessage= ();
                     next;
                 }
 		next if $iFirstOf == 2;
                 my $oMount= $self->get_node($sToken);
                 if (!ref $oMount) {
-                    push @sMountError, "WARNING! Mount information \"$sToken\" not defined in config file";
+                    push @sMountMessage, "WARNING! Mount information \"$sToken\" not defined in config file";
 		    next;
                 }
-		my $sResult= $self->_mount($oMount, \@sUnmount, \@sWarnOnUnmount);
+		my $sResult= $self->_mount($oMount, \@sUnmount, \@sAllMount);
 		if ($iFirstOf) {
 		    if ($sResult =~ /^WARNING/) {
-    			push @sFirstOfMountError, $sResult;
+    			push @sFirstOfMountMessage, $sResult;
 			next;
 		    }
 		    $iFirstOf= 2;
 		}
-		push @sMountError, $sResult;
+		push @sMountMessage, $sResult;
             }
         }
 
         $self->xlog("All mounts completed. More information after log file initialization...");
     }
 
-    # map { $self->xerror($_); } @sMountError; print Dumper(@sWarnOnUnmount); goto BACKUP_FAILED;
+    $self->{_MOUNT_MESSAGE_LIST}= \@sMountMessage;
+    $self->{_ALL_MOUNT_LIST}= \@sAllMount;
+    $self->{_UNMOUNT_LIST}= \@sUnmount;
+}
+
+sub unmount {
+    my $self= shift;
+    my $bBlaimLogFile= shift || 0;
+
+    my @sAllMount= @{ $self->{_ALL_MOUNT_LIST} };
+    my @sUnmount= @{ $self->{_UNMOUNT_LIST} };
+
+    my %sAllMount;
+    map { $sAllMount{$_}= 1; } @sAllMount;
+    my @sUnmount2= ();
+
+    for (@sUnmount) {
+        my $sResult= `umount "$_" 2>&1`;
+        if ($?) {
+	    chomp $sResult;
+    	    $sResult =~ s/\r?\n/ - /g;
+	    next unless $sAllMount{$_};
+    	    $self->xerror("WARNING! Unmounting \"$_\" failed: $sResult!");
+    	    $self->xerror("WARNING! (Maybe because of the log file. Retrying after log file was closed)") if $bBlaimLogFile;
+	    push @sUnmount2, $_;
+	    next;
+	}
+        $self->xlog("Unmounted \"$_\"");
+    }
+
+    $self->{_UNMOUNT_LIST}= \@sUnmount2;
+}
+
+# -----------------------------------------------------------------------------
+#  Backup
+# -----------------------------------------------------------------------------
+
+sub backup {
+    my $self= shift;
+
+    my $iResult= 0;
+
+    if ($self->backup_setup() == 0) {
+        $iResult= $self->backup_run();
+    }
+    $self->backup_cleanup();
+
+    return $iResult;
+}
+
+sub backup_setup {
+    my $self= shift;
+
+    my $sSubSet= "";
+    my @sBakDir= ();
+
+    $self->xlog_pretending();
+
+    $self->mount();
+
+    my @sMountMessage= @{ $self->{_MOUNT_MESSAGE_LIST} };
+    my @sAllMount= @{ $self->{_ALL_MOUNT_LIST} };
+    my @sUnmount= @{ $self->{_UNMOUNT_LIST} };
+
+    my $sBakDir= $self->get_bakset_target();
     
     if (!-d $sBakDir) {
         $self->xerror("Target \"$sBakDir\" is not a directory. Backup set skipped.");
-        goto BACKUP_FAILED;
+        return 1;
     }
     if (!-w $sBakDir) {
         $self->xerror("Target \"$sBakDir\" is not writable. Backup set skipped.");
-        goto BACKUP_FAILED;
+        return 2;
     }
 
-    # our $fwLog;
+    my $sBakMonth= strftime("%Y-%m", localtime);
+    my $sBakDay= strftime("%Y-%m-%d", localtime);
+    my $sBakSet= $self->{VALUES}{name};
 
     my $sLogFile= "$sBakMonth-log/$sBakDay.$sBakSet.log";
 
@@ -466,8 +524,31 @@ sub backup {
     $self->xlog("Logging to: $sBakDir/$sLogFile") if $self->get_value('switch.logging');
     $self->xlog("Source: " . $self->{VALUES}{type} . ":" . $self->{VALUES}{source});
 
-    map { $self->xerror($_); } @sMountError;
+    map { $self->xerror($_); } @sMountMessage;
 
+    $self->{_BAK_DIR_LIST}= \@sBakDir;
+    $self->{_BAK_DIR}= $sBakDir;
+    $self->{_BAK_DAY}= $sBakDay;
+    $self->{_BAK_SET}= $sBakSet;
+    $self->{_SUB_SET}= $sSubSet;
+    $self->{_TARGET}= $sTarget;
+    $self->{_LOG_FILE}= $sLogFile;
+
+    return 0;
+}
+
+sub backup_run {
+    my $self= shift;
+
+    my $sBakType= $self->{VALUES}{type};
+
+    my @sBakDir= @{ $self->{_BAK_DIR_LIST} };
+    my $sBakDir= $self->{_BAK_DIR};
+    my $sBakSet= $self->{_BAK_SET};
+    my $sTarget= $self->{_TARGET};
+    my $sLogFile= $self->{_LOG_FILE};
+
+    my $iErrorCode= 0;
     eval {
 
         # IMPORTANT TODO: use "use" or "do" or "require"!
@@ -503,76 +584,49 @@ sub backup {
     }
 
     # check for disc space
-    my $space_threshold = $self->get_value('target_discfree_threshold') || '';
-    if ($space_threshold) {
-        my $st_value = $1 if $space_threshold =~ /\b([\d\.]+)/;
-        my $st_unit = 'K';
-        $st_unit = uc($1) if $space_threshold =~ /$st_value\s*([gmkb\%])/i;
-        my $df = (split /\n/, `df -k "$sBakDir"`)[1];
-        my ($df_size, $df_avail) = ($1, $2) if $df =~ /^\S+\s+(\d+)\s+\d+\s+(\d+)\s+/;
-        $df_avail /= $df_size / 100 if $st_unit eq '%';
-        $df_avail >>= 20            if $st_unit eq 'G';
-        $df_avail >>= 10            if $st_unit eq 'M';
-        $df_avail <<= 10            if $st_unit eq 'B';
-        if ($st_value > $df_avail) {
+    my $sSpaceThreshold= $self->get_value('target_discfree_threshold') || '';
+    if ($sSpaceThreshold) {
+        my $iStValue= $sSpaceThreshold =~ /\b([\d\.]+)/ ? $1 : 0;
+        my $sStUnit= 'K';
+        $sStUnit = uc($1) if $sSpaceThreshold =~ /$iStValue\s*([gmkb\%])/i;
+        my $sDfResult = (split /\n/, `df -k "$sBakDir"`)[1];
+        my ($iDfSize, $iDfAvail) = ($1, $2) if $sDfResult =~ /^\S+\s+(\d+)\s+\d+\s+(\d+)\s+/;
+        $iDfAvail /= $iDfSize / 100 if $sStUnit eq '%';
+        $iDfAvail >>= 20            if $sStUnit eq 'G';
+        $iDfAvail >>= 10            if $sStUnit eq 'M';
+        $iDfAvail <<= 10            if $sStUnit eq 'B';
+        if ($iStValue > $iDfAvail) {
             $self->_mail_warning('disc space too low',
                 (
                     "The free space on your target \"$sBakDir\" has dropped",
-                    "below $st_value$st_unit to $df_avail$st_unit."
+                    "below $iStValue$sStUnit to $iDfAvail$sStUnit."
                 )
             );
         }
     }
 
-BACKUP_FAILED:
+    return $iErrorCode;
+}
 
-    # map { $self->xerror($_); } @sMountError;
+sub backup_cleanup {
+    my $self= shift;
 
-    my %sWarnOnUnmount;
-    map { $sWarnOnUnmount{$_}= 1; } @sWarnOnUnmount;
-    my @sUnmount2= ();
+    $self->unmount(1);
 
-    for (@sUnmount) {
-        my $sResult= `umount "$_" 2>&1`;
-        if ($?) {
-	    chomp $sResult;
-    	    $sResult =~ s/\r?\n/ - /g;
-	    next unless $sWarnOnUnmount{$_};
-    	    $self->xerror("WARNING! Unmounting \"$_\" failed: $sResult!");
-    	    $self->xerror("WARNING! (Maybe because of the log file. Retrying after log file was closed)");
-	    push @sUnmount2, $_;
-	    next;
-	}
-        $self->xlog("Unmounted \"$_\"");
-    }
+    # map { $self->xerror($_); } @sMountMessage;
+
+    my $sBakSet= $self->{_BAK_SET};
+    my $sBakDay= $self->{_BAK_DAY};
+    my $sSubSet= $self->{_SUB_SET};
 
     $self->xlog("Backup done at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet");
-
-
-    # ATTENTION! QUICK HACK!
-    # TODO: Can't unmount if log file is open
 
     close $self->{LOGFILE} if defined $self->{LOGFILE};
     $self->{LOGFILE}= undef;
 
-    for (@sUnmount2) {
-        my $sResult= `umount "$_" 2>&1`;
-        if ($?) {
-	    chomp $sResult;
-    	    $sResult =~ s/\r?\n/ - /g;
-	    next unless $sWarnOnUnmount{$_};
-    	    $self->xerror("WARNING! Unmounting \"$_\" failed: $sResult!");
-	    next;
-	}
-        $self->xlog("Unmounted \"$_\"");
-    }
-
-    # -- SNIP --
-
+    $self->unmount(0);
 
     $self->_mail_log();
-
-    return $iErrorCode;
 }
 
 # -----------------------------------------------------------------------------
@@ -601,7 +655,7 @@ sub rm_file {
     my %iFoundMask= ();
 
     my $sBakSet= $self->{VALUES}{name};
-    my $sBakDir= $self->get_bakset_target($self);
+    my $sBakDir= $self->get_bakset_target();
 
     # TODO: Make a better check!
     $self->xerror("Can't remove! \"$sBakSet.target\" is empty or points to file system root.", 3) if $sBakDir eq '' || $sBakDir eq '/';
