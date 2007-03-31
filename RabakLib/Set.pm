@@ -6,6 +6,8 @@ use warnings;
 use strict;
 
 use RabakLib::Conf;
+use RabakLib::Log;
+
 use Data::Dumper;
 use File::Spec ();
 use Mail::Send;
@@ -37,9 +39,9 @@ sub new {
     $self->{DEBUG}= 0;
     $self->{CONF}= $hConf;
     $self->{NAME}= $sName;
-    $self->{LOGFILE}= undef;
-    $self->{LOG}= ();
-    $self->{LOGPREFIX}= '';
+
+    $self->{LOG_FILE}= RabakLib::Log->new($hConf);
+    $self->{LOG_FILE}->set_category($sName);
 
     # my $xx= "file://C:/etc/passwd";
     # my $uri= URI->new($xx); # self->{VALUES}{source});
@@ -131,19 +133,7 @@ sub xlog {
     my $sMessage= shift;
     my $iLevel= shift || 0;
 
-    # our $fwLog;
-    return if $self->get_value('switch.quiet');
-
-    push @{ $self->{LOG} }, $sMessage;
-
-    $sMessage= $self->{LOGPREFIX} . $sMessage;
-
-    print "# $sMessage\n";
-    return unless $self->{LOGFILE} && $self->get_value('switch.logging') && !$self->get_value('switch.pretend');
-
-    my $fwLog= $self->{LOGFILE};
-    my $sName= $self->get_value('name');
-    print $fwLog _timestr() . "\t$sName\t$sMessage\n";
+    $self->{LOG_FILE}->xlog($sMessage, $iLevel);
 }
 
 sub xlog_pretending {
@@ -173,7 +163,7 @@ sub _mail {
 sub _mail_log {
     my $self= shift;
 
-    return $self->_mail('Rabak Result', @{ $self->{LOG} });
+    return $self->_mail('Rabak Result', $self->{LOG_FILE}->get_messages());
 }
 
 sub _mail_warning {
@@ -492,9 +482,12 @@ sub backup_setup {
 
         my $sLogLink= "$sBakMonth.$sBakSet/$sBakDay.$sBakSet.log";
 
-        my $bExists= -f "$sBakDir/$sLogFile";
-        if (open ($self->{LOGFILE}, ">>$sBakDir/$sLogFile")) {
-            if ($bExists) {
+        my $sError= $self->{LOG_FILE}->open("$sBakDir/$sLogFile");
+        if ($sError) {
+            $self->xerror("WARNING! Can't open log file \"$sBakDir/$sLogFile\" ($sError). Going on without...");
+        }
+        else {
+            if (!$self->{LOG_FILE}->is_new()) {
 
                 # TODO: only to file
                 $self->xlog("");
@@ -502,11 +495,6 @@ sub backup_setup {
                 $self->xlog("");
             }
             symlink "../$sLogFile", "$sBakDir/$sLogLink";
-        }
-        else {
-            undef $self->{LOGFILE};
-            $self->set_value('switch.logging', 0);
-            $self->xerror("WARNING! Can't open log file \"$sBakDir/$sLogFile\" ($!). Going on without...");
         }
     }
 
@@ -521,7 +509,7 @@ sub backup_setup {
 
     $self->xlog("Backup $sBakDay exists, using subset.") if $sSubSet;
     $self->xlog("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->{VALUES}{title});
-    $self->xlog("Logging to: $sBakDir/$sLogFile") if $self->get_value('switch.logging');
+    $self->xlog("Logging to: $sBakDir/$sLogFile") if $self->get_value('switch.pretend') && $self->get_value('switch.logging');
     $self->xlog("Source: " . $self->{VALUES}{type} . ":" . $self->{VALUES}{source});
 
     map { $self->xerror($_); } @sMountMessage;
@@ -532,7 +520,6 @@ sub backup_setup {
     $self->{_BAK_SET}= $sBakSet;
     $self->{_SUB_SET}= $sSubSet;
     $self->{_TARGET}= $sTarget;
-    $self->{_LOG_FILE}= $sLogFile;
 
     return 0;
 }
@@ -546,19 +533,15 @@ sub backup_run {
     my $sBakDir= $self->{_BAK_DIR};
     my $sBakSet= $self->{_BAK_SET};
     my $sTarget= $self->{_TARGET};
-    my $sLogFile= $self->{_LOG_FILE};
 
     my $iErrorCode= 0;
     eval {
-
-        # IMPORTANT TODO: use "use" or "do" or "require"!
-
         require "RabakLib/Type/" . ucfirst($sBakType) . ".pm";
         my $sClass= "RabakLib::Type::" . ucfirst($sBakType);
         my $oBackup= $sClass->new($self);
-        $self->{LOGPREFIX}= "[$sBakType] ";
+        $self->{LOG_FILE}->set_prefix($sBakType);
         $iErrorCode= $oBackup->run(@sBakDir);
-        $self->{LOGPREFIX}= "";
+        $self->{LOG_FILE}->set_prefix();
     };
 
     if ($@) {
@@ -580,7 +563,7 @@ sub backup_run {
         unlink "$sBakDir/current.$sBakSet";
         symlink "$sTarget", "$sBakDir/current.$sBakSet";
         unlink "$sBakDir/current-log.$sBakSet";
-        symlink "$sLogFile", "$sBakDir/current-log.$sBakSet";
+        symlink $self->{LOG_FILE}->get_filename(), "$sBakDir/current-log.$sBakSet" if $self->{LOG_FILE}->get_filename();
     }
 
     # check for disc space
@@ -620,10 +603,7 @@ sub backup_cleanup {
     my $sSubSet= $self->{_SUB_SET};
 
     $self->xlog("Backup done at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet");
-
-    close $self->{LOGFILE} if defined $self->{LOGFILE};
-    $self->{LOGFILE}= undef;
-
+    $self->{LOG_FILE}->close();
     $self->unmount(0);
 
     $self->_mail_log();

@@ -9,15 +9,20 @@ use Data::Dumper;
 use RabakLib::Conf;
 
 # use File::Spec ();
-# use POSIX qw(strftime);
+use POSIX qw(strftime);
 
 sub new {
     my $class= shift;
     my $hConf= shift;
     my $self= {
-        ERRORCODE => 0,
-        HAS_ERRORS => 0,
         CONF => $hConf,
+
+        PREFIX => '',
+        CATEGORY => '',
+        MESSAGES => '',
+        LOG_FH => undef,
+        FILE_NAME => '',
+        IS_NEW => 0,
     };
     bless $self, $class;
 }
@@ -30,25 +35,79 @@ sub _timestr {
     return strftime("%Y-%m-%d %H:%M:%S", localtime);
 }
 
-sub xerror {
+# sub start {
+#     my $self= shift;
+# }
+
+sub _flush {
     my $self= shift;
-    my $sMsg= shift;
-    my $iExit= shift || 0;
 
-    if ($self->{CONF}->get_value('switch.logging')) {
-        my $sName= $self->{CONF}->get_value('name') || '';
-        $sMsg= _timestr() . "\t$sName\t$sMsg";
-        $sMsg .= "\n";
-        print $sMsg;
-    }
-    exit $iExit if $iExit;
 
-    # $self->{HAS_ERRORS}= 1;
+    return unless $self->{LOG_FH} && $self->{UNFLUSHED_MESSAGES};
+    my $fh= $self->{LOG_FH};
+    print $fh $self->{UNFLUSHED_MESSAGES};
 
-    $self->{ERRORCODE}= 9;
+    $self->{UNFLUSHED_MESSAGES}= '';
 }
 
-sub start {
+sub clear {
+    my $self= shift;
+
+    $self->{UNFLUSHED_MESSAGES}= '';
+    $self->{MESSAGES}= '';
+}
+
+sub get_messages {
+    my $self= shift;
+
+    return $self->{MESSAGES};
+}
+
+sub open {
+    my $self= shift;
+    my $sFileName= shift;
+
+    $self->{FILE_NAME}= $sFileName;
+    $self->{IS_NEW}= !-f $sFileName;
+
+    unless (open ($self->{LOG_FH}, ">>$sFileName")) {
+        $self->{LOG_FH}= undef;
+        return $!;
+    }
+    return '';
+}
+
+sub close {
+    my $self= shift;
+
+    return unless $self->{LOG_FH};
+    close $self->{LOG_FH};
+    $self->{LOG_FH}= undef;
+}
+
+sub get_filename() {
+    my $self= shift;
+
+    return $self->{LOG_FH} ? $self->{FILE_NAME} : undef;
+}
+
+sub is_new {
+    my $self= shift;
+    return $self->{IS_NEW};
+}
+
+sub set_prefix {
+    my $self= shift;
+    my $sPrefix= shift || '';
+
+    $self->{PREFIX}= $sPrefix;
+}
+
+sub set_category {
+    my $self= shift;
+    my $sPrefix= shift || '';
+
+    $self->{CATEGORY}= $sPrefix;
 }
 
 sub xlog {
@@ -56,14 +115,21 @@ sub xlog {
     my $sMessage= shift;
     my $iLevel= shift || 0;
 
-    # our $fwLog;
+
     return if $self->{CONF}->get_value('switch.quiet');
 
+    $sMessage= '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
     print "$sMessage\n";
-    return unless $self->{LOGFILE} && $self->get_value('switch.logging') && !$self->get_value('switch.pretend');
 
-    my $fwLog= $self->{LOGFILE};
-    print $fwLog _timestr() . "\t$sMessage\n";
+    return unless $self->{CONF}->get_value('switch.logging') && !$self->{CONF}->get_value('switch.pretend');
+
+    $sMessage= $self->{CATEGORY} . "\t$sMessage" if $self->{CATEGORY};
+    $sMessage= _timestr() . "\t$sMessage\n";
+
+    $self->{UNFLUSHED_MESSAGES} .= $sMessage;
+    $self->{MESSAGES} .= $sMessage;
+
+    $self->_flush();
 }
 
 1;
