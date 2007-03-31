@@ -12,7 +12,7 @@ function mk_target {
     dd if=/dev/zero of="$BASEDIR/dev_$DEVN" count=3000
     mknod "$BASEDIR/dev.$DEVN" b 7 $DEVI
     losetup "$BASEDIR/dev.$DEVN" "$BASEDIR/dev_$DEVN"
-    mkfs -t ext2 -N 500 "$BASEDIR/dev.$DEVN"
+    mkfs -t ext2 -N 1000 "$BASEDIR/dev.$DEVN"
 
     mkdir "$BASEDIR/mnt_$DEVN"
     mount "$BASEDIR/dev.$DEVN" "$BASEDIR/mnt_$DEVN"
