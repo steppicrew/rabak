@@ -1,5 +1,6 @@
 rabak-0.3.2
 - cleaned up RabakLib::Conf and RabakLib::Set. Is more perl-oo-ish now.
+- logging is now done by RabakLib::Log
 
 rabak-0.3.1
 
