@@ -12,6 +12,8 @@ function rm_target {
     rm "$BASEDIR/dev.$DEVN"
 }
 
+umount "$BASEDIR/mnt_target"
+
 rm_target "0" "loop0"
 rm_target "1" "loop1"
 rm_target "2" "boot"

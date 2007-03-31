@@ -29,4 +29,4 @@ echo "Fri" >> "$BASEDIR//mnt_loop1/rabak/dayofweek.ids"
 
 mk_target "2" "boot"
 
-mkdir "$BASEDIR//mnt_target"
+mkdir "$BASEDIR/mnt_target"
