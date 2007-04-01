@@ -68,7 +68,7 @@ sub cmd_conf {
         exit 0;
     }
     my $hBakSet= _cmd_setup($sBakSet, 1);
-    $hBakSet->show($sBakSet);
+    $hBakSet->show();
     exit 0;
 }
 

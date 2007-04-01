@@ -95,7 +95,8 @@ sub set_value {
 
 sub show {
     my $self= shift;
-    my $sKey= shift;
+    my $sKey= shift || $self->{NAME};
+
     for (sort keys %{ $self->{VALUES} }) {
         next if $_ =~ /^\./;
         if (ref($self->{VALUES}{$_})) {

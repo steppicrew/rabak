@@ -5,6 +5,7 @@ package RabakLib::Admin;
 use warnings;
 use strict;
 
+use Term::ReadLine;
 use Data::Dumper;
 
 use RabakLib::ConfFile;
@@ -17,6 +18,7 @@ sub new {
         CONF_FILE => $oConfFile,
         CONF => $oConfFile->conf(),
         SET => '',
+        TERM => Term::ReadLine->new('RabakLib::Sdmin'),
     };
     bless $self, $class;
 }
@@ -37,23 +39,63 @@ sub do_set {
         return;
     }
 
-    print "Backup set \"$sSet\" doesn't exist.\n" if $sSet;
+    # Reset SET. If we do batch processing one day, we don't want to process on the wrong set.
+    if ($sSet) {
+        $self->{SET}= undef;
+        print "Backup set \"$sSet\" doesn't exist.\n";
+    }
     $self->do_set_list();
 }
 
 sub do_help {
-    print "set       List available sets\n";
-    print "set SET   Use backup set SET\n";
-    print "quit      Quit program\n";
+    print "set         List available sets\n";
+    print "set SET     Use backup set SET\n";
+    print "conf [SET]  Show set config (Current if SET is omitted)\n";
+    print "quit        Quit program\n";
+}
+
+sub _need_set {
+    my $self= shift;
+
+    unless ($self->{SET}) {
+        print "Try 'set SET' first!\n";
+        return undef;
+    }
+    return $self->{SET};
+}
+
+sub _check_set {
+    my $self= shift;
+    my $sSet= shift;
+
+    return -1 unless $sSet;
+
+    my $oSet= $self->{CONF}{VALUES}{$sSet};
+    return $oSet if $oSet;
+
+    print "No backup set '$sSet'. Try 'set' for a list of available backup sets!\n";
+    return undef;
+}
+
+sub do_conf {
+    my $self= shift;
+    my $sSet= shift || '';
+
+    my $oSet= $self->_check_set($sSet) or return;
+    ref $oSet or $oSet= $self->_need_set() or return;
+    $oSet->show();
 }
 
 sub loop() {
     my $self= shift;
 
+    # eval ("\$self->{TERM}->read_history('~/.rabak_history')") or print $@;
+
     while (1) {
-        print $self->{SET}{NAME} if $self->{SET};
-        print '> ';
-        my $line= <STDIN>;
+        my $sPrompt= $self->{CONF_FILE}->filename();
+        $sPrompt .= ':' . $self->{SET}{NAME} if $self->{SET};
+        $sPrompt .= '> ';
+        my $line= $self->{TERM}->readline($sPrompt);
 
         my @aArgs= ();
         my $sArg= '';
@@ -72,26 +114,24 @@ sub loop() {
         }
         do { print "Unmatched \".\n"; next; } if $bInQuot;
 
-        my $sCmd= shift @aArgs || '';
-        if ($sCmd eq 'set') {
-            $self->do_set(@aArgs);
-        }
-        elsif ($sCmd eq 'help') {
-            $self->do_help(@aArgs);
-        }
-        elsif ($sCmd eq 'quit' || $sCmd eq 'exit') {
+        my $sCmd= shift @aArgs or next;
+
+        if ($sCmd eq 'quit' || $sCmd eq 'exit') {
             last;
         }
-        elsif ($sCmd ne '') {
-            print "Syntax error!\n";
-            do_help();
+        elsif ($sCmd !~ /[^a-z]/) {
+            eval("\$self->do_$sCmd(\@aArgs)");
+            next unless $@;
+            if ($@ !~ /^Can\'t locate/) {
+                print "Error: $@\n";
+                next;
+            }
         }
-
-        # print join("::", @aArgs);
-        # $line =~ s/\"([^\"]*)\"/\"\"/g;
-        # print Dumper($self->{CONF});
-        # print "\n";
+        print "Syntax error!\n";
+        do_help();
     }
+
+    # eval ("\$self->{TERM}->write_history('~/.rabak_history')");
 
     return 0;
 }
