@@ -333,6 +333,7 @@ sub _mkdir {
 
 sub mount {
     my $self= shift;
+    my $bQuiet= shift;
 
     # Collect all mount errors, we want to output them later
     my @sMountMessage= ();
@@ -390,13 +391,22 @@ sub mount {
 		push @sMountMessage, $sResult;
             }
         }
-
-        $self->xlog("All mounts completed. More information after log file initialization...");
     }
 
-    $self->{_MOUNT_MESSAGE_LIST}= \@sMountMessage;
-    $self->{_ALL_MOUNT_LIST}= \@sAllMount;
+    # $self->{_MOUNT_MESSAGE_LIST}= \@sMountMessage;
+
     $self->{_UNMOUNT_LIST}= \@sUnmount;
+    $self->{_ALL_MOUNT_LIST}= \@sAllMount;
+
+    map { print "$_\n"; } @sMountMessage unless $bQuiet;
+
+    return @sMountMessage;
+}
+
+sub get_mounts {
+    my $self= shift;
+
+    return $self->{_UNMOUNT_LIST} || [];
 }
 
 sub unmount {
@@ -452,11 +462,16 @@ sub backup_setup {
 
     $self->xlog_pretending();
 
-    $self->mount();
+    my @sMountMessage= $self->mount(1);
 
-    my @sMountMessage= @{ $self->{_MOUNT_MESSAGE_LIST} };
+    # my @sMountMessage= @{ $self->{_MOUNT_MESSAGE_LIST} };
+
     my @sAllMount= @{ $self->{_ALL_MOUNT_LIST} };
     my @sUnmount= @{ $self->{_UNMOUNT_LIST} };
+
+    if (scalar @sMountMessage) {
+        $self->xlog("All mounts completed. More information after log file initialization...");
+    }
 
     my $sBakDir= $self->get_bakset_target();
     
