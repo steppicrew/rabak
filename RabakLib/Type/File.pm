@@ -30,19 +30,24 @@ sub run {
     my $sInclude= $self->get_value('include') || '';
     my $sExclude= $self->get_value('exclude') || '';
 
-    $sExclude= "*" if $sExclude eq '' && $sInclude ne '';
+    for (split(/,\s+|\n/, $sExclude)) {
+        s/^\s+//;
+        s/\s+$//;
+        # $_= "/*" if $_ eq "/";
+        print $fhwRules "- $_\n" if $_;
+    }
 
     for (split(/,\s+|\n/, $sInclude)) {
         s/^\s+//;
         s/\s+$//;
 	
 	# rsync works top down, so include all containing directories:
-	if (/\//) {
-	    my @sDir= split(/\//);
-	    my $sDir= "";
-    	    for my $i (1 .. $#sDir - 1) {
-		$sDir .= "/".$sDir[$i];
-	        print $fhwRules "+ $sDir/\n";
+	if (/^\/(.+\/)/) {
+	    my @sDir= split(/\//, $1);
+	    my $sDir= "/";
+    	    for my $i (0 .. $#sDir) {
+		$sDir .= $sDir[$i] . "/";
+	        print $fhwRules "+ $sDir\n";
 	    }
 	}
 
@@ -53,14 +58,11 @@ sub run {
         print $fhwRules "+ $_\n" if $_;
     }
 
-    for (split(/,\s+|\n/, $sExclude)) {
-        s/^\s+//;
-        s/\s+$//;
-	# $_= "/*" if $_ eq "/";
-        print $fhwRules "- $_\n" if $_;
-    }
+    print $fhwRules "- /**\n" if $sInclude;
 
     close $fhwRules;
+
+    # print `cat $sRulesFile`;
 
     my $sFlags= "-a"
         . " -v --stats --hard-links"
