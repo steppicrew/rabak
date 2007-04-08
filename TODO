@@ -1,5 +1,5 @@
 
-As you see this is version 0.1, and there's things missing:
+As you see this is a early version, and there's things missing:
 
 - Documentation is not complete
 --- Explain faster-dupemerge
@@ -8,6 +8,5 @@ As you see this is version 0.1, and there's things missing:
 - Make ACLs work
 - No passwords into rabak.cf
 - Various TODOs in the library.
-- Set mount options in config file
 - Explain wrapper
 - implement post processing with faster-dupemerge

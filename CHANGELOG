@@ -1,6 +1,7 @@
 rabak-0.3.2
-- cleaned up RabakLib::Conf and RabakLib::Set. Is more perl-oo-ish now.
-- logging is now done by RabakLib::Log
+- Cleaned up RabakLib::Conf and RabakLib::Set. Is more perl-oo-ish now.
+- Logging is now done by RabakLib::Log
+- Started experimental 'admin' module
 
 rabak-0.3.1
 

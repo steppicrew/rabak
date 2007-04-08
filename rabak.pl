@@ -12,7 +12,7 @@ use RabakLib::Admin;
 use Data::Dumper;
 use Getopt::Std;
 
-our $VERSION= "0.3.1";
+our $VERSION= "0.3.2";
 our $DEBUG= 0;
 
 $Getopt::Std::STANDARD_HELP_VERSION= 1;
