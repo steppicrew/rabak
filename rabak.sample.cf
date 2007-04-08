@@ -12,8 +12,8 @@
 
 email = root
 
-bak_base = /mnt/backup
-bak_dir = $bak_base/rabak
+target_base = /mnt/backup
+target_dir = $target_base/rabak
 
 smb_dir = /mnt/fritz/e
 smb_user = backup
@@ -54,17 +54,17 @@ exclude = $exclude_std, $exclude_smb, test-bak, test-data, stuff
 # Try all of these. Use the first mountable one.
 
 mount_external_1.device= /dev/sda1
-mount_external_1.directory= $bak_base
+mount_external_1.directory= $target_base
 mount_external_1.istarget= 1
 mount_external_1.unmount= 1
 
 mount_external_2.device= /dev/sdb1
-mount_external_2.directory= $bak_base
+mount_external_2.directory= $target_base
 mount_external_2.istarget= 1
 mount_external_2.unmount= 1
 
 mount_external_3.device= /dev/sdc1
-mount_external_3.directory= $bak_base
+mount_external_3.directory= $target_base
 mount_external_3.istarget= 1
 mount_external_3.unmount= 1
 
@@ -87,7 +87,7 @@ mount_fritz.unmount= 1
 
 sample.title = Gesamtsystem
 sample.source = /
-sample.target = $bak_dir
+sample.target = $target_dir
 sample.exclude = $exclude
 sample.mount = $mount_first ; mount_boot mount_fritz
 sample.targetgroup = sample
@@ -100,7 +100,7 @@ sample.target_discfree_threshold = 10%
 
 sample_pg.title = Databases of sample
 sample_pg.source = pgsql:vbulletin,postnuke
-sample_pg.target = $bak_base/postgres
+sample_pg.target = $target_base/postgres
 sample_pg.user = *default*
 # TODO: test_pg.password is secret -> look in rabak.secret.cf
 sample_pg.password = test
@@ -114,7 +114,7 @@ sample_pg.mount = $mount_first
 
 sample_mysql.title = Mysql-DBs
 sample_mysql.source = mysql:*
-sample_mysql.target = $bak_base/mysql
+sample_mysql.target = $target_base/mysql
 sample_mysql.user = $mysql_user
 # TODO: test_pg.password is secret -> look in rabak.secret.cf
 sample_mysql.password = $mysql_passwd

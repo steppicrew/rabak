@@ -16,7 +16,7 @@ switch.logging = 1
 # =======================================================================================
 
 exclude_unix =
-    $bak_base
+    $target_base
     /dev/
     /proc/
     /sys/
@@ -60,7 +60,7 @@ exclude_common =
     *.lock
 
 exclude_std =
-    $bak_base
+    $target_base
     $exclude_unix
     $exclude_win
     $exclude_common
