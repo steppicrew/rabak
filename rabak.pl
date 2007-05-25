@@ -8,7 +8,7 @@ use strict;
 # change to programs directory evalutaing use commands
 my $basedir= `dirname "$0"`;
 chomp $basedir;
-`cd "$basedir"`;
+`cd "$basedir"` if $basedir;
 
 eval '
   use RabakLib::ConfFile;
