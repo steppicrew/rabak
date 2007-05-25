@@ -119,7 +119,7 @@ sub xlog {
     return if $self->{CONF}->get_value('switch.quiet');
 
     $sMessage= '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
-    print "$sMessage\n";
+    print "$sMessage\n" if $iLevel <= $self->{CONF}->get_value('switch.verbose');
 
     return unless $self->{CONF}->get_value('switch.logging') && !$self->{CONF}->get_value('switch.pretend');
 
