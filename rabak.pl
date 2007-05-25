@@ -5,14 +5,21 @@
 use warnings;
 use strict;
 
-use RabakLib::ConfFile;
-use RabakLib::Set;
-use RabakLib::Admin;
+# change to programs directory evalutaing use commands
+my $basedir= `dirname "$0"`;
+chomp $basedir;
+`cd "$basedir"`;
+
+eval '
+  use RabakLib::ConfFile;
+  use RabakLib::Set;
+  use RabakLib::Admin;
+';
 
 use Data::Dumper;
 use Getopt::Std;
 
-our $VERSION= "0.3.3";
+our $VERSION= "0.3.4";
 our $DEBUG= 0;
 
 $Getopt::Std::STANDARD_HELP_VERSION= 1;
@@ -22,14 +29,14 @@ our $oConf;
 # our $iErrorCode= 0;
 
 our $opt_q;
-# our $opt_v;
+our $opt_v;
 our $opt_l;
 our $opt_p;
 our $opt_c;
 our $opt_h;
 our $opt_i;
 
-getopts("qplhc:i:") or die HELP_MESSAGE();
+getopts("hi:lc:pqv") or die HELP_MESSAGE();
 
 our $sCmd= shift @ARGV || '';
 
@@ -109,10 +116,10 @@ sub _conf_read {
     $oConf= $oConfFile->conf();
     $oConf->set_defaults({
         'switch.pretend' => $opt_p,
-        # 'switch.verbose' => $opt_v,
+        'switch.verbose' => $opt_v,
         'switch.quiet' => $opt_q,
         'switch.logging' => $opt_l,
-	'switch.targetid' => $opt_i,
+        'switch.targetid' => $opt_i,
     });
     return $oConfFile;
 }
@@ -173,14 +180,13 @@ Possible switches:
   -l        Log to file
   -p        Pretend
   -q        Be quiet
+  -v        Be verbose
   --version Show version
   --help    Show (this) help
 ";
-
-#TODO: Implement:
-#  -v        Be verbose
-
         return;
+#TODO:
+#  implement verbosity levels
     }
     print $sHelp{$sCmd};
 }
