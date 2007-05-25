@@ -11,6 +11,22 @@
 
 switch.logging = 1
 
+# switch.verbose: verbosity level
+#   -2: print errors only
+#   -1: print errors and warnings only
+#    0: print some additional output (mount results etc.)
+#    1: print additional output (rsync: stats)
+#    2: print additional output (rsync: verbose)
+switch.verbose = 0
+
+# switch.idfile: file that have to exist in root dir on any target device (istarget is set in mount section)
+#    default: rabak.id
+#    this file contains optional taget groups/ids entries (one per line)
+#    format: <group>[.<id>]
+#    characters after "#" are treated as comments
+#    device is valid for this backup if file exists, target group/id is found (optional)
+switch.idfile = rabak.id
+
 # =======================================================================================
 #       GLOBAL VARIABLES
 # =======================================================================================
