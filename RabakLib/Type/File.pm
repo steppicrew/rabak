@@ -65,11 +65,13 @@ sub run {
     # print `cat $sRulesFile`;
 
     my $sFlags= "-a"
-        . " -v --stats --hard-links"
+        . " --hard-links"
         . " --filter=\". $sRulesFile\""
     ;
 
-    $sFlags .= " --verbose -i" if $self->{DEBUG};
+    $sFlags .= " --stats" if $self->{SET}->{CONF}->get_value('switch.verbose') > 1;
+    $sFlags .= " --verbose" if ($self->{SET}->{CONF}->get_value('switch.verbose') > 2) || $self->{DEBUG};
+    $sFlags .= " -i" if $self->{DEBUG};
     $sFlags .= " --dry-run" if $self->get_value('switch.pretend');
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
 
