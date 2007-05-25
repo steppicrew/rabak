@@ -1,3 +1,9 @@
+rabak-0.3.4
+- introducing verbosity levels to decrease output (switch.verbose)
+- complete redesign of target group/id check and RabakLib::Set::_mount()
+- devices, mounted anywhere else, with no/invalid rabak id file will not be unmounted anymore
+- rabak.pl can now be called from any directory ("use" commands implemented with "eval")
+
 rabak-0.3.2
 - Cleaned up RabakLib::Conf and RabakLib::Set. Is more perl-oo-ish now.
 - Logging is now done by RabakLib::Log
@@ -12,7 +18,7 @@ rabak-0.3.1
 
 rabak-0.3
 
-- uebergabe optionale parameter fuer mounttyp, mountoptionen und rsync
-- optionaler test auf freien mindestspeicher im target und ggf. warnung
-- bugfixes bei mysql und postgres
+- additional config parameters for mount type, mount options and rsync options
+- optional test remaining disk space on target after finishing backup
+- bugfixes for mysql and postgres implentations
 
