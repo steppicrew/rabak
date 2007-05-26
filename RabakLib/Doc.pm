@@ -204,46 +204,49 @@ Additional rsync options (like "-acl") can be specified with
 
 =head2 Target Groups
 
-If you have multiple backup devices attached your system you may want to
-assure that the data is written to the right media. The media may not have
-a fixed device name and may only be identifiable by it's contents.
-To do so, you can group them and set up I<firstof> mount rules.
-
-First you choose a name for a target group, e.g. "byweekday".
-In your backup set you set the target group attribute:
-  mybackup.targetgroup = byweekday
-
-Then you mark a mount point as target group:
+To make sure only desired device are used to store your backup data, you
+can mark a mount point as a target:
   mount1.istarget = 1
 
-This means, that C<rabak> will - after mounting - check the device for mount
-point C<mount1> for the existance of a file named C<byweekday.ids> (in the
-target directory). The mount fails if it can't be found. If I<firstof> is was
-used, the next mount point is tried.
+This means, that there have to be a file named I<rabak.id> (or any other
+name specified by C<switch.idfile>) in the root directory of the specified
+device.
+If this file could not be found, this device will not be used for backup (and
+even not unmounted if already mounted anywhere else).
 
-=head3 Target Values
+This id file may contain entries in the following form (one entry per line):
+  <target group>[.<target id>]
 
-Additionally you can put target values in the file C<byweekday.ids> (one per line)
-and specify a value at the command line with switch "-i". The backup will be done
-on the device containing the id in the target group file.
+You can specify a target group in your backup set:
+  mybackup.targetgroup = byweekday
+In this case the device is only used if the is an id entry beginning with
+C<byweekday.>
+Additionally you can specify a target id at the command line (parameter
+C<-i 'target id'>) to accept only devices with a matching id file entry.
 
-Example:
-On one disk there is a file I<bak/byweekday.ids> containing
-  Mon
-  Wed
-  Fri
+=head3 Example for target groups and ids
 
-and on another disk the same file contains
-  Tue
-  Thu
-  Sat
+On one backup device your id file contains the following lines:
+  byweekday.Mon
+  byweekday.Wed
+  byweekday.Fri
 
-Now you can have both disks plugged in and do:
+and another devices id file contains:
+  byweekday.Tue
+  byweekday.Thu
+  byweekday.Sat
+
+If both devices are plugged in, you set up the mount options correctly
+(don't forget the C<istarget>) flag!), and you specified I<byweekday> as
+targetgroup in your backup set, then you could create a daily cron job:
   rabak -i "`date "+%a"`" backup mybackup
 
-The first disk will be used on Mon, Wed and Fri.
-The second disk will be used on Tue, Thu and Sat.
-On Sunday no mount point can be found and rabak will fail for this backup set.
+On Mon, Wed, and Fri your files will be backed up to the first device.
+On Tue, Thu and Sat the second device would be used. On Sun no backup would
+be done.
+
+If you don't specify a target id at the command line, the first successfully
+mounted of the two devices would be used.
 
 =head2 Notification Mails
 
