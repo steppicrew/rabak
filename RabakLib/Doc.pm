@@ -204,7 +204,7 @@ Additional rsync options (like "-acl") can be specified with
 
 =head2 Target Groups
 
-To make sure only desired device are used to store your backup data, you
+To make sure only desired devices are used to store your backup data, you
 can mark a mount point as a target:
   mount1.istarget = 1
 
@@ -219,7 +219,7 @@ This id file may contain entries in the following form (one entry per line):
 
 You can specify a target group in your backup set:
   mybackup.targetgroup = byweekday
-In this case the device is only used if the is an id entry beginning with
+In this case the device is only used if there is an id entry beginning with
 C<byweekday.>
 Additionally you can specify a target value at the command line (parameter
 C<-i 'target value'>) to accept only devices with a matching id file entry.
@@ -242,8 +242,7 @@ targetgroup in your backup set, then you could create a daily cron job:
   rabak -i "`date "+%a"`" backup mybackup
 
 On Mon, Wed, and Fri your files will be backed up to the first device.
-On Tue, Thu and Sat the second device would be used. On Sun no backup would
-be done.
+On Tue, Thu and Sat the second device would be used. On Sun backup would fail.
 
 If you don't specify a target value at the command line, the first successfully
 mounted of the two devices would be used.
