@@ -119,7 +119,7 @@ sub _conf_read {
         'switch.verbose' => $opt_v,
         'switch.quiet' => $opt_q,
         'switch.logging' => $opt_l,
-        'switch.targetid' => $opt_i,
+        'switch.targetvalue' => $opt_i,
     });
     return $oConfFile;
 }
@@ -175,14 +175,14 @@ Help not implemented.
         }
         print "
 Possible switches:
-  -c <file> Use <file> for configuration
-  -i <id>   Save in disk with targetgroup value <id>
-  -l        Log to file
-  -p        Pretend
-  -q        Be quiet
-  -v        Be verbose
-  --version Show version
-  --help    Show (this) help
+  -c <file>  Use <file> for configuration
+  -i <value> Save on device with targetgroup value <value>
+  -l         Log to file
+  -p         Pretend
+  -q         Be quiet
+  -v         Be verbose
+  --version  Show version
+  --help     Show (this) help
 ";
         return;
 #TODO:

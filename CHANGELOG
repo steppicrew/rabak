@@ -1,6 +1,6 @@
 rabak-0.3.4
 - introducing verbosity levels to decrease output (switch.verbose)
-- complete redesign of target group/id check and RabakLib::Set::_mount()
+- complete redesign of target group/value check and RabakLib::Set::_mount()
 - devices, mounted anywhere else, with no/invalid rabak id file will not be unmounted anymore
 - rabak.pl can now be called from any directory ("use" commands implemented with "eval")
 

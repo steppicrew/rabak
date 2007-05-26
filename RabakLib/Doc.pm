@@ -215,16 +215,16 @@ If this file could not be found, this device will not be used for backup (and
 even not unmounted if already mounted anywhere else).
 
 This id file may contain entries in the following form (one entry per line):
-  <target group>[.<target id>]
+  <target group>[.<target value>]
 
 You can specify a target group in your backup set:
   mybackup.targetgroup = byweekday
 In this case the device is only used if the is an id entry beginning with
 C<byweekday.>
-Additionally you can specify a target id at the command line (parameter
-C<-i 'target id'>) to accept only devices with a matching id file entry.
+Additionally you can specify a target value at the command line (parameter
+C<-i 'target value'>) to accept only devices with a matching id file entry.
 
-=head3 Example for target groups and ids
+=head3 Example for target groups and values
 
 On one backup device your id file contains the following lines:
   byweekday.Mon
@@ -245,7 +245,7 @@ On Mon, Wed, and Fri your files will be backed up to the first device.
 On Tue, Thu and Sat the second device would be used. On Sun no backup would
 be done.
 
-If you don't specify a target id at the command line, the first successfully
+If you don't specify a target value at the command line, the first successfully
 mounted of the two devices would be used.
 
 =head2 Notification Mails

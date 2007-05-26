@@ -255,9 +255,9 @@ sub collect_bakdirs {
 #            1: device is mounted but no target media
 #            2: device is/was mounted and is target media
 #       %{'expected'} (array ref):
-#            expected target group and id
+#            expected target group and value
 #       %{'found'} (string):
-#            found target groups and ids (if expected target was not found)
+#            found target groups and values (if expected target was not found)
 #       %{'umount'} (string):
 #            result string of umount command (if executed)
 sub _mount_check {
@@ -268,7 +268,7 @@ sub _mount_check {
     return \('code' => -1) if !$sMountDevice;
 
     my $sTarget = $self->{VALUES}{targetgroup} || '';
-    $sTarget.= "." . $self->get_value('switch.targetid') if $self->get_value('switch.targetid');
+    $sTarget.= "." . $self->get_value('switch.targetvalue') if $self->get_value('switch.targetvalue');
     my $sqTarget = quotemeta $sTarget;
     my %result= (
         'code' => 0,
