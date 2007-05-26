@@ -121,7 +121,8 @@ sub xlog {
     $sMessage= '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
     print "$sMessage\n" if $iLevel <= $self->{CONF}->get_value('switch.verbose');
 
-    return unless $self->{CONF}->get_value('switch.logging') && !$self->{CONF}->get_value('switch.pretend');
+    return unless $self->{CONF}->get_value('switch.logging') && !$self->{CONF}->get_value('switch.pretend') &&
+	$iLevel <= $self->{CONF}->get_value('switch.verbose');
 
     $sMessage= $self->{CATEGORY} . "\t$sMessage" if $self->{CATEGORY};
     $sMessage= _timestr() . "\t$sMessage\n";
