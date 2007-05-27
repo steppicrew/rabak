@@ -440,7 +440,9 @@ sub mount {
             # a fixed name.
             my $iFirstOf= 0;
             my $bIsTarget= 0;
-            for my $sToken (split(/\s+/, $self->{VALUES}{mount})) {
+            my $sMount= $self->{VALUES}{mount} . " ;"; # make sure a "firstof" is finished by ";" (";" will be ignored otherwise)
+            $sMount =~ s/\s*\;/ \;/g; # make sure any ";" is preceded by space
+            for my $sToken (split(/\s+/, $sMount)) {
                 if ($iFirstOf == 0 && $sToken eq 'firstof') {
                     $iFirstOf= 1;
                     next;
@@ -459,15 +461,17 @@ sub mount {
                     }
                     $iFirstOf= 0;
                     @sFirstOfMountMessage= ();
+                    $bIsTarget= 0; # reset istarget flag
                     next;
                 }
-                next if $iFirstOf == 2;
+                next if $iFirstOf == 2; # ignore remainig firstof mounts if one succeeded
+                next if $sToken eq ";"; # ignore superfluous ';'
                 my $oMount= $self->get_node($sToken);
                 if (!ref $oMount) {
                     push @sMountMessage, "WARNING! Mount information \"$sToken\" not defined in config file";
                     next;
                 }
-                $bIsTarget = $oMount->{VALUES}{istarget} || '';
+                $bIsTarget |= $oMount->{VALUES}{istarget} || 0; # if one of "firstof" devices is target -> at least one has to be mounted
                 my @sResult= $self->_mount($oMount, \@sUnmount, \@sAllMount);
                 if ($iFirstOf) {
                     if (grep(/^WARNING/, @sResult)) {
@@ -478,6 +482,7 @@ sub mount {
                 }
                 else {
                     push @sMountMessage, "FATAL ERROR! Target device could not be mounted or is not valid (see warning)" if $bIsTarget && grep(/^WARNING/, @sResult);
+                    $bIsTarget= 0; # reset istarget flag
                 }
                 push @sMountMessage, @sResult;
             }
