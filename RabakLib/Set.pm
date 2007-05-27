@@ -371,8 +371,8 @@ sub _mount {
         }
         elsif ($checkResult{'code'} == 1) { # device is no valid target
             push @sResult,
-                "WARNING! Mount point$sMountDevice$sMountDir has wrong targetgroup value (expected \"$checkResult{'expected'}\"; found targets \"" .
-                join("\" \"", @{$checkResult{'found'}}) .
+                "WARNING! Mount point$spMountDevice$spMountDir has wrong targetgroup value (expected \"$checkResult{'expected'}\"; found targets \"" .
+                join("\" \"", @{ $checkResult{'found'} }) .
                 "\")"
             ;
             $sMountResult= `umount $sUnmount 2>&1`;
