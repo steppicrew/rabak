@@ -242,51 +242,51 @@ sub collect_bakdirs {
 #  Little Helpers
 # -----------------------------------------------------------------------------
 
-# tests if device is mounted and/or is a valid rabak target
+# tests if device is mounted and is a valid rabak target
 # @param $sMountDevice
 #   device to check 
 # @param $bUnmount
 #   unmount the device if its a valid rabak media
 # @return
 #   hashtable:
-#       %{'code'} (int):
+#       {CODE} (int):
 #           -1: no device specified
 #            0: device is not mounted
 #            1: device is mounted but no target media
 #            2: device is/was mounted and is target media
-#       %{'expected'} (array ref):
+#       {EXPECTED} (array ref):
 #            expected target group and value
-#       %{'found'} (string):
+#       {FOUND} (string):
 #            found target groups and values (if expected target was not found)
-#       %{'umount'} (string):
+#       {UMOUNT} (string):
 #            result string of umount command (if executed)
 sub _mount_check {
     my $self= shift;
     my $sMountDevice= shift || '';
     my $bUnmount= shift || 0;
 
-    return \('code' => -1) if !$sMountDevice;
+    return { CODE => -1 } if !$sMountDevice;
 
     my $sTarget = $self->{VALUES}{targetgroup} || '';
     $sTarget.= "." . $self->get_value('switch.targetvalue') if $self->get_value('switch.targetvalue');
     my $sqTarget = quotemeta $sTarget;
-    my %result= (
-        'code' => 0,
-        'expected' => "$sTarget",
-    );
+    my $result= {
+        CODE => 0,
+        EXPECTED => $sTarget,
+    };
 
-    my $qMountDevice= quotemeta $sMountDevice;
+    my $sqMountDevice= quotemeta $sMountDevice;
 
     my $cur_mounts= `mount`;
     # TODO:
     #     check for "mount" outputs different from '/dev/XXX on /mount/dir type ...' on other systems
     #     notice: the check for "type" after mount dir is because of missing delimiters if mount dir contains spaces!
-    if ($cur_mounts =~ /^$qMountDevice\s+on\s+(\/.*)\s+type\s/m) {
-        $result{'code'} = 1; # defaults to "not target"
+    if ($cur_mounts =~ /^$sqMountDevice\son\s+(\/.*)\stype\s/m) {
         my $sMountDir= $1;
-        my $sRabakIdFile = "$sMountDir/" . ($self->get_value('switch.idfile') || "rabak.id");
-        my @sFoundTargets = ();
-        $result{'found'} = \@sFoundTargets;
+        my $sRabakIdFile= "$sMountDir/" . ($self->get_value('switch.idfile') || "rabak.id");
+        my @sFoundTargets= ();
+        $result->{CODE}= 1; # defaults to "not target"
+        $result->{FOUND}= \@sFoundTargets;
         if (-r "$sRabakIdFile") {
             if ($sTarget) { # if target group/id given -> check for matching group/id
                 my $rfh;
@@ -296,21 +296,21 @@ sub _mount_check {
                         s/\#.*//; # remove comments
                         push @sFoundTargets, $_ if $_;
                         if (/^$sqTarget\b/) {
-                            $result{'code'} = 2; # target is valid
+                            $result->{CODE}= 2; # target is valid
                             last;
                         }
                     }
                     close $rfh;
                 }
             }
-            else { # no target group given -> if file exist this is our rabak media
-                $result{'code'} = 2; # target is valid
+            else { # no target group given -> because id file exists, this is our rabak device
+                $result->{CODE}= 2; # target is valid
             }
         }
 
-        $result{'umount'}= `umount "$sMountDevice"` if ($result{'code'} == 2) && $bUnmount;
+        $result->{UMOUNT}= `umount "$sMountDevice"` if ($result->{CODE} == 2) && $bUnmount;
     }
-    return \%result;
+    return $result;
 }
 
 # @param $oMount
@@ -338,7 +338,7 @@ sub _mount {
     my $spMountType =  $sMountType   ? " -t \"$sMountType\"" : "";
     my $spMountOpts =  $sMountOpts   ? " -o\"$sMountOpts\""  : "";
 
-    my @sResult= ();    
+    my @sResult= ();
     my %checkResult;
 
     # First unmount the device, it may be pointing to a wrong mount point.
@@ -346,33 +346,33 @@ sub _mount {
     if ($bIsTarget) {
         return ("WARNING! Target devices have to be specified with device name") if !$sMountDevice;
         %checkResult = %{ $self->_mount_check($sMountDevice, 1) };
-        return ("WARNING! Device $sMountDevice is not a valid rabak media! (expected \"$checkResult{'expected'}\")") if $checkResult{'code'} == 1;
-        if ($checkResult{'code'} == 2) {
+        return ("WARNING! Device $sMountDevice is not a valid rabak media! (expected \"$checkResult{EXPECTED}\")") if $checkResult{CODE} == 1;
+        if ($checkResult{CODE} == 2) {
             push @sResult, "INFO: Device $sMountDevice was already mounted";
-            push @sResult, "INFO: umount result: \"${checkResult{'umount'}}\"" if $checkResult{'umount'};
+            push @sResult, "INFO: umount result: \"${checkResult{UMOUNT}}\"" if $checkResult{UMOUNT};
         }
     }
 
     push @{ $arAllMount }, $sUnmount;
 
-    my $sMountResult= `mount $spMountType$spMountDevice$spMountDir$spMountOpts 2>&1`;
+    my $sMountResult= `mount$spMountType$spMountDevice$spMountDir$spMountOpts 2>&1`;
     if ($?) {
         chomp $sMountResult;
         $sMountResult =~ s/\r?\n/ - /g;
-        push @sResult, "WARNING! Mounting$sMountDevice$sMountDir failed with: $sMountResult!";
+        push @sResult, "WARNING! Mounting$spMountDevice$spMountDir failed with: $sMountResult!";
         return @sResult;
     }
 
     if ($bIsTarget) {
         %checkResult = %{ $self->_mount_check($sMountDevice, 0) };
-        if ($checkResult{'code'} == 0) { # device is not mounted
+        if ($checkResult{CODE} == 0) { # device is not mounted
             push @sResult, "WARNING! Device \"$sMountDevice\" is not mounted!";
             return @sResult;
         }
-        elsif ($checkResult{'code'} == 1) { # device is no valid target
+        elsif ($checkResult{CODE} == 1) { # device is not a valid target
             push @sResult,
-                "WARNING! Mount point$spMountDevice$spMountDir has wrong targetgroup value (expected \"$checkResult{'expected'}\"; found targets \"" .
-                join("\" \"", @{ $checkResult{'found'} }) .
+                "WARNING! Mount point$spMountDevice$spMountDir has wrong targetgroup value (expected \"$checkResult{EXPECTED}\"; found targets \"" .
+                join("\" \"", @{ $checkResult{FOUND} }) .
                 "\")"
             ;
             $sMountResult= `umount $sUnmount 2>&1`;
@@ -386,8 +386,8 @@ sub _mount {
             }
             return @sResult;
         }
-        elsif ($checkResult{'code'} == 2) { # 
-            push @sResult, "Found desired target \"$checkResult{'expected'}\"";
+        elsif ($checkResult{CODE} == 2) { # device is a valid target
+            push @sResult, "Found desired target \"$checkResult{EXPECTED}\"";
         }
     }
 
