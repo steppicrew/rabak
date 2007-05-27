@@ -20,12 +20,15 @@ function mk_target {
 
 mk_target "0" "loop0"
 mkdir "$BASEDIR/mnt_loop0/rabak"
-echo "dayofweeks.Tue" > "$BASEDIR/mnt_loop0/rabak.id"
+echo "dayofweek.Mon" >  "$BASEDIR/mnt_loop1/rabak.id"
+echo "dayofweek.Wed" >> "$BASEDIR//mnt_loop1/rabak.id"
+echo "dayofweek.Fri" >> "$BASEDIR//mnt_loop1/rabak.id"
 
 mk_target "1" "loop1"
 mkdir "$BASEDIR/mnt_loop1/rabak"
-echo "dayofweeks.Mon" > "$BASEDIR/mnt_loop1/rabak.id"
-echo "dayofweeks.Fri" >> "$BASEDIR//mnt_loop1/rabak.id"
+echo "dayofweek.Tue" >  "$BASEDIR/mnt_loop0/rabak.id"
+echo "dayofweek.Thu" >> "$BASEDIR/mnt_loop0/rabak.id"
+echo "dayofweek.Sat" >> "$BASEDIR/mnt_loop0/rabak.id"
 
 mk_target "2" "boot"
 
