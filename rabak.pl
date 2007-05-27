@@ -11,15 +11,15 @@ chomp $basedir;
 `cd "$basedir"` if $basedir;
 
 eval '
-  use RabakLib::ConfFile;
-  use RabakLib::Set;
-  use RabakLib::Admin;
+    use RabakLib::ConfFile;
+    use RabakLib::Set;
+    use RabakLib::Admin;
 ';
 
 use Data::Dumper;
 use Getopt::Std;
 
-our $VERSION= "0.3.4";
+our $VERSION= "0.3.4.1";
 our $DEBUG= 0;
 
 $Getopt::Std::STANDARD_HELP_VERSION= 1;

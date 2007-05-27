@@ -40,20 +40,20 @@ sub run {
     for (split(/,\s+|\n/, $sInclude)) {
         s/^\s+//;
         s/\s+$//;
-	
-	# rsync works top down, so include all containing directories:
-	if (/^\/(.+\/)/) {
-	    my @sDir= split(/\//, $1);
-	    my $sDir= "/";
-    	    for my $i (0 .. $#sDir) {
-		$sDir .= $sDir[$i] . "/";
-	        print $fhwRules "+ $sDir\n";
-	    }
-	}
 
-	# let all directories end with /** to include subdirectories
-	$_ .= '*' if /\/\*$/;
-	$_ .= '**' if /\/$/;
+        # rsync works top down, so include all containing directories:
+        if (/^\/(.+\/)/) {
+            my @sDir= split(/\//, $1);
+            my $sDir= "/";
+            for my $i (0 .. $#sDir) {
+                $sDir .= $sDir[$i] . "/";
+                print $fhwRules "+ $sDir\n";
+            }
+        }
+
+        # let all directories end with /** to include subdirectories
+        $_ .= '*' if /\/\*$/;
+        $_ .= '**' if /\/$/;
 
         print $fhwRules "+ $_\n" if $_;
     }

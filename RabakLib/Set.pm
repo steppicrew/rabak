@@ -274,26 +274,27 @@ sub _mount_check {
         'code' => 0,
         'expected' => "$sTarget",
     );
-    
+
     my $qMountDevice= quotemeta $sMountDevice;
-  
+
     my $cur_mounts= `mount`;
     # TODO:
-    #     check for different "mount" outputs from '/dev/XXX on /mount/dir type ...' on other systems
+    #     check for "mount" outputs different from '/dev/XXX on /mount/dir type ...' on other systems
     #     notice: the check for "type" after mount dir is because of missing delimiters if mount dir contains spaces!
     if ($cur_mounts =~ /^$qMountDevice\s+on\s+(\/.*)\s+type\s/m) {
         $result{'code'} = 1; # defaults to "not target"
         my $sMountDir= $1;
         my $sRabakIdFile = "$sMountDir/" . ($self->get_value('switch.idfile') || "rabak.id");
-        my @aFoundTargets = ();
-        $result{'found'} = \@aFoundTargets;
+        my @sFoundTargets = ();
+        $result{'found'} = \@sFoundTargets;
         if (-r "$sRabakIdFile") {
             if ($sTarget) { # if target group/id given -> check for matching group/id
                 my $rfh;
                 if (open $rfh, "$sRabakIdFile") {
                     while (<$rfh>) {
+                        chomp;
                         s/\#.*//; # remove comments
-                        push @aFoundTargets, $_ if $_;
+                        push @sFoundTargets, $_ if $_;
                         if (/^$sqTarget\b/) {
                             $result{'code'} = 2; # target is valid
                             last;
@@ -313,11 +314,11 @@ sub _mount_check {
 }
 
 # @param $oMount
-# 	A RakakConf object containing the mount point information
+#   A RakakConf object containing the mount point information
 # @param $arUnmount
-#	A ref to an array, in which _mount stores the mount points that need unmounting
+#   A ref to an array, in which _mount stores the mount points that need unmounting
 # @param $arAllMount
-#	A ref to an array, in which _mount stores all mount points
+#   A ref to an array, in which _mount stores all mount points
 sub _mount {
     my $self= shift;
     my $oMount= shift;
@@ -331,6 +332,7 @@ sub _mount {
     my $sMountOpts= $oMount->{VALUES}{opts} || '';
     my $sUnmount= $sMountDevice ne '' ? $sMountDevice : $sMountDir;
 
+    # define parameters for mount/umount
     my $spMountDevice= $sMountDevice ? " \"$sMountDevice\""  : "";
     my $spMountDir=    $sMountDir    ? " \"$sMountDir\""     : "";
     my $spMountType =  $sMountType   ? " -t \"$sMountType\"" : "";
@@ -357,9 +359,10 @@ sub _mount {
     if ($?) {
         chomp $sMountResult;
         $sMountResult =~ s/\r?\n/ - /g;
-        return ("WARNING! Mounting$sMountDevice$sMountDir failed with: $sMountResult!");
+        push @sResult, "WARNING! Mounting$sMountDevice$sMountDir failed with: $sMountResult!";
+        return @sResult;
     }
-    
+
     if ($bIsTarget) {
         %checkResult = %{ $self->_mount_check($sMountDevice, 0) };
         if ($checkResult{'code'} == 0) { # device is not mounted
@@ -426,16 +429,15 @@ sub mount {
 
     if ($self->{VALUES}{mount}) {
 
-	# If the 'mount' setting is a node, then just do one mount:
+    # If the 'mount' setting is a node, then just do one mount:
         if (ref $self->{VALUES}{mount}) {
-	    push @sMountMessage, $self->_mount($self->{VALUES}{mount}, \@sUnmount, \@sAllMount);
+            push @sMountMessage, $self->_mount($self->{VALUES}{mount}, \@sUnmount, \@sAllMount);
         }
         else {
-	
-	    # Else it's a string containing a list of node names. Try to mount them all.
-	    # If the sequence "firstof mp1 mp2 mp3 ;" is found, try to mount the first
-	    # possible one. We need that if we want to mount a USB device which hasn't got
-	    # a fixed name.
+            # Else it's a string containing a list of node names. Try to mount them all.
+            # If the sequence "firstof mp1 mp2 mp3 ;" is found, try to mount the first
+            # possible one. We need that if we want to mount a USB device which hasn't got
+            # a fixed name.
             my $iFirstOf= 0;
             my $bIsTarget= 0;
             for my $sToken (split(/\s+/, $self->{VALUES}{mount})) {
@@ -444,40 +446,40 @@ sub mount {
                     next;
                 }
                 if ($iFirstOf && $sToken eq ';') {
-		    if ($iFirstOf != 2) {
+                    if ($iFirstOf != 2) {
                         push @sMountMessage, "FATAL ERROR! None \"firstof\" target device could be mounted or is valid (see warnings)" if $bIsTarget;
-			push @sMountMessage, "WARNING! None of the \"firstof\" mount points could be mounted. Results:";
-    			push @sMountMessage, @sFirstOfMountMessage;
-			push @sMountMessage, "WARNING! -- SNIP --";
-		    }
-		    else {
-			# Don't give a warning on failing unmounts if mount point is one of 'firstof' and
-			# there was a succesful mount. This removes the failed unmounts from @sAllMount:
-			splice @sAllMount, $#sAllMount - $#sFirstOfMountMessage - 1, $#sFirstOfMountMessage + 1;
-		    }
+                        push @sMountMessage, "WARNING! None of the \"firstof\" mount points could be mounted. Results:";
+                        push @sMountMessage, @sFirstOfMountMessage;
+                        push @sMountMessage, "WARNING! -- SNIP --";
+                    }
+                    else {
+                        # Don't give a warning on failing unmounts if mount point is one of 'firstof' and
+                        # there was a succesful mount. This removes the failed unmounts from @sAllMount:
+                        splice @sAllMount, $#sAllMount - $#sFirstOfMountMessage - 1, $#sFirstOfMountMessage + 1;
+                    }
                     $iFirstOf= 0;
-		    @sFirstOfMountMessage= ();
+                    @sFirstOfMountMessage= ();
                     next;
                 }
-		next if $iFirstOf == 2;
+                next if $iFirstOf == 2;
                 my $oMount= $self->get_node($sToken);
                 if (!ref $oMount) {
                     push @sMountMessage, "WARNING! Mount information \"$sToken\" not defined in config file";
                     next;
                 }
                 $bIsTarget = $oMount->{VALUES}{istarget} || '';
-		my @sResult= $self->_mount($oMount, \@sUnmount, \@sAllMount);
-		if ($iFirstOf) {
-		    if (grep(/^WARNING/, @sResult)) {
-    			push @sFirstOfMountMessage, @sResult;
+                my @sResult= $self->_mount($oMount, \@sUnmount, \@sAllMount);
+                if ($iFirstOf) {
+                    if (grep(/^WARNING/, @sResult)) {
+                        push @sFirstOfMountMessage, @sResult;
                         next;
-		    }
-		    $iFirstOf= 2;
-		}
+                    }
+                    $iFirstOf= 2;
+                }
                 else {
                     push @sMountMessage, "FATAL ERROR! Target device could not be mounted or is not valid (see warning)" if $bIsTarget && grep(/^WARNING/, @sResult);
                 }
-		push @sMountMessage, @sResult;
+                push @sMountMessage, @sResult;
             }
         }
     }
@@ -512,14 +514,14 @@ sub unmount {
     for (@sUnmount) {
         my $sResult= `umount "$_" 2>&1`;
         if ($?) {
-	    chomp $sResult;
-    	    $sResult =~ s/\r?\n/ - /g;
-	    next unless $sAllMount{$_};
-    	    $self->xerror("WARNING! Unmounting \"$_\" failed: $sResult!");
-    	    $self->xerror("WARNING! (Maybe because of the log file. Retrying after log file was closed)") if $bBlaimLogFile;
-	    push @sUnmount2, $_;
-	    next;
-	}
+            chomp $sResult;
+            $sResult =~ s/\r?\n/ - /g;
+            next unless $sAllMount{$_};
+            $self->xerror("WARNING! Unmounting \"$_\" failed: $sResult!");
+            $self->xerror("WARNING! (Maybe because of the log file. Retrying after log file was closed)") if $bBlaimLogFile;
+            push @sUnmount2, $_;
+            next;
+        }
         $self->xlog("Unmounted \"$_\"");
     }
 
@@ -569,7 +571,7 @@ sub backup_setup {
     }
 
     my $sBakDir= $self->get_bakset_target();
-    
+
     if (!-d $sBakDir) {
         map { $self->xerror($_); } @sMountMessage;
         $self->xerror("Target \"$sBakDir\" is not a directory. Backup set skipped.");
