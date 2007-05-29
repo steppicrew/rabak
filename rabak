@@ -1,7 +1,0 @@
-#!/bin/bash
-
-# wrapper for rabak.pl
-# changes cwd to script dir
-
-cd `dirname $0`
-./rabak.pl $@
