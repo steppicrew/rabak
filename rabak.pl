@@ -10,16 +10,16 @@ my $basedir= `dirname "$0"`;
 chomp $basedir;
 `cd "$basedir"` if $basedir;
 
-eval '
-    use RabakLib::ConfFile;
-    use RabakLib::Set;
-    use RabakLib::Admin;
-';
+eval {
+  use RabakLib::ConfFile;
+  use RabakLib::Set;
+  use RabakLib::Admin;
+} or die @!;
 
 use Data::Dumper;
 use Getopt::Std;
 
-our $VERSION= "0.3.4.1";
+our $VERSION= "0.4";
 our $DEBUG= 0;
 
 $Getopt::Std::STANDARD_HELP_VERSION= 1;
