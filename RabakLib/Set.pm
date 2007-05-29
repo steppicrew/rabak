@@ -314,88 +314,124 @@ sub _mount_check {
 }
 
 # @param $oMount
-#   A RakakConf object containing the mount point information
+#       A RakakConf object containing the mount point information
+# @param $arMessage
+#       A ref to an array, in which _mount stores warnings and messages
 # @param $arUnmount
-#   A ref to an array, in which _mount stores the mount points that need unmounting
+#       A ref to an array, in which _mount stores the mount points that need unmounting
 # @param $arAllMount
-#   A ref to an array, in which _mount stores all mount points
+#       A ref to an array, in which _mount stores all mount points
+# return
+#       0: failed
+#       1: succeeded
 sub _mount {
     my $self= shift;
     my $oMount= shift;
-    my $arUnmount= shift;
-    my $arAllMount= shift;
+    my $arMessage = shift || {};
+    my $arUnmount= shift || {};
+    my $arAllMount= shift || {};
 
-    my $sMountDevice= $oMount->{VALUES}{device} || '';
+    my $sMountDeviceList= $oMount->{VALUES}{device} || '';
     my $sMountDir= $oMount->{VALUES}{directory} || '';
     my $bIsTarget= $oMount->{VALUES}{istarget} || '';
     my $sMountType= $oMount->{VALUES}{type} || '';
     my $sMountOpts= $oMount->{VALUES}{opts} || '';
-    my $sUnmount= $sMountDevice ne '' ? $sMountDevice : $sMountDir;
+    my $sUnmount= "";
 
-    # define parameters for mount/umount
-    my $spMountDevice= $sMountDevice ? " \"$sMountDevice\""  : "";
+    # parameters for mount command
     my $spMountDir=    $sMountDir    ? " \"$sMountDir\""     : "";
     my $spMountType =  $sMountType   ? " -t \"$sMountType\"" : "";
     my $spMountOpts =  $sMountOpts   ? " -o\"$sMountOpts\""  : "";
 
-    my @sResult= ();
     my %checkResult;
-
-    # First unmount the device, it may be pointing to a wrong mount point.
-    # Mount would fail and terrible things could happen.
-    if ($bIsTarget) {
-        return ("WARNING! Target devices have to be specified with device name") if !$sMountDevice;
-        %checkResult = %{ $self->_mount_check($sMountDevice, 1) };
-        return ("WARNING! Device $sMountDevice is not a valid rabak media! (expected \"$checkResult{EXPECTED}\")") if $checkResult{CODE} == 1;
-        if ($checkResult{CODE} == 2) {
-            push @sResult, "INFO: Device $sMountDevice was already mounted";
-            push @sResult, "INFO: umount result: \"${checkResult{UMOUNT}}\"" if $checkResult{UMOUNT};
-        }
+    my $iResult= 0; # defaults to "mount failed"
+    
+    my @sMountDevices= ();
+    for my $sMountDevice (split(/\s+/, $sMountDeviceList)) {
+        push @sMountDevices, glob("$sMountDevice");
     }
 
-    push @{ $arAllMount }, $sUnmount;
+    my @sMountMessage = ();
+    for my $sMountDevice (@sMountDevices) {
+        my @sCurrentMountMessage = ();
+        my $sUnmount= $sMountDevice ne '' ? $sMountDevice : $sMountDir;
+        my $spMountDevice= $sMountDevice ? " \"$sMountDevice\""  : "";
 
-    my $sMountResult= `mount$spMountType$spMountDevice$spMountDir$spMountOpts 2>&1`;
-    if ($?) {
-        chomp $sMountResult;
-        $sMountResult =~ s/\r?\n/ - /g;
-        push @sResult, "WARNING! Mounting$spMountDevice$spMountDir failed with: $sMountResult!";
-        return @sResult;
-    }
-
-    if ($bIsTarget) {
-        %checkResult = %{ $self->_mount_check($sMountDevice, 0) };
-        if ($checkResult{CODE} == 0) { # device is not mounted
-            push @sResult, "WARNING! Device \"$sMountDevice\" is not mounted!";
-            return @sResult;
-        }
-        elsif ($checkResult{CODE} == 1) { # device is not a valid target
-            push @sResult,
-                "WARNING! Mount point$spMountDevice$spMountDir has wrong targetgroup value (expected \"$checkResult{EXPECTED}\"; found targets \"" .
-                join("\" \"", @{ $checkResult{FOUND} }) .
-                "\")"
-            ;
-            $sMountResult= `umount $sUnmount 2>&1`;
-            if ($?) { # umount failed
-                chomp $sMountResult;
-                $sMountResult =~ s/\r?\n/ - /g;
-                push @sResult, "WARNING! Unmounting \"$sUnmount\" failed with: $sMountResult!";
+        # First unmount the device, it may be pointing to a wrong mount point.
+        # Mount would fail and terrible things could happen.
+        # But first check if device could be a target!
+        if ($bIsTarget) {
+            unless ($sMountDevice) {
+                push @sCurrentMountMessage, "WARNING! Target devices have to be specified with device name";
+                next;
             }
-            else {
-                push @sResult, "Unmounted \"$sUnmount\"";
+            %checkResult = %{ $self->_mount_check($sMountDevice, 1) };
+            if ($checkResult{CODE} == 1) {
+                push @sCurrentMountMessage, "WARNING! Device $sMountDevice is not a valid rabak media! (expected \"$checkResult{EXPECTED}\")";
+                next;
             }
-            return @sResult;
+            if ($checkResult{CODE} == 2) {
+                push @sCurrentMountMessage, "WARNING: Device $sMountDevice was already mounted";
+                push @sCurrentMountMessage, "WARNING: umount result: \"${checkResult{UMOUNT}}\"" if $checkResult{UMOUNT};
+            }
         }
-        elsif ($checkResult{CODE} == 2) { # device is a valid target
-            push @sResult, "Found desired target \"$checkResult{EXPECTED}\"";
+    
+        my $sMountResult= `mount $spMountType$spMountDevice$spMountDir$spMountOpts 2>&1`;
+        if ($?) { # mount failed
+            chomp $sMountResult;
+            $sMountResult =~ s/\r?\n/ - /g;
+            push @sCurrentMountMessage, "WARNING! Mounting$spMountDevice$spMountDir failed with: $sMountResult!";
+            next;
         }
+        
+        if ($bIsTarget) { # this mount object is a target -> check for right target device
+            %checkResult = %{ $self->_mount_check($sMountDevice, 0) };
+            if ($checkResult{CODE} == 0) { # device is not mounted
+                push @sCurrentMountMessage, "WARNING! Device \"$sMountDevice\" is not mounted!";
+                next;
+            }
+            elsif ($checkResult{CODE} == 1) { # device is no valid target
+                push @sCurrentMountMessage,
+                    "WARNING! Mount point$spMountDevice$spMountDir has wrong targetgroup value (expected \"$checkResult{EXPECTED}\"; found targets \"" .
+                    join("\" \"", @{ $checkResult{FOUND} }) .
+                    "\")"
+                ;
+                $sMountResult= `umount $sUnmount 2>&1`;
+                if ($?) { # umount failed
+                    chomp $sMountResult;
+                    $sMountResult =~ s/\r?\n/ - /g;
+                    push @sCurrentMountMessage, "WARNING! Unmounting \"$sUnmount\" failed with: $sMountResult!";
+                }
+                else {
+                    push @sCurrentMountMessage, "Unmounted \"$sUnmount\"";
+                }
+                next;
+            }
+            elsif ($checkResult{CODE} == 2) { # 
+                push @sCurrentMountMessage, "Found desired target \"$checkResult{EXPECTED}\"";
+                $iResult= 1;
+                @sMountMessage= (); # drop old mount messages if this one succeeded
+                last;
+            }
+        }
+        else { # this mount object is no target -> everything is fine
+            $iResult= 1;
+            @sMountMessage= (); # drop old mount messages if this one succeeded
+            last;
+        }
+        push @sMountMessage, @sCurrentMountMessage;
+    }
+    push @{ $arMessage }, @sMountMessage;
+
+    if ($sUmount) {
+        push @{ $arAllMount }, $sUnmount;
+
+        # We want to unmount in reverse order:
+        unshift @{ $arUnmount }, $sUnmount if $oMount->{VALUES}{unmount} && $iResult;
     }
 
-    # We want to unmount in reverse order:
-    unshift @{ $arUnmount }, $sUnmount if $oMount->{VALUES}{unmount};
-
-    push @sResult, "Mounted$spMountDevice$spMountDir";
-    return @sResult;
+    push @{ $arMessage }, "Mounted$spMountDevice$spMountDir";
+    return $iResult;
 }
 
 sub _mkdir {
@@ -417,86 +453,50 @@ sub _mkdir {
 #  Mount & Unmount
 # -----------------------------------------------------------------------------
 
+# return
+#       0: failed
+#       1: succeeded
 sub mount {
     my $self= shift;
+    my $arMessage= shift || {};
     my $bQuiet= shift;
 
     # Collect all mount errors, we want to output them later
-    my @sMountMessage= ();
     my @sFirstOfMountMessage= ();
     my @sUnmount= ();
     my @sAllMount= ();
+    
+    my $iResult= 1; # defaults to mount succeeded
 
     if ($self->{VALUES}{mount}) {
 
-    # If the 'mount' setting is a node, then just do one mount:
+        # If the 'mount' setting is a node, then just do one mount:
         if (ref $self->{VALUES}{mount}) {
-            push @sMountMessage, $self->_mount($self->{VALUES}{mount}, \@sUnmount, \@sAllMount);
+            $iResult = $self->_mount($self->{VALUES}{mount}, $arMessage, \@sUnmount, \@sAllMount);
         }
         else {
-            # Else it's a string containing a list of node names. Try to mount them all.
-            # If the sequence "firstof mp1 mp2 mp3 ;" is found, try to mount the first
-            # possible one. We need that if we want to mount a USB device which hasn't got
-            # a fixed name.
-            my $iFirstOf= 0;
-            my $bIsTarget= 0;
-            my $sMount= $self->{VALUES}{mount} . " ;"; # make sure a "firstof" is finished by ";" (";" will be ignored otherwise)
-            $sMount =~ s/\s*\;/ \;/g; # make sure any ";" is preceded by space
             for my $sToken (split(/\s+/, $sMount)) {
-                if ($iFirstOf == 0 && $sToken eq 'firstof') {
-                    $iFirstOf= 1;
-                    next;
-                }
-                if ($iFirstOf && $sToken eq ';') {
-                    if ($iFirstOf != 2) {
-                        push @sMountMessage, "FATAL ERROR! None \"firstof\" target device could be mounted or is valid (see warnings)" if $bIsTarget;
-                        push @sMountMessage, "WARNING! None of the \"firstof\" mount points could be mounted. Results:";
-                        push @sMountMessage, @sFirstOfMountMessage;
-                        push @sMountMessage, "WARNING! -- SNIP --";
-                    }
-                    else {
-                        # Don't give a warning on failing unmounts if mount point is one of 'firstof' and
-                        # there was a succesful mount. This removes the failed unmounts from @sAllMount:
-                        splice @sAllMount, $#sAllMount - $#sFirstOfMountMessage - 1, $#sFirstOfMountMessage + 1;
-                    }
-                    $iFirstOf= 0;
-                    @sFirstOfMountMessage= ();
-                    $bIsTarget= 0; # reset istarget flag
-                    next;
-                }
-                next if $iFirstOf == 2; # ignore remainig firstof mounts if one succeeded
-                next if $sToken eq ";"; # ignore superfluous ';'
                 my $oMount= $self->get_node($sToken);
                 if (!ref $oMount) {
-                    push @sMountMessage, "WARNING! Mount information \"$sToken\" not defined in config file";
+                    push @{ $arMessage }, "WARNING! Mount information \"$sToken\" not defined in config file";
                     next;
                 }
-                $bIsTarget |= $oMount->{VALUES}{istarget} || 0; # if one of "firstof" devices is target -> at least one has to be mounted
-                my @sResult= $self->_mount($oMount, \@sUnmount, \@sAllMount);
-                if ($iFirstOf) {
-                    if (grep(/^WARNING/, @sResult)) {
-                        push @sFirstOfMountMessage, @sResult;
-                        next;
-                    }
-                    $iFirstOf= 2;
+                $iResult= $self->_mount($oMount, $arMessage, \@sUnmount, \@sAllMount);
+                if (!$iResult && $oMount->{VALUES}{istarget}) { # on targets mount failures are fatal -> exit
+                    $iResult= 0;
+                    last;
                 }
-                else {
-                    push @sMountMessage, "FATAL ERROR! Target device could not be mounted or is not valid (see warning)" if $bIsTarget && grep(/^WARNING/, @sResult);
-                    $bIsTarget= 0; # reset istarget flag
-                }
-                push @sMountMessage, @sResult;
             }
         }
     }
 
-    # $self->{_MOUNT_MESSAGE_LIST}= \@sMountMessage;
-
     $self->{_UNMOUNT_LIST}= \@sUnmount;
     $self->{_ALL_MOUNT_LIST}= \@sAllMount;
 
-    map { print "$_\n"; } @sMountMessage unless $bQuiet;
+    # what's that for? do we have a working logging mechanism or what??
+    map { print "$_\n"; } @{ $arMessage } unless $bQuiet;
 
-    return @sMountMessage;
+    return $iResult;
 }
 
 sub get_mounts {
@@ -558,14 +558,15 @@ sub backup_setup {
 
     $self->xlog_pretending();
 
-    my @sMountMessage= $self->mount(1);
+    my @sMountMessage;
+    my $iMountResult= $self->mount(\@sMountMessage, 1);
 
     # my @sMountMessage= @{ $self->{_MOUNT_MESSAGE_LIST} };
 
     my @sAllMount= @{ $self->{_ALL_MOUNT_LIST} };
     my @sUnmount= @{ $self->{_UNMOUNT_LIST} };
 
-    if (scalar grep(/^FATAL ERROR/, @sMountMessage)) {
+    if ($iMountResult) { # fatal mount error
         $self->xerror("There was at least one fatal mount error. Backup set skipped.");
         map { $self->xerror($_); } @sMountMessage;
         return 3;
