@@ -94,7 +94,7 @@ sample_pg.user = *default*
 sample_pg.password = test
 sample_pg.switch.logging = 1
 sample_pg.keep = 3
-sample_pg.mount = $mount_first
+sample_pg.mount = mount_external
 
 # =======================================================================================
 #       EXAMPLE: MYSQL BACKUP
@@ -108,7 +108,7 @@ sample_mysql.user = $mysql_user
 sample_mysql.password = $mysql_passwd
 sample_mysql.switch.logging = 1
 sample_mysql.keep = 3
-sample_mysql.mount = $mount_first
+sample_mysql.mount = mount_external
 
 # =======================================================================================
 #       TEST RABAK
