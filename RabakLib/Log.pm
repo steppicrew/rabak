@@ -23,6 +23,11 @@ sub new {
         LOG_FH => undef,
         FILE_NAME => '',
         IS_NEW => 0,
+
+        DEFAULTLEVEL => 1,
+        INFOLEVEL => 0,
+        WARNLEVEL => -1,
+        ERRLEVEL => -2,
     };
     bless $self, $class;
 }
@@ -110,26 +115,42 @@ sub set_category {
     $self->{CATEGORY}= $sPrefix;
 }
 
-sub xlog {
+sub log {
     my $self= shift;
-    my $sMessage= shift;
-    my $iLevel= shift || 0;
+    my @sMessage= @_;
 
+    foreach my $sMessage (@sMessage) {
+        if (ref $sMessage eq "ARRAY") {
+            my @sLogMessage= @{ $sMessage };
+            my $iLevel= shift @sLogMessage;
+            $self->levelLog($iLevel, @sLogMessage);
+            next;
+        }
+        $self->levelLog($self->{DEFAULTLEVEL}, $sMessage);
+    }
+}
 
-    return if $self->{CONF}->get_value('switch.quiet');
+sub levelLog {
+    my $self= shift;
+    my $iLevel= shift;
+    my @sMessage= @_;
 
-    $sMessage= '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
-    print "$sMessage\n" if $iLevel <= $self->{CONF}->get_value('switch.verbose');
-
-    return unless $self->{CONF}->get_value('switch.logging') && !$self->{CONF}->get_value('switch.pretend') &&
-        $iLevel <= $self->{CONF}->get_value('switch.verbose');
-
-    $sMessage= $self->{CATEGORY} . "\t$sMessage" if $self->{CATEGORY};
-    $sMessage= _timestr() . "\t$sMessage\n";
-
-    $self->{UNFLUSHED_MESSAGES} .= $sMessage;
-    $self->{MESSAGES} .= $sMessage;
-
+    foreach my $sMessage (@sMessage) {
+        return if $self->{CONF}->get_value('switch.quiet');
+    
+        $sMessage= '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
+        print "$sMessage\n" if $iLevel <= $self->{CONF}->get_value('switch.verbose');
+    
+        return unless $self->{CONF}->get_value('switch.logging') && !$self->{CONF}->get_value('switch.pretend') &&
+            $iLevel <= $self->{CONF}->get_value('switch.verbose');
+    
+        $sMessage= $self->{CATEGORY} . "\t$sMessage" if $self->{CATEGORY};
+        $sMessage= _timestr() . "\t$sMessage\n";
+    
+        $self->{UNFLUSHED_MESSAGES} .= $sMessage;
+        $self->{MESSAGES} .= $sMessage;
+    
+    }
     $self->_flush();
 }
 

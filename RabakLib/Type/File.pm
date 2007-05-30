@@ -85,12 +85,12 @@ sub run {
 
     my $sRsyncCmd= "rsync $sFlags \"$sSrc\" \"$sDestDir\"";
 
-    $self->xlog("Running: $sRsyncCmd");
+    $self->log("Running: $sRsyncCmd");
 
     # print Dumper($self); die;
 
     @_= grep !/^([^\/]+\/)+$/, `$sRsyncCmd 2>&1`;
-    $self->xlog(join('', @_));
+    $self->log(join('', @_));
 
     return 0;
 }

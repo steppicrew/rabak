@@ -74,14 +74,19 @@ sub get_value {
     return $self->{SET}->get_value(@_);
 }
 
-sub xerror {
+sub warnMsg {
     my $self= shift;
-    return $self->{SET}->xerror(@_);
+    return $self->{SET}->warnMsg(@_);
 }
 
-sub xlog {
+sub logError {
     my $self= shift;
-    return $self->{SET}->xlog(@_);
+    return $self->{SET}->logError(@_);
+}
+
+sub log {
+    my $self= shift;
+    return $self->{SET}->log(@_);
 }
 
 sub tempfile {
@@ -94,11 +99,11 @@ sub valid_source_dir {
     my $sSourceDir= File::Spec->rel2abs($self->get_value('source'));
 
     if (!-d $sSourceDir) {
-        $self->xerror("Source \"$sSourceDir\" is not a directory. Backup set skipped.");
+        $self->logError("Source \"$sSourceDir\" is not a directory. Backup set skipped.");
         return undef;
     }
     if (!-r $sSourceDir) {
-        $self->xerror("Source \"$sSourceDir\" is not readable. Backup set skipped.");
+        $self->logError("Source \"$sSourceDir\" is not readable. Backup set skipped.");
         return undef;
     }
 

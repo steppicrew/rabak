@@ -117,32 +117,61 @@ sub _timestr {
     return strftime("%Y-%m-%d %H:%M:%S", localtime);
 }
 
-sub xerror {
+sub infoMsg {
     my $self= shift;
-    my $sMessage= shift;
-    my $iExit= shift || 0;
+    my @sMessage= @_;
+    
+    @sMessage= map "INFO: $_", @sMessage;
+    return [ $self->{LOG_FILE}->{INFOLEVEL}, @sMessage ];
+}
 
-    $self->xlog($sMessage, -2);
+sub warnMsg {
+    my $self= shift;
+    my @sMessage= @_;
 
+    @sMessage= map "WARNING: $_", @sMessage;
+    return [ $self->{LOG_FILE}->{WARNLEVEL}, @sMessage ];
+}
+
+sub errorMsg {
+    my $self= shift;
+    my @sMessage= @_;
+
+    @sMessage= map "ERROR: $_", @sMessage;
+    return [ $self->{LOG_FILE}->{ERRLEVEL}, @sMessage ];
+}
+
+sub logExitError {
+    my $self= shift;
+    my $iExit=shift || 0;
+    my @sMessage= @_;
+
+    $self->logError(@sMessage);
     exit $iExit if $iExit;
+}
+
+sub logError {
+    my $self= shift;
+    my @sMessage= @_;
+
+    @sMessage= map ref($_) ? $_ : [ $self->{LOG_FILE}->{ERRLEVEL}, "ERROR: $_" ], @sMessage;
+    $self->{LOG_FILE}->log(@sMessage);
+
     $self->{ERRORCODE}= 9;
 }
 
-sub xlog {
+sub log {
     my $self= shift;
-    my $sMessage= shift;
-    my $iLevel= shift || ($sMessage =~ /^WARNING/ ? -1 : 0);
-
-    $self->{LOG_FILE}->xlog($sMessage, $iLevel);
+    my @sMessage= @_;
+    
+    $self->{LOG_FILE}->log(@sMessage);
 }
 
-sub xlog_pretending {
+sub logPretending {
     my $self= shift;
     return unless $self->get_value('switch.pretend');
 
-    $self->xlog("");
-    $self->xlog("*** Only pretending, no changes are made! ****");
-    $self->xlog("");
+    $self->log("", "*** Only pretending, no changes are made! ****", "");
 }
 
 sub _mail {
@@ -179,10 +208,10 @@ sub _remove_old {
 
     my $iCount= $self->get_value('keep');
     if ($iCount) {
-        $self->xlog("Keeping last $iCount versions");
+        $self->log("Keeping last $iCount versions");
         splice @sBakDir, 0, $iCount;
         foreach (@sBakDir) {
-            $self->xlog("Removing \"$_\"");
+            $self->log("Removing \"$_\"");
             rmtree($_, $self->{DEBUG}) unless $self->get_value('switch.pretend');
         }
     }
@@ -314,7 +343,7 @@ sub _mount_check {
             }
         }
         else {
-            $result->{INFO}= "Device config file \"$sDevConfFile\" not found";
+            $result->{INFO}= "Device config file \"$sDevConfFile\" not found on device \"$sMountDevice\"";
         }
             
         $result->{UMOUNT}= `umount "$sMountDevice"` if ($result->{CODE} == 2) && $bUnmount;
@@ -374,18 +403,18 @@ sub _mount {
         # But first check if device is our a target!
         if ($bIsTarget) {
             unless ($sMountDevice) {
-                push @sCurrentMountMessage, "WARNING! Target devices have to be specified with device name";
+                push @sCurrentMountMessage, $self->warnMsg("Target devices have to be specified with device name");
                 goto nextDevice;
             }
             %checkResult = %{ $self->_mount_check($sMountDevice, 1) };
-            push @sCurrentMountMessage, $checkResult{INFO} if $checkResult{INFO};
+            push @sCurrentMountMessage, $self->infoMsg($checkResult{INFO}) if $checkResult{INFO};
             push @sCurrentMountMessage, $checkResult{ERROR} if $checkResult{ERROR};
             if ($checkResult{CODE} == 1) {
                 goto nextDevice;
             }
             if ($checkResult{CODE} == 2) {
-                push @sCurrentMountMessage, "WARNING: Device $sMountDevice was already mounted";
-                push @sCurrentMountMessage, "WARNING: umount result: \"${checkResult{UMOUNT}}\"" if $checkResult{UMOUNT};
+                push @sCurrentMountMessage, $self->warnMsg("Device $sMountDevice was already mounted");
+                push @sCurrentMountMessage, $self->warnMsg("Umount result: \"${checkResult{UMOUNT}}\"") if $checkResult{UMOUNT};
             }
         }
     
@@ -393,23 +422,23 @@ sub _mount {
         if ($?) { # mount failed
             chomp $sMountResult;
             $sMountResult =~ s/\r?\n/ - /g;
-            push @sCurrentMountMessage, "WARNING! Mounting$spMountDevice$spMountDir failed with: $sMountResult!";
+            push @sCurrentMountMessage, $self->warnMsg("Mounting$spMountDevice$spMountDir failed with: $sMountResult!");
             goto nextDevice;
         }
         
         if ($bIsTarget) { # this mount object is a target -> check for right target device
             %checkResult = %{ $self->_mount_check($sMountDevice, 0) };
-            push @sCurrentMountMessage, $checkResult{INFO} if $checkResult{INFO};
+            push @sCurrentMountMessage, $self->infoMsg($checkResult{INFO}) if $checkResult{INFO};
             push @sCurrentMountMessage, $checkResult{ERROR} if $checkResult{ERROR};
             if ($checkResult{CODE} == 0) { # device is not mounted
-                push @sCurrentMountMessage, "WARNING! Device \"$sMountDevice\" is not mounted!";
+                push @sCurrentMountMessage, $self->warnMsg("Device \"$sMountDevice\" is not mounted!");
             }
             elsif ($checkResult{CODE} == 1) { # device is no valid target
                 $sMountResult= `umount $sUnmount 2>&1`;
                 if ($?) { # umount failed
                     chomp $sMountResult;
                     $sMountResult =~ s/\r?\n/ - /g;
-                    push @sCurrentMountMessage, "WARNING! Unmounting \"$sUnmount\" failed with: $sMountResult!";
+                    push @sCurrentMountMessage, $self->warnMsg("Unmounting \"$sUnmount\" failed with: $sMountResult!");
                 }
                 else {
                     push @sCurrentMountMessage, "Unmounted \"$sUnmount\"";
@@ -453,7 +482,7 @@ sub _mkdir {
 
     return 1 if $! == 17; # file exists is ok
 
-    $self->xerror("WARNING! Mkdir '$sDir' failed: $!");
+    $self->log($self->warnMsg("Mkdir '$sDir' failed: $!"));
     return 0;
 }
 
@@ -488,7 +517,7 @@ sub mount {
             for my $sToken (split(/\s+/, $sMount)) {
                 my $oMount= $self->get_node($sToken);
                 if (!ref $oMount) {
-                    push @{ $arMessage }, "WARNING! Mount information \"$sToken\" not defined in config file";
+                    push @{ $arMessage }, $self->warnMsg("Mount information \"$sToken\" not defined in config file");
                     next;
                 }
                 $iResult= $self->_mount($oMount, $arMessage, \@sUnmount, \@sAllMount);
@@ -532,12 +561,12 @@ sub unmount {
             chomp $sResult;
             $sResult =~ s/\r?\n/ - /g;
             next unless $sAllMount{$_};
-            $self->xerror("WARNING! Unmounting \"$_\" failed: $sResult!");
-            $self->xerror("WARNING! (Maybe because of the log file. Retrying after log file was closed)") if $bBlaimLogFile;
+            $self->log($self->warnMsg("Unmounting \"$_\" failed: $sResult!"));
+            $self->log($self->warnMsg("(Maybe because of the log file. Retrying after log file was closed)")) if $bBlaimLogFile;
             push @sUnmount2, $_;
             next;
         }
-        $self->xlog("Unmounted \"$_\"");
+        $self->log("Unmounted \"$_\"");
     }
 
     $self->{_UNMOUNT_LIST}= \@sUnmount2;
@@ -566,7 +595,7 @@ sub backup_setup {
     my $sSubSet= "";
     my @sBakDir= ();
 
-    $self->xlog_pretending();
+    $self->logPretending();
 
     my @sMountMessage;
     my $iMountResult= $self->mount(\@sMountMessage, 1);
@@ -577,25 +606,25 @@ sub backup_setup {
     my @sUnmount= @{ $self->{_UNMOUNT_LIST} };
 
     unless ($iMountResult) { # fatal mount error
-        $self->xerror("There was at least one fatal mount error. Backup set skipped.");
-        map { $self->xerror($_); } @sMountMessage;
+        $self->logError("There was at least one fatal mount error. Backup set skipped.");
+        $self->logError(@sMountMessage);
         return 3;
     }
 
     if (scalar @sMountMessage) {
-        $self->xlog("All mounts completed. More information after log file initialization...");
+        $self->log("All mounts completed. More information after log file initialization...");
     }
 
     my $sBakDir= $self->get_bakset_target();
 
     if (!-d $sBakDir) {
-        map { $self->xerror($_); } @sMountMessage;
-        $self->xerror("Target \"$sBakDir\" is not a directory. Backup set skipped.");
+        $self->logError(@sMountMessage);
+        $self->logError("Target \"$sBakDir\" is not a directory. Backup set skipped.");
         return 1;
     }
     if (!-w $sBakDir) {
-        map { $self->xerror($_); } @sMountMessage;
-        $self->xerror("Target \"$sBakDir\" is not writable. Backup set skipped.");
+        $self->logError(@sMountMessage);
+        $self->logError("Target \"$sBakDir\" is not writable. Backup set skipped.");
         return 2;
     }
 
@@ -614,15 +643,13 @@ sub backup_setup {
 
         my $sError= $self->{LOG_FILE}->open("$sBakDir/$sLogFile");
         if ($sError) {
-            $self->xerror("WARNING! Can't open log file \"$sBakDir/$sLogFile\" ($sError). Going on without...");
+            $self->log($self->warnMsg("Can't open log file \"$sBakDir/$sLogFile\" ($sError). Going on without..."));
         }
         else {
             if (!$self->{LOG_FILE}->is_new()) {
 
                 # TODO: only to file
-                $self->xlog("");
-                $self->xlog("===========================================================================");
-                $self->xlog("");
+                $self->log("", "===========================================================================", "");
             }
             symlink "../$sLogFile", "$sBakDir/$sLogLink";
         }
@@ -637,12 +664,12 @@ sub backup_setup {
 
     $self->_mkdir($self->{VALUES}{full_target});
 
-    $self->xlog("Backup $sBakDay exists, using subset.") if $sSubSet;
-    $self->xlog("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->{VALUES}{title});
-    $self->xlog("Logging to: $sBakDir/$sLogFile") if $self->get_value('switch.pretend') && $self->get_value('switch.logging');
-    $self->xlog("Source: " . $self->{VALUES}{type} . ":" . $self->{VALUES}{source});
+    $self->log("Backup $sBakDay exists, using subset.") if $sSubSet;
+    $self->log("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->{VALUES}{title});
+    $self->log("Logging to: $sBakDir/$sLogFile") if $self->get_value('switch.pretend') && $self->get_value('switch.logging');
+    $self->log("Source: " . $self->{VALUES}{type} . ":" . $self->{VALUES}{source});
 
-    map { $self->xerror($_); } @sMountMessage;
+    $self->log(@sMountMessage);
 
     $self->{_BAK_DIR_LIST}= \@sBakDir;
     $self->{_BAK_DIR}= $sBakDir;
@@ -676,15 +703,15 @@ sub backup_run {
 
     if ($@) {
         if ($@ =~ /^Can\'t locate/) {
-            $self->xerror("ERROR! Backup type \"" . $sBakType . "\" is not defined: $@");
+            $self->logError("ERROR! Backup type \"" . $sBakType . "\" is not defined: $@");
         }
         else {
-            $self->xerror("ERROR! An error occured: $@");
+            $self->logError("ERROR! An error occured: $@");
         }
         $iErrorCode= 9;
     }
     elsif (!$iErrorCode) {
-        $self->xlog("Done!");
+        $self->log("Done!");
     }
 
     $self->_remove_old(@sBakDir) unless $iErrorCode;    # only remove old if backup was done
@@ -726,13 +753,13 @@ sub backup_cleanup {
 
     $self->unmount(1);
 
-    # map { $self->xerror($_); } @sMountMessage;
+    # $self->logError(@sMountMessage);
 
     my $sBakSet= $self->{_BAK_SET};
     my $sBakDay= $self->{_BAK_DAY};
     my $sSubSet= $self->{_SUB_SET};
 
-    $self->xlog("Backup done at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet") if $sBakSet && $sBakDay && $sSubSet;
+    $self->log("Backup done at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet") if $sBakSet && $sBakDay && $sSubSet;
     $self->{LOG_FILE}->close();
     $self->unmount(0);
 
@@ -754,11 +781,11 @@ sub rm_file {
 
     # print Dumper(\@sFileMask);
 
-    map { $self->xerror("Every filemask MUST start with \"/\"!", 2) unless /^\//; } @sFileMask;
+    map { $self->logExitError(2, "Every filemask MUST start with \"/\"!") unless /^\//; } @sFileMask;
 
     return 2 unless scalar @sFileMask && defined $sFileMask[0];
 
-    $self->xlog_pretending();
+    $self->logPretending();
 
     my %aDirs= ();
     my %aFiles= ();
@@ -768,7 +795,7 @@ sub rm_file {
     my $sBakDir= $self->get_bakset_target();
 
     # TODO: Make a better check!
-    $self->xerror("Can't remove! \"$sBakSet.target\" is empty or points to file system root.", 3) if $sBakDir eq '' || $sBakDir eq '/';
+    $self->logExitError(3, "Can't remove! \"$sBakSet.target\" is empty or points to file system root.") if $sBakDir eq '' || $sBakDir eq '/';
 
     my @sBakDir= $self->collect_bakdirs();
 
@@ -800,7 +827,7 @@ sub rm_file {
     }
 
     map {
-        $self->xlog("Removing " . scalar @{ $aDirs{$_} } . " directories: $_");
+        $self->log("Removing " . scalar @{ $aDirs{$_} } . " directories: $_");
         !$self->get_value('switch.pretend') && rmtree($aDirs{$_}, $self->{DEBUG});
 
         # print Dumper($aDirs{$_});
@@ -808,14 +835,14 @@ sub rm_file {
     } sort { $a cmp $b } keys %aDirs;
 
     map {
-        $self->xlog("Removing " . scalar @{ $aFiles{$_} } . " files: $_");
+        $self->log("Removing " . scalar @{ $aFiles{$_} } . " files: $_");
 
         # print Dumper($aFiles{$_});
 
         !$self->get_value('switch.pretend') && unlink(@{ $aFiles{$_} });
     } sort { $a cmp $b } keys %aFiles;
 
-    map { $self->xlog("Didn't find: $_") unless defined $iFoundMask{$_} } @sFileMask;
+    map { $self->log("Didn't find: $_") unless defined $iFoundMask{$_} } @sFileMask;
 
     return 0;
 }

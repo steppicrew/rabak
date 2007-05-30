@@ -35,7 +35,7 @@ sub run {
     else {
         for (split(/\s*,\s*/, $self->get_value('source'))) {
             unless (defined $sValidDb{$_}) {
-                $self->xerror("WARNING! Unknown database: \"$_\"");
+                $self->log($self->warnMsg("Unknown database: \"$_\""));
                 next;
             }
             unshift @sDb, $_;
@@ -52,22 +52,22 @@ sub run {
         my $sDestFile= $self->get_value('full_target') . "/$_." . $self->get_value('unique_target') . ".$sZipExt";
 
         my $sPgProbeCmd= "pg_dump -s $sPgUser -f /dev/null $_ 2>&1";
-        $self->xlog("Running probe: $sPgProbeCmd");
+        $self->log("Running probe: $sPgProbeCmd");
         my $sError= `$sPgProbeCmd` unless $self->get_value('switch.pretend');
         if ($sError) {
             chomp $sError;
-            $self->xerror("Probe failed. Skipping \"$_\": $sError");
+            $self->logError("Probe failed. Skipping \"$_\": $sError");
             next;
         }
 
         my $sPgDumpCmd= "pg_dump -c $sPgUser $_ 2> \"$sResultFile\" | $sZipCmd > \"$sDestFile\"";
-        $self->xlog("Running dump: $sPgDumpCmd");
+        $self->log("Running dump: $sPgDumpCmd");
 
         `$sPgDumpCmd` unless $self->get_value('switch.pretend');
         $sError= `cat \"$sResultFile\"`;
         if ($sError) {
             chomp $sError;
-            $self->xerror("Dump failed. Skipping dump of \"$_\": $sError");
+            $self->logError("Dump failed. Skipping dump of \"$_\": $sError");
             next;
         }
         $bFoundOne= 1;
