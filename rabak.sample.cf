@@ -53,22 +53,10 @@ exclude = $exclude_std, $exclude_smb, test-bak, test-data, stuff
 # External USB Drive Example (First-of Example)
 # Try all of these. Use the first mountable one.
 
-mount_external_1.device= /dev/sda1
-mount_external_1.directory= $target_base
-mount_external_1.istarget= 1
-mount_external_1.unmount= 1
-
-mount_external_2.device= /dev/sdb1
-mount_external_2.directory= $target_base
-mount_external_2.istarget= 1
-mount_external_2.unmount= 1
-
-mount_external_3.device= /dev/sdc1
-mount_external_3.directory= $target_base
-mount_external_3.istarget= 1
-mount_external_3.unmount= 1
-
-mount_first= firstof mount_external_1 mount_external_2 mount_external_3
+mount_external.device= /dev/sd?1
+mount_external.directory= $target_base
+mount_external.istarget= 1
+mount_external.unmount= 1
 
 # Mount point "/boot"
 
@@ -89,7 +77,7 @@ sample.title = Gesamtsystem
 sample.source = /
 sample.target = $target_dir
 sample.exclude = $exclude
-sample.mount = $mount_first ; mount_boot mount_fritz
+sample.mount = mount_external mount_boot mount_fritz
 sample.targetgroup = sample
 # send mail if free space on target drops below this value (possible units: 'B'yte, 'K' (default), 'M'ega, 'G'iga or '%')
 sample.target_discfree_threshold = 10%
@@ -137,24 +125,10 @@ test.exclude = $exclude
 #       TEST SHARED RESOURCES
 # =======================================================================================
 
-mount_test_junk1.device= /dev/junk1
-mount_test_junk1.directory= test-data/mnt_target
-mount_test_junk1.unmount= 1
-
-mount_test_junk2.device= /dev/junk2
-mount_test_junk2.directory= test-data/mnt_target
-mount_test_junk2.unmount= 1
-mount_test_junk2.istarget= 1
-
-mount_test_loop0.device= test-data/dev.loop0
-mount_test_loop0.directory= test-data/mnt_target
-mount_test_loop0.unmount= 1
-mount_test_loop0.istarget= 1
-
-mount_test_loop1.device= test-data/dev.loop1
-mount_test_loop1.directory= test-data/mnt_target
-mount_test_loop1.unmount= 1
-mount_test_loop1.istarget= 1
+mount_test_target.device= /dev/junk[12] test-data/dev.loop[01]
+mount_test_target.directory= test-data/mnt_target
+mount_test_target.unmount= 1
+mount_test_target.istarget= 1
 
 mount_test_boot.device= test-data/dev.boot
 mount_test_boot.directory= test-data/mnt_boot
@@ -174,7 +148,7 @@ test_firstof.exclude = $exclude, test-bak,
     test-data, stuff
 
 # test_firstof.mount= $mount_test_loop0
-test_firstof.mount= firstof mount_test_junk1 mount_test_junk2 mount_test_loop0 mount_test_loop1 ; mount_test_boot
+test_firstof.mount= mount_test_target mount_test_boot
 
 # =======================================================================================
 #       TEST TARGETGROUP OPTION

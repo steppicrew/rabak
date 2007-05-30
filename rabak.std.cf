@@ -19,13 +19,13 @@ switch.logging = 1
 #    2: print additional output (rsync: verbose)
 switch.verbose = 0
 
-# switch.idfile: file that have to exist in root dir on any target device (istarget is set in mount section)
-#    default: rabak.id
-#    this file contains optional taget groups/ids entries (one per line)
-#    format: <group>[.<id>]
-#    characters after "#" are treated as comments
-#    device is valid for this backup if file exists, target group/id is found (optional)
-switch.idfile = rabak.id
+# switch.dev_conf_file: file that have to exist in root dir on any target device (istarget is set in mount section)
+#    default: rabak.dev.cf
+#    format is like from this file
+#    options:
+#        targetvalues= targetgroup.targetvalue ...
+#    device is valid for this backup if file exists, target group/value is found (optional)
+switch.dev_conf_file = rabak.dev.cf
 
 # =======================================================================================
 #       GLOBAL VARIABLES
