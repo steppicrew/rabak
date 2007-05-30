@@ -14,6 +14,7 @@ eval {
   use RabakLib::ConfFile;
   use RabakLib::Set;
   use RabakLib::Admin;
+  1;
 } or die @!;
 
 use Data::Dumper;
