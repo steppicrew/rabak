@@ -74,9 +74,19 @@ sub get_value {
     return $self->{SET}->get_value(@_);
 }
 
+sub infoMsg {
+    my $self= shift;
+    return $self->{SET}->infoMsg(@_);
+}
+
 sub warnMsg {
     my $self= shift;
     return $self->{SET}->warnMsg(@_);
+}
+
+sub errMsg {
+    my $self= shift;
+    return $self->{SET}->errMsg(@_);
 }
 
 sub logError {

@@ -168,18 +168,19 @@ sub levelLog {
             $self->levelLog($iMyLevel, @{ $sMessage });
             next;
         }
+        chomp $sMessage;
         $sMessage= '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
         print "$sMsgPref$sMessage\n" if $iLevel <= $self->{CONF}->get_value('switch.verbose');
 
         return unless $self->{CONF}->get_value('switch.logging') &&
-            !$self->{CONF}->get_value('switch.pretend') &&
-            $iLevel <= $self->{CONF}->get_value('switch.verbose');
+            !$self->{CONF}->get_value('switch.pretend');
+#            $iLevel <= $self->{CONF}->get_value('switch.verbose');
 
         $sMessage= $self->{CATEGORY} . "\t$sMessage" if $self->{CATEGORY};
         $sMessage= _timestr() . "\t$sMsgPref$sMessage\n";
 
         $self->{UNFLUSHED_MESSAGES} .= $sMessage;
-        $self->{MESSAGES} .= $sMessage;
+        $self->{MESSAGES} .= $sMessage if $iLevel <= $self->{CONF}->get_value('switch.verbose');
 
     }
     $self->_flush();
