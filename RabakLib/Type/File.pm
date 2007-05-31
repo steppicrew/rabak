@@ -21,11 +21,13 @@ sub run {
 
     my $sBakSet= $self->get_value('name');
     my $sRsyncOpts = $self->get_value('rsync_opts') || '';
+    my $sRsyncPass= $self->get_value('password');
 
     my $sSrc= $self->valid_source_dir() or return 3;
 
     # Write filter rules to temp file:
     my ($fhwRules, $sRulesFile)= $self->tempfile();
+    my ($fhwPass, $sPassFile);
 
     my $sInclude= $self->get_value('include') || '';
     my $sExclude= $self->get_value('exclude') || '';
@@ -74,6 +76,12 @@ sub run {
     $sFlags .= " -i" if $self->{DEBUG};
     $sFlags .= " --dry-run" if $self->get_value('switch.pretend');
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
+    if ($sRsyncPass) {
+        ($fhwPass, $sPassFile)= $self->tempfile();
+        print $fhwPass $sRsyncPass;
+        close $fhwPass;
+        $sFlags .= " --password-file=\"$sPassFile\""
+    }
 
     my $iScanBakDirs= $self->get_value('scan_bak_dirs', 4);
 
@@ -81,7 +89,7 @@ sub run {
     map { $sFlags .= " --link-dest=\"$_\""; } @sBakDir;
 
     $sSrc .= "/" unless $sSrc =~ /\/$/;
-    my $sDestDir= $self->get_value('full_target');
+    my $sDestDir= $self->get_value('full_target'); # TODO: remote targets (possible to be done in ::Set)
 
     my $sRsyncCmd= "rsync $sFlags \"$sSrc\" \"$sDestDir\"";
 

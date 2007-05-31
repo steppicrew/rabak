@@ -100,21 +100,25 @@ sub log {
 }
 
 sub tempfile {
+    File::Temp->safe_level( File::Temp::HIGH ); # make sure tempfiles are secure
     return @_= File::Temp->tempfile('rabak-XXXXXX', UNLINK => 1, DIR => File::Spec->tmpdir);
 }
 
 sub valid_source_dir {
     my $self= shift;
 
-    my $sSourceDir= File::Spec->rel2abs($self->get_value('source'));
+    my $sSourceDir= $self->get_value('source');
+    unless ($sSourceDir =~ /^(\S+\@)?[\-0-9a-z\.]+\:/) { # if no remote path
+        $sSourceDir= File::Spec->rel2abs($sSourceDir);
 
-    if (!-d $sSourceDir) {
-        $self->logError("Source \"$sSourceDir\" is not a directory. Backup set skipped.");
-        return undef;
-    }
-    if (!-r $sSourceDir) {
-        $self->logError("Source \"$sSourceDir\" is not readable. Backup set skipped.");
-        return undef;
+        if (!-d $sSourceDir) {
+            $self->logError("Source \"$sSourceDir\" is not a directory. Backup set skipped.");
+            return undef;
+        }
+        if (!-r $sSourceDir) {
+            $self->logError("Source \"$sSourceDir\" is not readable. Backup set skipped.");
+            return undef;
+        }
     }
 
     return $sSourceDir;

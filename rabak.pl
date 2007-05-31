@@ -8,7 +8,8 @@ use strict;
 # change to programs directory evalutaing use commands
 my $basedir= `dirname "$0"`;
 chomp $basedir;
-chdir "$basedir" if $basedir;
+chdir "$basedir" if $basedir; # change 
+umask 0077; # make sure all tempfiles are readable only by us
 
 eval "
   use RabakLib::ConfFile;
