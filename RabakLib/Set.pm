@@ -38,6 +38,7 @@ sub new {
     $self->{ERRORCODE}= 0;
     $self->{DEBUG}= 0;
     $self->{CONF}= $hConf;
+    $self->{VERSION}= $hConf->{DEFAULTS}->{VERSION};
     $self->{NAME}= $sName;
 
     $self->{LOG_FILE}= RabakLib::Log->new($hConf);
@@ -120,25 +121,22 @@ sub _timestr {
 sub infoMsg {
     my $self= shift;
     my @sMessage= @_;
-    
-    @sMessage= map "INFO: $_", @sMessage;
-    return [ $self->{LOG_FILE}->{INFOLEVEL}, @sMessage ];
+
+    return $self->{LOG_FILE}->infoMsg(@sMessage);
 }
 
 sub warnMsg {
     my $self= shift;
     my @sMessage= @_;
 
-    @sMessage= map "WARNING: $_", @sMessage;
-    return [ $self->{LOG_FILE}->{WARNLEVEL}, @sMessage ];
+    return $self->{LOG_FILE}->warnMsg(@sMessage);
 }
 
 sub errorMsg {
     my $self= shift;
     my @sMessage= @_;
 
-    @sMessage= map "ERROR: $_", @sMessage;
-    return [ $self->{LOG_FILE}->{ERRLEVEL}, @sMessage ];
+    return $self->{LOG_FILE}->errorMsg(@sMessage);
 }
 
 sub logExitError {
@@ -154,8 +152,7 @@ sub logError {
     my $self= shift;
     my @sMessage= @_;
 
-    @sMessage= map ref($_) ? $_ : [ $self->{LOG_FILE}->{ERRLEVEL}, "ERROR: $_" ], @sMessage;
-    $self->{LOG_FILE}->log(@sMessage);
+    $self->{LOG_FILE}->log($self->errorMsg(@sMessage));
 
     $self->{ERRORCODE}= 9;
 }
@@ -163,7 +160,7 @@ sub logError {
 sub log {
     my $self= shift;
     my @sMessage= @_;
-    
+
     $self->{LOG_FILE}->log(@sMessage);
 }
 
@@ -273,7 +270,7 @@ sub collect_bakdirs {
 
 # tests if device is mounted and is a valid rabak target
 # @param $sMountDevice
-#   device to check 
+#   device to check
 # @param $bUnmount
 #   unmount the device if its a valid rabak media
 # @return
@@ -318,7 +315,7 @@ sub _mount_check {
     #     notice: the check for "type" after mount dir is because of missing delimiters if mount dir contains spaces!
     if ($cur_mounts =~ /^$sqMountDevice\son\s+(\/.*)\stype\s/m) {
         my $sMountDir= $1;
-        
+
         $result->{CODE}= 1; # defaults to "not a target"
 
         my $sDevConfFile= "$sMountDir/" . ($self->get_value('switch.dev_conf_file') || "rabak.dev.cf");
@@ -329,10 +326,10 @@ sub _mount_check {
                 my $sFoundTargets = $oDevConf->get_value('targetvalues') || '';
                 if (" $sFoundTargets " =~ /\s$sqTargetValue\s/) {
                     $result->{CODE}= 2;
-                    $result->{INFO}= "Target value \"$sTargetValue\" found";
+                    $result->{INFO}= "Target value \"$sTargetValue\" found on device \"$sMountDevice\"";
                 }
                 else {
-                    $result->{INFO}= "Target value \"$sTargetValue\" not found (found: \"" .
+                    $result->{INFO}= "Target value \"$sTargetValue\" not found on device \"$sMountDevice\" (found: \"" .
                         join("\", \"", split(/\s+/, $sFoundTargets)) .
                         "\")";
                 }
@@ -345,7 +342,7 @@ sub _mount_check {
         else {
             $result->{INFO}= "Device config file \"$sDevConfFile\" not found on device \"$sMountDevice\"";
         }
-            
+
         $result->{UMOUNT}= `umount "$sMountDevice"` if ($result->{CODE} == 2) && $bUnmount;
     }
     return $result;
@@ -384,23 +381,28 @@ sub _mount {
 
     my %checkResult;
     my $iResult= 0; # defaults to "mount failed"
-    
+
     my @sMountDevices= ();
+
+#    push @{ $arMessage }, $self->infoMsg("Trying to mount \"" .
+#        join("\", \"", split(/\s+/, $sMountDeviceList)) . "\"");
+
     for my $sMountDevice (split(/\s+/, $sMountDeviceList)) {
         push @sMountDevices, glob("$sMountDevice");
     }
 
-    push @{ $arMessage }, "Trying to mount \"" . join("\", \"", @sMountDevices) . "\"";
+    # if no device were given, try mounting by mount point
+    push @sMountDevices, '' if $#sMountDevices < 0;
 
     my @sMountMessage = ();
     for my $sMountDevice (@sMountDevices) {
         my @sCurrentMountMessage = ();
+        push @sCurrentMountMessage, $self->infoMsg("Trying to mount \"$sMountDevice\"");
         $sUnmount= $sMountDevice ne '' ? $sMountDevice : $sMountDir;
         $spMountDevice= $sMountDevice ? " \"$sMountDevice\""  : "";
 
-        # First unmount the device, it may be pointing to a wrong mount point.
-        # Mount would fail and terrible things could happen.
-        # But first check if device is our a target!
+        # if device is target, check if its already mounted.
+        # if mounted, check if it's our target (and unmount if it is)
         if ($bIsTarget) {
             unless ($sMountDevice) {
                 push @sCurrentMountMessage, $self->warnMsg("Target devices have to be specified with device name");
@@ -408,7 +410,7 @@ sub _mount {
             }
             %checkResult = %{ $self->_mount_check($sMountDevice, 1) };
             push @sCurrentMountMessage, $self->infoMsg($checkResult{INFO}) if $checkResult{INFO};
-            push @sCurrentMountMessage, $checkResult{ERROR} if $checkResult{ERROR};
+            push @sCurrentMountMessage, $self->errMsg($checkResult{ERROR}) if $checkResult{ERROR};
             if ($checkResult{CODE} == 1) {
                 goto nextDevice;
             }
@@ -417,7 +419,7 @@ sub _mount {
                 push @sCurrentMountMessage, $self->warnMsg("Umount result: \"${checkResult{UMOUNT}}\"") if $checkResult{UMOUNT};
             }
         }
-    
+
         my $sMountResult= `mount $spMountType$spMountDevice$spMountDir$spMountOpts 2>&1`;
         if ($?) { # mount failed
             chomp $sMountResult;
@@ -425,11 +427,11 @@ sub _mount {
             push @sCurrentMountMessage, $self->warnMsg("Mounting$spMountDevice$spMountDir failed with: $sMountResult!");
             goto nextDevice;
         }
-        
+
         if ($bIsTarget) { # this mount object is a target -> check for right target device
             %checkResult = %{ $self->_mount_check($sMountDevice, 0) };
             push @sCurrentMountMessage, $self->infoMsg($checkResult{INFO}) if $checkResult{INFO};
-            push @sCurrentMountMessage, $checkResult{ERROR} if $checkResult{ERROR};
+            push @sCurrentMountMessage, $self->errMsg($checkResult{ERROR}) if $checkResult{ERROR};
             if ($checkResult{CODE} == 0) { # device is not mounted
                 push @sCurrentMountMessage, $self->warnMsg("Device \"$sMountDevice\" is not mounted!");
             }
@@ -441,10 +443,10 @@ sub _mount {
                     push @sCurrentMountMessage, $self->warnMsg("Unmounting \"$sUnmount\" failed with: $sMountResult!");
                 }
                 else {
-                    push @sCurrentMountMessage, "Unmounted \"$sUnmount\"";
+                    push @sCurrentMountMessage, $self->infoMsg("Unmounted \"$sUnmount\"");
                 }
             }
-            elsif ($checkResult{CODE} == 2) { # 
+            elsif ($checkResult{CODE} == 2) { #
                 $iResult= 1;
                 @sMountMessage= (); # drop old mount messages if this one succeeded
             }
@@ -466,8 +468,8 @@ nextDevice:
         unshift @{ $arUnmount }, $sUnmount if $oMount->{VALUES}{unmount} && $iResult;
     }
 
-    push @{ $arMessage }, "Mounted$spMountDevice$spMountDir" if $iResult;
-    push @{ $arMessage }, "All mounts failed" unless $iResult;
+    push @{ $arMessage }, $self->infoMsg("Mounted$spMountDevice$spMountDir") if $iResult;
+    push @{ $arMessage }, $self->errMsg("All mounts failed") unless $iResult;
     return $iResult;
 }
 
@@ -496,15 +498,14 @@ sub _mkdir {
 sub mount {
     my $self= shift;
     my $arMessage= shift || {};
-    my $bQuiet= shift;
 
     # Collect all mount errors, we want to output them later
     my @sFirstOfMountMessage= ();
     my @sUnmount= ();
     my @sAllMount= ();
-    
+
     my $sMount= $self->{VALUES}{mount};
-    
+
     my $iResult= 1; # defaults to mount succeeded
 
     if ($sMount) {
@@ -531,9 +532,6 @@ sub mount {
 
     $self->{_UNMOUNT_LIST}= \@sUnmount;
     $self->{_ALL_MOUNT_LIST}= \@sAllMount;
-
-    # what's that for? do we have a working logging mechanism or what??
-    map { print "$_\n"; } @{ $arMessage } unless $bQuiet;
 
     return $iResult;
 }
@@ -595,6 +593,7 @@ sub backup_setup {
     my $sSubSet= "";
     my @sBakDir= ();
 
+    $self->log($self->infoMsg("Rabak Version " . $self->{VERSION}));
     $self->logPretending();
 
     my @sMountMessage;
@@ -664,8 +663,8 @@ sub backup_setup {
 
     $self->_mkdir($self->{VALUES}{full_target});
 
-    $self->log("Backup $sBakDay exists, using subset.") if $sSubSet;
-    $self->log("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->{VALUES}{title});
+    $self->log($self->infoMsg("Backup $sBakDay exists, using subset.")) if $sSubSet;
+    $self->log($self->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->{VALUES}{title}));
     $self->log("Logging to: $sBakDir/$sLogFile") if $self->get_value('switch.pretend') && $self->get_value('switch.logging');
     $self->log("Source: " . $self->{VALUES}{type} . ":" . $self->{VALUES}{source});
 
@@ -759,7 +758,7 @@ sub backup_cleanup {
     my $sBakDay= $self->{_BAK_DAY};
     my $sSubSet= $self->{_SUB_SET};
 
-    $self->log("Backup done at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet") if $sBakSet && $sBakDay && $sSubSet;
+    $self->log($self->infoMsg("Backup done at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet")) if $sBakSet && $sBakDay && $sSubSet;
     $self->{LOG_FILE}->close();
     $self->unmount(0);
 

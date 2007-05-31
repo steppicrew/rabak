@@ -24,8 +24,8 @@ sub new {
         FILE_NAME => '',
         IS_NEW => 0,
 
-        DEFAULTLEVEL => 1,
-        INFOLEVEL => 0,
+        DEFAULTLEVEL => 2,
+        INFOLEVEL => 1,
         WARNLEVEL => -1,
         ERRLEVEL => -2,
     };
@@ -115,15 +115,34 @@ sub set_category {
     $self->{CATEGORY}= $sPrefix;
 }
 
+sub infoMsg {
+    my $self= shift;
+    my @sMessage= @_;
+
+    return [ $self->{INFOLEVEL}, @sMessage ];
+}
+
+sub warnMsg {
+    my $self= shift;
+    my @sMessage= @_;
+
+    return [ $self->{WARNLEVEL}, @sMessage ];
+}
+
+sub errorMsg {
+    my $self= shift;
+    my @sMessage= @_;
+
+    return [ $self->{ERRLEVEL}, @sMessage ];
+}
+
 sub log {
     my $self= shift;
     my @sMessage= @_;
 
-    foreach my $sMessage (@sMessage) {
+    for my $sMessage (@sMessage) {
         if (ref $sMessage eq "ARRAY") {
-            my @sLogMessage= @{ $sMessage };
-            my $iLevel= shift @sLogMessage;
-            $self->levelLog($iLevel, @sLogMessage);
+            $self->levelLog(@{ $sMessage });
             next;
         }
         $self->levelLog($self->{DEFAULTLEVEL}, $sMessage);
@@ -135,21 +154,33 @@ sub levelLog {
     my $iLevel= shift;
     my @sMessage= @_;
 
-    foreach my $sMessage (@sMessage) {
-        return if $self->{CONF}->get_value('switch.quiet');
-    
+    return if $self->{CONF}->get_value('switch.quiet');
+
+    my $sMsgPref= "LOG($iLevel):  ";
+    $sMsgPref= "ERROR:   " if $iLevel == $self->{ERRLEVEL};
+    $sMsgPref= "WARNING: " if $iLevel == $self->{WARNLEVEL};
+    $sMsgPref= "INFO:    " if $iLevel == $self->{INFOLEVEL};
+
+    for my $sMessage (@sMessage) {
+        if (ref $sMessage eq "ARRAY") { # call recursive for nested arrays
+            my $iMyLevel = shift @{ $sMessage };
+            $iMyLevel= $iLevel if $iMyLevel > $iLevel; # use highest log level TODO: does that make sense?
+            $self->levelLog($iMyLevel, @{ $sMessage });
+            next;
+        }
         $sMessage= '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
-        print "$sMessage\n" if $iLevel <= $self->{CONF}->get_value('switch.verbose');
-    
-        return unless $self->{CONF}->get_value('switch.logging') && !$self->{CONF}->get_value('switch.pretend') &&
+        print "$sMsgPref$sMessage\n" if $iLevel <= $self->{CONF}->get_value('switch.verbose');
+
+        return unless $self->{CONF}->get_value('switch.logging') &&
+            !$self->{CONF}->get_value('switch.pretend') &&
             $iLevel <= $self->{CONF}->get_value('switch.verbose');
-    
+
         $sMessage= $self->{CATEGORY} . "\t$sMessage" if $self->{CATEGORY};
-        $sMessage= _timestr() . "\t$sMessage\n";
-    
+        $sMessage= _timestr() . "\t$sMsgPref$sMessage\n";
+
         $self->{UNFLUSHED_MESSAGES} .= $sMessage;
         $self->{MESSAGES} .= $sMessage;
-    
+
     }
     $self->_flush();
 }
