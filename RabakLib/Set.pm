@@ -397,9 +397,9 @@ sub _mount {
     my @sMountMessage = ();
     for my $sMountDevice (@sMountDevices) {
         my @sCurrentMountMessage = ();
-        push @sCurrentMountMessage, $self->infoMsg("Trying to mount \"$sMountDevice\"");
         $sUnmount= $sMountDevice ne '' ? $sMountDevice : $sMountDir;
         $spMountDevice= $sMountDevice ? " \"$sMountDevice\""  : "";
+        push @sCurrentMountMessage, $self->infoMsg("Trying to mount \"$sUnmount\"");
 
         # if device is target, check if its already mounted.
         # if mounted, check if it's our target (and unmount if it is)
