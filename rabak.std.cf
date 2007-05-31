@@ -14,10 +14,10 @@ switch.logging = 1
 # switch.verbose: verbosity level
 #   -2: print errors only
 #   -1: print errors and warnings only
-#    0: print some additional output (mount results etc.)
-#    1: print additional output (rsync: stats)
-#    2: print additional output (rsync: verbose)
-switch.verbose = 0
+#    1: print some additional output (mount results etc.)
+#    2: print additional output (rsync: stats)
+#    3: print additional output (rsync: verbose)
+switch.verbose = 1
 
 # switch.dev_conf_file: file that have to exist in root dir on any target device (istarget is set in mount section)
 #    default: rabak.dev.cf

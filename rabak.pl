@@ -117,10 +117,11 @@ sub _conf_read {
     $oConf= $oConfFile->conf();
     $oConf->set_defaults({
         'switch.pretend' => $opt_p,
-        'switch.verbose' => $opt_v,
+        'switch.verbose' => defined $opt_v ? 4 : undef,
         'switch.quiet' => $opt_q,
         'switch.logging' => $opt_l,
         'switch.targetvalue' => $opt_i,
+        'VERSION' => $VERSION,
     });
     return $oConfFile;
 }
