@@ -20,7 +20,7 @@ eval {
 use Data::Dumper;
 use Getopt::Std;
 
-our $VERSION= "0.4";
+our $VERSION= "0.4.1";
 our $DEBUG= 0;
 
 $Getopt::Std::STANDARD_HELP_VERSION= 1;
