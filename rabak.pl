@@ -8,14 +8,14 @@ use strict;
 # change to programs directory evalutaing use commands
 my $basedir= `dirname "$0"`;
 chomp $basedir;
-`cd "$basedir"` if $basedir;
+chdir "$basedir" if $basedir;
 
-eval {
+eval "
   use RabakLib::ConfFile;
   use RabakLib::Set;
   use RabakLib::Admin;
   1;
-} or die @!;
+" or die @!;
 
 use Data::Dumper;
 use Getopt::Std;
