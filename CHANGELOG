@@ -1,3 +1,8 @@
+rabak-0.4
+- changed target mechanism
+- changed logging mechanism
+- mount token "firstof" removed
+
 rabak-0.3.4
 - introducing verbosity levels to decrease output (switch.verbose)
 - complete redesign of target group/value check and RabakLib::Set::_mount()
