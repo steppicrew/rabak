@@ -67,10 +67,10 @@ sub run {
     my $sFlags= "-a"
         . " --hard-links"
         . " --filter=\". $sRulesFile\""
+        . " --stats"
+        . " --verbose"
     ;
 
-    $sFlags .= " --stats" if $self->{SET}->{CONF}->get_value('switch.verbose') > 1;
-    $sFlags .= " --verbose" if ($self->{SET}->{CONF}->get_value('switch.verbose') > 2) || $self->{DEBUG};
     $sFlags .= " -i" if $self->{DEBUG};
     $sFlags .= " --dry-run" if $self->get_value('switch.pretend');
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
@@ -85,12 +85,17 @@ sub run {
 
     my $sRsyncCmd= "rsync $sFlags \"$sSrc\" \"$sDestDir\"";
 
-    $self->log("Running: $sRsyncCmd");
+    $self->log($self->infoMsg("Running: $sRsyncCmd"));
 
     # print Dumper($self); die;
 
-    @_= grep !/^([^\/]+\/)+$/, `$sRsyncCmd 2>&1`;
-    $self->log(join('', @_));
+    my @sRsyncStat= grep !/^([^\/]+\/)+$/, `$sRsyncCmd 2>&1`;
+    my @sRsyncFiles= ();
+    push @sRsyncFiles, shift @sRsyncStat while ($sRsyncStat[0] !~ /^\s+$/);
+    push @sRsyncFiles, shift @sRsyncStat;
+
+    $self->log([ 3, @sRsyncFiles ]);
+    $self->log(@sRsyncStat);
 
     return 0;
 }
