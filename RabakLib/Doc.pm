@@ -69,7 +69,7 @@ And such a drive costs nothing compared with professional streamer hardware (plu
 
 B<rabak> is based on rsync's hardlinking abilities. It I<always> makes a full backup. You'll get a
 directory containing the complete tree with each backup. But an unchanged file from one backup is
-hardlinked to the file from the last backup. So it doesn't consume any disk space. 
+hardlinked to the file from the last backup. So it doesn't consume any disk space.
 
 Full backups? Won't the backup drive be full very quickly? No! Here's an example:
 You have a 500 GB drive (backup), 100 GB of data with 500 MB changes/day. So your drive
@@ -164,6 +164,17 @@ Now lets add a mount point:
 This tells B<rabak> to mount C</dev/sda1> before starting backing up C<full>, and
 to unmount when done.
 
+You may specify a list of devices to try more than one device and use the
+first successfully mounted one. That usefull for usb-devices as backup target
+when you don't know the exact device name.
+  full.mount.device= /dev/sd?1 /dev/hd[cd]1
+
+This tells B<rabak> to mount the first available (and mountable) device of
+/dev/sda1, /dev/sdb1... , /dev/hdc1 and /dev/hdd1
+
+If you specify a target group and the istarget falg, B<rabak> will make sure
+that only rabak devices will be mounted (see section C<Target Groups>).
+
 You can specify file system type and additional mount options with
   samba.mount.device= //sambaserver/share
   samba.mount.directory= /mnt/samba
@@ -198,7 +209,7 @@ You can use variables to define exclude sets and glue them together:
   exclude_fileserver = *.bak
 
   full.exclude = $exclude_common $exclude_fileserver
-  
+
 Additional rsync options (like "-acl") can be specified with
   mybackup.rsync_opts = "-acl"
 
@@ -208,33 +219,32 @@ To make sure only desired devices are used to store your backup data, you
 can mark a mount point as a target:
   mount1.istarget = 1
 
-This means, that there have to be a file named I<rabak.id> (or any other
-name specified by C<switch.idfile>) in the root directory of the specified
+This means, that there have to be a file named I<rabak.dev.cf> (or any other
+name specified by C<switch.dev_conf_file>) in the root directory of the specified
 device.
 If this file could not be found, this device will not be used for backup (and
 even not unmounted if already mounted anywhere else).
 
-This id file may contain entries in the following form (one entry per line):
-  <target group>[.<target value>]
+The syntax of this file follows the one for other rabak conf files.
+This config file may contain one or more targetvalues (separated by space)
+in the following form:
+targetvalues= <target group>[.<target value>]
 
-You can specify a target group in your backup set:
+You can specify a target group in your backup set by:
   mybackup.targetgroup = byweekday
-In this case the device is only used if there is an id entry beginning with
-C<byweekday.>
+
+In this case the device is only used if there is a target value beginning with
+C<byweekday.>.
 Additionally you can specify a target value at the command line (parameter
-C<-i 'target value'>) to accept only devices with a matching id file entry.
+C<-i 'target value'>) to accept only devices with a matching target value.
 
 =head3 Example for target groups and values
 
-On one backup device your id file contains the following lines:
-  byweekday.Mon
-  byweekday.Wed
-  byweekday.Fri
+On one backup device your device config file contains the following line:
+  targetvalues= byweekday.Mon byweekday.Wed byweekday.Fri
 
-and another devices id file contains:
-  byweekday.Tue
-  byweekday.Thu
-  byweekday.Sat
+and another devices config file contains:
+  targetvalues= byweekday.Tue byweekday.Thu byweekday.Sat
 
 If both devices are plugged in, you set up the mount options correctly
 (don't forget the C<istarget>) flag!), and you specified I<byweekday> as
@@ -263,8 +273,6 @@ TODO: Explain the following features:
 * email = rabakadmin
 
 * full.include = /something
-
-* full.mount= firstof mount1 mount2 mount3 ; mount_boot
 
 TODO: Explain Postgresql and MySql Backup:
 
