@@ -24,19 +24,26 @@ sub new {
     my %hParams= @_;
     my $self= {
         ERRORCODE => 0,
-        DEBUG => 1,
+        DEBUG => 0,
         SSH_DEBUG => 0,
+        VALUES => {},
     };
-    for my $sParam qw(PATH HOST USER PASSWD PORT PROTOCOL) {
-        $self->{$sParam}= $hParams{$sParam} if $hParams{$sParam};
+    for my $key (keys %hParams) {
+        $self->{VALUES}->{uc $key}= $hParams{$key};
     }
 
     bless $self, $class;
 }
 
+sub get_value {
+    my $self= shift;
+    my $sValName= shift;
+    return $self->{VALUES}->{uc $sValName};
+}
+
 sub remote {
     my $self= shift;
-    return $self->{HOST};
+    return $self->{VALUES}->{HOST};
 }
 
 sub close {
@@ -46,16 +53,16 @@ sub close {
 
 sub getFullPath {
     my $self= shift;
-    my $sPath= $self->_getPath(shift);
+    my $sPath= $self->getPath(shift);
 
-    return "$self->{USER}\@$self->{HOST}\:$sPath" if $self->remote;
+    return "$self->{VALUES}->{USER}\@$self->{VALUES}->{HOST}\:$sPath" if $self->remote;
     return $sPath;
 }
 
-sub _getPath {
+sub getPath {
     my $self= shift;
     my $sPath= shift || '';
-    $sPath= "$self->{PATH}/$sPath" unless $sPath=~ /^\//;
+    $sPath= "$self->{VALUES}->{PATH}/$sPath" unless $sPath=~ /^\//;
     $sPath=~ s/\/+/\//;
     $sPath=~ s/\/$//;
     return $sPath;
@@ -65,14 +72,27 @@ sub _ssh {
     my $self= shift;
 
     unless ($self->{SSH}) {
-        $self->{SSH}= Net::SSH::Perl->new($self->{HOST},
+        $self->{SSH}= Net::SSH::Perl->new($self->{VALUES}->{HOST},
             debug => $self->{SSH_DEBUG},
-            port => $self->{PORT},
-            protocol => $self->{PROTOCOL},
+            port => $self->{VALUES}->{PORT},
+            protocol => $self->{VALUES}->{PROTOCOL},
         );
-        $self->{SSH}->login($self->{USER}, $self->{PASSWD});
+        $self->{SSH}->login($self->{VALUES}->{USER}, $self->{VALUES}->{PASSWD});
     }
     return $self->{SSH};
+}
+
+sub _savecmd {
+    my $self= shift;
+    my $cmd= shift;
+
+    if ($self->remote) {
+        my ($stdout, $stderr, $exit) = $self->_sshcmd("$cmd");
+        return $stdout || '';
+    }
+    else {
+        return `$cmd`;
+    }
 }
 
 sub _sshcmd {
@@ -89,28 +109,39 @@ sub _saveperl {
     my $refInVars= shift || {}; # input vars have to be references or skalars
     my $sOutVar= shift;
 
+    # define and set "incoming" variables
     my $sPerlVars= "";
     for my $sKey (keys %$refInVars) {
         $sPerlVars.= "my " . Data::Dumper->Dump([$$refInVars{$sKey}], [$sKey]);
     }
+    # define result variable
     $sPerlVars.= "my $sOutVar;\n" if $sOutVar;
 
+    # dump result variable to set $OUT_VAR at the end of script execution
     my $sPerlDump= "";
     if ($sOutVar) {
-        if ($self->remote) {
-            $sPerlDump= "print Data::Dumper->Dump([\\$sOutVar], [\"OUT_VAR\"]);";
-        }
-        else {
-            $sPerlDump= "Data::Dumper->Dump([\\$sOutVar], [\"OUT_VAR\"]);";
-        }
+        $sPerlDump= "print " if $self->remote;
+        $sPerlDump.= "Data::Dumper->Dump([\\$sOutVar], [\"OUT_VAR\"]);";
     }
+    # build modified perl script
     $sPerlScript= "
         use Data::Dumper;
         $sPerlVars
         $sPerlScript
         $sPerlDump
-        ";
+    ";
 
+    # compress script
+    $sPerlScript=~ s/^\s+//mg;
+    # extract script name
+    my $sScriptName= "";
+    $sScriptName= " \"$1\"" if $sPerlScript=~ s/^\#\s*(\w+)\s?\(\s*\)\s*$//m;
+
+    print "************* SCRIPT$sScriptName START ***************\n" .
+        "$sPerlScript\n" .
+        "************** SCRIPT$sScriptName END ****************\n" if $self->{DEBUG};
+
+    # now execute script
     my $result;
     if ($self->remote) {
         $result= $self->_sshperl($sPerlScript);
@@ -118,6 +149,10 @@ sub _saveperl {
     else {
         $result= eval $sPerlScript;
     }
+
+    print "OUT: $result\n" if $self->{DEBUG} && $result;
+
+    # extract scripts result (if everything was ok, eval($result) sets $OUT_VAR)
     my $OUT_VAR = undef;
     eval($result) if $result;
     return $OUT_VAR;
@@ -129,19 +164,8 @@ sub _sshperl {
 
     # replace "'" chars for shell execution
     $sPerlScript=~ s/\'/\'\\\'\'/g;
-    # compress script
-    $sPerlScript=~ s/^\s+//mg;
-    my $sScriptName= '';
-    $sScriptName= " \"$1\"" if $sPerlScript=~ s/^\#\s*(\w+)\s?\(\s*\)\s*$//m;
-
     my ($stdout, $stderr, $exit)= $self->_sshcmd("perl -e '$sPerlScript'");
-    if ($self->{DEBUG}) {
-        print "************* SCRIPT$sScriptName START ***************\n" .
-            "$sPerlScript\n" .
-            "************** SCRIPT$sScriptName END ****************\n";
-        print "OUT: $stdout\n" if $stdout;
-        print "ERR: $stderr\n" if $stderr;
-    }
+    print "ERR: $stderr\n" if $self->{DEBUG} && $stderr;
     return $exit ? '' : $stdout;
 }
 
@@ -149,7 +173,7 @@ sub _sshperl {
 # if bFileType is set, appends file type character on every entry
 sub getDir {
     my $self= shift;
-    my $sPath= $self->_getPath(shift);
+    my $sPath= $self->getPath(shift);
     my $bFileType= shift;
 
     my $sPerlScript= '
@@ -192,7 +216,7 @@ sub getDir {
 # dirs point to a hash reference containing the directory entries (or empty hash if iLevel is reached)
 sub getDirRecursive {
     my $self= shift;
-    my $sPath= $self->_getPath(shift);
+    my $sPath= $self->getPath(shift);
     my $iLevel= shift || 0;
 
     my $sPerlScript= '
@@ -234,22 +258,22 @@ sub getDirRecursive {
 
 sub mkdir {
     my $self= shift;
-    my $sPath= $self->_getPath(shift);
+    my $sPath= $self->getPath(shift);
 
     return ${$self->_saveperl('
         # mkdir()
-        $result= -d $sPath || mkdir $sPath;
+        $result= -d $sPath || CORE::mkdir $sPath;
     ', { "sPath" => $sPath }, '$result')};
 }
 
 sub symlink {
     my $self= shift;
-    my $sOrigFile= $self->_getPath(shift);
-    my $sSymLink= $self->_getPath(shift);
+    my $sOrigFile= $self->getPath(shift);
+    my $sSymLink= $self->getPath(shift);
 
     return ${$self->_saveperl('
             # symlink()
-            $result= symlink $sOrigFile, $sSymLink;
+            $result= CORE::symlink $sOrigFile, $sSymLink;
         ', {
             "sOrigFile" => $sOrigFile,
             "sSymLink" => $sSymLink,
@@ -259,31 +283,26 @@ sub symlink {
 
 sub unlink {
     my $self= shift;
-    my $sFile= $self->_getPath(shift);
+    my $sFile= $self->getPath(shift);
 
     return ${$self->_saveperl('
             # unlink()
-            $result= unlink $sFile;
+            $result= CORE::unlink $sFile;
         ', { "sFile" => $sFile, }, '$result'
     )};
 }
 
 sub df {
     my $self= shift;
-    my $sDir= $self->_getPath(shift);
+    my $sDir= $self->getPath(shift);
     my $sParams= shift || '';
-    if ($self->remote) {
-        my ($stdout, $stderr, $exit) = $self->_sshcmd("df $sParams '$sDir'");
-        return $stdout;
-    }
-    else {
-        return `df -k "$sDir"`;
-    }
+
+    return $self->_savecmd("df $sParams '$sDir'");
 }
 
 sub isDir {
     my $self= shift;
-    my $sDir= $self->_getPath(shift);
+    my $sDir= $self->getPath(shift);
 
     return ${$self->_saveperl('
             # isDir()
@@ -294,7 +313,7 @@ sub isDir {
 
 sub isWritable {
     my $self= shift;
-    my $sFile= $self->_getPath(shift);
+    my $sFile= $self->getPath(shift);
 
     return ${$self->_saveperl('
             # isWritable()

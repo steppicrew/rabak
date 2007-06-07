@@ -22,9 +22,10 @@ sub new {
     bless $self, $class;
 }
 
-sub get_bakset_target {
+sub get_target {
     my $self= shift;
-    return File::Spec->rel2abs($self->get_value('target'));
+    return $self->{SET}->get_target;
+#    return File::Spec->rel2abs($self->get_value('target'));
 }
 
 sub collect_bakdirs {

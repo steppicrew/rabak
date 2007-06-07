@@ -219,17 +219,16 @@ sub _remove_old {
 #  ...
 # -----------------------------------------------------------------------------
 
-sub get_bakset_target {
+sub get_target {
     my $self= shift;
 
     unless ($self->{_objTarget}) {
-        my $target= $self->get_node($self->{VALUES}{target});
-        if ($target) {
+        # target may be path, target object or reference to target object
+        my $oTarget= $self->{VALUES}{target};
+        $oTarget= $self->get_node($oTarget) unless ref $oTarget;
+        if (ref $oTarget) {
             $self->{_objTarget}= RabakLib::Path->new(
-                PATH   => $target->{VALUES}->{path},
-                HOST   => $target->{VALUES}->{host},
-                USER   => $target->{VALUES}->{user},
-                PASSWD => $target->{VALUES}->{passwd},
+                %{$oTarget->{VALUES}}
             );
         }
         else {
@@ -247,11 +246,11 @@ sub collect_bakdirs {
     my $sSubSetBakDay= shift || 0;
 
     my $sBakSet= $self->{VALUES}{name};
-    my $oBakDir= $self->get_bakset_target();
+    my $oTarget= $self->get_target();
     my @sBakDir= ();
     my $sSubSet= '';
 
-    my %hBakDirs = $oBakDir->getDirRecursive('', 1); # get recurisive file listing for 2 levels
+    my %hBakDirs = $oTarget->getDirRecursive('', 1); # get recurisive file listing for 2 levels
     for my $sMonthDir (keys %hBakDirs) {
         next unless ref $hBakDirs{$sMonthDir};
 
@@ -307,11 +306,11 @@ sub collect_bakdirs {
 sub _mount_check {
     my $self= shift;
     my $sMountDevice= shift || '';
+    my $sTargetValue= shift || '';
     my $bUnmount= shift || 0;
 
     return { CODE => -1 } if !$sMountDevice;
 
-    my $sTargetValue= $self->{VALUES}{targetgroup} || '';
     my $sqTargetValue= quotemeta $sTargetValue;
     if ($self->get_value('switch.targetvalue')) {
         $sTargetValue.= "." . $self->get_value('switch.targetvalue');
@@ -380,13 +379,14 @@ sub _mount_check {
 sub _mount {
     my $self= shift;
     my $oMount= shift;
+    my $bIsTarget= shift;
     my $arMessage = shift || {};
     my $arUnmount= shift || {};
     my $arAllMount= shift || {};
 
     my $sMountDeviceList= $oMount->{VALUES}{device} || '';
     my $sMountDir= $oMount->{VALUES}{directory} || '';
-    my $bIsTarget= $oMount->{VALUES}{istarget} || '';
+    my $sTargetGroup= $self->get_target->get_value("group");
     my $sMountType= $oMount->{VALUES}{type} || '';
     my $sMountOpts= $oMount->{VALUES}{opts} || '';
     my $sUnmount= "";
@@ -426,7 +426,7 @@ sub _mount {
                 push @sCurrentMountMessage, $self->warnMsg("Target devices have to be specified with device name");
                 goto nextDevice;
             }
-            %checkResult = %{ $self->_mount_check($sMountDevice, 1) };
+            %checkResult = %{ $self->_mount_check($sMountDevice, $sTargetGroup, 1) };
             push @sCurrentMountMessage, $self->infoMsg($checkResult{INFO}) if $checkResult{INFO};
             push @sCurrentMountMessage, $self->errMsg($checkResult{ERROR}) if $checkResult{ERROR};
             if ($checkResult{CODE} == 1) {
@@ -447,7 +447,7 @@ sub _mount {
         }
 
         if ($bIsTarget) { # this mount object is a target -> check for right target device
-            %checkResult = %{ $self->_mount_check($sMountDevice, 0) };
+            %checkResult = %{ $self->_mount_check($sMountDevice, $sTargetGroup, 0) };
             push @sCurrentMountMessage, $self->infoMsg($checkResult{INFO}) if $checkResult{INFO};
             push @sCurrentMountMessage, $self->errMsg($checkResult{ERROR}) if $checkResult{ERROR};
             if ($checkResult{CODE} == 0) { # device is not mounted
@@ -516,38 +516,49 @@ sub mount {
     my $arMessage= shift || {};
 
     # Collect all mount errors, we want to output them later
-    my @sFirstOfMountMessage= ();
-    my @sUnmount= ();
-    my @sAllMount= ();
+    my $arUnmount= $self->{_UNMOUNT_LIST} || [];
+    my $arAllMount= $self->{_ALL_MOUNT_LIST} || [];
 
-    my $sMount= $self->{VALUES}{mount};
+    my @sToMount= ({MOUNT => $self->{VALUES}{mount}});
+    my $oTarget= $self->{VALUES}{target};
+    $oTarget= $self->get_node($oTarget) unless ref $oTarget;
+    push @sToMount, {
+        MOUNT => $oTarget->{VALUES}->{mount},
+        TARGET => 1,
+    } if ref $oTarget &&  $oTarget->{VALUES}->{mount};
 
     my $iResult= 1; # defaults to mount succeeded
 
-    if ($sMount) {
+    for my $hMount (@sToMount) {
+        my $sMount= $hMount->{MOUNT};
+        my $bIsTarget = $hMount->{TARGET};
+        last unless $iResult;
 
-        # If the 'mount' setting is a node, then just do one mount:
-        if (ref $sMount) {
-            $iResult = $self->_mount($sMount, $arMessage, \@sUnmount, \@sAllMount);
-        }
-        else {
-            for my $sToken (split(/\s+/, $sMount)) {
-                my $oMount= $self->get_node($sToken);
-                if (!ref $oMount) {
-                    push @{ $arMessage }, $self->warnMsg("Mount information \"$sToken\" not defined in config file");
-                    next;
-                }
-                $iResult= $self->_mount($oMount, $arMessage, \@sUnmount, \@sAllMount);
-                if (!$iResult && $oMount->{VALUES}{istarget}) { # on targets mount failures are fatal -> exit
-                    $iResult= 0;
-                    last;
+        if ($sMount) {
+
+            # If the 'mount' setting is a node, then just do one mount:
+            if (ref $sMount) {
+                $iResult = $self->_mount($sMount, $bIsTarget, $arMessage, $arUnmount, $arAllMount);
+            }
+            else {
+                for my $sToken (split(/\s+/, $sMount)) {
+                    my $oMount= $self->get_node($sToken);
+                    if (!ref $oMount) {
+                        push @{ $arMessage }, $self->warnMsg("Mount information \"$sToken\" not defined in config file");
+                        next;
+                    }
+                    $iResult= $self->_mount($oMount, $bIsTarget, $arMessage, $arUnmount, $arAllMount);
+                    if (!$iResult && $bIsTarget) { # on targets mount failures are fatal -> exit
+                        $iResult= 0;
+                        last;
+                    }
                 }
             }
         }
     }
 
-    $self->{_UNMOUNT_LIST}= \@sUnmount;
-    $self->{_ALL_MOUNT_LIST}= \@sAllMount;
+    $self->{_UNMOUNT_LIST}= $arUnmount;
+    $self->{_ALL_MOUNT_LIST}= $arAllMount;
 
     return $iResult;
 }
@@ -630,16 +641,16 @@ sub backup_setup {
         $self->log("All mounts completed. More information after log file initialization...");
     }
 
-    my $oBakDir= $self->get_bakset_target();
+    my $oTarget= $self->get_target();
 
-    if (!$oBakDir->isDir) {
+    unless ($oTarget->isDir) {
         $self->logError(@sMountMessage);
-        $self->logError("Target \"$oBakDir->{PATH}\" is not a directory. Backup set skipped.");
+        $self->logError("Target \"".$oTarget->get_value("PATH")."\" is not a directory. Backup set skipped.");
         return 1;
     }
-    if (!$oBakDir->isWritable) {
+    unless ($oTarget->isWritable) {
         $self->logError(@sMountMessage);
-        $self->logError("Target \"$oBakDir->{PATH}\" is not writable. Backup set skipped.");
+        $self->logError("Target \"".$oTarget->get_value("PATH")."\" is not writable. Backup set skipped.");
         return 2;
     }
 
@@ -657,9 +668,9 @@ sub backup_setup {
         my $sLogLink= "$sBakMonth.$sBakSet/$sBakDay.$sBakSet.log";
 
 # TODO: logfile open!!!!
-        my $sError= $self->{LOG_FILE}->open("$oBakDir->{PATH}/$sLogFile");
+        my $sError= $self->{LOG_FILE}->open($oTarget->get_value("PATH") . "/$sLogFile");
         if ($sError) {
-            $self->log($self->warnMsg("Can't open log file \"".$oBakDir->getFullPath."/$sLogFile\" ($sError). Going on without..."));
+            $self->log($self->warnMsg("Can't open log file \"".$oTarget->getFullPath."/$sLogFile\" ($sError). Going on without..."));
         }
         else {
             if (!$self->{LOG_FILE}->is_new()) {
@@ -667,7 +678,7 @@ sub backup_setup {
                 # TODO: only to file
                 $self->log("", "===========================================================================", "");
             }
-            $oBakDir->symlink("../$sLogFile", "$sLogLink");
+            $oTarget->symlink("../$sLogFile", "$sLogLink");
         }
     }
 
@@ -675,20 +686,20 @@ sub backup_setup {
 
     $self->{VALUES}{unique_target}= "$sBakDay$sSubSet.$sBakSet";
     my $sTarget= "$sBakMonth.$sBakSet/" . $self->{VALUES}{unique_target};
-    $self->{VALUES}{full_target}= $oBakDir->getFullPath."/$sTarget";
+    $self->{VALUES}{full_target}= $oTarget->getFullPath."/$sTarget";
     # $self->{VALUES}{bak_dirs}= \@sBakDir;
 
     $self->_mkdir($sTarget);
 
     $self->log($self->infoMsg("Backup $sBakDay exists, using subset.")) if $sSubSet;
     $self->log($self->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->{VALUES}{title}));
-    $self->log("Logging to: ".$oBakDir->getFullPath."/$sLogFile") if $self->get_value('switch.pretend') && $self->get_value('switch.logging');
+    $self->log("Logging to: ".$oTarget->getFullPath."/$sLogFile") if $self->get_value('switch.pretend') && $self->get_value('switch.logging');
     $self->log("Source: " . $self->{VALUES}{type} . ":" . $self->{VALUES}{source});
 
     $self->log(@sMountMessage);
 
     $self->{_BAK_DIR_LIST}= \@sBakDir;
-    $self->{_BAK_DIR}= $oBakDir;
+    $self->{_BAK_TARGET}= $oTarget;
     $self->{_BAK_DAY}= $sBakDay;
     $self->{_BAK_SET}= $sBakSet;
     $self->{_SUB_SET}= $sSubSet;
@@ -703,7 +714,7 @@ sub backup_run {
     my $sBakType= $self->{VALUES}{type};
 
     my @sBakDir= @{ $self->{_BAK_DIR_LIST} };
-    my $oBakDir= $self->{_BAK_DIR};
+    my $oTarget= $self->{_BAK_TARGET};
     my $sBakSet= $self->{_BAK_SET};
     my $sTarget= $self->{_TARGET};
 
@@ -733,10 +744,10 @@ sub backup_run {
     $self->_remove_old(@sBakDir) unless $iErrorCode;    # only remove old if backup was done
 
     unless ($self->get_value('switch.pretend')) {
-        $oBakDir->unlink("current.$sBakSet");
-        $oBakDir->symlink("$sTarget", "current.$sBakSet");
-        $oBakDir->unlink("current-log.$sBakSet");
-        $oBakDir->symlink($self->{LOG_FILE}->get_filename(), "current-log.$sBakSet") if $self->{LOG_FILE}->get_filename();
+        $oTarget->unlink("current.$sBakSet");
+        $oTarget->symlink("$sTarget", "current.$sBakSet");
+        $oTarget->unlink("current-log.$sBakSet");
+        $oTarget->symlink($self->{LOG_FILE}->get_filename(), "current-log.$sBakSet") if $self->{LOG_FILE}->get_filename();
     }
 
     # check for disc space
@@ -745,7 +756,7 @@ sub backup_run {
         my $iStValue= $sSpaceThreshold =~ /\b([\d\.]+)/ ? $1 : 0;
         my $sStUnit= 'K';
         $sStUnit = uc($1) if $sSpaceThreshold =~ /$iStValue\s*([gmkb\%])/i;
-        my $sDfResult = (split /\n/, $oBakDir->df('', "-k"))[1];
+        my $sDfResult = (split /\n/, $oTarget->df('', "-k"))[1];
         my ($iDfSize, $iDfAvail) = ($1, $2) if $sDfResult =~ /^\S+\s+(\d+)\s+\d+\s+(\d+)\s+/;
         $iDfAvail /= $iDfSize / 100 if $sStUnit eq '%';
         $iDfAvail >>= 20            if $sStUnit eq 'G';
@@ -754,7 +765,7 @@ sub backup_run {
         if ($iStValue > $iDfAvail) {
             $self->_mail_warning('disc space too low',
                 (
-                    "The free space on your target \"$oBakDir->{PATH}\" has dropped",
+                    "The free space on your target \"".$oTarget->getFullPath."\" has dropped",
                     "below $iStValue$sStUnit to $iDfAvail$sStUnit."
                 )
             );
@@ -808,10 +819,10 @@ sub rm_file {
     my %iFoundMask= ();
 
     my $sBakSet= $self->{VALUES}{name};
-    my $sBakDir= $self->get_bakset_target();
+    my $oTarget= $self->get_target();
 
     # TODO: Make a better check!
-    $self->logExitError(3, "Can't remove! \"$sBakSet.target\" is empty or points to file system root.") if $sBakDir eq '' || $sBakDir eq '/';
+    $self->logExitError(3, "Can't remove! \"$sBakSet.target\" is empty or points to file system root.") if $oTarget->getPath eq '' || $oTarget->getPath eq '/';
 
     my @sBakDir= $self->collect_bakdirs();
 
