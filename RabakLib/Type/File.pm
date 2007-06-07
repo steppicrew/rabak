@@ -21,7 +21,7 @@ sub run {
 
     my $sBakSet= $self->get_value('name');
     my $sRsyncOpts = $self->get_value('rsync_opts') || '';
-    my $sRsyncPass= $self->get_value('password');
+    my $sRsyncPass= $self->get_value('targetpasswd');
 
     my $sSrc= $self->valid_source_dir() or return 3;
 
