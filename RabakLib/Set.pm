@@ -7,6 +7,7 @@ use strict;
 
 use RabakLib::Conf;
 use RabakLib::Log;
+use RabakLib::Path;
 
 use Data::Dumper;
 use File::Spec ();
@@ -220,29 +221,46 @@ sub _remove_old {
 
 sub get_bakset_target {
     my $self= shift;
-    return File::Spec->rel2abs($self->{VALUES}{target});
+
+    unless ($self->{_objTarget}) {
+        my $target= $self->get_node($self->{VALUES}{target});
+        if ($target) {
+            $self->{_objTarget}= RabakLib::Path->new(
+                PATH   => $target->{VALUES}->{path},
+                HOST   => $target->{VALUES}->{host},
+                USER   => $target->{VALUES}->{user},
+                PASSWD => $target->{VALUES}->{passwd},
+            );
+        }
+        else {
+            $self->{_objTarget}= RabakLib::Path->new(
+                PATH   => $self->{VALUES}{target},
+            );
+        }
+    }
+    return $self->{_objTarget};
 }
 
+# collect all backup dirs
 sub collect_bakdirs {
     my $self= shift;
     my $sSubSetBakDay= shift || 0;
 
     my $sBakSet= $self->{VALUES}{name};
-    my $sBakDir= $self->get_bakset_target();
+    my $oBakDir= $self->get_bakset_target();
     my @sBakDir= ();
     my $sSubSet= '';
 
-    while (<$sBakDir/*>) {
-        next unless /^$sBakDir\/(.*)/;
-        my $sMonthDir= $1;
+    my %hBakDirs = $oBakDir->getDirRecursive('', 1); # get recurisive file listing for 2 levels
+    for my $sMonthDir (keys %hBakDirs) {
+        next unless ref $hBakDirs{$sMonthDir};
 
-        next unless -d "$sBakDir/$sMonthDir" && $sMonthDir =~ /^(\d\d\d\d\-\d\d)\.($sBakSet)$/;
+        next unless $sMonthDir =~ /\/(\d\d\d\d\-\d\d)\.($sBakSet)$/;
 
-        while (<$sBakDir/$sMonthDir/*>) {
-            next unless /^$sBakDir\/$sMonthDir\/(.*)/;
-            my $sDayDir= $1;
+        for my $sDayDir (keys %{$hBakDirs{$sMonthDir}}) {
+            next unless ref $hBakDirs{$sMonthDir}->{$sDayDir};
             # print "$sDayDir??\n";
-            next unless -d $_ && $sDayDir =~ /^(\d\d\d\d\-\d\d\-\d\d)([a-z])?\.($sBakSet)$/;
+            next unless $sDayDir =~ /\/(\d\d\d\d\-\d\d\-\d\d)([a-z])?\.($sBakSet)$/;
             if ($sSubSetBakDay eq $1) {
                 die "Maximum of 27 backups reached!" if $2 && $2 eq 'z';
                 if (!$2) {
@@ -252,7 +270,7 @@ sub collect_bakdirs {
                     $sSubSet= chr(ord($2)+1) if $sSubSet le $2;
                 }
             }
-            push @sBakDir, "$sBakDir/$sMonthDir/$sDayDir";
+            push @sBakDir, $sDayDir;
             # print "$sDayDir\n";
         }
     }
@@ -469,7 +487,7 @@ nextDevice:
     }
 
     push @{ $arMessage }, $self->infoMsg("Mounted$spMountDevice$spMountDir") if $iResult;
-    push @{ $arMessage }, $self->errMsg("All mounts failed") unless $iResult;
+    push @{ $arMessage }, $self->errorMsg("All mounts failed") unless $iResult;
     return $iResult;
 }
 
@@ -480,9 +498,7 @@ sub _mkdir {
     return 1 if $self->get_value('switch.pretend');
 
     # TODO: set MASK ?
-    return 1 if mkdir $sDir;
-
-    return 1 if $! == 17; # file exists is ok
+    return 1 if $self->{_objTarget}->mkdir($sDir);
 
     $self->log($self->warnMsg("Mkdir '$sDir' failed: $!"));
     return 0;
@@ -614,16 +630,16 @@ sub backup_setup {
         $self->log("All mounts completed. More information after log file initialization...");
     }
 
-    my $sBakDir= $self->get_bakset_target();
+    my $oBakDir= $self->get_bakset_target();
 
-    if (!-d $sBakDir) {
+    if (!$oBakDir->isDir) {
         $self->logError(@sMountMessage);
-        $self->logError("Target \"$sBakDir\" is not a directory. Backup set skipped.");
+        $self->logError("Target \"$oBakDir->{PATH}\" is not a directory. Backup set skipped.");
         return 1;
     }
-    if (!-w $sBakDir) {
+    if (!$oBakDir->isWritable) {
         $self->logError(@sMountMessage);
-        $self->logError("Target \"$sBakDir\" is not writable. Backup set skipped.");
+        $self->logError("Target \"$oBakDir->{PATH}\" is not writable. Backup set skipped.");
         return 2;
     }
 
@@ -633,16 +649,17 @@ sub backup_setup {
 
     my $sLogFile= "$sBakMonth-log/$sBakDay.$sBakSet.log";
 
-    $self->_mkdir("$sBakDir/$sBakMonth.$sBakSet");
+    $self->_mkdir("$sBakMonth.$sBakSet");
 
     if (!$self->get_value('switch.pretend') && $self->get_value('switch.logging')) {
-        $self->_mkdir("$sBakDir/$sBakMonth-log");
+        $self->_mkdir("$sBakMonth-log");
 
         my $sLogLink= "$sBakMonth.$sBakSet/$sBakDay.$sBakSet.log";
 
-        my $sError= $self->{LOG_FILE}->open("$sBakDir/$sLogFile");
+# TODO: logfile open!!!!
+        my $sError= $self->{LOG_FILE}->open("$oBakDir->{PATH}/$sLogFile");
         if ($sError) {
-            $self->log($self->warnMsg("Can't open log file \"$sBakDir/$sLogFile\" ($sError). Going on without..."));
+            $self->log($self->warnMsg("Can't open log file \"".$oBakDir->getFullPath."/$sLogFile\" ($sError). Going on without..."));
         }
         else {
             if (!$self->{LOG_FILE}->is_new()) {
@@ -650,7 +667,7 @@ sub backup_setup {
                 # TODO: only to file
                 $self->log("", "===========================================================================", "");
             }
-            symlink "../$sLogFile", "$sBakDir/$sLogLink";
+            $oBakDir->symlink("../$sLogFile", "$sLogLink");
         }
     }
 
@@ -658,20 +675,20 @@ sub backup_setup {
 
     $self->{VALUES}{unique_target}= "$sBakDay$sSubSet.$sBakSet";
     my $sTarget= "$sBakMonth.$sBakSet/" . $self->{VALUES}{unique_target};
-    $self->{VALUES}{full_target}= "$sBakDir/$sTarget";
+    $self->{VALUES}{full_target}= $oBakDir->getFullPath."/$sTarget";
     # $self->{VALUES}{bak_dirs}= \@sBakDir;
 
-    $self->_mkdir($self->{VALUES}{full_target});
+    $self->_mkdir($sTarget);
 
     $self->log($self->infoMsg("Backup $sBakDay exists, using subset.")) if $sSubSet;
     $self->log($self->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->{VALUES}{title}));
-    $self->log("Logging to: $sBakDir/$sLogFile") if $self->get_value('switch.pretend') && $self->get_value('switch.logging');
+    $self->log("Logging to: ".$oBakDir->getFullPath."/$sLogFile") if $self->get_value('switch.pretend') && $self->get_value('switch.logging');
     $self->log("Source: " . $self->{VALUES}{type} . ":" . $self->{VALUES}{source});
 
     $self->log(@sMountMessage);
 
     $self->{_BAK_DIR_LIST}= \@sBakDir;
-    $self->{_BAK_DIR}= $sBakDir;
+    $self->{_BAK_DIR}= $oBakDir;
     $self->{_BAK_DAY}= $sBakDay;
     $self->{_BAK_SET}= $sBakSet;
     $self->{_SUB_SET}= $sSubSet;
@@ -686,7 +703,7 @@ sub backup_run {
     my $sBakType= $self->{VALUES}{type};
 
     my @sBakDir= @{ $self->{_BAK_DIR_LIST} };
-    my $sBakDir= $self->{_BAK_DIR};
+    my $oBakDir= $self->{_BAK_DIR};
     my $sBakSet= $self->{_BAK_SET};
     my $sTarget= $self->{_TARGET};
 
@@ -716,10 +733,10 @@ sub backup_run {
     $self->_remove_old(@sBakDir) unless $iErrorCode;    # only remove old if backup was done
 
     unless ($self->get_value('switch.pretend')) {
-        unlink "$sBakDir/current.$sBakSet";
-        symlink "$sTarget", "$sBakDir/current.$sBakSet";
-        unlink "$sBakDir/current-log.$sBakSet";
-        symlink $self->{LOG_FILE}->get_filename(), "$sBakDir/current-log.$sBakSet" if $self->{LOG_FILE}->get_filename();
+        $oBakDir->unlink("current.$sBakSet");
+        $oBakDir->symlink("$sTarget", "current.$sBakSet");
+        $oBakDir->unlink("current-log.$sBakSet");
+        $oBakDir->symlink($self->{LOG_FILE}->get_filename(), "current-log.$sBakSet") if $self->{LOG_FILE}->get_filename();
     }
 
     # check for disc space
@@ -728,7 +745,7 @@ sub backup_run {
         my $iStValue= $sSpaceThreshold =~ /\b([\d\.]+)/ ? $1 : 0;
         my $sStUnit= 'K';
         $sStUnit = uc($1) if $sSpaceThreshold =~ /$iStValue\s*([gmkb\%])/i;
-        my $sDfResult = (split /\n/, `df -k "$sBakDir"`)[1];
+        my $sDfResult = (split /\n/, $oBakDir->df('', "-k"))[1];
         my ($iDfSize, $iDfAvail) = ($1, $2) if $sDfResult =~ /^\S+\s+(\d+)\s+\d+\s+(\d+)\s+/;
         $iDfAvail /= $iDfSize / 100 if $sStUnit eq '%';
         $iDfAvail >>= 20            if $sStUnit eq 'G';
@@ -737,7 +754,7 @@ sub backup_run {
         if ($iStValue > $iDfAvail) {
             $self->_mail_warning('disc space too low',
                 (
-                    "The free space on your target \"$sBakDir\" has dropped",
+                    "The free space on your target \"$oBakDir->{PATH}\" has dropped",
                     "below $iStValue$sStUnit to $iDfAvail$sStUnit."
                 )
             );

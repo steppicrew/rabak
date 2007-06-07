@@ -108,7 +108,7 @@ sub valid_source_dir {
     my $self= shift;
 
     my $sSourceDir= $self->get_value('source');
-    unless ($sSourceDir =~ /^(\S+\@)?[\-0-9a-z\.]+\:/) { # if no remote path
+    unless ($sSourceDir =~ /^(\S+\@)?[\-0-9a-z\.]+\:/i) { # if no remote path
         $sSourceDir= File::Spec->rel2abs($sSourceDir);
 
         if (!-d $sSourceDir) {
