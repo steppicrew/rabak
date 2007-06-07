@@ -21,7 +21,8 @@ sub run {
 
     my $sBakSet= $self->get_value('name');
     my $sRsyncOpts = $self->get_value('rsync_opts') || '';
-    my $sRsyncPass= $self->get_value('targetpasswd');
+    my $oTarget= $self->get_target;
+    my $sRsyncPass= $oTarget->get_value("passwd");
 
     my $sSrc= $self->valid_source_dir() or return 3;
 
@@ -89,7 +90,26 @@ sub run {
     map { $sFlags .= " --link-dest=\"$_\""; } @sBakDir;
 
     $sSrc .= "/" unless $sSrc =~ /\/$/;
-    my $sDestDir= $self->get_value('full_target'); # TODO: remote targets (possible to be done in ::Set)
+    my $sDestDir= $oTarget->getPath;
+    my $childId;
+    if ($oTarget->remote) {
+        $sDestDir= $oTarget->get_value("host") . ":44556$sDestDir";
+        $sDestDir= $oTarget->get_value("user") . "\@$sDestDir" if $oTarget->get_value("user");
+        $sDestDir= "rsync://$sDestDir";
+        $childId= fork;
+        if (defined $childId) {
+            unless ($childId) { # we are the child
+                $oTarget->_sshcmd("rsync --daemon --no-detach --port=44556");
+                exit;
+            }
+            print "$childId\n";
+            sleep 20; # wait for starting up rsync daemon
+            print "continueing...\n";
+        }
+        else {
+            die "faild to fork child process";
+        }
+    }
 
     my $sRsyncCmd= "rsync $sFlags \"$sSrc\" \"$sDestDir\"";
 
@@ -98,8 +118,11 @@ sub run {
     # print Dumper($self); die;
 
     my @sRsyncStat= grep !/^([^\/]+\/)+$/, `$sRsyncCmd 2>&1`;
+
+    kill 9, $childId if $childId; # kill rsync daemon
+
     my @sRsyncFiles= ();
-    push @sRsyncFiles, shift @sRsyncStat while ($sRsyncStat[0] !~ /^\s+$/);
+    push @sRsyncFiles, shift @sRsyncStat while ($sRsyncStat[0] && $sRsyncStat[0] !~ /^\s+$/);
     push @sRsyncFiles, shift @sRsyncStat;
 
     $self->log([ 3, @sRsyncFiles ]);
