@@ -23,6 +23,7 @@ sub run {
     my $sRsyncOpts = $self->get_value('rsync_opts') || '';
     my $oTarget= $self->get_target;
     my $sRsyncPass= $oTarget->get_value("passwd");
+    my $sPort= $oTarget->get_value("port") || 22;
 
     my $sSrc= $self->valid_source_dir() or return 3;
 
@@ -77,7 +78,8 @@ sub run {
     $sFlags .= " -i" if $self->{DEBUG};
     $sFlags .= " --dry-run" if $self->get_value('switch.pretend');
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
-    if ($sRsyncPass) {
+    $sFlags .= " -e 'ssh -p $sPort'" if $oTarget->remote;
+    if ($oTarget->remote && $sRsyncPass) {
         ($fhwPass, $sPassFile)= $self->tempfile();
         print $fhwPass $sRsyncPass;
         close $fhwPass;
@@ -90,25 +92,10 @@ sub run {
     map { $sFlags .= " --link-dest=\"$_\""; } @sBakDir;
 
     $sSrc .= "/" unless $sSrc =~ /\/$/;
-    my $sDestDir= $oTarget->getPath;
-    my $childId;
+    my $sDestDir= $oTarget->getPath($self->get_value("full_target"));
     if ($oTarget->remote) {
-        $sDestDir= $oTarget->get_value("host") . ":44556$sDestDir";
+        $sDestDir= $oTarget->get_value("host") . ":$sDestDir";
         $sDestDir= $oTarget->get_value("user") . "\@$sDestDir" if $oTarget->get_value("user");
-        $sDestDir= "rsync://$sDestDir";
-        $childId= fork;
-        if (defined $childId) {
-            unless ($childId) { # we are the child
-                $oTarget->_sshcmd("rsync --daemon --no-detach --port=44556");
-                exit;
-            }
-            print "$childId\n";
-            sleep 20; # wait for starting up rsync daemon
-            print "continueing...\n";
-        }
-        else {
-            die "faild to fork child process";
-        }
     }
 
     my $sRsyncCmd= "rsync $sFlags \"$sSrc\" \"$sDestDir\"";
@@ -118,8 +105,6 @@ sub run {
     # print Dumper($self); die;
 
     my @sRsyncStat= grep !/^([^\/]+\/)+$/, `$sRsyncCmd 2>&1`;
-
-    kill 9, $childId if $childId; # kill rsync daemon
 
     my @sRsyncFiles= ();
     push @sRsyncFiles, shift @sRsyncStat while ($sRsyncStat[0] && $sRsyncStat[0] !~ /^\s+$/);
