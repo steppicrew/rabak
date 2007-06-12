@@ -26,7 +26,9 @@ sub new {
         ERRORCODE => 0,
         DEBUG => 0,
         SSH_DEBUG => 0,
-        VALUES => {},
+        VALUES => {
+            PORT => 22,
+        },
     };
     for my $key (keys %hParams) {
         $self->{VALUES}->{uc $key}= $hParams{$key};
@@ -86,6 +88,10 @@ sub _savecmd {
     my $self= shift;
     my $cmd= shift;
 
+    print "************* COMMAND $cmd START ***************\n" .
+        "$cmd\n" .
+        "************** COMMAND $cmd END ****************\n" if $self->{DEBUG};
+
     if ($self->remote) {
         my ($stdout, $stderr, $exit) = $self->_sshcmd("$cmd");
         return $stdout || '';
@@ -99,6 +105,7 @@ sub _sshcmd {
     my $self= shift;
     my $cmd= shift;
     my $ssh= shift || $self->_ssh;
+
     return $ssh->cmd($cmd);
 }
 
@@ -268,7 +275,8 @@ sub mkdir {
 
 sub symlink {
     my $self= shift;
-    my $sOrigFile= $self->getPath(shift);
+#    my $sOrigFile= $self->getPath(shift);
+    my $sOrigFile= shift;
     my $sSymLink= $self->getPath(shift);
 
     return ${$self->_saveperl('
@@ -320,6 +328,25 @@ sub isWritable {
             $result= -w $sFile;
         ', { "sFile" => $sFile, }, '$result'
     )};
+}
+
+sub copyLoc2Rem {
+    my $self= shift;
+    my $sLocFile= shift;
+    my $sRemFile= $self->getPath(shift);
+
+    my $fh;
+    if (CORE::open $fh, "$sLocFile") {
+        while (<$fh>) {
+            chomp;
+            s/\'/\'\\\'\'/;
+            $self->_sshcmd("echo '$_' >> '$sRemFile'");
+        }
+        CORE::close $fh;
+        return 1;
+    }
+    return 0;
+#    return $self->_sshcmd("scp -P $sPort '$sLocFile' '$sRemFile'");
 }
 
 1;
