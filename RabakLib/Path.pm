@@ -330,23 +330,44 @@ sub isWritable {
     )};
 }
 
-sub copyLoc2Rem {
+sub isFile {
     my $self= shift;
-    my $sLocFile= shift;
-    my $sRemFile= $self->getPath(shift);
+    my $sFile= $self->getPath(shift);
 
-    my $fh;
-    if (CORE::open $fh, "$sLocFile") {
-        while (<$fh>) {
-            chomp;
-            s/\'/\'\\\'\'/;
-            $self->_sshcmd("echo '$_' >> '$sRemFile'");
-        }
-        CORE::close $fh;
-        return 1;
-    }
-    return 0;
-#    return $self->_sshcmd("scp -P $sPort '$sLocFile' '$sRemFile'");
+    return ${$self->_saveperl('
+            # isFile()
+            $result= -f $sFile;
+        ', { "sFile" => $sFile, }, '$result'
+    )};
 }
+
+sub echo {
+    my $self= shift;
+    my $sFile= $self->getPath(shift);
+    my @sLines= @_;
+
+    for (@sLines) {
+        chomp;
+        s/\'/\'\\\'\'/;
+        $self->_savecmd("echo '$_' >> '$sFile'");
+    }
+}
+
+# TODO: TEXT ONLY!!!
+#sub copyLoc2Rem {
+#    my $self= shift;
+#    my $sLocFile= shift;
+#    my $sRemFile= $self->getPath(shift);
+#
+#    my $fh;
+#    if (CORE::open $fh, "$sLocFile") {
+#        while (<$fh>) {
+#            $self->echo($sRemFile, $_);
+#        }
+#        CORE::close $fh;
+#        return 1;
+#    }
+#    return 0;
+#}
 
 1;

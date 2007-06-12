@@ -7,6 +7,7 @@ use strict;
 
 use Data::Dumper;
 use RabakLib::Conf;
+use RabakLib::Path;
 
 # use File::Spec ();
 use POSIX qw(strftime);
@@ -22,12 +23,15 @@ sub new {
         MESSAGES => '',
         LOG_FH => undef,
         FILE_NAME => '',
+        REAL_FILE_NAME => '',
         IS_NEW => 0,
 
         DEFAULTLEVEL => 2,
         INFOLEVEL => 1,
         WARNLEVEL => -1,
         ERRLEVEL => -2,
+
+        TARGET => undef,
     };
     bless $self, $class;
 }
@@ -47,10 +51,14 @@ sub _timestr {
 sub _flush {
     my $self= shift;
 
-
-    return unless $self->{LOG_FH} && $self->{UNFLUSHED_MESSAGES};
-    my $fh= $self->{LOG_FH};
-    print $fh $self->{UNFLUSHED_MESSAGES};
+    return unless $self->{TARGET} && $self->{UNFLUSHED_MESSAGES};
+    if ($self->{TARGET}->remote) {
+        $self->{TARGET}->echo($self->get_filename, $self->{UNFLUSHED_MESSAGES});
+    }
+    else {
+        my $fh= $self->{LOG_FH};
+        print $fh $self->{UNFLUSHED_MESSAGES};
+    }
 
     $self->{UNFLUSHED_MESSAGES}= '';
 }
@@ -71,13 +79,18 @@ sub get_messages {
 sub open {
     my $self= shift;
     my $sFileName= shift;
+    $self->{TARGET}= shift || RabakLib::Path->new();
 
-    $self->{FILE_NAME}= $sFileName;
-    $self->{IS_NEW}= !-f $sFileName;
+    $self->close() if $self->{TARGET};
 
-    unless (open ($self->{LOG_FH}, ">>$sFileName")) {
-        $self->{LOG_FH}= undef;
-        return $!;
+    $self->{FILE_NAME}= $self->{REAL_FILE_NAME}= $sFileName;
+    $self->{IS_NEW}= !$self->{TARGET}->isFile($sFileName);
+
+    unless ($self->{TARGET}->remote) {
+        unless (open ($self->{LOG_FH}, ">>$sFileName")) {
+            $self->{LOG_FH}= undef;
+            return $!;
+        }
     }
     return '';
 }
@@ -85,15 +98,16 @@ sub open {
 sub close {
     my $self= shift;
 
-    return unless $self->{LOG_FH};
-    close $self->{LOG_FH};
+    return unless $self->{TARGET};
+    close $self->{LOG_FH} if $self->{LOG_FH};
     $self->{LOG_FH}= undef;
+    $self->{TARGET}= undef;
 }
 
 sub get_filename() {
     my $self= shift;
 
-    return $self->{LOG_FH} ? $self->{FILE_NAME} : undef;
+    return $self->{TARGET} ? $self->{FILE_NAME} : undef;
 }
 
 sub is_new {

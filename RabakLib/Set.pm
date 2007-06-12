@@ -219,11 +219,6 @@ sub _remove_old {
 #  ...
 # -----------------------------------------------------------------------------
 
-sub tempfile {
-    File::Temp->safe_level( File::Temp::HIGH ); # make sure tempfiles are secure
-    return @_= File::Temp->tempfile('rabak-XXXXXX', UNLINK => 1, DIR => File::Spec->tmpdir);
-}
-
 sub get_target {
     my $self= shift;
 
@@ -673,11 +668,7 @@ sub backup_setup {
         my $sLogLink= "$sBakMonth.$sBakSet/$sBakDay.$sBakSet.log";
 
         my $sLogFileName= $oTarget->get_value("PATH") . "/$sLogFile";
-        if ($oTarget->remote) {
-            (my $fh, $sLogFileName)= $self->tempfile();
-            close $fh;
-        }
-
+        
         my $sError= $self->{LOG_FILE}->open($sLogFileName);
         if ($sError) {
             $self->log($self->warnMsg("Can't open log file \"$sLogFileName\" ($sError). Going on without..."));
@@ -714,7 +705,6 @@ sub backup_setup {
     $self->{_BAK_SET}= $sBakSet;
     $self->{_SUB_SET}= $sSubSet;
     $self->{_TARGET}= $sTarget;
-    $self->{_REL_LOG_FILE_NAME}= $sLogFile; # relative path
 
     return 0;
 }
@@ -799,12 +789,7 @@ sub backup_cleanup {
     my $sSubSet= $self->{_SUB_SET};
 
     $self->log($self->infoMsg("Backup done at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet")) if $sBakSet && $sBakDay && $sSubSet;
-    my $sLogFileName= $self->{LOG_FILE}->get_filename;
     $self->{LOG_FILE}->close();
-    if ($oTarget->remote) {
-# TODO: remote logging has to left to RabakLib::Log
-        $oTarget->copyLoc2Rem($sLogFileName, $self->{_REL_LOG_FILE_NAME});
-    }
     $self->unmount(0);
 
     $self->_mail_log();
