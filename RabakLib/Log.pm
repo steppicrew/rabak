@@ -79,14 +79,16 @@ sub get_messages {
 sub open {
     my $self= shift;
     my $sFileName= shift;
-    $self->{TARGET}= shift || RabakLib::Path->new();
+    my $oTarget= shift || RabakLib::Path->new();
 
     $self->close() if $self->{TARGET};
 
-    $self->{FILE_NAME}= $self->{REAL_FILE_NAME}= $sFileName;
-    $self->{IS_NEW}= !$self->{TARGET}->isFile($sFileName);
+    $self->{TARGET}= $oTarget;
 
-    unless ($self->{TARGET}->remote) {
+    $self->{FILE_NAME}= $self->{REAL_FILE_NAME}= $sFileName;
+    $self->{IS_NEW}= !$oTarget->isFile($sFileName);
+
+    unless ($oTarget->remote) {
         unless (open ($self->{LOG_FH}, ">>$sFileName")) {
             $self->{LOG_FH}= undef;
             return $!;

@@ -669,7 +669,7 @@ sub backup_setup {
 
         my $sLogFileName= $oTarget->get_value("PATH") . "/$sLogFile";
         
-        my $sError= $self->{LOG_FILE}->open($sLogFileName);
+        my $sError= $self->{LOG_FILE}->open($sLogFileName, $oTarget);
         if ($sError) {
             $self->log($self->warnMsg("Can't open log file \"$sLogFileName\" ($sError). Going on without..."));
         }
