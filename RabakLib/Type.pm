@@ -22,9 +22,9 @@ sub new {
     bless $self, $class;
 }
 
-sub get_target {
+sub get_targetPath {
     my $self= shift;
-    return $self->{SET}->get_target;
+    return $self->{SET}->get_targetPath;
 #    return File::Spec->rel2abs($self->get_value('target'));
 }
 

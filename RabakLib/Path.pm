@@ -2,6 +2,8 @@
 
 package RabakLib::Path;
 
+# wrapper class to exceute commands remotely or locally
+
 use warnings;
 use strict;
 
@@ -84,16 +86,17 @@ sub _ssh {
     return $self->{SSH};
 }
 
-sub _savecmd {
+sub savecmd {
     my $self= shift;
     my $cmd= shift;
 
-    print "************* COMMAND $cmd START ***************\n" .
+    print "************* COMMAND START ***************\n" .
         "$cmd\n" .
-        "************** COMMAND $cmd END ****************\n" if $self->{DEBUG};
+        "************** COMMAND END ****************\n" if $self->{DEBUG};
 
     if ($self->remote) {
         my ($stdout, $stderr, $exit) = $self->_sshcmd("$cmd");
+        $?= $exit;
         return $stdout || '';
     }
     else {
@@ -138,16 +141,18 @@ sub _saveperl {
         $sPerlDump
     ";
 
+    if ($self->{DEBUG}) {
+        # extract script name
+        my $sScriptName= "";
+        $sScriptName= " \"$1\"" if $sPerlScript=~ s/^\s*\#\s*(\w+)\s?\(\s*\)\s*$//m;
+
+        print "************* SCRIPT$sScriptName START ***************\n" .
+            "$sPerlScript\n" .
+            "************** SCRIPT$sScriptName END ****************\n";
+    }
+
     # compress script
     $sPerlScript=~ s/^\s+//mg;
-    # extract script name
-    my $sScriptName= "";
-    $sScriptName= " \"$1\"" if $sPerlScript=~ s/^\#\s*(\w+)\s?\(\s*\)\s*$//m;
-
-    print "************* SCRIPT$sScriptName START ***************\n" .
-        "$sPerlScript\n" .
-        "************** SCRIPT$sScriptName END ****************\n" if $self->{DEBUG};
-
     # now execute script
     my $result;
     if ($self->remote) {
@@ -263,6 +268,22 @@ sub getDirRecursive {
     )};
 }
 
+sub tempfile {
+    File::Temp->safe_level( File::Temp::HIGH ); # make sure tempfiles are secure
+    return @_= File::Temp->tempfile('rabak-XXXXXX', UNLINK => 1, DIR => File::Spec->tmpdir);
+}
+
+# makes sure the given file exists locally
+sub getLocalFile {
+    my $self= shift;
+    my $sFile= $self->getPath(shift);
+
+    return $sFile unless $self->remote;
+    my ($fh, $sTmpName) = $self->tempfile;
+    print $fh $self->savecmd("cat '$sFile'");
+    CORE::close $fh;
+}
+
 sub mkdir {
     my $self= shift;
     my $sPath= $self->getPath(shift);
@@ -305,7 +326,7 @@ sub df {
     my $sDir= $self->getPath(shift);
     my $sParams= shift || '';
 
-    return $self->_savecmd("df $sParams '$sDir'");
+    return $self->savecmd("df $sParams '$sDir'");
 }
 
 sub isDir {
@@ -316,6 +337,17 @@ sub isDir {
             # isDir()
             $result= -d $sDir;
         ', { "sDir" => $sDir, }, '$result'
+    )};
+}
+
+sub isReadable {
+    my $self= shift;
+    my $sFile= $self->getPath(shift);
+
+    return ${$self->_saveperl('
+            # isReadable()
+            $result= -r $sFile;
+        ', { "sFile" => $sFile, }, '$result'
     )};
 }
 
@@ -349,8 +381,22 @@ sub echo {
     for (@sLines) {
         chomp;
         s/\'/\'\\\'\'/;
-        $self->_savecmd("echo '$_' >> '$sFile'");
+        $self->savecmd("echo '$_' >> '$sFile'");
     }
+}
+
+sub mount {
+    my $self= shift;
+    my $sParams= shift || '';
+
+    return $self->savecmd("mount $sParams");
+}
+
+sub umount {
+    my $self= shift;
+    my $sParams= shift || '';
+
+    return $self->savecmd("umount $sParams");
 }
 
 # TODO: TEXT ONLY!!!

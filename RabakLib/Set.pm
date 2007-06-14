@@ -219,7 +219,7 @@ sub _remove_old {
 #  ...
 # -----------------------------------------------------------------------------
 
-sub get_target {
+sub get_targetPath {
     my $self= shift;
 
     unless ($self->{_objTarget}) {
@@ -246,27 +246,29 @@ sub collect_bakdirs {
     my $sSubSetBakDay= shift || 0;
 
     my $sBakSet= $self->{VALUES}{name};
-    my $oTarget= $self->get_target();
+    my $oTargetPath= $self->get_targetPath();
     my @sBakDir= ();
     my $sSubSet= '';
 
-    my %hBakDirs = $oTarget->getDirRecursive('', 1); # get recurisive file listing for 2 levels
+    my %hBakDirs = $oTargetPath->getDirRecursive('', 1); # get recurisive file listing for 2 levels
     for my $sMonthDir (keys %hBakDirs) {
-        next unless ref $hBakDirs{$sMonthDir};
+        next unless ref $hBakDirs{$sMonthDir}; # dirs point to hashes
 
         next unless $sMonthDir =~ /\/(\d\d\d\d\-\d\d)\.($sBakSet)$/;
 
         for my $sDayDir (keys %{$hBakDirs{$sMonthDir}}) {
-            next unless ref $hBakDirs{$sMonthDir}->{$sDayDir};
+            next unless ref $hBakDirs{$sMonthDir}->{$sDayDir}; # dirs point to hashes
             # print "$sDayDir??\n";
-            next unless $sDayDir =~ /\/(\d\d\d\d\-\d\d\-\d\d)([a-z])?\.($sBakSet)$/;
+            next unless $sDayDir =~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?(\-\d{3})?\.($sBakSet)$/; # [a-z] for backward compatibility
             if ($sSubSetBakDay eq $1) {
-                die "Maximum of 27 backups reached!" if $2 && $2 eq 'z';
-                if (!$2) {
-                    $sSubSet= 'a' if $sSubSet eq '';
+                my $sCurSubSet= $2 || '';
+                die "Maximum of 1000 backups reached!" if $sCurSubSet eq '-999';
+                if (!$sCurSubSet) {
+                    $sSubSet= '-001' if $sSubSet eq '';
                 }
-                else {
-                    $sSubSet= chr(ord($2)+1) if $sSubSet le $2;
+                elsif ($sSubSet le $sCurSubSet) {
+                    $sCurSubSet=~ s/^\-0*//;
+                    $sSubSet= sprintf("-%03d", $sCurSubSet + 1);
                 }
             }
             push @sBakDir, $sDayDir;
@@ -325,8 +327,9 @@ sub _mount_check {
     };
 
     my $sqMountDevice= quotemeta $sMountDevice;
+    my $oTargetPath= $self->get_targetPath;
 
-    my $cur_mounts= `mount`;
+    my $cur_mounts= $oTargetPath->mount;
     # TODO:
     #     check for "mount" outputs different from '/dev/XXX on /mount/dir type ...' on other systems
     #     notice: the check for "type" after mount dir is because of missing delimiters if mount dir contains spaces!
@@ -336,9 +339,9 @@ sub _mount_check {
         $result->{CODE}= 1; # defaults to "not a target"
 
         my $sDevConfFile= "$sMountDir/" . ($self->get_value('switch.dev_conf_file') || "rabak.dev.cf");
-        if (-r "$sDevConfFile") {
+        if ($oTargetPath->isReadable("$sDevConfFile")) {
             if ($sTargetValue) {
-                my $oDevConfFile= RabakLib::ConfFile->new($sDevConfFile);
+                my $oDevConfFile= RabakLib::ConfFile->new($oTargetPath->getLocalFile($sDevConfFile));
                 my $oDevConf= $oDevConfFile->conf();
                 my $sFoundTargets = $oDevConf->get_value('targetvalues') || '';
                 if (" $sFoundTargets " =~ /\s$sqTargetValue\s/) {
@@ -357,10 +360,10 @@ sub _mount_check {
             }
         }
         else {
-            $result->{INFO}= "Device config file \"$sDevConfFile\" not found on device \"$sMountDevice\"";
+            $result->{INFO}= "Device config file \"".$oTargetPath->getFullPath($sDevConfFile)."\" not found on device \"$sMountDevice\"";
         }
 
-        $result->{UMOUNT}= `umount "$sMountDevice"` if ($result->{CODE} == 2) && $bUnmount;
+        $result->{UMOUNT}= $oTargetPath->umount("$sMountDevice 2>&1") if ($result->{CODE} == 2) && $bUnmount;
     }
     return $result;
 }
@@ -386,7 +389,7 @@ sub _mount {
 
     my $sMountDeviceList= $oMount->{VALUES}{device} || '';
     my $sMountDir= $oMount->{VALUES}{directory} || '';
-    my $sTargetGroup= $self->get_target->get_value("group");
+    my $sTargetGroup= $self->get_targetPath->get_value("group");
     my $sMountType= $oMount->{VALUES}{type} || '';
     my $sMountOpts= $oMount->{VALUES}{opts} || '';
     my $sUnmount= "";
@@ -438,7 +441,8 @@ sub _mount {
             }
         }
 
-        my $sMountResult= `mount $spMountType$spMountDevice$spMountDir$spMountOpts 2>&1`;
+        my $oTargetPath= $bIsTarget ? $self->get_targetPath : RabakLib::Path->new();
+        my $sMountResult= $oTargetPath->mount("$spMountType$spMountDevice$spMountDir$spMountOpts 2>&1");
         if ($?) { # mount failed
             chomp $sMountResult;
             $sMountResult =~ s/\r?\n/ - /g;
@@ -454,7 +458,7 @@ sub _mount {
                 push @sCurrentMountMessage, $self->warnMsg("Device \"$sMountDevice\" is not mounted!");
             }
             elsif ($checkResult{CODE} == 1) { # device is no valid target
-                $sMountResult= `umount $sUnmount 2>&1`;
+                $sMountResult= $oTargetPath->umount("$sUnmount 2>&1");
                 if ($?) { # umount failed
                     chomp $sMountResult;
                     $sMountResult =~ s/\r?\n/ - /g;
@@ -480,6 +484,7 @@ nextDevice:
     push @{ $arMessage }, @sMountMessage;
 
     if ($sUnmount) {
+        $sUnmount= "@" . $sUnmount if $bIsTarget;
         push @{ $arAllMount }, $sUnmount;
 
         # We want to unmount in reverse order:
@@ -581,7 +586,8 @@ sub unmount {
     my @sUnmount2= ();
 
     for (@sUnmount) {
-        my $sResult= `umount "$_" 2>&1`;
+        my $oTargetPath= s/^\@// ? $self->get_targetPath : RabakLib::Path->new;
+        my $sResult= $oTargetPath->umount("\"$_\" 2>&1");
         if ($?) {
             chomp $sResult;
             $sResult =~ s/\r?\n/ - /g;
@@ -641,16 +647,16 @@ sub backup_setup {
         $self->log("All mounts completed. More information after log file initialization...");
     }
 
-    my $oTarget= $self->get_target();
+    my $oTargetPath= $self->get_targetPath();
 
-    unless ($oTarget->isDir) {
+    unless ($oTargetPath->isDir) {
         $self->logError(@sMountMessage);
-        $self->logError("Target \"".$oTarget->get_value("PATH")."\" is not a directory. Backup set skipped.");
+        $self->logError("Target \"".$oTargetPath->get_value("PATH")."\" is not a directory. Backup set skipped.");
         return 1;
     }
-    unless ($oTarget->isWritable) {
+    unless ($oTargetPath->isWritable) {
         $self->logError(@sMountMessage);
-        $self->logError("Target \"".$oTarget->get_value("PATH")."\" is not writable. Backup set skipped.");
+        $self->logError("Target \"".$oTargetPath->get_value("PATH")."\" is not writable. Backup set skipped.");
         return 2;
     }
 
@@ -667,9 +673,9 @@ sub backup_setup {
 
         my $sLogLink= "$sBakMonth.$sBakSet/$sBakDay.$sBakSet.log";
 
-        my $sLogFileName= $oTarget->get_value("PATH") . "/$sLogFile";
-        
-        my $sError= $self->{LOG_FILE}->open($sLogFileName, $oTarget);
+        my $sLogFileName= $oTargetPath->get_value("PATH") . "/$sLogFile";
+
+        my $sError= $self->{LOG_FILE}->open($sLogFileName, $oTargetPath);
         if ($sError) {
             $self->log($self->warnMsg("Can't open log file \"$sLogFileName\" ($sError). Going on without..."));
         }
@@ -679,7 +685,7 @@ sub backup_setup {
                 # TODO: only to file
                 $self->log("", "===========================================================================", "");
             }
-            $oTarget->symlink("../$sLogFile", "$sLogLink");
+            $oTargetPath->symlink("../$sLogFile", "$sLogLink");
         }
     }
 
@@ -687,20 +693,19 @@ sub backup_setup {
 
     $self->{VALUES}{unique_target}= "$sBakDay$sSubSet.$sBakSet";
     my $sTarget= "$sBakMonth.$sBakSet/" . $self->{VALUES}{unique_target};
-    $self->{VALUES}{full_target}= $oTarget->getPath . "/$sTarget";
+    $self->{VALUES}{full_target}= $oTargetPath->getPath . "/$sTarget";
     # $self->{VALUES}{bak_dirs}= \@sBakDir;
 
     $self->_mkdir($sTarget);
 
     $self->log($self->infoMsg("Backup $sBakDay exists, using subset.")) if $sSubSet;
     $self->log($self->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->{VALUES}{title}));
-    $self->log("Logging to: ".$oTarget->getFullPath."/$sLogFile") if $self->get_value('switch.pretend') && $self->get_value('switch.logging');
+    $self->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_value('switch.pretend') && $self->get_value('switch.logging');
     $self->log("Source: " . $self->{VALUES}{type} . ":" . $self->{VALUES}{source});
 
     $self->log(@sMountMessage);
 
     $self->{_BAK_DIR_LIST}= \@sBakDir;
-    $self->{_BAK_TARGET}= $oTarget;
     $self->{_BAK_DAY}= $sBakDay;
     $self->{_BAK_SET}= $sBakSet;
     $self->{_SUB_SET}= $sSubSet;
@@ -715,7 +720,7 @@ sub backup_run {
     my $sBakType= $self->{VALUES}{type};
 
     my @sBakDir= @{ $self->{_BAK_DIR_LIST} };
-    my $oTarget= $self->{_BAK_TARGET};
+    my $oTargetPath= $self->get_targetPath;
     my $sBakSet= $self->{_BAK_SET};
     my $sTarget= $self->{_TARGET};
 
@@ -745,10 +750,10 @@ sub backup_run {
     $self->_remove_old(@sBakDir) unless $iErrorCode;    # only remove old if backup was done
 
     unless ($self->get_value('switch.pretend')) {
-        $oTarget->unlink("current.$sBakSet");
-        $oTarget->symlink("$sTarget", "current.$sBakSet");
-        $oTarget->unlink("current-log.$sBakSet");
-        $oTarget->symlink($self->{LOG_FILE}->get_filename(), "current-log.$sBakSet") if $self->{LOG_FILE}->get_filename();
+        $oTargetPath->unlink("current.$sBakSet");
+        $oTargetPath->symlink("$sTarget", "current.$sBakSet");
+        $oTargetPath->unlink("current-log.$sBakSet");
+        $oTargetPath->symlink($self->{LOG_FILE}->get_filename(), "current-log.$sBakSet") if $self->{LOG_FILE}->get_filename();
     }
 
     # check for disc space
@@ -757,7 +762,7 @@ sub backup_run {
         my $iStValue= $sSpaceThreshold =~ /\b([\d\.]+)/ ? $1 : 0;
         my $sStUnit= 'K';
         $sStUnit = uc($1) if $sSpaceThreshold =~ /$iStValue\s*([gmkb\%])/i;
-        my $sDfResult = (split /\n/, $oTarget->df('', "-k"))[1];
+        my $sDfResult = (split /\n/, $oTargetPath->df('', "-k"))[1];
         my ($iDfSize, $iDfAvail) = ($1, $2) if $sDfResult =~ /^\S+\s+(\d+)\s+\d+\s+(\d+)\s+/;
         $iDfAvail /= $iDfSize / 100 if $sStUnit eq '%';
         $iDfAvail >>= 20            if $sStUnit eq 'G';
@@ -766,7 +771,7 @@ sub backup_run {
         if ($iStValue > $iDfAvail) {
             $self->_mail_warning('disc space too low',
                 (
-                    "The free space on your target \"".$oTarget->getFullPath."\" has dropped",
+                    "The free space on your target \"".$oTargetPath->getFullPath."\" has dropped",
                     "below $iStValue$sStUnit to $iDfAvail$sStUnit."
                 )
             );
@@ -783,7 +788,7 @@ sub backup_cleanup {
 
     # $self->logError(@sMountMessage);
 
-    my $oTarget= $self->{_BAK_TARGET};
+    my $oTargetPath= $self->get_targetPath;
     my $sBakSet= $self->{_BAK_SET};
     my $sBakDay= $self->{_BAK_DAY};
     my $sSubSet= $self->{_SUB_SET};
@@ -821,10 +826,10 @@ sub rm_file {
     my %iFoundMask= ();
 
     my $sBakSet= $self->{VALUES}{name};
-    my $oTarget= $self->get_target();
+    my $oTargetPath= $self->get_targetPath();
 
     # TODO: Make a better check!
-    $self->logExitError(3, "Can't remove! \"$sBakSet.target\" is empty or points to file system root.") if $oTarget->getPath eq '' || $oTarget->getPath eq '/';
+    $self->logExitError(3, "Can't remove! \"$sBakSet.target\" is empty or points to file system root.") if $oTargetPath->getPath eq '' || $oTargetPath->getPath eq '/';
 
     my @sBakDir= $self->collect_bakdirs();
 
