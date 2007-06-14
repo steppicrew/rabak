@@ -394,6 +394,16 @@ sub _mount {
     my $sMountOpts= $oMount->{VALUES}{opts} || '';
     my $sUnmount= "";
 
+    # backward compatibility
+    if (!$bIsTarget && $oMount->{VALUES}{istarget}) {
+        push @{ $arMessage }, $self->warnMsg("Mount option \"istarget\" is depricated",
+            "Please use \"mount\" in Target Objects! (see Doc)");
+        $bIsTarget= 1;
+    }
+    # backward compatibility
+    $sTargetGroup= $self->{VALUES}{targetgroup} if !$sTargetGroup && $self->{VALUES}{targetgroup};
+
+
     # parameters for mount command
     my $spMountDevice= ""; # set later
     my $spMountDir=    $sMountDir    ? " \"$sMountDir\""     : "";
@@ -523,6 +533,11 @@ sub mount {
     # Collect all mount errors, we want to output them later
     my $arUnmount= $self->{_UNMOUNT_LIST} || [];
     my $arAllMount= $self->{_ALL_MOUNT_LIST} || [];
+
+    if ($self->{VALUES}{targetgroup}) {
+        push @{ $arMessage }, $self->warnMsg("BakSet option \"targetgroup\" is depricated",
+            "Please use \"group\" in Target Objects! (see Doc)")
+    }
 
     my @sToMount= ({MOUNT => $self->{VALUES}{mount}});
     my $oTarget= $self->{VALUES}{target};
