@@ -13,9 +13,13 @@ use RabakLib::Type;
 # plan: build a tunnel, fetch the db, delete old baks, release tunnel
 # TODO: option dump_oids
 # TODO: support large objects (pg_dump -Fc)
+# TODO: dump *to* remote host
+# TODO: dump *from* remote host
 sub run {
     my $self= shift;
     my @sBakDir= @_;
+
+    die "Dumps to remote hosts are not supported!\n" if $self->get_targetPath->remote;
 
     my $sPgUser= $self->get_value('user', 'postgres') || '';
     $sPgUser =~ s/[^a-z0-9_]//g;        # simple taint

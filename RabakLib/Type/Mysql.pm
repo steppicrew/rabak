@@ -15,6 +15,8 @@ use Data::Dumper;
 # plan: build a tunnel, fetch the db, delete old baks, release tunnel
 # TODO: option dump_oids
 # TODO: support large objects (pg_dump -Fc)
+# TODO: dump *to* remote host
+# TODO: dump *from* remote host
 sub run {
     my $self= shift;
     my @sBakDir= @_;
@@ -22,6 +24,8 @@ sub run {
     my $sUser= $self->get_value('user', 'mysql');
     my $sPassword= $self->get_value('password', 'mysql');
     my $sPassPar = "";
+
+    die "Dumps to remote hosts are not supported!\n" if $self->get_targetPath->remote;
 
     $sUser =~ s/[^a-z0-9_]//g;        # simple taint
     $sPassword =~ s/\\\"//g;          # simple taint
