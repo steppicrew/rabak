@@ -21,7 +21,7 @@ eval "
 use Data::Dumper;
 use Getopt::Std;
 
-our $VERSION= "0.5.0 rc1";
+our $VERSION= "0.5.0 rc2";
 our $DEBUG= 0;
 
 $Getopt::Std::STANDARD_HELP_VERSION= 1;
