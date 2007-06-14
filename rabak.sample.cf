@@ -15,7 +15,7 @@ email = root
 target_base = /mnt/backup
 target_dir = $target_base/rabak
 
-smb_dir = /mnt/fritz/e
+smb_dir = /mnt/samba/e
 smb_user = backup
 # smb_passwd is in rabak.secret.cf
 
@@ -63,24 +63,29 @@ mount_external.unmount= 1
 mount_boot.directory= /boot
 mount_boot.unmount= 1
 
-# Mount point "//fritz/e$" (Samba mount point)
+# Mount point "//smb_server/e$" (Samba mount point)
 
-mount_fritz.device= //fritz/e$
-mount_fritz.directory= $smb_dir
-mount_fritz.type= cifs
-mount_fritz.opts= "username=$smb_user,password=$smb_passwd,ro"
-mount_fritz.unmount= 1
+mount_smb_server.device= //smb_server/e$
+mount_smb_server.directory= $smb_dir
+mount_smb_server.type= cifs
+mount_smb_server.opts= "username=$smb_user,password=$smb_passwd,ro"
+mount_smb_server.unmount= 1
+
+# Target to back up to
+
+sample_target.path = $target_dir
+sample_target.mount = mount_external
+sample_target.group = sample
+# send mail if free space on target drops below this value (possible units: 'B'yte, 'K' (default), 'M'ega, 'G'iga or '%')
+sample_target.discfree_threshold = 10%
 
 # Full System + Samba Example
 
 sample.title = Gesamtsystem
 sample.source = /
-sample.target = $target_dir
+sample.target = sample_target
 sample.exclude = $exclude
-sample.mount = mount_external mount_boot mount_fritz
-sample.targetgroup = sample
-# send mail if free space on target drops below this value (possible units: 'B'yte, 'K' (default), 'M'ega, 'G'iga or '%')
-sample.target_discfree_threshold = 10%
+sample.mount = mount_boot mount_smb_server
 
 # =======================================================================================
 #       EXAMPLE: POSTGRESQL BACKUP
@@ -88,13 +93,13 @@ sample.target_discfree_threshold = 10%
 
 sample_pg.title = Databases of sample
 sample_pg.source = pgsql:vbulletin,postnuke
-sample_pg.target = $target_base/postgres
+sample_pg.target = $sample_target
+sample_pg.target.path = $target_base/postgres
 sample_pg.user = *default*
 # TODO: test_pg.password is secret -> look in rabak.secret.cf
 sample_pg.password = test
 sample_pg.switch.logging = 1
 sample_pg.keep = 3
-sample_pg.mount = mount_external
 
 # =======================================================================================
 #       EXAMPLE: MYSQL BACKUP
@@ -102,7 +107,8 @@ sample_pg.mount = mount_external
 
 sample_mysql.title = Mysql-DBs
 sample_mysql.source = mysql:*
-sample_mysql.target = $target_base/mysql
+sample_mysql.target = $sample_target
+sample_mysql.target.path = $target_base/mysql
 sample_mysql.user = $mysql_user
 # TODO: test_pg.password is secret -> look in rabak.secret.cf
 sample_mysql.password = $mysql_passwd
@@ -128,37 +134,38 @@ test.exclude = $exclude
 mount_test_target.device= /dev/junk[12] test-data/dev.loop[01]
 mount_test_target.directory= test-data/mnt_target
 mount_test_target.unmount= 1
-mount_test_target.istarget= 1
 
 mount_test_boot.device= test-data/dev.boot
 mount_test_boot.directory= test-data/mnt_boot
 mount_test_boot.unmount= 1
 
+test_target.path = test-data/mnt_target/rabak
+test_target.mount = mount_test_target
+
 # =======================================================================================
-#       TEST FIRSTOF-MOUNT OPTION
+#       TEST
 # =======================================================================================
 
-test_firstof.title = Test "firstof" Mount Option
-test_firstof.switch.verbose = 1
-test_firstof.switch.logging = 1
-test_firstof.source = .
-test_firstof.target = test-data/mnt_target/rabak
+test.title = Test "firstof" Mount Option
+test.switch.verbose = 1
+test.switch.logging = 1
+test.source = .
+test.target = test_target
 # ", " will be replaced by newline automagically
-test_firstof.exclude = $exclude, test-bak,
+test.exclude = $exclude, test-bak,
     test-data, stuff
 
-# test_firstof.mount= $mount_test_loop0
-test_firstof.mount= mount_test_target mount_test_boot
+test.mount= mount_test_boot
 
 # =======================================================================================
 #       TEST TARGETGROUP OPTION
 # =======================================================================================
 
 test_targetgroup.title = Test "targetgroup" Option
-test_targetgroup.source = $test_firstof.source
-test_targetgroup.target = $test_firstof.target
-test_targetgroup.exclude = $test_firstof.exclude
-test_targetgroup.mount= $test_firstof.mount
-test_targetgroup.targetgroup = dayofweek
+test_targetgroup.source = $test.source
+test_targetgroup.target = $$test.target
+test_targetgroup.target.group = dayofweek
+test_targetgroup.exclude = $test.exclude
+test_targetgroup.mount= $test.mount
 
 # EOF
