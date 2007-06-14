@@ -267,6 +267,96 @@ valid units are 'B'yte, 'K' (default), 'M'ega, 'G'iga and '%'.
 the check is performed after completing the backup job and a mail to rabak admin
 is sent, if free space is below 10%.
 
+=head1 CONFIG FILE REFERENCE
+
+=head2 Global Switches
+
+B<email>: mail address to sent logfiles and warnings to (default: none)
+
+B<include>: includes other an other config file.
+
+B<switch.quiet>: suppress all output and do no logging (default: I<0>)
+
+B<switch.logging>: write log file (default: I<0>)
+
+B<switch.verbose>: verbosity level for standard outut.
+    I<-2>: only errors are printed;
+    I<-1>: like I<-2> but prints warnings too;
+    I<0>: like I<-1> but prints few additional information;
+    I<1>: like I<0> but prints additional information;
+    I<2>: prints (nearly) everyting
+
+B<switch.pretend>: do everything but really write files to target (default: I<0>)
+
+B<switch.dev_conf_file>: name of the device configuration file that has to exist
+    on target (default: I<rabak.dev.cf>)
+
+B<switch.targetvalue>: specific target value that has to exist on the target
+    (default: none)
+
+=head2 Backup Set Switches
+
+You have to specify at least B<source> and B<target>.
+
+B<title>: descriptive title for backup set
+
+B<type>: backup type. may be overridden with B<source> (default: I<file>)
+    (implemented values: I<file> (default), I<mysql>, I<pgsql>)
+
+B<source>: backup source. may start with "<type>:" specifying the bakset type
+    (see B<type>)
+
+B<target>: backup target. may be a (local) directory or B<Target Object>.
+
+B<mount>: B<Mount Objects> that have to be mounted before backup
+
+B<keep>: number of old backups to keep. Superfluous versions will be deleted
+
+B<user>: (types I<mysql> and I<pgsql> only) user to retrieve backup data as
+
+B<password>: (types I<mysql> and I<pgsql> only) password to retrieve backup data
+
+=head2 Mount Objects
+
+You have to specify at least B<device> or B<directory> (if not listed in B</etc/fstab>
+    both)
+
+B<device>: one or more device(s) to mount (wildcards like C</dev/hd?1> are supported).
+    If more than one device is specified, only the first successfully mounted is used.
+
+B<directory>: directory where to mount the device to.
+
+B<unmount>: specifies if device schould be unmounted afterwards
+
+B<type>: filesystem type to mount (default: I<auto>)
+
+B<opts>: additional mount options passed to mount command (default: none)
+    (example: C<username=zuppi,password=zappi,ro>)
+
+=head2 Target Object
+
+You have at least specify B<path>.
+
+B<path>: path of target directory
+
+B<host>: (for remote targets only) hostname to connect to
+
+B<user>: (for remote targets only) username to connect as
+
+B<password>: (for remote targets only) password to authenticate
+    I<Note:> not implemented yet for rsync! You have to use authentication by
+        certificates
+
+B<mount>: B<Mount Objects> to mount. Devices are considered as valid target media
+    if it contains rabak device config file (see B<switch.dev_conf_file>) and
+    a matching target value (if value was specified)
+
+B<group>: target group that have to be specified on any mounted target device
+
+B<diskfree_threshold>: if free space on target device drops below the specified
+    value after completed backup, a waring mail is sent to B<email> address.
+    Valid units are I<B>yte, I<K> (default), I<M>ega, I<G>iga and I<%>.
+
 
 TODO: Explain the following features:
 
