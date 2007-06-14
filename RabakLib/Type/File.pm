@@ -21,9 +21,9 @@ sub run {
 
     my $sBakSet= $self->get_value('name');
     my $sRsyncOpts = $self->get_value('rsync_opts') || '';
-    my $oTarget= $self->get_target;
-    my $sRsyncPass= $oTarget->get_value("passwd");
-    my $sPort= $oTarget->get_value("port") || 22;
+    my $oTargetPath= $self->get_targetPath;
+    my $sRsyncPass= $oTargetPath->get_value("passwd");
+    my $sPort= $oTargetPath->get_value("port") || 22;
 
     my $sSrc= $self->valid_source_dir() or return 3;
 
@@ -78,8 +78,8 @@ sub run {
     $sFlags .= " -i" if $self->{DEBUG};
     $sFlags .= " --dry-run" if $self->get_value('switch.pretend');
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
-    $sFlags .= " -e 'ssh -p $sPort'" if $oTarget->remote;
-    if ($oTarget->remote && $sRsyncPass) {
+    $sFlags .= " -e 'ssh -p $sPort'" if $oTargetPath->remote;
+    if ($oTargetPath->remote && $sRsyncPass) {
         ($fhwPass, $sPassFile)= $self->tempfile();
         print $fhwPass $sRsyncPass;
         close $fhwPass;
@@ -92,10 +92,10 @@ sub run {
     map { $sFlags .= " --link-dest=\"$_\""; } @sBakDir;
 
     $sSrc .= "/" unless $sSrc =~ /\/$/;
-    my $sDestDir= $oTarget->getPath($self->get_value("full_target"));
-    if ($oTarget->remote) {
-        $sDestDir= $oTarget->get_value("host") . ":$sDestDir";
-        $sDestDir= $oTarget->get_value("user") . "\@$sDestDir" if $oTarget->get_value("user");
+    my $sDestDir= $oTargetPath->getPath($self->get_value("full_target"));
+    if ($oTargetPath->remote) {
+        $sDestDir= $oTargetPath->get_value("host") . ":$sDestDir";
+        $sDestDir= $oTargetPath->get_value("user") . "\@$sDestDir" if $oTargetPath->get_value("user");
     }
 
     my $sRsyncCmd= "rsync $sFlags \"$sSrc\" \"$sDestDir\"";
