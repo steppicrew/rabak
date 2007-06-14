@@ -1,3 +1,8 @@
+rabak-0.5 rc1
+- remote targets are now supported (file only)
+- target objects implemented
+- "istarget" and "targetgroup" are now depricated
+
 rabak-0.4
 - changed target mechanism
 - changed logging mechanism
