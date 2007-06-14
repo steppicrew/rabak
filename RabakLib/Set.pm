@@ -327,9 +327,7 @@ sub _mount_check {
     };
 
     my $oTargetPath= $self->get_targetPath;
-    if ($oTargetPath->isSymlink($sMountDevice)) {
-        $sMountDevice= $oTargetPath->readSymlink($sMountDevice);
-    }
+    $sMountDevice= $oTargetPath->abs_path($sMountDevice);
 
     my $sqMountDevice= quotemeta $sMountDevice;
 

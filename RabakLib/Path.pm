@@ -66,9 +66,8 @@ sub getFullPath {
 sub getPath {
     my $self= shift;
     my $sPath= shift || '';
-    $sPath= "$self->{VALUES}->{PATH}/$sPath" unless $sPath=~ /^\//;
-    $sPath=~ s/\/+/\//;
-    $sPath=~ s/\/$//;
+    $sPath= File::Spec->canonpath($sPath)
+    $sPath= File::Spec->catdir($self->{VALUES}->{PATH}, $sPath) if $self->{VALUES}->{PATH} && !File::Spec->file_name_is_absolute($sPath);
     return $sPath;
 }
 
@@ -190,8 +189,8 @@ sub getDir {
 
     my $sPerlScript= '
         # getDir()
-        use File::Spec;
-        $sPath= File::Spec->rel2abs("$sPath");
+        use Cwd "abs_path";
+        $sPath= abs_path $sPath;
         @Dir= (<$sPath/*>);
         @Dir= map {
             if (-l) { # symlinks
@@ -233,7 +232,7 @@ sub getDirRecursive {
 
     my $sPerlScript= '
         # getDirRecursive()
-        use File::Spec;
+        use Cwd "abs_path";
         sub _dirlist {
             my $sPath= shift;
             my $iLevel= shift;
@@ -257,7 +256,7 @@ sub getDirRecursive {
             }
             return \%result;
         }
-        $sPath= File::Spec->rel2abs("$sPath");
+        $sPath= abs_path $sPath;
         %Dir= %{_dirlist($sPath, $iLevel)};
     ';
 
@@ -378,24 +377,20 @@ sub isSymlink {
     my $sFile= $self->getPath(shift);
 
     return ${$self->_saveperl('
-            # isFile()
+            # isSymlink()
             $result= -l $sFile;
         ', { "sFile" => $sFile, }, '$result'
     )};
 }
 
-sub readSymlink {
+sub abs_path {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
     return ${$self->_saveperl('
-            # isFile()
-            use File::Spec;
-            $result= readlink $sFile;
-            if ($result !~ /^\//) {
-                $sFile=~ s/\/[^\/]+$//;
-                $result= "$sFile/$result";
-            }
+            # abs_path()
+            use Cwd "abs_path";
+            $result= abs_path $sFile;
         ', { "sFile" => $sFile, }, '$result'
     )};
 }
