@@ -373,6 +373,33 @@ sub isFile {
     )};
 }
 
+sub isSymlink {
+    my $self= shift;
+    my $sFile= $self->getPath(shift);
+
+    return ${$self->_saveperl('
+            # isFile()
+            $result= -l $sFile;
+        ', { "sFile" => $sFile, }, '$result'
+    )};
+}
+
+sub readSymlink {
+    my $self= shift;
+    my $sFile= $self->getPath(shift);
+
+    return ${$self->_saveperl('
+            # isFile()
+            use File::Spec;
+            $result= readlink $sFile;
+            if ($result !~ /^\//) {
+                $sFile=~ s/\/[^\/]+$//;
+                $result= "$sFile/$result";
+            }
+        ', { "sFile" => $sFile, }, '$result'
+    )};
+}
+
 sub echo {
     my $self= shift;
     my $sFile= $self->getPath(shift);
