@@ -165,7 +165,7 @@ sub _saveperl {
 
     # extract scripts result (if everything was ok, eval($result) sets $OUT_VAR)
     my $OUT_VAR = undef;
-    eval($result) if $result;
+    eval($result) if $result && $sOutVar;
     return $OUT_VAR;
 }
 
