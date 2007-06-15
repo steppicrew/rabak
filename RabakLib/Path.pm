@@ -66,8 +66,10 @@ sub getFullPath {
 sub getPath {
     my $self= shift;
     my $sPath= shift || '';
-    $sPath= File::Spec->canonpath($sPath);
-    $sPath= File::Spec->catdir($self->{VALUES}->{PATH}, $sPath) if $self->{VALUES}->{PATH} && !File::Spec->file_name_is_absolute($sPath);
+#    $self->{VALUES}->{PATH}= '.' unless $self->{VALUES}->{PATH};
+#    $self->{VALUES}->{PATH}= $self->abs_path($self->{VALUES}->{PATH}) unless File::Spec->file_name_is_absolute($self->{VALUES}->{PATH});
+    $sPath= File::Spec->canonpath($sPath); # simplify path
+    $sPath= File::Spec->rel2abs($sPath, $self->{VALUES}->{PATH}) unless File::Spec->file_name_is_absolute($sPath);
     return $sPath;
 }
 
@@ -268,7 +270,7 @@ sub getDirRecursive {
 }
 
 sub tempfile {
-    File::Temp->safe_level( File::Temp::HIGH ); # make sure tempfiles are secure
+#    File::Temp->safe_level( File::Temp::HIGH ); # make sure tempfiles are secure
     return @_= File::Temp->tempfile('rabak-XXXXXX', UNLINK => 1, DIR => File::Spec->tmpdir);
 }
 
@@ -384,14 +386,15 @@ sub isSymlink {
     )};
 }
 
+# abs_path *MUST NOT* use getPath!! would result in an infinte loop
 sub abs_path {
     my $self= shift;
-    my $sFile= $self->getPath(shift);
+    my $sFile= shift; # !! path *NOT* relative to target path but to cwd
 
     return ${$self->_saveperl('
             # abs_path()
-            use Cwd "abs_path";
-            $result= abs_path $sFile;
+            use Cwd;
+            $result= Cwd::abs_path($sFile);
         ', { "sFile" => $sFile, }, '$result'
     )};
 }

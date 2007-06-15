@@ -178,6 +178,7 @@ sub levelLog {
     $sMsgPref= "INFO:    " if $iLevel == $self->{INFOLEVEL};
 
     for my $sMessage (@sMessage) {
+        next unless $sMessage;
         if (ref $sMessage eq "ARRAY") { # call recursive for nested arrays
             my $iMyLevel = shift @{ $sMessage };
             $iMyLevel= $iLevel if $iMyLevel > $iLevel; # use highest log level TODO: does that make sense?

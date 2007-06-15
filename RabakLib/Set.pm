@@ -327,7 +327,11 @@ sub _mount_check {
     };
 
     my $oTargetPath= $self->get_targetPath;
+print "1: $sMountDevice\n";
+
     $sMountDevice= $oTargetPath->abs_path($sMountDevice);
+print "2: $sMountDevice\n";
+
 
     my $sqMountDevice= quotemeta $sMountDevice;
 
@@ -413,7 +417,7 @@ sub _mount {
     my $spMountOpts =  $sMountOpts   ? " -o\"$sMountOpts\""  : "";
 
     my %checkResult;
-    my $iResult= 0; # defaults to "mount failed"
+    my $iResult= !$bIsTarget; # for targets default to "failed", for other mounts only warnings are raised
 
     my @sMountDevices= ();
 
@@ -421,7 +425,7 @@ sub _mount {
 #        join("\", \"", split(/\s+/, $sMountDeviceList)) . "\"");
 
     for my $sMountDevice (split(/\s+/, $sMountDeviceList)) {
-        push @sMountDevices, glob("$sMountDevice");
+        push @sMountDevices, glob($sMountDevice);
     }
 
     # if no device were given, try mounting by mount point

@@ -85,9 +85,9 @@ sub warnMsg {
     return $self->{SET}->warnMsg(@_);
 }
 
-sub errMsg {
+sub errorMsg {
     my $self= shift;
-    return $self->{SET}->errMsg(@_);
+    return $self->{SET}->errorMsg(@_);
 }
 
 sub logError {
@@ -101,7 +101,7 @@ sub log {
 }
 
 sub tempfile {
-    File::Temp->safe_level( File::Temp::HIGH ); # make sure tempfiles are secure
+#    File::Temp->safe_level( File::Temp::HIGH ); # make sure tempfiles are secure
     return @_= File::Temp->tempfile('rabak-XXXXXX', UNLINK => 1, DIR => File::Spec->tmpdir);
 }
 

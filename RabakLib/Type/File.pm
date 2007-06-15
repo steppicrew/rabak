@@ -106,6 +106,11 @@ sub run {
 
     my @sRsyncStat= grep !/^([^\/]+\/)+$/, `$sRsyncCmd 2>&1`;
 
+    if ($?) {
+        $self->log($self->errorMsg(@sRsyncStat));
+        return 1;
+    }
+
     my @sRsyncFiles= ();
     push @sRsyncFiles, shift @sRsyncStat while ($sRsyncStat[0] && $sRsyncStat[0] !~ /^\s+$/);
     push @sRsyncFiles, shift @sRsyncStat;
