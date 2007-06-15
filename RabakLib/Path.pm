@@ -66,7 +66,7 @@ sub getFullPath {
 sub getPath {
     my $self= shift;
     my $sPath= shift || '';
-    $sPath= File::Spec->canonpath($sPath)
+    $sPath= File::Spec->canonpath($sPath);
     $sPath= File::Spec->catdir($self->{VALUES}->{PATH}, $sPath) if $self->{VALUES}->{PATH} && !File::Spec->file_name_is_absolute($sPath);
     return $sPath;
 }
@@ -95,7 +95,7 @@ sub savecmd {
 
     if ($self->remote) {
         my ($stdout, $stderr, $exit) = $self->_sshcmd("$cmd");
-        $?= $exit;
+        $?= $exit; # set standard exit variable
         return $stdout || '';
     }
     else {
@@ -281,6 +281,7 @@ sub getLocalFile {
     my ($fh, $sTmpName) = $self->tempfile;
     print $fh $self->savecmd("cat '$sFile'");
     CORE::close $fh;
+    return $sTmpName;
 }
 
 sub mkdir {
