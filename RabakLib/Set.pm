@@ -453,8 +453,8 @@ sub _mount {
             }
         }
 
-        my $oTargetPath= $bIsTarget ? $self->get_targetPath : RabakLib::Path->new();
-        my $sMountResult= $oTargetPath->mount("$spMountType$spMountDevice$spMountDir$spMountOpts 2>&1");
+        my $oPath= $bIsTarget ? $self->get_targetPath : RabakLib::Path->new();
+        my $sMountResult= $oPath->mount("$spMountType$spMountDevice$spMountDir$spMountOpts 2>&1");
         if ($?) { # mount failed
             chomp $sMountResult;
             $sMountResult =~ s/\r?\n/ - /g;
@@ -470,7 +470,7 @@ sub _mount {
                 push @sCurrentMountMessage, $self->warnMsg("Device \"$sMountDevice\" is not mounted!");
             }
             elsif ($checkResult{CODE} == 1) { # device is no valid target
-                $sMountResult= $oTargetPath->umount("$sUnmount 2>&1");
+                $sMountResult= $oPath->umount("$sUnmount 2>&1");
                 if ($?) { # umount failed
                     chomp $sMountResult;
                     $sMountResult =~ s/\r?\n/ - /g;
@@ -604,8 +604,8 @@ sub unmount {
 
     for (@sUnmount) {
         my $sUnmount2= $_;
-        my $oTargetPath= s/^\@// ? $self->get_targetPath : RabakLib::Path->new;
-        my $sResult= $oTargetPath->umount("\"$_\" 2>&1");
+        my $oPath= s/^\@// ? $self->get_targetPath : RabakLib::Path->new;
+        my $sResult= $oPath->umount("\"$_\" 2>&1");
         if ($?) {
             chomp $sResult;
             $sResult =~ s/\r?\n/ - /g;
