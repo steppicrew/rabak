@@ -271,9 +271,9 @@ is sent, if free space is below 10%.
 
 =head2 Global Switches
 
-B<email>: mail address to sent logfiles and warnings to (default: none)
+B<email>: mail address to send logfiles and warnings to (default: none)
 
-B<include>: includes other an other config file.
+B<include>: includes an other config file.
 
 B<switch.quiet>: suppress all output and do no logging (default: I<0>)
 
@@ -282,21 +282,22 @@ B<switch.logging>: write log file (default: I<0>)
 B<switch.verbose>: verbosity level for standard outut.
     I<-2>: only errors are printed;
     I<-1>: like I<-2> but prints warnings too;
-    I<0>: like I<-1> but prints few additional information;
-    I<1>: like I<0> but prints additional information;
-    I<2>: prints (nearly) everyting
+     I<0>: like I<-1> but prints few additional information;
+     I<1>: like I<0> but prints additional information;
+     I<2>: more verbose (ex: prints rsync stats)
+     I<3>: even more verbose (ex: prints synced files)
 
 B<switch.pretend>: do everything but really write files to target (default: I<0>)
 
 B<switch.dev_conf_file>: name of the device configuration file that has to exist
-    on target (default: I<rabak.dev.cf>)
+    on mounted target devices (path relative to device root) (default: I<rabak.dev.cf>)
 
 B<switch.targetvalue>: specific target value that has to exist on the target
     (default: none)
 
 =head2 Backup Set Switches
 
-You have to specify at least B<source> and B<target>.
+You have to specify at least B<title>, B<source>, and B<target>.
 
 B<title>: descriptive title for backup set
 
@@ -311,6 +312,7 @@ B<target>: backup target. may be a (local) directory or B<Target Object>.
 B<mount>: B<Mount Objects> that have to be mounted before backup
 
 B<keep>: number of old backups to keep. Superfluous versions will be deleted
+    (default: unlimited)
 
 B<user>: (types I<mysql> and I<pgsql> only) user to retrieve backup data as
 
