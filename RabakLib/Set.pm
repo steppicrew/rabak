@@ -496,9 +496,9 @@ nextDevice:
     push @{ $arMessage }, @sMountMessage;
 
     if ($sUnmount) {
-        $sUnmount= "@" . $sUnmount if $bIsTarget;
         push @{ $arAllMount }, $sUnmount;
 
+        $sUnmount= "\@$sUnmount" if $bIsTarget; # mark targets to use $oTargetPath for unmounting
         # We want to unmount in reverse order:
         unshift @{ $arUnmount }, $sUnmount if $oMount->{VALUES}{unmount} && $iResult;
     }
@@ -603,6 +603,7 @@ sub unmount {
     my @sUnmount2= ();
 
     for (@sUnmount) {
+        my $sUnmount2= $_;
         my $oTargetPath= s/^\@// ? $self->get_targetPath : RabakLib::Path->new;
         my $sResult= $oTargetPath->umount("\"$_\" 2>&1");
         if ($?) {
@@ -611,7 +612,7 @@ sub unmount {
             next unless $sAllMount{$_};
             $self->log($self->warnMsg("Unmounting \"$_\" failed: $sResult!"));
             $self->log($self->warnMsg("(Maybe because of the log file. Retrying after log file was closed)")) if $bBlaimLogFile;
-            push @sUnmount2, $_;
+            push @sUnmount2, $sUnmount2;
             next;
         }
         $self->log("Unmounted \"$_\"");
