@@ -327,11 +327,8 @@ sub _mount_check {
     };
 
     my $oTargetPath= $self->get_targetPath;
-print "1: $sMountDevice\n";
 
     $sMountDevice= $oTargetPath->abs_path($sMountDevice);
-print "2: $sMountDevice\n";
-
 
     my $sqMountDevice= quotemeta $sMountDevice;
 
@@ -344,7 +341,7 @@ print "2: $sMountDevice\n";
 
         $result->{CODE}= 1; # defaults to "not a target"
 
-        my $sDevConfFile= "$sMountDir/" . ($self->get_value('switch.dev_conf_file') || "rabak.dev.cf");
+        my $sDevConfFile= File::Spec->join($sMountDir, $self->get_value('switch.dev_conf_file') || "rabak.dev.cf");
         if ($oTargetPath->isReadable("$sDevConfFile")) {
             if ($sTargetValue) {
                 my $oDevConfFile= RabakLib::ConfFile->new($oTargetPath->getLocalFile($sDevConfFile));
