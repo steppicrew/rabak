@@ -66,8 +66,8 @@ sub getFullPath {
 sub getPath {
     my $self= shift;
     my $sPath= shift || '';
-#    $self->{VALUES}->{PATH}= '.' unless $self->{VALUES}->{PATH};
-#    $self->{VALUES}->{PATH}= $self->abs_path($self->{VALUES}->{PATH}) unless File::Spec->file_name_is_absolute($self->{VALUES}->{PATH});
+    $self->{VALUES}->{PATH}= '.' unless $self->{VALUES}->{PATH};
+    $self->{VALUES}->{PATH}= $self->abs_path($self->{VALUES}->{PATH}) unless File::Spec->file_name_is_absolute($self->{VALUES}->{PATH});
     $sPath= File::Spec->canonpath($sPath); # simplify path
     $sPath= File::Spec->rel2abs($sPath, $self->{VALUES}->{PATH}) unless File::Spec->file_name_is_absolute($sPath);
     return $sPath;
