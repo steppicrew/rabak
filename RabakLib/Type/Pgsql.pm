@@ -13,13 +13,13 @@ use RabakLib::Type;
 # plan: build a tunnel, fetch the db, delete old baks, release tunnel
 # TODO: option dump_oids
 # TODO: support large objects (pg_dump -Fc)
-# TODO: dump *to* remote host
 # TODO: dump *from* remote host
 sub run {
     my $self= shift;
     my @sBakDir= @_;
 
-    die "Dumps to remote hosts are not supported!\n" if $self->get_targetPath->remote;
+    my $oTargetPath= $self->get_targetPath;
+#    die "Dumps to remote hosts are not supported!\n" if $oTargetPath->remote;
 
     my $sPgUser= $self->get_value('user', 'postgres') || '';
     $sPgUser =~ s/[^a-z0-9_]//g;        # simple taint
@@ -54,6 +54,12 @@ sub run {
 
     foreach (@sDb) {
         my $sDestFile= $self->get_value('full_target') . "/$_." . $self->get_value('unique_target') . ".$sZipExt";
+        my $sDumpFile= $sDestFile;
+        if ($oTargetPath->remote) {
+            my $fh;
+            ($fh, $sDumpFile)= $oTargetPath->tempfile();
+            close $fh;
+        }
 
         my $sPgProbeCmd= "pg_dump -s $sPgUser -f /dev/null $_ 2>&1";
         $self->log("Running probe: $sPgProbeCmd");
@@ -64,15 +70,22 @@ sub run {
             next;
         }
 
-        my $sPgDumpCmd= "pg_dump -c $sPgUser $_ 2> \"$sResultFile\" | $sZipCmd > \"$sDestFile\"";
+        my $sPgDumpCmd= "pg_dump -c $sPgUser $_ 2> \"$sResultFile\" | $sZipCmd > \"$sDumpFile\"";
         $self->log("Running dump: $sPgDumpCmd");
 
-        `$sPgDumpCmd` unless $self->get_value('switch.pretend');
-        $sError= `cat \"$sResultFile\"`;
-        if ($sError) {
-            chomp $sError;
-            $self->logError("Dump failed. Skipping dump of \"$_\": $sError");
-            next;
+        unless ($self->get_value('switch.pretend')) {
+            `$sPgDumpCmd` ;
+            if ($oTargetPath->remote) {
+                $self->log($self->infoMsg("Copying dump \"$sDumpFile\" to \"" . $oTargetPath->getFullPath($sDestFile) ."\""));
+                $oTargetPath->copyLoc2Rem($sDumpFile, $sDestFile);
+                $self->logError($oTargetPath->get_error()) if $oTargetPath->get_error();
+            }
+            $sError= `cat \"$sResultFile\"`;
+            if ($sError) {
+                chomp $sError;
+                $self->logError("Dump failed. Skipping dump of \"$_\": $sError");
+                next;
+            }
         }
         $bFoundOne= 1;
     }

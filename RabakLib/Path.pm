@@ -29,13 +29,16 @@ sub new {
         DEBUG => 0,
         SSH_DEBUG => 0,
         VALUES => {
-            PORT => 22,
-        },
+            PATH => ".",
+            PORT => 22,                     # standard ssh port to connect to
+            TEMPDIR => File::Spec->tmpdir,  # directory for temporarily stored data
+        }
+        ERRORMSG => '';
     };
-    for my $key (keys %hParams) {
-        $self->{VALUES}->{uc $key}= $hParams{$key};
-    }
 
+    map { $self->{VALUES}->{uc $_} = $hParams{$_}; } keys(%hParams);
+
+    # print Data::Dumper->Dump([$self->{VALUES}]); die;
     bless $self, $class;
 }
 
@@ -43,6 +46,27 @@ sub get_value {
     my $self= shift;
     my $sValName= shift;
     return $self->{VALUES}->{uc $sValName};
+}
+
+sub _set_value {
+    my $self= shift;
+    my $sValName= shift;
+    my $sValue= shift;
+
+    $self->{VALUES}->{uc $sValName} = $sValue;
+}
+
+sub get_error {
+    my $self= shift;
+
+    return $self->{ERRORMSG};
+}
+
+sub _set_error {
+    my $self= shift;
+    my $sError= shift || '';
+
+    $self->{ERRORMSG}= $sError;
 }
 
 sub remote {
@@ -59,17 +83,21 @@ sub getFullPath {
     my $self= shift;
     my $sPath= $self->getPath(shift);
 
-    return "$self->{VALUES}->{USER}\@$self->{VALUES}->{HOST}\:$sPath" if $self->remote;
+    if ($self->remote) {
+        $sPath = $self->get_value("host") . "\:$sPath";
+        $sPath = $self->get_value("user") . "\@$sPath" if $self->get_value("user");
+    }
     return $sPath;
 }
 
 sub getPath {
     my $self= shift;
-    my $sPath= shift || '';
-    $self->{VALUES}->{PATH}= '.' unless $self->{VALUES}->{PATH};
-    $self->{VALUES}->{PATH}= $self->abs_path($self->{VALUES}->{PATH}) unless File::Spec->file_name_is_absolute($self->{VALUES}->{PATH});
+    my $sPath= shift || '.';
+
+    $self->_set_value("path", $self->abs_path($self->get_value("path"))) unless File::Spec->file_name_is_absolute($self->get_value("path"));
+
     $sPath= File::Spec->canonpath($sPath); # simplify path
-    $sPath= File::Spec->rel2abs($sPath, $self->{VALUES}->{PATH}) unless File::Spec->file_name_is_absolute($sPath);
+    $sPath= File::Spec->rel2abs($sPath, $self->get_value("path")) unless File::Spec->file_name_is_absolute($sPath);
     return $sPath;
 }
 
@@ -77,12 +105,12 @@ sub _ssh {
     my $self= shift;
 
     unless ($self->{SSH}) {
-        $self->{SSH}= Net::SSH::Perl->new($self->{VALUES}->{HOST},
+        $self->{SSH}= Net::SSH::Perl->new($self->get_value("host"),
             debug => $self->{SSH_DEBUG},
-            port => $self->{VALUES}->{PORT},
-            protocol => $self->{VALUES}->{PROTOCOL},
+            port => $self->get_value("port"),
+            protocol => $self->get_value("protocol"),
         );
-        $self->{SSH}->login($self->{VALUES}->{USER}, $self->{VALUES}->{PASSWD});
+        $self->{SSH}->login($self->get_value("user"), $self->get_value("passwd"));
     }
     return $self->{SSH};
 }
@@ -97,10 +125,12 @@ sub savecmd {
 
     if ($self->remote) {
         my ($stdout, $stderr, $exit) = $self->_sshcmd("$cmd");
+        $self->_set_error($stderr);
         $?= $exit; # set standard exit variable
         return $stdout || '';
     }
     else {
+        $self->_set_error();
         return `$cmd`;
     }
 }
@@ -108,9 +138,11 @@ sub savecmd {
 sub _sshcmd {
     my $self= shift;
     my $cmd= shift;
-    my $ssh= shift || $self->_ssh;
+    my $stdin= shift;
 
-    return $ssh->cmd($cmd);
+    my $ssh= $self->_ssh;
+
+    return $ssh->cmd($cmd, $stdin);
 }
 
 # evaluates perl script remote or locally
@@ -161,6 +193,7 @@ sub _saveperl {
     }
     else {
         $result= eval $sPerlScript;
+        $self->_set_error(join("\n", $@));
     }
 
     print "OUT: $result\n" if $self->{DEBUG} && $result;
@@ -178,6 +211,7 @@ sub _sshperl {
     # replace "'" chars for shell execution
     $sPerlScript=~ s/\'/\'\\\'\'/g;
     my ($stdout, $stderr, $exit)= $self->_sshcmd("perl -e '$sPerlScript'");
+    $self->_set_error($stderr);
     print "ERR: $stderr\n" if $self->{DEBUG} && $stderr;
     return $exit ? '' : $stdout;
 }
@@ -270,11 +304,16 @@ sub getDirRecursive {
 }
 
 sub tempfile {
+    my $self= shift;
+
+    $self= $self->new(@_) unless ref $self;
+    my $sDir= $self->get_value("tempdir") if ref $self;
 #    File::Temp->safe_level( File::Temp::HIGH ); # make sure tempfiles are secure
-    return @_= File::Temp->tempfile('rabak-XXXXXX', UNLINK => 1, DIR => File::Spec->tmpdir);
+    return @_= File::Temp->tempfile("rabak-XXXXXX", UNLINK => 1, DIR => $sDir);
 }
 
 # makes sure the given file exists locally
+# TODO: use ssh->register_handler for large files
 sub getLocalFile {
     my $self= shift;
     my $sFile= $self->getPath(shift);
@@ -284,6 +323,42 @@ sub getLocalFile {
     print $fh $self->savecmd("cat '$sFile'");
     CORE::close $fh;
     return $sTmpName;
+}
+
+# copies a local (temp) file to the remote host
+sub copyLoc2Rem {
+    my $self= shift;
+    my $sLocFile= shift;
+    my $sRemFile= $self->getPath(shift);
+
+    my $iBufferSize= 102400;
+
+    $self->_set_error();
+
+    unless ($self->remote) {
+        return 1 if $sLocFile eq $sRemFile;
+        $self->_set_error(`mv -f "$sLocFile" "$sRemFile" 2>&1`);
+        return $self->get_error ? 0 : 1;
+    }
+
+    my $fh;
+    if (CORE::open $fh, $sLocFile) {
+        my $sPipe= ">";
+        my $iOffset= 0;
+        my $sData;
+        my ($stdout, $stderr, $exit);
+        while (my $iRead= read $fh, $sData, $iBufferSize, $iOffset) {
+            $iOffset+= $iRead;
+            ($stdout, $stderr, $exit) = $self->_sshcmd("cat - $sPipe \"$sRemFile\"", $sData);
+            last if $stderr || $exit;
+            $sPipe= ">>" if $sPipe eq ">";
+        }
+        $self->_set_error($stderr);
+        CORE::close $fh;
+        return $stderr ? 0 : 1;
+    }
+    $self->_set_error("Could not open local file \"$sLocFile\"");
+    return 0;
 }
 
 sub mkdir {

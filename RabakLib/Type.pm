@@ -5,7 +5,8 @@ package RabakLib::Type;
 use warnings;
 use strict;
 
-use File::Temp ();
+#use File::Temp ();
+use RabakLib::Path;
 
 # use Rabak::ConfFile;
 
@@ -101,8 +102,7 @@ sub log {
 }
 
 sub tempfile {
-#    File::Temp->safe_level( File::Temp::HIGH ); # make sure tempfiles are secure
-    return @_= File::Temp->tempfile('rabak-XXXXXX', UNLINK => 1, DIR => File::Spec->tmpdir);
+    return RabakLib::Path->tempdir();
 }
 
 sub valid_source_dir {
