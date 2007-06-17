@@ -32,8 +32,8 @@ sub new {
             PATH => ".",
             PORT => 22,                     # standard ssh port to connect to
             TEMPDIR => File::Spec->tmpdir,  # directory for temporarily stored data
-        }
-        ERRORMSG => '';
+        },
+        ERRORMSG => '',
     };
 
     map { $self->{VALUES}->{uc $_} = $hParams{$_}; } keys(%hParams);
