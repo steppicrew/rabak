@@ -102,7 +102,7 @@ sub log {
 }
 
 sub tempfile {
-    return RabakLib::Path->tempdir();
+    return RabakLib::Path->tempfile();
 }
 
 sub valid_source_dir {

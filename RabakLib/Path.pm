@@ -104,11 +104,13 @@ sub getPath {
 sub _ssh {
     my $self= shift;
 
+    my @identity_files= $self->get_value("identity_files") ? split(/\s+/, $self->get_value("identity_files")) : undef;
     unless ($self->{SSH}) {
         $self->{SSH}= Net::SSH::Perl->new($self->get_value("host"),
             debug => $self->{SSH_DEBUG},
             port => $self->get_value("port"),
             protocol => $self->get_value("protocol"),
+            identity_files => @identity_files ? \@identity_files : undef,
         );
         $self->{SSH}->login($self->get_value("user"), $self->get_value("passwd"));
     }

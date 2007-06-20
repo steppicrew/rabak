@@ -343,6 +343,15 @@ B<path>: path of target directory
 
 B<host>: (for remote targets only) hostname to connect to
 
+B<port>: (for remote targets only) port to connect to (default: I<22>)
+
+B<protocol>: (for remote targets only) ssh protocol to connect to (default: I<1,2>)
+    possible values: I<1>, I<2>, I<2,1>, and I<1,2>
+
+B<identity_files>: (for remote targets only) identity files for ssh authentication.
+    (default: empty for system settings)
+    example: identity_files= /root/.ssh/id_rsa
+
 B<user>: (for remote targets only) username to connect as
 
 B<password>: (for remote targets only) password to authenticate
