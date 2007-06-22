@@ -705,6 +705,8 @@ sub backup_setup {
                 $self->log("", "===========================================================================", "");
             }
             $oTargetPath->symlink("../$sLogFile", "$sLogLink");
+            $oTargetPath->unlink("current-log.$sBakSet");
+            $oTargetPath->symlink($sLogFile, "current-log.$sBakSet");
         }
     }
 
@@ -771,8 +773,6 @@ sub backup_run {
     unless ($self->get_value('switch.pretend')) {
         $oTargetPath->unlink("current.$sBakSet");
         $oTargetPath->symlink("$sTarget", "current.$sBakSet");
-        $oTargetPath->unlink("current-log.$sBakSet");
-        $oTargetPath->symlink($self->{LOG_FILE}->get_filename(), "current-log.$sBakSet") if $self->{LOG_FILE}->get_filename();
     }
 
     # check for disc space
