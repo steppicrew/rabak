@@ -39,6 +39,7 @@ sub run {
     for (split(/,\s+|\n/, $sExclude)) {
         s/^\s+//;
         s/\s+$//;
+        # $_= "/**/$_" unless /^\//; # TODO: is this wise???
         # $_= "/*" if $_ eq "/";
         $self->build_dirhash($_, '-', $hIncExc) if $_;
     }
@@ -47,26 +48,17 @@ sub run {
         s/^\s+//;
         s/\s+$//;
 
-        # rsync works top down, so include all containing directories:
-#        if (/^\/(.+\/)/) {
- #           my @sDir= split(/\//, $1);
-  #          my $sDir= "/";
-   #         for my $i (0 .. $#sDir) {
-    #            $sDir .= $sDir[$i] . "/";
-     #           print $fhwRules "+ $sDir\n";
-      #      }
-#        # }
-
-        # let all directories end with /** to include subdirectories
         $_ .= '*' if /\/\*$/;
         $_ .= '**' if /\/$/;
-
+        # $_= "/**/$_" unless /^\//; # TODO: is this wise???
         $self->build_dirhash($_, '+', $hIncExc);
     }
 
-    print $self->unfold_dirhash($hIncExc); die;
+#    print $self->unfold_dirhash($hIncExc); die;
+    print $fhwRules $self->unfold_dirhash($hIncExc);
 
-    print $fhwRules "- /**\n" if $sInclude;
+    # TODO: do we need this???
+#    print $fhwRules "- /**\n" if $sInclude;
 
     close $fhwRules;
 
@@ -146,52 +138,24 @@ sub unfold_dirhash {
     my $hDirHash= shift;
     my $sBaseDir= shift || '';
 
-
     my $sResult= '';
-    my @Dirs= sort keys(%$hDirHash);
-    my @Dirs2= ();
-    my @sortedDirs= ();
-    my @StarStarDirs= ();
-    my @StarDirs= ();
-    my $bThisDir= 0;
-
+    # automatically sort '[?*' to end: replace those chars with 0xFD-0xFF
+    my @Dirs= keys(%$hDirHash);
+    map {
+        s/([\#\;\xF0-\xFF])/"#".ord($1).";"/ge; # replace original 0xF0-0xFF chars and "#;" with "#ASCII;" to preserve original chars
+        tr/\[\?\*/\xFD-\xFF/;  # replace wildcard chars
+    } @Dirs;
+    @Dirs= sort @Dirs; # sort to place wildcards at the end
+    map {
+        tr/\xFD-\xFF/\[\?\*/; # rereplace wildcard chars
+        s/\#(\d+)\;/chr($1)/ge; # rereplace replaced original chars
+    } @Dirs;
+    # put empty dirs (this is filter for current dir) at the end
     if (@Dirs && $Dirs[0] eq '') {
-        $bThisDir= 1;
-        shift @Dirs;
+        push @Dirs, (shift @Dirs);
     }
-#    map {
-#            if (/\*\*/) {
-#                push @StarStarDirs, $_;
-#            }
-#            else {
-#                push @Dirs2, $_;
-#            }
-#        } @Dirs;
-#    @Dirs= ();
-#    map {
-#            if (/\*/) {
-#                push @StarDirs, $_;
-#            }
-#            else {
-#                push @Dirs, $_;
-#            }
-#        } @Dirs2;
-    for (my $i=$#Dirs; $i >= 0; $i--) {
-        my $sDir= shift @Dirs;
-        if ($sDir =~ /\*\*/) {
-            push @StarStarDirs, $sDir;
-        }
-        elsif ($sDir =~ /\*/) {
-            push @StarDirs, $sDir;
-        }
-        else {
-            push @Dirs, $sDir;
-        }
-    }
-    push @sortedDirs, @Dirs, @StarDirs, @StarStarDirs;
-    push @sortedDirs, '' if $bThisDir;
-#print Dumper(@sortedDirs); die;
-    foreach my $sDir (@sortedDirs) {
+
+    foreach my $sDir (@Dirs) {
         $sResult.= $self->unfold_dirhash($hDirHash->{$sDir}{SUBDIR}, "$sBaseDir$sDir/") if $hDirHash->{$sDir}{SUBDIR};
         $sResult.= "$hDirHash->{$sDir}{FILTER} $sBaseDir$sDir\n" if $hDirHash->{$sDir}{FILTER};
     }
