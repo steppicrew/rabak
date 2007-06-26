@@ -80,7 +80,7 @@ sub _need_value {
     my $self= shift;
     my $sField= shift;
 
-    return "Required value \"" . $self->{VALUES}{name} . ".$sField\" missing." unless defined $self->{VALUES}{$sField} && !ref $self->{VALUES}{$sField};
+    return "Required value \"" . $self->{VALUES}{name} . ".$sField\" missing." unless defined $self->{VALUES}{$sField};
     return undef;
 }
 
