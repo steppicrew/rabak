@@ -10,6 +10,7 @@ use RabakLib::Type;
 @ISA = qw(RabakLib::Type);
 
 use Data::Dumper;
+use File::Spec;
 
 sub run {
     my $self= shift;
@@ -31,33 +32,29 @@ sub run {
     my ($fhwRules, $sRulesFile)= $self->tempfile();
     my ($fhwPass, $sPassFile);
 
-    my $sInclude= $self->get_value('include') || '';
-    my $sExclude= $self->get_value('exclude') || '';
-
+    my %sFilter= (
+        "+" => $self->get_value('include') || '',
+        "-" => $self->get_value('exclude') || '',
+    );
     my $hIncExc= {};
 
-    for (split(/,\s+|\n/, $sExclude)) {
-        s/^\s+//;
-        s/\s+$//;
-        # $_= "/**/$_" unless /^\//; # TODO: is this wise???
-        # $_= "/*" if $_ eq "/";
-        $self->build_dirhash($_, '-', $hIncExc) if $_;
+    for my $sFilter (keys %sFilter) {
+        for (split(/,\s+|\n/, $sFilter{$sFilter})) {
+            s/^\s+//; # strip whitespaces
+            s/\s+$//;
+            s/\/\**$/\/\*\*/; # directories should end with "/**"
+            # $_= "/**/$_" unless /^\//; # TODO: is this wise??? may be it should be set by the user to place entry at list's end
+            $self->build_dirhash(File::Spec->canonpath($_), $sFilter, $hIncExc) if $_;
+        }
     }
 
-    for (split(/,\s+|\n/, $sInclude)) {
-        s/^\s+//;
-        s/\s+$//;
-
-        $_ .= '*' if /\/\*$/;
-        $_ .= '**' if /\/$/;
-        # $_= "/**/$_" unless /^\//; # TODO: is this wise???
-        $self->build_dirhash($_, '+', $hIncExc);
-    }
-
-#    print $self->unfold_dirhash($hIncExc); die;
-    print $fhwRules $self->unfold_dirhash($hIncExc);
+    print $self->unfold_dirhash($hIncExc, {FILES => 1});
+    print $self->unfold_dirhash($hIncExc, {DIRS  => 1}); die;
+    print $fhwRules $self->unfold_dirhash($hIncExc, {FILES => 1});
+    print $fhwRules $self->unfold_dirhash($hIncExc, {DIRS  => 1});
 
     # TODO: do we need this???
+    # may be we should leave it to the user to add "/"?
 #    print $fhwRules "- /**\n" if $sInclude;
 
     close $fhwRules;
@@ -125,10 +122,12 @@ sub build_dirhash {
 
     if ($sFile =~ s/^([^\/]*)\///) {
         my $sDirPart= $1;
+        $hDirHash->{$sDirPart}= {} unless $hDirHash->{$sDirPart};
         $hDirHash->{$sDirPart}{SUBDIR}= $self->build_dirhash($sFile, $sFilter, $hDirHash->{$sDirPart}{SUBDIR});
     }
     else {
-        $hDirHash->{$sFile}= { FILTER => $sFilter };
+        $hDirHash->{$sFile}= {} unless $hDirHash->{$sFile};
+        $hDirHash->{$sFile}{FILTER}= $sFilter;
     }
     return $hDirHash
 }
@@ -136,28 +135,51 @@ sub build_dirhash {
 sub unfold_dirhash {
     my $self= shift;
     my $hDirHash= shift;
+    my $hMode= shift || { FILES => 1, DIRS => 1, };
     my $sBaseDir= shift || '';
-
     my $sResult= '';
-    # automatically sort '[?*' to end: replace those chars with 0xFD-0xFF
+
+    # sort config
+    my $bPlaceStarBeforeAll= 1; # place single stars before all other pathes
+
+    my $sReplMapSrc= quotemeta "[?*";
+    my $sReplMapDst= quotemeta "\xFD\xFE\xFF";
+    if ($bPlaceStarBeforeAll) {
+        $sReplMapSrc= quotemeta "*[?+";
+        $sReplMapDst= quotemeta "\x00\xFD\xFE\xFF";
+    }
+
+    # automatically sort '[?*' to end of list: replace those chars with 0xFD-0xFF
     my @Dirs= keys(%$hDirHash);
     map {
-        s/([\#\;\xF0-\xFF])/"#".ord($1).";"/ge; # replace original 0xF0-0xFF chars and "#;" with "#ASCII;" to preserve original chars
-        tr/\[\?\*/\xFD-\xFF/;  # replace wildcard chars
+        s/([\+\#\;\x00\xF0-\xFF])/"#".ord($1).";"/ge; # replace original 0xF0-0xFF and special chars with "#ASCII;" to preserve original chars
+        s/\*\*/\+/ if $bPlaceStarBeforeAll; # replace "**" with "+"
+#        tr/\*\[\?\+/\x00\xFD-\xFF/;  # replace wildcard chars
+        eval "tr/$sReplMapSrc/$sReplMapDst/";  # replace wildcard chars
     } @Dirs;
     @Dirs= sort @Dirs; # sort to place wildcards at the end
     map {
-        tr/\xFD-\xFF/\[\?\*/; # rereplace wildcard chars
+#        tr/\x00\xFD-\xFF/\*\[\?\+/; # rereplace wildcard chars
+        eval "tr/$sReplMapDst/$sReplMapSrc/"; # rereplace wildcard chars
+        s/\+/\*\*/ if $bPlaceStarBeforeAll; # rereplace "+" with "**"
         s/\#(\d+)\;/chr($1)/ge; # rereplace replaced original chars
     } @Dirs;
-    # put empty dirs (this is filter for current dir) at the end
-    if (@Dirs && $Dirs[0] eq '') {
+
+    # for directories: put empty dirs (current dir) at the end to allow subdirectories filter
+    # for files: files with exact directories should be placed before those without -> leave on top
+    if ($hMode->{DIRS} && @Dirs && $Dirs[0] eq '') {
         push @Dirs, (shift @Dirs);
     }
 
     foreach my $sDir (@Dirs) {
-        $sResult.= $self->unfold_dirhash($hDirHash->{$sDir}{SUBDIR}, "$sBaseDir$sDir/") if $hDirHash->{$sDir}{SUBDIR};
-        $sResult.= "$hDirHash->{$sDir}{FILTER} $sBaseDir$sDir\n" if $hDirHash->{$sDir}{FILTER};
+        $sResult.= $self->unfold_dirhash($hDirHash->{$sDir}{SUBDIR}, $hMode, "$sBaseDir$sDir/") if $hDirHash->{$sDir}{SUBDIR};
+        if ($hDirHash->{$sDir}{FILTER}) {
+            # files are those with non-empty $sDir and not ending with "**"
+            # directories have empty $sDir or end with "**"
+            my $bIsFile= $sDir && $sDir !~ /\*\*$/;
+
+            $sResult.= "$hDirHash->{$sDir}{FILTER} $sBaseDir$sDir\n" if $hMode->{FILES} && $bIsFile || $hMode->{DIRS} && !$bIsFile;
+        }
     }
     return $sResult;
 }
