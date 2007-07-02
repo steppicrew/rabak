@@ -348,6 +348,8 @@ B<port>: (for remote targets only) port to connect to (default: I<22>)
 B<protocol>: (for remote targets only) ssh protocol to connect to (default: I<1,2>)
     possible values: I<1>, I<2>, I<2,1>, and I<1,2>
 
+B<timeout>: (for remote targets only) connection timeout in seconds (default: I<150>)
+
 B<identity_files>: (for remote targets only) identity files for ssh authentication.
     (default: empty for system settings)
     example: identity_files= /root/.ssh/id_rsa
