@@ -25,6 +25,7 @@ sub run {
     my $oTargetPath= $self->get_targetPath;
     my $sRsyncPass= $oTargetPath->get_value("passwd");
     my $sPort= $oTargetPath->get_value("port") || 22;
+    my $sTimeout= $oTargetPath->get_value("timeout") || 150;
 
     my $sSrc= $self->valid_source_dir() or return 3;
 
@@ -48,8 +49,8 @@ sub run {
         }
     }
 
-    print $self->unfold_dirhash($hIncExc, {FILES => 1});
-    print $self->unfold_dirhash($hIncExc, {DIRS  => 1}); die;
+    # print $self->unfold_dirhash($hIncExc, {FILES => 1});
+    # print $self->unfold_dirhash($hIncExc, {DIRS  => 1}); die;
     print $fhwRules $self->unfold_dirhash($hIncExc, {FILES => 1});
     print $fhwRules $self->unfold_dirhash($hIncExc, {DIRS  => 1});
 
@@ -71,7 +72,7 @@ sub run {
     $sFlags .= " -i" if $self->{DEBUG};
     $sFlags .= " --dry-run" if $self->get_value('switch.pretend');
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
-    $sFlags .= " -e 'ssh -p $sPort'" if $oTargetPath->remote;
+    $sFlags .= " -e 'ssh -p $sPort' --timeout='$sTimeout'" if $oTargetPath->remote;
     if ($oTargetPath->remote && $sRsyncPass) {
         ($fhwPass, $sPassFile)= $self->tempfile();
         print $fhwPass $sRsyncPass;
