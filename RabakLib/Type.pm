@@ -125,4 +125,36 @@ sub valid_source_dir {
     return $sSourceDir;
 }
 
+sub run_cmd {
+    my $self= shift;
+    my $cmd= shift;
+
+    my ($sStdOut, $sStdErr, $iExit, $sError);
+
+    my ($fhCmdOut, $sCmdOutFile)= $self->tempfile();
+    close $fhCmdOut;
+    my ($fhCmdErr, $sCmdErrFile)= $self->tempfile();
+    close $fhCmdErr;
+
+    system("$cmd > '$sCmdOutFile' 2> '$sCmdErrFile'");
+    $iExit= $?;
+    if ($iExit == -1) {
+        $sError= "failed to execute: $!";
+    }
+    elsif ($iExit & 127) {
+        $sError= sprintf "cmd died with signal %d, %s coredump",
+            ($iExit & 127), ($iExit & 128) ? "with" : "without";
+    }
+
+    if (-s $sCmdErrFile && open ($fhCmdErr, $sCmdErrFile)) {
+        $sStdErr= join '', (<$fhCmdErr>);
+        close $fhCmdErr;
+    }
+    if (-s $sCmdOutFile && open ($fhCmdOut, $sCmdOutFile)) {
+        $sStdOut= join '', (<$fhCmdOut>);
+        close $fhCmdOut;
+    }
+    return ($sStdOut, $sStdErr, $iExit, $sError);
+}
+
 1;
