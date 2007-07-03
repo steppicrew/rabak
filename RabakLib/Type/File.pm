@@ -26,6 +26,7 @@ sub run {
     my $sRsyncPass= $oTargetPath->get_value("passwd");
     my $sPort= $oTargetPath->get_value("port") || 22;
     my $sTimeout= $oTargetPath->get_value("timeout") || 150;
+    my $sBandwidth= $oTargetPath->get_value("bandwidth") || 0;
 
     my $sSrc= $self->valid_source_dir() or return 3;
 
@@ -72,12 +73,15 @@ sub run {
     $sFlags .= " -i" if $self->{DEBUG};
     $sFlags .= " --dry-run" if $self->get_value('switch.pretend');
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
-    $sFlags .= " -e 'ssh -p $sPort' --timeout='$sTimeout'" if $oTargetPath->remote;
-    if ($oTargetPath->remote && $sRsyncPass) {
-        ($fhwPass, $sPassFile)= $self->tempfile();
-        print $fhwPass $sRsyncPass;
-        close $fhwPass;
-        $sFlags .= " --password-file=\"$sPassFile\""
+    if ($oTargetPath->remote) {
+        $sFlags .= " -e 'ssh -p $sPort' --timeout='$sTimeout'";
+        $sFlags .= " --bwlimit='$sBandwidth'" if $sBandwidth;
+        if ($sRsyncPass) {
+            ($fhwPass, $sPassFile)= $self->tempfile();
+            print $fhwPass $sRsyncPass;
+            close $fhwPass;
+            $sFlags .= " --password-file=\"$sPassFile\""
+        }
     }
 
     my $iScanBakDirs= $self->get_value('scan_bak_dirs', 4);
@@ -98,19 +102,22 @@ sub run {
 
     # print Dumper($self); die;
 
-    my @sRsyncStat= grep !/^([^\/]+\/)+$/, `$sRsyncCmd 2>&1`;
+    my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= $self->run_cmd($sRsyncCmd);
+    $self->log($self->errorMsg($sError)) if $sError;
+    $self->log($self->warnMsg("rsync exited with result ".  $iRsyncExit)) if $iRsyncExit;
+    my @sRsyncError= split(/\n/, $sRsyncErr || '');
+    $self->log($self->errorMsg(@sRsyncError)) if @sRsyncError;
+    my @sRsyncStat= ();
 
-    if ($?) {
-        $self->log($self->errorMsg(@sRsyncStat));
-        return 1;
+    for (split(/\n/, $sRsyncOut || '')) {
+        push @sRsyncStat, $_ unless /^([^\/]+\/)+$/;
     }
 
     my @sRsyncFiles= ();
-    push @sRsyncFiles, shift @sRsyncStat while ($sRsyncStat[0] && $sRsyncStat[0] !~ /^\s+$/);
-    push @sRsyncFiles, shift @sRsyncStat;
+    push @sRsyncFiles, shift @sRsyncStat while ((scalar @sRsyncStat) && $sRsyncStat[0] !~ /^Number of .*\:\s+\d+$/);
 
     $self->log([ 3, @sRsyncFiles ]);
-    $self->log(@sRsyncStat);
+    $self->log('*** Rsync Statistics: ***', @sRsyncStat);
 
     return 0;
 }
