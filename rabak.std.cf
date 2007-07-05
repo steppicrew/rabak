@@ -65,8 +65,8 @@ exclude_win =
     GoogleEarthCache/
     Anwendungsdaten/Sun/Java/Deployment/cache/
     Anwendungsdaten/Adobe/FileBrowser/
-    Lokale?Einstellungen/Temp/
-    Lokale?Einstellungen/Temporary?Internet?Files/
+    Lokale\ Einstellungen/Temp/
+    Lokale\ Einstellungen/Temporary\ Internet\ Files/
 
 exclude_common =
     tmp/
@@ -80,5 +80,9 @@ exclude_std =
     $exclude_unix
     $exclude_win
     $exclude_common
+
+filter=
+    -exclude
+    +include
 
 # EOF
