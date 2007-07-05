@@ -23,7 +23,7 @@ sub new {
         MESSAGES => '',
         LOG_FH => undef,
         FILE_NAME => '',
-        REAL_FILE_NAME => '',
+        REAL_FILE_NAME => '', # real file name (tempfile for remote log files)
         IS_NEW => 0,
 
         DEFAULTLEVEL => 2,
@@ -52,13 +52,9 @@ sub _flush {
     my $self= shift;
 
     return unless $self->{TARGET} && $self->{UNFLUSHED_MESSAGES};
-    if ($self->{TARGET}->remote) {
-        $self->{TARGET}->echo($self->get_filename, $self->{UNFLUSHED_MESSAGES});
-    }
-    else {
-        my $fh= $self->{LOG_FH};
-        print $fh $self->{UNFLUSHED_MESSAGES};
-    }
+
+    my $fh= $self->{LOG_FH};
+    print $fh $self->{UNFLUSHED_MESSAGES} if $self->{LOG_FH};
 
     $self->{UNFLUSHED_MESSAGES}= '';
 }
@@ -88,7 +84,10 @@ sub open {
     $self->{FILE_NAME}= $self->{REAL_FILE_NAME}= $sFileName;
     $self->{IS_NEW}= !$oTarget->isFile($sFileName);
 
-    unless ($oTarget->remote) {
+    if ($oTarget->remote) {
+        ($self->{LOG_FH}, $self->{REAL_FILE_NAME})= $oTarget->tempfile;
+    }
+    else {
         unless (open ($self->{LOG_FH}, ">>$sFileName")) {
             $self->{LOG_FH}= undef;
             return $!;
@@ -103,6 +102,9 @@ sub close {
     return unless $self->{TARGET};
     close $self->{LOG_FH} if $self->{LOG_FH};
     $self->{LOG_FH}= undef;
+    if ($self->{TARGET}->remote) {
+        $self->log($self->errorMsg($self->{TARGET}->get_error)) unless ($self->{TARGET}->copyLoc2Rem($self->{REAL_FILE_NAME}, $self->{FILE_NAME}, 1));
+    }
     $self->{TARGET}= undef;
 }
 
