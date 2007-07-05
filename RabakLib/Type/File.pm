@@ -123,7 +123,7 @@ sub run {
     my ($fhwPass, $sPassFile);
 
     my @sFilter= $self->_get_filter;
-    print join("\n", @sFilter), "\n"; #die;
+    # print join("\n", @sFilter), "\n"; #die;
 
     print $fhwRules join("\n", @sFilter), "\n";
     close $fhwRules;
