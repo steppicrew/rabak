@@ -314,6 +314,23 @@ B<mount>: B<Mount Objects> that have to be mounted before backup
 B<keep>: number of old backups to keep. Superfluous versions will be deleted
     (default: unlimited)
 
+B<filter>: (type I<file> only) list of rsync filters (seperated by whitespaces or ',').
+    Literal whitespaces and "," should be escaped with backslash ("\").
+    Entries beginning with '+' are treated as includes, entires beginning with '-' are
+    interpreted as excludes. If it doesn't start with '+' or '-', '+' is assumed.
+    You can use parantheses to apply an include/exclude character to multiple entries.
+    (Example: "-(/usr/tmp/, /var/tmp/)" is equivalent to "-/usr/temp/, -/var/tmp/")
+    If an entry matches a config variable, this variable is expanded. (Example:
+    "-(exclude_std)" would be replaced with an exclude list containing elements of
+    config variable $exclude_std). Variable expansion is done at runtime (late expansion).
+    (default: I<-(exclude) +(include)>)
+
+B<exclude>: (type I<file> only) list of entries to be excluded. This option is
+    ignored if B<filter> is set (see above).
+
+B<include>: (type I<file> only) list of entries to be included. This option is
+    ignored if B<filter> is set (see above).
+
 B<user>: (types I<mysql> and I<pgsql> only) user to retrieve backup data as
 
 B<password>: (types I<mysql> and I<pgsql> only) password to retrieve backup data

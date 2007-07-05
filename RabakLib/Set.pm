@@ -90,6 +90,23 @@ sub _validate {
     return $self->_need_value('title') || $self->_need_value('source') || $self->_need_value('target');
 }
 
+sub _show {}
+
+sub show {
+    my $self= shift;
+    my $sKey= shift || $self->{NAME};
+    $self->SUPER::show($sKey);
+
+    my $sType= $self->{VALUES}{type};
+    eval {
+        require "RabakLib/Type/" . ucfirst($sType) . ".pm";
+        my $sClass= "RabakLib::Type::" . ucfirst($sType);
+        my $oSet= $sClass->new($self);
+        $oSet->_show;
+    };
+
+}
+
 sub get_value {
     my $self= shift;
     my $sName= shift;

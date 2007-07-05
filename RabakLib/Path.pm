@@ -332,28 +332,32 @@ sub copyLoc2Rem {
     my $self= shift;
     my $sLocFile= shift;
     my $sRemFile= $self->getPath(shift);
+    my $bAppend= shift || 0;
 
-    my $iBufferSize= 102400;
+    my $iBufferSize= 10240;
 
     $self->_set_error();
 
     unless ($self->remote) {
         return 1 if $sLocFile eq $sRemFile;
-        $self->_set_error(`mv -f "$sLocFile" "$sRemFile" 2>&1`);
+        if ($bAppend) {
+            $self->_set_error(`cat "$sLocFile" >> "$sRemFile" 2>&1`);
+        }
+        else {
+            $self->_set_error(`cp -f "$sLocFile" "$sRemFile" 2>&1`);
+        }
         return $self->get_error ? 0 : 1;
     }
 
     my $fh;
     if (CORE::open $fh, $sLocFile) {
-        my $sPipe= ">";
-        my $iOffset= 0;
+        my $sPipe= $bAppend ? ">>" : ">";
         my $sData;
         my ($stdout, $stderr, $exit);
-        while (my $iRead= read $fh, $sData, $iBufferSize, $iOffset) {
-            $iOffset+= $iRead;
+        while (my $iRead= read $fh, $sData, $iBufferSize) {
             ($stdout, $stderr, $exit) = $self->_sshcmd("cat - $sPipe \"$sRemFile\"", $sData);
             last if $stderr || $exit;
-            $sPipe= ">>" if $sPipe eq ">";
+            $sPipe= ">>";
         }
         $self->_set_error($stderr);
         CORE::close $fh;
@@ -501,22 +505,5 @@ sub umount {
 
     return $self->savecmd("umount $sParams");
 }
-
-# TODO: TEXT ONLY!!!
-#sub copyLoc2Rem {
-#    my $self= shift;
-#    my $sLocFile= shift;
-#    my $sRemFile= $self->getPath(shift);
-#
-#    my $fh;
-#    if (CORE::open $fh, "$sLocFile") {
-#        while (<$fh>) {
-#            $self->echo($sRemFile, $_);
-#        }
-#        CORE::close $fh;
-#        return 1;
-#    }
-#    return 0;
-#}
 
 1;
