@@ -15,36 +15,55 @@ use File::Spec;
 sub _get_filter {
     my $self= shift;
 
-    my $sFilter= $self->get_value('filter') ||
-        ( "-(" . $self->get_value('exclude') . ") +(" . $self->get_value('include') . ")" );
+    my $sFilter= $self->get_value('filter') || '';
+    unless ($sFilter) {
+        $sFilter.= " -(" . $self->get_value('exclude') . ")" if $self->get_value('exclude');
+        $sFilter.= " +(" . $self->get_value('include') . ")" if $self->get_value('include');
+    }
     return $self->_parseFilter($sFilter);
 }
 
 sub _parseFilter {
     my $self= shift;
     my $sFilter= shift;
+    my $sIncExcDefault= shift || '+';
+    my $hStack= shift || {};
 
     my @sFilter= ();
 
     $sFilter=~ s/(?<!\\)([\-\+])\s+/$1/g; # remove spaces between +/- and path
     my @sIncExc= ();
-    for (split /(?<!\\)[\s\,]+/, $sFilter) { # split on space or "," not preseeded by "\"
-        my $sIncExc = '+';
+    for (split /(?<!\\)[\s\,]+/, $sFilter) { # split on space or "," not preceeded by "\"
+        my $sIncExc = $sIncExcDefault;
         $sIncExc= $sIncExc[0] if scalar @sIncExc;
         $sIncExc= $1 if s/^([\-\+])//;
         unshift @sIncExc, $sIncExc if s/^\(//;
         shift @sIncExc or die "Filter rules contain unmatched closing bracket(s)" if s/(?<!\\)\)$//;
-        for ($self->_expandFilterEntry($_)) {
-            if (ref) {
-                push @sFilter, "# Expanded from '" . $_->{start} . "'" if $_->{start};
-                push @sFilter, "# End of '" . $_->{end} . "'" if $_->{end};
-                push @sFilter, "# WARNING!! Recursive call of '" . $_->{recursion} . "'" if $_->{recursion};
-                next;
+
+        if (s/^\&//) { # expandable macro
+            my $sMacro= $self->get_value($_);
+            if (!$sMacro || ref $sMacro) {
+                $self->log($self->errorMsg("'$_' does not exist or is an object. Ignoring."));
+                push @sFilter, "# WARNING!! '$_' does not exist or is an object. Ignored.";
             }
+            elsif ($hStack->{$_}) {
+                $self->log($self->errorMsg("Filter rules contain recursion ('$_')"));
+                push @sFilter, "# WARNING!! Recursive call of '$_'. Ignored.";
+            }
+            else {
+                $hStack->{$_} = 1;
+                push @sFilter, "# Expanded from '$_'";
+                push @sFilter, $self->_parseFilter($sMacro, $sIncExc, $hStack);
+                push @sFilter, "# End of '$_'";
+                delete($hStack->{$_});
+            }
+        }
+        else {
             my $isDir= /\/$/;
             $_= File::Spec->canonpath($_); # simplify path
             s/([^\/])$/$1\// if $isDir; # append "/" to directories (stripped by canonpath)
-            s/\\([\s\,])/\[$1\]/g; # replace spaces with "[ ]"
+#            s/\\([\s\,])/\[$1\]/g; # replace spaces with "[ ]"
+            s/\\([\s\,\&\+\-])/$1/g; # remove escape char
 
             if (/^\/./ && $sIncExc eq '+') { # for includes add all parent directories
                 my $sDir= '';
@@ -71,15 +90,16 @@ sub _expandFilterEntry {
 
     my @sFilter= ();
     for my $sSubFilter (split /(?<!\\)[\s\,]+/, $sFilter) {
-        my $sMacro= $self->get_value($sSubFilter);
-        if ($sMacro) {
-            if ($hStack->{$sSubFilter}) {
+        if ($sSubFilter=~ /^\&/) { # macro to expand
+            my $sMacro= $self->get_value($sSubFilter);
+            if (!$sMacro || ref $sMacro) {
+                $self->log($self->errorMsg("'$sSubFilter' does not exist or is an object. Ignoring."));
+            }
+            elsif ($hStack->{$sSubFilter}) {
                 $self->log($self->warnMsg("Filter rules contain recursion ('$sSubFilter')"));
                 push @sFilter, {recursion => $sSubFilter};
             }
             else {
-                my $sF= $sSubFilter;
-                my $sFEnd= '';
                 $hStack->{$sSubFilter} = 1;
                 push @sFilter, {start => $sSubFilter};
                 push @sFilter, $self->_expandFilterEntry($sMacro, $hStack);
@@ -170,7 +190,7 @@ sub run {
     # print Dumper($self); die;
     $oTargetPath->close if $oTargetPath->remote; # close ssh connection (will be opened if needed)
 
-    my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= $self->run_cmd($sRsyncCmd);
+    my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= RabakLib::Path->savecmd($sRsyncCmd);
     $self->log($self->errorMsg($sError)) if $sError;
     $self->log($self->warnMsg("rsync exited with result ".  $iRsyncExit)) if $iRsyncExit;
     my @sRsyncError= split(/\n/, $sRsyncErr || '');
