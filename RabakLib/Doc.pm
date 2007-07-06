@@ -320,10 +320,10 @@ B<filter>: (type I<file> only) list of rsync filters (seperated by whitespaces o
     interpreted as excludes. If it doesn't start with '+' or '-', '+' is assumed.
     You can use parantheses to apply an include/exclude character to multiple entries.
     (Example: "-(/usr/tmp/, /var/tmp/)" is equivalent to "-/usr/temp/, -/var/tmp/")
-    If an entry matches a config variable, this variable is expanded. (Example:
-    "-(exclude_std)" would be replaced with an exclude list containing elements of
-    config variable $exclude_std). Variable expansion is done at runtime (late expansion).
-    (default: I<-(exclude) +(include)>)
+    If an entry starts with "&" and matches a config variable, this variable is expanded.
+    (Example: "-(exclude_std)" would be replaced with an exclude list containing elements
+    of  config variable $exclude_std). Variable expansion is done at runtime (late expansion).
+    (default: I<-&exclude +&include>)
 
 B<exclude>: (type I<file> only) list of entries to be excluded. This option is
     ignored if B<filter> is set (see above).

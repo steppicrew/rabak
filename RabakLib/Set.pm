@@ -103,7 +103,7 @@ sub show {
         my $sClass= "RabakLib::Type::" . ucfirst($sType);
         my $oSet= $sClass->new($self);
         $oSet->_show;
-    };
+    } or die $!;
 
 }
 
@@ -111,6 +111,7 @@ sub get_value {
     my $self= shift;
     my $sName= shift;
     my $sDefault= shift;
+    $sName=~ s/^\&//;
 
     my $sResult= $self->SUPER::get_value($sName);
     $sResult= $self->{CONF}->get_value($sName) unless defined $sResult && $sResult ne '*default*';
@@ -122,6 +123,7 @@ sub get_value {
 sub get_node {
     my $self= shift;
     my $sName= shift;
+    $sName=~ s/^\&//;
 
     my $hResult= $self->SUPER::get_node($sName);
     $hResult= $self->{CONF}->get_node($sName) unless defined $hResult;
@@ -622,7 +624,17 @@ sub unmount {
 
     for (@sUnmount) {
         my $sUnmount2= $_;
-        my $oPath= s/^\@// ? $self->get_targetPath : RabakLib::Path->new;
+        my $oPath;
+        if (s/^\@//) { # is target mount
+            $oPath= $self->get_targetPath;
+            if ($bBlaimLogFile) { # do not unmount targets while log file is open
+                push @sUnmount2, $sUnmount2;
+                next;
+            }
+        }
+        else {
+            $oPath= RabakLib::Path->new;
+        }
         my $sResult= $oPath->umount("\"$_\" 2>&1");
         if ($?) {
             chomp $sResult;

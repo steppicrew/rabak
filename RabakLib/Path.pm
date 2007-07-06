@@ -117,34 +117,77 @@ sub _ssh {
     return $self->{SSH};
 }
 
+# result: stdout
 sub savecmd {
     my $self= shift;
     my $cmd= shift;
+    my $result= shift || {};
+
+    $self= $self->new() unless ref $self;
+
+    $self->run_cmd($cmd, $result);
+    $self->_set_error($result->{stderr});
+    $?= $result->{exit}; # set standard exit variable
+    return $result->{stdout} || '';
+}
+
+# result: (stdout, stderr, exit code)
+sub run_cmd {
+    my $self= shift;
+    my $cmd= shift;
+    my $result= shift || {};
+
+    $self= $self->new() unless ref $self;
 
     print "************* COMMAND START ***************\n" .
         "$cmd\n" .
         "************** COMMAND END ****************\n" if $self->{DEBUG};
 
-    if ($self->remote) {
-        my ($stdout, $stderr, $exit) = $self->_sshcmd("$cmd");
-        $self->_set_error($stderr);
-        $?= $exit; # set standard exit variable
-        return $stdout || '';
+    return $self->remote ? $self->_sshcmd($cmd, $result) : $self->run_local_cmd($cmd, $result);
+}
+
+sub run_local_cmd {
+    my $self= shift;
+    my $cmd= shift;
+    my $result= shift || {};
+
+    $self= $self->new(@_) unless ref $self;
+
+    my ($fhCmdOut, $sCmdOutFile)= $self->tempfile();
+    CORE::close $fhCmdOut;
+    my ($fhCmdErr, $sCmdErrFile)= $self->tempfile();
+    CORE::close $fhCmdErr;
+
+    system("$cmd > '$sCmdOutFile' 2> '$sCmdErrFile'");
+    my $iExit= $result->{exit}= $?;
+    if ($iExit == -1) {
+        $result->{error}= "failed to execute: $!";
     }
-    else {
-        $self->_set_error();
-        return `$cmd`;
+    elsif ($iExit & 127) {
+        $result->{error}= sprintf "cmd died with signal %d, %s coredump",
+            ($iExit & 127), ($iExit & 128) ? "with" : "without";
     }
+
+    if (-s $sCmdErrFile && open ($fhCmdErr, $sCmdErrFile)) {
+        $result->{stderr}= join '', (<$fhCmdErr>);
+        CORE::close $fhCmdErr;
+    }
+    if (-s $sCmdOutFile && open ($fhCmdOut, $sCmdOutFile)) {
+        $result->{stdout}= join '', (<$fhCmdOut>);
+        CORE::close $fhCmdOut;
+    }
+    $self->_set_error($result->{stderr});
+    return ($result->{stdout}, $result->{stderr}, $result->{exit}, $result->{error});
 }
 
 sub _sshcmd {
     my $self= shift;
     my $cmd= shift;
     my $stdin= shift;
+    my $result= shift || {};
 
     my $ssh= $self->_ssh;
-
-    return $ssh->cmd($cmd, $stdin);
+    return ($result->{stdout}, $result->{stderr}, $result->{exit}) = $ssh->cmd($cmd, $stdin);
 }
 
 # evaluates perl script remote or locally

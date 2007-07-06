@@ -52,6 +52,7 @@ sub get_value {
     my $self= shift;
     my $sName= shift;
     my $sDefault= shift || undef;
+    $sName=~ s/^\&//;
 
     return $self->{DEFAULTS}{$sName} if defined $self->{DEFAULTS}{$sName};
 
@@ -68,6 +69,7 @@ sub get_value {
 sub get_node {
     my $self= shift;
     my $sName= shift;
+    $sName=~ s/^\&//;
 
     my @sName= split(/\./, $sName);
     for (@sName) {
