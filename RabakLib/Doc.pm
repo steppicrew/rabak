@@ -329,6 +329,8 @@ B<filter>: (type I<file> only) list of rsync filters (seperated by whitespaces o
     Effective filter rules can be displayed with 'rabak conf <bakset>'.
     B<Attention:> Pathes beginning with "/" are absolute (not relative to "source" as in
     rsync filters)
+    Please specify trailing slashes for directories! Otherwise rabak will not be able to
+    optimize your rules for rsync and they may not work as expected.
 
 B<exclude>: (type I<file> only) list of entries to be excluded. This option is
     ignored if B<filter> is set (see above).
@@ -413,6 +415,8 @@ TODO: Explain Postgresql and MySql Backup:
 * test_pg.password = test
 
 * test_pg.keep = 7 (Keep 7, remove older)
+
+* make a separate section for filter rules
 
 =head2 Removing files from the backup media
 
