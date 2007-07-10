@@ -278,16 +278,16 @@ sub collect_bakdirs {
         for my $sDayDir (keys %{$hBakDirs{$sMonthDir}}) {
             next unless ref $hBakDirs{$sMonthDir}->{$sDayDir}; # dirs point to hashes
             # print "$sDayDir??\n";
-            next unless $sDayDir =~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?(\-\d{3})?\.($sBakSet)$/; # [a-z] for backward compatibility
+            next unless $sDayDir =~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?\.($sBakSet)$/; # [a-z] for backward compatibility
             if ($sSubSetBakDay eq $1) {
                 my $sCurSubSet= $2 || '';
-                die "Maximum of 1000 backups reached!" if $sCurSubSet eq '-999';
+                die "Maximum of 1000 backups reached!" if $sCurSubSet eq '_999';
                 if (!$sCurSubSet) {
-                    $sSubSet= '-001' if $sSubSet eq '';
+                    $sSubSet= '_001' if $sSubSet eq '';
                 }
                 elsif ($sSubSet le $sCurSubSet) {
-                    $sCurSubSet=~ s/^\-0*//;
-                    $sSubSet= sprintf("-%03d", $sCurSubSet + 1);
+                    $sCurSubSet=~ s/^[\-_]0*//;
+                    $sSubSet= sprintf("_%03d", $sCurSubSet + 1);
                 }
             }
             push @sBakDir, $sDayDir;

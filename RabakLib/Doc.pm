@@ -301,13 +301,15 @@ You have to specify at least B<title>, B<source>, and B<target>.
 
 B<title>: descriptive title for backup set
 
-B<type>: backup type. may be overridden with B<source> (default: I<file>)
+B<type>: backup type. May be overridden with B<source> (default: I<file>)
     (implemented values: I<file> (default), I<mysql>, I<pgsql>)
 
-B<source>: backup source. may start with "<type>:" specifying the bakset type
+B<source>: backup source. May start with "<type>:" specifying the bakset type.
     (see B<type>)
+    for type I<file>: specify "user@host:/path" for remote sources (Target has to
+    be local for remote sources!)
 
-B<target>: backup target. may be a (local) directory or B<Target Object>.
+B<target>: backup target. May be a (local) directory or B<Target Object>.
 
 B<mount>: B<Mount Objects> that have to be mounted before backup
 
@@ -315,15 +317,18 @@ B<keep>: number of old backups to keep. Superfluous versions will be deleted
     (default: unlimited)
 
 B<filter>: (type I<file> only) list of rsync filters (seperated by whitespaces or ',').
-    Literal whitespaces and "," should be escaped with backslash ("\").
+    Literal whitespaces and ",+-&" should be escaped with backslashes ("\").
     Entries beginning with '+' are treated as includes, entires beginning with '-' are
     interpreted as excludes. If it doesn't start with '+' or '-', '+' is assumed.
     You can use parantheses to apply an include/exclude character to multiple entries.
     (Example: "-(/usr/tmp/, /var/tmp/)" is equivalent to "-/usr/temp/, -/var/tmp/")
-    If an entry starts with "&" and matches a config variable, this variable is expanded.
-    (Example: "-(exclude_std)" would be replaced with an exclude list containing elements
-    of  config variable $exclude_std). Variable expansion is done at runtime (late expansion).
+    If an entry starts with "&", it's expanded with the matching variable.
+    (Example: "-&exclude_std" would be replaced with an exclude list containing the elements
+    of config variable $exclude_std). Variable expansion is done at runtime (late expansion).
     (default: I<-&exclude +&include>)
+    Effective filter rules can be displayed with 'rabak conf <bakset>'.
+    B<Attention:> Pathes beginning with "/" are absolute (not relative to "source" as in
+    rsync filters)
 
 B<exclude>: (type I<file> only) list of entries to be excluded. This option is
     ignored if B<filter> is set (see above).
@@ -370,6 +375,7 @@ B<timeout>: (for remote targets only) connection timeout in seconds (default: I<
 B<bandwidth>: (for remote targets only) max bandwidth (default: I<0> for no limit)
 
 B<identity_files>: (for remote targets only) identity files for ssh authentication.
+    If you get 'Permission denied at RabakLib/Path.pm' try specifying id file.
     (default: empty for system settings)
     example: identity_files= /root/.ssh/id_rsa
 
