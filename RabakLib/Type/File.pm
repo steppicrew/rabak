@@ -20,16 +20,19 @@ sub _get_filter {
         $sFilter.= " -(" . $self->get_value('exclude') . ")" if $self->get_value('exclude');
         $sFilter.= " +(" . $self->get_value('include') . ")" if $self->get_value('include');
     }
-    return $self->_parseFilter($sFilter);
+    return $self->_parseFilter($sFilter, $self->valid_source_dir());
 }
 
 sub _parseFilter {
     my $self= shift;
     my $sFilter= shift;
+    my $sBaseDir= shift;
     my $sIncExcDefault= shift || '+';
     my $hStack= shift || {};
 
     my @sFilter= ();
+    $sBaseDir=~ s/\/?$/\//;
+    my $sqBaseDir= quotemeta $sBaseDir;
 
     $sFilter=~ s/(?<!\\)([\-\+])\s+/$1/g; # remove spaces between +/- and path
     my @sIncExc= ();
@@ -53,7 +56,7 @@ sub _parseFilter {
             else {
                 $hStack->{$_} = 1;
                 push @sFilter, "# Expanded from '$_'";
-                push @sFilter, $self->_parseFilter($sMacro, $sIncExc, $hStack);
+                push @sFilter, $self->_parseFilter($sMacro, $sBaseDir, $sIncExc, $hStack);
                 push @sFilter, "# End of '$_'";
                 delete($hStack->{$_});
             }
@@ -62,6 +65,11 @@ sub _parseFilter {
             my $isDir= /\/$/;
             $_= File::Spec->canonpath($_); # simplify path
             s/([^\/])$/$1\// if $isDir; # append "/" to directories (stripped by canonpath)
+            if (/^\// && !s/^$sqBaseDir/\//) {
+                $self->log($self->warnMsg("'$_' is not contained in source path '$sBaseDir'."));
+                push @sFilter, "# WARNING!! '$_' is not contained in source path '$sBaseDir'. Ignored.";
+                next;
+            }
 #            s/\\([\s\,])/\[$1\]/g; # replace spaces with "[ ]"
             s/\\([\s\,\&\+\-])/$1/g; # remove escape char
 
@@ -83,41 +91,11 @@ sub _parseFilter {
     return @sFilter;
 }
 
-sub _expandFilterEntry {
-    my $self= shift;
-    my $sFilter= shift;
-    my $hStack= shift || {};
-
-    my @sFilter= ();
-    for my $sSubFilter (split /(?<!\\)[\s\,]+/, $sFilter) {
-        if ($sSubFilter=~ /^\&/) { # macro to expand
-            my $sMacro= $self->get_value($sSubFilter);
-            if (!$sMacro || ref $sMacro) {
-                $self->log($self->errorMsg("'$sSubFilter' does not exist or is an object. Ignoring."));
-            }
-            elsif ($hStack->{$sSubFilter}) {
-                $self->log($self->warnMsg("Filter rules contain recursion ('$sSubFilter')"));
-                push @sFilter, {recursion => $sSubFilter};
-            }
-            else {
-                $hStack->{$sSubFilter} = 1;
-                push @sFilter, {start => $sSubFilter};
-                push @sFilter, $self->_expandFilterEntry($sMacro, $hStack);
-                push @sFilter, {end => $sSubFilter};
-                delete($hStack->{$sSubFilter});
-            }
-        }
-        else {
-            push @sFilter, $sSubFilter;
-        }
-    }
-    return @sFilter;
-}
-
 sub _show {
     my $self= shift;
 
-    print "Expanded rsync filter:\n\t" . join("\n\t", $self->_get_filter) . "\n";
+    my $sBaseDir= $self->valid_source_dir();
+    print "Expanded rsync filter (relative to '$sBaseDir'):\n\t" . join("\n\t", $self->_get_filter) . "\n";
 }
 
 sub run {
@@ -134,7 +112,8 @@ sub run {
     my $sRsyncPass= $oTargetPath->get_value("passwd");
     my $sPort= $oTargetPath->get_value("port") || 22;
     my $sTimeout= $oTargetPath->get_value("timeout") || 150;
-    my $sBandwidth= $oTargetPath->get_value("bandwidth") || 0;
+    my $sBandwidth= $oTargetPath->get_value("bandwidth") || '';
+    my @sIdentityFiles= $oTargetPath->get_value("identity_files") ? split(/\s+/, $oTargetPath->get_value("identity_files")) : undef;
 
     my $sSrc= $self->valid_source_dir() or return 3;
 
@@ -159,9 +138,23 @@ sub run {
 
     $sFlags .= " -i" if $self->{DEBUG};
     $sFlags .= " --dry-run" if $self->get_value('switch.pretend');
+    if ($sRsyncOpts=~ s/\-\-bwlimit\=(\d+)//) {
+        $sBandwidth= $1 unless $sBandwidth;
+        $self->log($self->warnMsg("--bandwidth in 'rsync_opts' is depricated.", "Please use 'bandwidth' option (see Doc)!"));
+    }
+    if ($sRsyncOpts=~ s/\-\-timeout\=(\d+)//) {
+        $sTimeout= $1 unless $oTargetPath->get_value("timeout");
+        $self->log($self->warnMsg("--timeout in 'rsync_opts' is depricated.", "Please use 'timeout' option (see Doc)!"));
+    }
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
     if ($oTargetPath->remote) {
-        $sFlags .= " -e 'ssh -p $sPort' --timeout='$sTimeout'";
+        my $sSshCmd= "ssh -p $sPort";
+        map { $sSshCmd.= " -i \"$_\"" if $_; } @sIdentityFiles if @sIdentityFiles;
+        if ($oTargetPath->get_value("protocol")) {
+            $sSshCmd.= " -1" if $oTargetPath->get_value("protocol") eq "1";
+            $sSshCmd.= " -2" if $oTargetPath->get_value("protocol") eq "2";
+        }
+        $sFlags .= " -e '$sSshCmd' --timeout='$sTimeout'";
         $sFlags .= " --bwlimit='$sBandwidth'" if $sBandwidth;
         if ($sRsyncPass) {
             ($fhwPass, $sPassFile)= $self->tempfile();
