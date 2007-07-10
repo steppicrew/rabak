@@ -441,7 +441,7 @@ sub _mount {
 #        join("\", \"", split(/\s+/, $sMountDeviceList)) . "\"");
 
     for my $sMountDevice (split(/\s+/, $sMountDeviceList)) {
-        push @sMountDevices, glob($sMountDevice);
+        push @sMountDevices, $self->get_targetPath->glob($sMountDevice);
     }
 
     # if no device were given, try mounting by mount point
@@ -474,7 +474,8 @@ sub _mount {
         }
 
         my $oPath= $bIsTarget ? $self->get_targetPath : RabakLib::Path->new();
-        my $sMountResult= $oPath->mount("$spMountType$spMountDevice$spMountDir$spMountOpts 2>&1");
+        $oPath->mount("$spMountType$spMountDevice$spMountDir$spMountOpts");
+        my $sMountResult= $oPath->get_error;
         if ($?) { # mount failed
             chomp $sMountResult;
             $sMountResult =~ s/\r?\n/ - /g;

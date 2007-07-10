@@ -127,7 +127,7 @@ sub savecmd {
 
     $self->run_cmd($cmd, $result);
     $self->_set_error($result->{stderr});
-    $?= $result->{exit}; # set standard exit variable
+    $?= $result->{exit} || 0; # set standard exit variable
     return $result->{stdout} || '';
 }
 
@@ -143,7 +143,7 @@ sub run_cmd {
         "$cmd\n" .
         "************** COMMAND END ****************\n" if $self->{DEBUG};
 
-    return $self->remote ? $self->_sshcmd($cmd, $result) : $self->run_local_cmd($cmd, $result);
+    return $self->remote ? $self->_sshcmd($cmd, undef, $result) : $self->run_local_cmd($cmd, $result);
 }
 
 sub run_local_cmd {
@@ -187,7 +187,11 @@ sub _sshcmd {
     my $result= shift || {};
 
     my $ssh= $self->_ssh;
-    return ($result->{stdout}, $result->{stderr}, $result->{exit}) = $ssh->cmd($cmd, $stdin);
+    my @result= $ssh->cmd($cmd, $stdin);
+    $result->{stdout}= shift @result;
+    $result->{stderr}= shift @result;
+    $result->{exit}= shift @result || 0;
+    return ($result->{stdout}, $result->{stderr}, $result->{exit});
 }
 
 # evaluates perl script remote or locally
@@ -520,6 +524,17 @@ sub abs_path {
             use Cwd;
             $result= Cwd::abs_path($sFile);
         ', { "sFile" => $sFile, }, '$result'
+    )};
+}
+
+sub glob {
+    my $self= shift;
+    my $sFile= shift;
+
+    return @{$self->_saveperl('
+            # glob()
+            @result= glob($sFile);
+        ', { "sFile" => $sFile, }, '@result'
     )};
 }
 
