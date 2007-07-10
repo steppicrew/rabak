@@ -224,7 +224,7 @@ sub __expand {
                 next;
             }
         }
-        $hConf->{VALUES}{$_} =~ s/\$($sIdent)/$self->_line_expand(substr("$sKey.$_", 1), $1, 0)/ges;
+        $hConf->{VALUES}{$_} =~ s/(?<!\\)\$($sIdent)/$self->_line_expand(substr("$sKey.$_", 1), $1, 0)/ges;
     }
 }
 

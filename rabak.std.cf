@@ -81,6 +81,12 @@ exclude_std =
     $exclude_win
     $exclude_common
 
+# Default exclude. You probably want to override this in your cf file.
+exclude = $exclude_std
+
+# Default include: Include everything.
+include =
+
 filter=
     - &exclude
     + &include

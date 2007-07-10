@@ -15,10 +15,10 @@ use File::Spec;
 sub _get_filter {
     my $self= shift;
 
-    my $sFilter= $self->get_value('filter') || '';
+    my $sFilter= $self->get_raw_value('filter') || '';
     unless ($sFilter) {
-        $sFilter.= " -(" . $self->get_value('exclude') . ")" if $self->get_value('exclude');
-        $sFilter.= " +(" . $self->get_value('include') . ")" if $self->get_value('include');
+        $sFilter.= " -(" . $self->get_raw_value('exclude') . ")" if $self->get_raw_value('exclude');
+        $sFilter.= " +(" . $self->get_raw_value('include') . ")" if $self->get_raw_value('include');
     }
     return $self->_parseFilter($sFilter, $self->valid_source_dir());
 }
@@ -70,8 +70,8 @@ sub _parseFilter {
                 push @sFilter, "# WARNING!! '$_' is not contained in source path '$sBaseDir'. Ignored.";
                 next;
             }
-#            s/\\([\s\,])/\[$1\]/g; # replace spaces with "[ ]"
-            s/\\([\s\,\&\+\-])/$1/g; # remove escape char
+
+            $_= $self->remove_backslashes($_);
 
             if (/^\/./ && $sIncExc eq '+') { # for includes add all parent directories
                 my $sDir= '';
@@ -83,9 +83,12 @@ sub _parseFilter {
                 push @sFilter, "$sIncExc $sDir" unless $isDir; # push file (if file)
                 next;
             }
-            s/\/$/\/\*/ if $sIncExc eq '-'; # for excluded dirs add star to override includeded dirs from expanded includes (see above)
+
+	    # for excluded dirs add star to override includeded dirs from expanded includes (see above)
             # example: "+/zuppi/zappi, -/zuppi/" would be expanded to "+/zuppi, +/zuppi/zappi, -/zuppi/*"
             # so all files except "zappi" under "/zuppi" are excluded
+            s/\/$/\/\*/ if $sIncExc eq '-';
+
             push @sFilter, "$sIncExc $_" if $_;
         }
     }

@@ -71,9 +71,19 @@ sub collect_bakdirs {
     # return wantarray ? (\$sBakDir, $sSubSet) : \$sBakDir;
 }
 
+sub remove_backslashes {
+    my $self= shift;
+    return $self->{SET}->remove_backslashes(@_);
+}
+
 sub get_value {
     my $self= shift;
     return $self->{SET}->get_value(@_);
+}
+
+sub get_raw_value {
+    my $self= shift;
+    return $self->{SET}->get_raw_value(@_);
 }
 
 sub infoMsg {

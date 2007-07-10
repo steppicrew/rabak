@@ -48,10 +48,11 @@ sub set_defaults {
     $self->{DEFAULTS}= $hDefaults;
 }
 
-sub get_value {
+sub get_raw_value {
     my $self= shift;
     my $sName= shift;
     my $sDefault= shift || undef;
+
     $sName=~ s/^\&//;
 
     return $self->{DEFAULTS}{$sName} if defined $self->{DEFAULTS}{$sName};
@@ -66,9 +67,38 @@ sub get_value {
     return $sDefault;
 }
 
+sub remove_backslashes {
+    my $self= shift;
+    my $sValue= shift;
+
+    if ($sValue =~ /\\$/) {
+        print "WARNING: Conf-File contains lines ending with backslashes!\n";
+    }
+
+    $sValue =~ s/_/ _/g;
+    $sValue =~ s/\\\\/\\_/g;
+
+    # Insert support for tab etc.. here
+    # $sValue =~ s/\\t/\t/g;
+
+    $sValue =~ s/\\(?!_)//g;
+    $sValue =~ s/\\_/\\/g;
+    $sValue =~ s/ _/_/g;
+    return $sValue;
+}
+
+sub get_value {
+    my $self= shift;
+    my $sName= shift;
+    my $sDefault= shift || undef;
+
+    return $self->remove_backslashes($self->get_raw_value($sName, $sDefault));
+}
+
 sub get_node {
     my $self= shift;
     my $sName= shift;
+
     $sName=~ s/^\&//;
 
     my @sName= split(/\./, $sName);
@@ -106,7 +136,7 @@ sub show {
             $self->{VALUES}{$_}->show("$sKey.$_");
             next;
         }
-        my $sValue= $self->{VALUES}{$_};
+        my $sValue= $self->get_value($_);
         $sValue =~ s/\n/\n\t/g;
         print "$sKey.$_ = $sValue\n";
     }

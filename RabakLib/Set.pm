@@ -90,7 +90,9 @@ sub _validate {
     return $self->_need_value('title') || $self->_need_value('source') || $self->_need_value('target');
 }
 
-sub _show {}
+# Stub for inheritance
+sub _show {
+}
 
 sub show {
     my $self= shift;
@@ -107,14 +109,14 @@ sub show {
 
 }
 
-sub get_value {
+sub get_raw_value {
     my $self= shift;
     my $sName= shift;
     my $sDefault= shift;
     $sName=~ s/^\&//;
 
-    my $sResult= $self->SUPER::get_value($sName);
-    $sResult= $self->{CONF}->get_value($sName) unless defined $sResult && $sResult ne '*default*';
+    my $sResult= $self->SUPER::get_raw_value($sName);
+    $sResult= $self->{CONF}->get_raw_value($sName) unless defined $sResult && $sResult ne '*default*';
     $sResult= $sDefault unless defined $sResult && $sResult ne '*default*';
     $sResult= undef unless defined $sResult && $sResult ne '*default*';
     return  $sResult;
