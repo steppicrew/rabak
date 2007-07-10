@@ -82,7 +82,7 @@ exclude_std =
     $exclude_common
 
 filter=
-    -exclude
-    +include
+    - &exclude
+    + &include
 
 # EOF
