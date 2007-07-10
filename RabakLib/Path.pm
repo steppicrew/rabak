@@ -34,6 +34,12 @@ sub new {
             TEMPDIR => File::Spec->tmpdir,  # directory for temporarily stored data
         },
         ERRORMSG => '',
+        LAST_RESULT => {
+            stdout => '',
+            stderr => '',
+            exit => 0,
+            error => '',
+        }
     };
 
     map { $self->{VALUES}->{uc $_} = $hParams{$_}; } keys(%hParams);
@@ -121,21 +127,19 @@ sub _ssh {
 sub savecmd {
     my $self= shift;
     my $cmd= shift;
-    my $result= shift || {};
 
     $self= $self->new() unless ref $self;
 
-    $self->run_cmd($cmd, $result);
-    $self->_set_error($result->{stderr});
-    $?= $result->{exit} || 0; # set standard exit variable
-    return $result->{stdout} || '';
+    $self->run_cmd($cmd);
+    $self->_set_error($self->{LAST_RESULT}{stderr});
+    $?= $self->{LAST_RESULT}{exit} || 0; # set standard exit variable
+    return $self->{LAST_RESULT}{stdout} || '';
 }
 
 # result: (stdout, stderr, exit code)
 sub run_cmd {
     my $self= shift;
     my $cmd= shift;
-    my $result= shift || {};
 
     $self= $self->new() unless ref $self;
 
@@ -143,13 +147,19 @@ sub run_cmd {
         "$cmd\n" .
         "************** COMMAND END ****************\n" if $self->{DEBUG};
 
-    return $self->remote ? $self->_sshcmd($cmd, undef, $result) : $self->run_local_cmd($cmd, $result);
+    return $self->remote ? $self->_sshcmd($cmd) : $self->run_local_cmd($cmd);
 }
 
 sub run_local_cmd {
     my $self= shift;
     my $cmd= shift;
-    my $result= shift || {};
+
+    $self->{LAST_RESULT}= {
+        stdout => '',
+        stderr => '',
+        exit => -1,
+        error => '',
+    };
 
     $self= $self->new(@_) unless ref $self;
 
@@ -159,39 +169,54 @@ sub run_local_cmd {
     CORE::close $fhCmdErr;
 
     system("$cmd > '$sCmdOutFile' 2> '$sCmdErrFile'");
-    my $iExit= $result->{exit}= $?;
+    my $iExit= $self->{LAST_RESULT}{exit}= $?;
     if ($iExit == -1) {
-        $result->{error}= "failed to execute: $!";
+        $self->{LAST_RESULT}{error}= "failed to execute: $!";
     }
     elsif ($iExit & 127) {
-        $result->{error}= sprintf "cmd died with signal %d, %s coredump",
+        $self->{LAST_RESULT}{error}= sprintf "cmd died with signal %d, %s coredump",
             ($iExit & 127), ($iExit & 128) ? "with" : "without";
     }
 
     if (-s $sCmdErrFile && open ($fhCmdErr, $sCmdErrFile)) {
-        $result->{stderr}= join '', (<$fhCmdErr>);
+        $self->{LAST_RESULT}{stderr}= join '', (<$fhCmdErr>);
         CORE::close $fhCmdErr;
     }
     if (-s $sCmdOutFile && open ($fhCmdOut, $sCmdOutFile)) {
-        $result->{stdout}= join '', (<$fhCmdOut>);
+        $self->{LAST_RESULT}{stdout}= join '', (<$fhCmdOut>);
         CORE::close $fhCmdOut;
     }
-    $self->_set_error($result->{stderr});
-    return ($result->{stdout}, $result->{stderr}, $result->{exit}, $result->{error});
+    $self->_set_error($self->{LAST_RESULT}{stderr});
+    return (
+        $self->{LAST_RESULT}{stdout},
+        $self->{LAST_RESULT}{stderr},
+        $self->{LAST_RESULT}{exit},
+        $self->{LAST_RESULT}{error}
+    );
 }
 
 sub _sshcmd {
     my $self= shift;
     my $cmd= shift;
     my $stdin= shift;
-    my $result= shift || {};
+
+    $self->{LAST_RESULT}= {
+        stdout => '',
+        stderr => '',
+        exit => -1,
+        error => '',
+    };
 
     my $ssh= $self->_ssh;
     my @result= $ssh->cmd($cmd, $stdin);
-    $result->{stdout}= shift @result;
-    $result->{stderr}= shift @result;
-    $result->{exit}= shift @result || 0;
-    return ($result->{stdout}, $result->{stderr}, $result->{exit});
+    $self->{LAST_RESULT}{stdout}= shift @result;
+    $self->{LAST_RESULT}{stderr}= shift @result;
+    $self->{LAST_RESULT}{exit}= shift @result || 0;
+    return (
+        $self->{LAST_RESULT}{stdout},
+        $self->{LAST_RESULT}{stderr},
+        $self->{LAST_RESULT}{exit},
+    );
 }
 
 # evaluates perl script remote or locally
@@ -258,11 +283,11 @@ sub _sshperl {
     my $sPerlScript= shift;
 
     # replace "'" chars for shell execution
-    $sPerlScript=~ s/\'/\'\\\'\'/g;
-    my ($stdout, $stderr, $exit)= $self->_sshcmd("perl -e '$sPerlScript'");
-    $self->_set_error($stderr);
-    print "ERR: $stderr\n" if $self->{DEBUG} && $stderr;
-    return $exit ? '' : $stdout;
+#    $sPerlScript=~ s/\'/\'\\\'\'/g;
+    $self->_sshcmd("perl", "$sPerlScript");
+    $self->_set_error($self->{LAST_RESULT}{stderr});
+    print "ERR: " . $self->{LAST_RESULT}{stderr} . "\n" if $self->{DEBUG} && $self->{LAST_RESULT}{stderr};
+    return $self->{LAST_RESULT}{exit} ? '' : $self->{LAST_RESULT}{stdout};
 }
 
 # returns directory listing
