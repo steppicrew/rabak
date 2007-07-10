@@ -83,6 +83,9 @@ sub _parseFilter {
                 push @sFilter, "$sIncExc $sDir" unless $isDir; # push file (if file)
                 next;
             }
+            s/\/$/\/\*/ if $sIncExc eq '-'; # for excluded dirs add star to override includeded dirs from expanded includes (see above)
+            # example: "+/zuppi/zappi, -/zuppi/" would be expanded to "+/zuppi, +/zuppi/zappi, -/zuppi/*"
+            # so all files except "zappi" under "/zuppi" are excluded
             push @sFilter, "$sIncExc $_" if $_;
         }
     }
