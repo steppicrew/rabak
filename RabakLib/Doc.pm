@@ -362,21 +362,21 @@ B<filter>: (type I<file> only) list of rsync filters (seperated by whitespaces o
         + /etc/
         + /etc/passwd
         - /etc/***
-        + /verservers/
-        + /verservers/*/
-        + /verservers/*/var/
-        + /verservers/*/var/log/
-        + /verservers/*/var/log/www/
-        + /verservers/*/var/log/www/**
-        - /verservers/*/var/log/***
-        + /verservers/*/etc/
-        + /verservers/*/etc/passwd
-        - /verservers/*/etc/***
+        + /vservers/
+        + /vservers/*/
+        + /vservers/*/var/
+        + /vservers/*/var/log/
+        + /vservers/*/var/log/www/
+        + /vservers/*/var/log/www/**
+        - /vservers/*/var/log/***
+        + /vservers/*/etc/
+        + /vservers/*/etc/passwd
+        - /vservers/*/etc/***
         + /vservers/save1/
         + /vservers/save1/**
         + /vservers/save2/
         + /vservers/save2/**
-        - /verservers/***
+        - /vservers/***
 
 B<exclude>: (type I<file> only) list of entries to be excluded. This option is
     ignored if B<filter> is set (see above).
