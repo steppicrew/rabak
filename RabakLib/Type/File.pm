@@ -15,86 +15,233 @@ use File::Spec;
 sub _get_filter {
     my $self= shift;
 
-    my $sFilter= $self->get_raw_value('filter') || '';
+    my $sFilter= $self->remove_backslashes_part1($self->get_raw_value('filter')) || '';
     unless ($sFilter) {
-        $sFilter.= " -(" . $self->get_raw_value('exclude') . ")" if $self->get_raw_value('exclude');
-        $sFilter.= " +(" . $self->get_raw_value('include') . ")" if $self->get_raw_value('include');
+        $sFilter.= " -(" . $self->remove_backslashes_part1($self->get_raw_value('exclude')) . ")" if $self->get_raw_value('exclude');
+        $sFilter.= " +(" . $self->remove_backslashes_part1($self->get_raw_value('include')) . ")" if $self->get_raw_value('include');
     }
     return $self->_parseFilter($sFilter, $self->valid_source_dir());
+}
+
+sub _expand {
+    my $self= shift;
+    my $sEntry= shift;
+    my $hStack= shift || {};
+
+    # remove spaces between +/- and path
+    $sEntry=~ s/(?<!\\)([\-\+])\s+/$1/g;
+    # enclose all macros with parantheses
+    $sEntry=~ s/(?<!\\)(\&[\.\w]+)/\($1\)/g;
+    $sEntry=~ s/(?<!\\)\(\s*/\( /g;
+    $sEntry=~ s/(?<!\\)\s*\)/ \)/g;
+
+    my @sEntries= split /(?<!\\)[\s\,]+/, $sEntry;
+
+    my $hEntries= {
+        TYPE => 'list',
+        DATA => [],
+    };
+    my @arStack= ();
+    for $sEntry (@sEntries) {
+# print "Original: [$sEntry]\n";
+        my $bClose= $sEntry=~ s/^\)//;
+        my $bOpen= $sEntry=~ s/(?<!\\)\($//;
+
+        # ')token'
+        if ($bClose) {
+            die "Closing bracket without opening!" unless scalar @arStack;
+            $hEntries= pop @arStack;
+        }
+        # ' token('
+        if ($bOpen && !$bClose) {
+            my $hMixed= {
+                TYPE => 'mixed',
+                DATA => [],
+            };
+            push @{$hEntries->{DATA}}, $hMixed;
+            push @arStack, $hEntries;
+            $hEntries= $hMixed;
+        }
+        if ($sEntry =~ /^\&/) {
+            my $hMacro= $self->_expandMacro($sEntry, $hStack);
+            if ($hMacro->{ERROR}) {
+                push @{$hEntries->{DATA}}, "# ERROR: $hMacro->{ERROR}";
+            }
+            else {
+                die "Internal Error (List expected)" unless $hMacro->{DATA}{TYPE} eq 'list';
+                push @{$hEntries->{DATA}}, "# Expanding '$hMacro->{MACRO}'";
+                push @{$hEntries->{DATA}}, @{$hMacro->{DATA}{DATA}};
+                push @{$hEntries->{DATA}}, "# End Of '$hMacro->{MACRO}'";
+            }
+        }
+        else {
+            push @{$hEntries->{DATA}}, $sEntry if $sEntry ne '';
+        }
+        # 'token('
+        if ($bOpen) {
+            my $sNewList= { TYPE => 'list', DATA => [], };
+            push @{$hEntries->{DATA}}, $sNewList;
+            push @arStack, $hEntries;
+            $hEntries= $sNewList;
+        }
+        elsif ($hEntries->{TYPE} eq 'mixed') {
+            $hEntries= pop @arStack;
+            print "Internal Error(2) (List Expected)" unless $hEntries->{TYPE} eq 'list';
+        }
+    }
+    die "Opening bracket without closing!" if scalar @arStack;
+# print Dumper($hEntries);
+    return $hEntries;
+}
+
+sub _expandMacro {
+    my $self= shift;
+    my $sMacroName= shift;
+    my $hStack= shift || {};
+    my %sResult= ();
+
+# print "Expanding $sMacroName\n";
+
+    $sMacroName=~ s/^\&//;
+    if ($hStack->{$sMacroName}) {
+        $sResult{ERROR}= "Recursion detected ('$sMacroName'). Ignored";
+    }
+    else {
+        my $sMacro= $self->remove_backslashes_part1($self->get_raw_value($sMacroName));
+        if (!$sMacro || ref $sMacro) {
+            $sResult{ERROR}= "'$sMacroName' does not exist or is an object. Ignored.";
+        }
+        else {
+            $sResult{MACRO}= $sMacroName;
+            $hStack->{$sMacroName}= 1;
+            $sResult{DATA}= $self->_expand($sMacro, $hStack);
+            delete $hStack->{$sMacroName};
+        }
+    }
+    $self->log($self->errorMsg("Filter expansion: $sResult{ERROR}")) if $sResult{ERROR};
+#    return $sResult{DATA};
+# print "Done $sMacroName\n";
+    return \%sResult;
+}
+
+# flattens a list of filters like "/foo /foo/bar /bar"
+sub _flatten_filter {
+    my $self= shift;
+    my $aFilter= shift;
+
+    die "Internal Error: Filter List expected" unless $aFilter->{TYPE} eq 'list';
+    my @sResult= ();
+    for my $sEntry (@{$aFilter->{DATA}}) {
+        if (ref $sEntry) {
+            push @sResult, @{$self->_flatten_mixed_filter($sEntry)};
+        }
+        else {
+            push @sResult, $sEntry;
+        }
+    }
+    return \@sResult;
+}
+
+# flattens a combination of filters like "/foo/(bar1 bar2)/"
+sub _flatten_mixed_filter {
+    my $self= shift;
+    my $aFilter= shift;
+
+    die "Internal Error: Mixed Filter expected" unless $aFilter->{TYPE} eq 'mixed';
+    my @sResult= ();
+    for my $sEntry (@{$aFilter->{DATA}}) {
+        if (ref $sEntry) {
+            push @sResult, $self->_flatten_filter($sEntry);
+        }
+        else {
+            push @sResult, [$sEntry];
+        }
+    }
+    return \@sResult unless scalar @sResult;
+    my $aTails= pop @sResult;
+    while (my $aEntry= pop @sResult) {
+        my $aNewTails= [];
+        for my $sPrefix (@$aEntry) {
+            if ($sPrefix=~ /^\#/) {
+                push @$aNewTails, $sPrefix;
+                next;
+            }
+            for my $sSuffix (@$aTails) {
+                if ($sSuffix=~ /^\#/) {
+                     push @$aNewTails, $sSuffix;
+                    next;
+                }
+                # put +/- at beginning
+                $sPrefix= "$1$sPrefix" if $sSuffix=~ s/^([\-\+])//;
+                push @$aNewTails, "$sPrefix$sSuffix";
+            }
+        }
+        $aTails = $aNewTails;
+    }
+    return $aTails;
 }
 
 sub _parseFilter {
     my $self= shift;
     my $sFilter= shift;
     my $sBaseDir= shift;
-    my $sIncExcDefault= shift || '+';
-    my $hStack= shift || {};
-
-    my @sFilter= ();
+    
     $sBaseDir=~ s/\/?$/\//;
     my $sqBaseDir= quotemeta $sBaseDir;
 
-    $sFilter=~ s/(?<!\\)([\-\+])\s+/$1/g; # remove spaces between +/- and path
-    my @sIncExc= ();
-    for (split /(?<!\\)[\s\,]+/, $sFilter) { # split on space or "," not preceeded by "\"
-        my $sIncExc = $sIncExcDefault;
-        $sIncExc= $sIncExc[0] if scalar @sIncExc;
-        $sIncExc= $1 if s/^([\-\+])//;
-        unshift @sIncExc, $sIncExc if s/^\(//;
-        shift @sIncExc or die "Filter rules contain unmatched closing bracket(s)" if s/(?<!\\)\)$//;
+    $sFilter= $self->_expand($sFilter);
+    my @sFilter= @{$self->_flatten_filter($sFilter)};
 
-        if (s/^\&//) { # expandable macro
-            my $sMacro= $self->get_value($_);
-            if (!$sMacro || ref $sMacro) {
-                $self->log($self->errorMsg("'$_' does not exist or is an object. Ignoring."));
-                push @sFilter, "# WARNING!! '$_' does not exist or is an object. Ignored.";
-            }
-            elsif ($hStack->{$_}) {
-                $self->log($self->errorMsg("Filter rules contain recursion ('$_')"));
-                push @sFilter, "# WARNING!! Recursive call of '$_'. Ignored.";
-            }
-            else {
-                $hStack->{$_} = 1;
-                push @sFilter, "# Expanded from '$_'";
-                push @sFilter, $self->_parseFilter($sMacro, $sBaseDir, $sIncExc, $hStack);
-                push @sFilter, "# End of '$_'";
-                delete($hStack->{$_});
-            }
+    return @sFilter unless scalar @sFilter;
+
+    my %sIncDirs= ();
+    my %sExcDirs= ();
+    my @sResult= ();
+    for my $sEntry (@sFilter) {
+        my $sIncExc= "+";
+        $sIncExc= $1 if $sEntry=~ s/^([\-\+\#])[\-\+]*\s*//;
+        $sEntry= $self->remove_backslashes_part2($sEntry);
+
+        my $isDir= $sEntry=~ /\/$/;
+        # simplify path
+        $sEntry= File::Spec->canonpath($sEntry);
+        # append "/" to directories (stripped by canonpath)
+        $sEntry=~ s/([^\/])$/$1\// if $isDir;
+        
+        if ($sEntry=~ /^\// && $sEntry!~ s/^$sqBaseDir/\//) {
+            $self->log($self->warnMsg("'$sEntry' is not contained in source path '$sBaseDir'."));
+            push @sResult, "# WARNING!! '$sEntry' is not contained in source path '$sBaseDir'. Ignored.";
+            next;
         }
-        else {
-            my $isDir= /\/$/;
-            $_= File::Spec->canonpath($_); # simplify path
-            s/([^\/])$/$1\// if $isDir; # append "/" to directories (stripped by canonpath)
-            if (/^\// && !s/^$sqBaseDir/\//) {
-                $self->log($self->warnMsg("'$_' is not contained in source path '$sBaseDir'."));
-                push @sFilter, "# WARNING!! '$_' is not contained in source path '$sBaseDir'. Ignored.";
-                next;
-            }
-
-            $_= $self->remove_backslashes($_);
-
-            if (/^\/./ && $sIncExc eq '+') { # for includes add all parent directories
-                my $sDir= '';
-                for (split /(\/)/) {
-                    $sDir.= "$_";
-                    next if $sDir eq "/";
-                    push @sFilter, "$sIncExc $sDir" if $_ eq "/"; # push directory
+        # for includes add all parent directories
+        if ($sEntry=~ /^\/./ && $sIncExc eq '+') {
+            my $sDir= '';
+            for (split /(\/)/, $sEntry) {
+                $sDir.= "$_";
+#                next if $sDir eq "/";
+                unless ($sIncDirs{$sDir}) {
+                    $self->log($self->warnMsg("Include '$sDir' is masked by exclude rule.")) if $sExcDirs{$sDir};
+                    push @sResult, "$sIncExc $sDir" if $_ eq "/"; # push directory
+                    $sIncDirs{$sDir}= 1;
                 }
-                push @sFilter, "$sIncExc $sDir" unless $isDir; # push file (if file)
-                next;
             }
-
-	    # for excluded dirs add star to override includeded dirs from expanded includes (see above)
-            # example: "+/zuppi/zappi, -/zuppi/" would be expanded to "+/zuppi, +/zuppi/zappi, -/zuppi/*"
-            # so all files except "zappi" under "/zuppi" are excluded
-            s/\/$/\/\*/ if $sIncExc eq '-';
-
-            push @sFilter, "$sIncExc $_" if $_;
+            $sDir.= '**' if $isDir;
+#            push @sResult, "$sIncExc $sDir" unless $isDir; # push file (if file)
+            push @sResult, "$sIncExc $sDir";
+            next;
         }
+        # for excluded dirs add "***" to override includeded dirs from expanded includes (see above)
+        # example: "+/zuppi/zappi, -/zuppi/" would be expanded to "+/zuppi/, +/zuppi/zappi, -/zuppi/***"
+        # so all files except "zappi" under "/zuppi" are excluded (*** means this dir and all following
+        # pathes)
+        if ($sIncExc eq '-') {
+            $sExcDirs{$sEntry}= 1 if $isDir;
+            $sEntry=~ s/\/$/\/\*\*\*/;
+        }
+        push @sResult, "$sIncExc $sEntry" if $sEntry;
     }
-    die "Filter rules contain unmatched opening bracket(s)" if scalar @sIncExc;
-
-    return @sFilter;
+    
+    return @sResult;
 }
 
 sub _show {
@@ -189,7 +336,7 @@ sub run {
     # print Dumper($self); die;
     $oTargetPath->close if $oTargetPath->remote; # close ssh connection (will be opened if needed)
 
-    my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= RabakLib::Path->savecmd($sRsyncCmd);
+    my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= RabakLib::Path->run_cmd($sRsyncCmd);
     $self->log($self->errorMsg($sError)) if $sError;
     $self->log($self->warnMsg("rsync exited with result ".  $iRsyncExit)) if $iRsyncExit;
     my @sRsyncError= split(/\n/, $sRsyncErr || '');

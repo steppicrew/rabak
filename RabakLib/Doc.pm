@@ -322,7 +322,10 @@ B<filter>: (type I<file> only) list of rsync filters (seperated by whitespaces o
     interpreted as excludes. If it doesn't start with '+' or '-', '+' is assumed.
     You can use parantheses to apply an include/exclude character to multiple entries.
     (Example: "-(/usr/tmp/, /var/tmp/)" is equivalent to "-/usr/temp/, -/var/tmp/")
-    If an entry starts with "&", it's expanded with the matching variable.
+    Paranthesis can generally be used to expand to a list of filters. (Example:
+    "-/foo/(bar1 bar2)/bar3" would be expanded to "-/foo/bar1/bar3, -/foo/bar2/bar3"
+    Note that there must be no space before "(" and after ")". Otherwise a new list will
+    start at space. Spaces after "(" and before ")" are optional.
     (Example: "-&exclude_std" would be replaced with an exclude list containing the elements
     of config variable $exclude_std). Variable expansion is done at runtime (late expansion).
     (default: I<-&exclude +&include>)
@@ -331,6 +334,49 @@ B<filter>: (type I<file> only) list of rsync filters (seperated by whitespaces o
     rsync filters)
     Please specify trailing slashes for directories! Otherwise rabak will not be able to
     optimize your rules for rsync and they may not work as expected.
+
+    A more complicated example:
+        filter1= +/var/log/www/, -/var/log/
+        filter2= +/etc/passwd -/etc/
+        vservers= save1 save2
+        filter= (&filter1 &filter2), /vservers/*/(&filter1 &filter2), +/vservers/&vservers/, -/vservers/
+    Would be expanded to:
+        + /var/log/www/
+        - /var/log/
+        + /etc/passwd
+        - /etc/
+        + /verservers/*/var/log/www/
+        - /verservers/*/var/log/
+        + /verservers/*/etc/passwd
+        - /verservers/*/etc/
+        + /vservers/save1/
+        + /vservers/save2/
+        - /verservers/
+    Or more rsync'ish:
+        + /
+        + /var/
+        + /var/log/
+        + /var/log/www/
+        + /var/log/www/**
+        - /var/log/***
+        + /etc/
+        + /etc/passwd
+        - /etc/***
+        + /verservers/
+        + /verservers/*/
+        + /verservers/*/var/
+        + /verservers/*/var/log/
+        + /verservers/*/var/log/www/
+        + /verservers/*/var/log/www/**
+        - /verservers/*/var/log/***
+        + /verservers/*/etc/
+        + /verservers/*/etc/passwd
+        - /verservers/*/etc/***
+        + /vservers/save1/
+        + /vservers/save1/**
+        + /vservers/save2/
+        + /vservers/save2/**
+        - /verservers/***
 
 B<exclude>: (type I<file> only) list of entries to be excluded. This option is
     ignored if B<filter> is set (see above).

@@ -67,24 +67,44 @@ sub get_raw_value {
     return $sDefault;
 }
 
-sub remove_backslashes {
+sub remove_backslashes_part1 {
     my $self= shift;
     my $sValue= shift;
+
+    return $sValue unless $sValue;
 
     if ($sValue =~ /\\$/) {
         print "WARNING: Conf-File contains lines ending with backslashes!\n";
     }
 
-    $sValue =~ s/_/ _/g;
-    $sValue =~ s/\\\\/\\_/g;
+    # make every "°" preceeded by "." (not space to keep word separators)
+    $sValue =~ s/\°/\.\°/g;
+    # replace every double backslash with "\_"
+    $sValue =~ s/\\\\/\\\°/g;
+    return $sValue;
+}
+
+sub remove_backslashes_part2 {
+    my $self= shift;
+    my $sValue= shift;
+
+    return $sValue unless $sValue;
 
     # Insert support for tab etc.. here
     # $sValue =~ s/\\t/\t/g;
 
+    # remove all backslashes
     $sValue =~ s/\\(?!_)//g;
-    $sValue =~ s/\\_/\\/g;
-    $sValue =~ s/ _/_/g;
+    # rereplace changes made in part1
+    $sValue =~ s/\\\°/\\/g;
+    $sValue =~ s/\.\°/\°/g;
     return $sValue;
+}
+sub remove_backslashes {
+    my $self= shift;
+    my $sValue= shift;
+
+    return $self->remove_backslashes_part2($self->remove_backslashes_part1($sValue));
 }
 
 sub get_value {

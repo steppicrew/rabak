@@ -68,6 +68,21 @@ sub get_error {
     return $self->{ERRORMSG};
 }
 
+sub get_last_out {
+    my $self= shift;
+    return $self->{LAST_RESULT}{stdout};
+}
+
+sub get_last_error {
+    my $self= shift;
+    return $self->{LAST_RESULT}{stderr};
+}
+
+sub get_last_exit {
+    my $self= shift;
+    return $self->{LAST_RESULT}{exit};
+}
+
 sub _set_error {
     my $self= shift;
     my $sError= shift || '';
