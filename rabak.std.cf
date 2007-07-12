@@ -32,7 +32,6 @@ switch.dev_conf_file = rabak.dev.cf
 # =======================================================================================
 
 exclude_unix =
-    $target_base
     /dev/
     /proc/
     /sys/
@@ -76,7 +75,7 @@ exclude_common =
     *.lock
 
 exclude_std =
-    $target_base
+    $target_base/
     $exclude_unix
     $exclude_win
     $exclude_common
