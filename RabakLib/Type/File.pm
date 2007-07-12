@@ -168,12 +168,15 @@ sub _flatten_mixed_filter {
             }
             for my $sSuffix (@$aTails) {
                 if ($sSuffix=~ /^\#/) {
-                     push @$aNewTails, $sSuffix;
+                    push @$aNewTails, $sSuffix;
                     next;
                 }
                 # put +/- at beginning
-                $sPrefix= "$1$sPrefix" if $sSuffix=~ s/^([\-\+])//;
-                push @$aNewTails, "$sPrefix$sSuffix";
+# print "[$sPrefix] + [$sSuffix]";
+                my ($sNewPrefix, $sNewSuffix)= ($sPrefix, $sSuffix);
+                $sNewPrefix= "$1$sPrefix" if $sNewSuffix=~ s/^([\-\+]+)//;
+# print " => [$sNewPrefix$sNewSuffix]\n";
+                push @$aNewTails, "$sNewPrefix$sNewSuffix";
             }
         }
         $aTails = $aNewTails;
@@ -185,11 +188,12 @@ sub _parseFilter {
     my $self= shift;
     my $sFilter= shift;
     my $sBaseDir= shift;
-    
+
     $sBaseDir=~ s/\/?$/\//;
     my $sqBaseDir= quotemeta $sBaseDir;
 
     $sFilter= $self->_expand($sFilter);
+# print Dumper($sFilter);
     my @sFilter= @{$self->_flatten_filter($sFilter)};
 
     return @sFilter unless scalar @sFilter;
@@ -207,7 +211,7 @@ sub _parseFilter {
         $sEntry= File::Spec->canonpath($sEntry);
         # append "/" to directories (stripped by canonpath)
         $sEntry=~ s/([^\/])$/$1\// if $isDir;
-        
+
         if ($sEntry=~ /^\// && $sEntry!~ s/^$sqBaseDir/\//) {
             $self->log($self->warnMsg("'$sEntry' is not contained in source path '$sBaseDir'."));
             push @sResult, "# WARNING!! '$sEntry' is not contained in source path '$sBaseDir'. Ignored.";
@@ -240,7 +244,7 @@ sub _parseFilter {
         }
         push @sResult, "$sIncExc $sEntry" if $sEntry;
     }
-    
+
     return @sResult;
 }
 
