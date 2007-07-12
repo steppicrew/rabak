@@ -105,8 +105,8 @@ sub show {
         my $sClass= "RabakLib::Type::" . ucfirst($sType);
         my $oSet= $sClass->new($self);
         $oSet->_show;
-    } or die $!;
-
+    };
+    print "$@\n" if $@;
 }
 
 sub get_raw_value {

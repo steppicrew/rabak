@@ -251,6 +251,8 @@ sub _parseFilter {
 sub _show {
     my $self= shift;
 
+    return unless $self->get_value("switch.verbose") > 3;
+
     my $sBaseDir= $self->valid_source_dir();
     print "Expanded rsync filter (relative to '$sBaseDir'):\n\t" . join("\n\t", $self->_get_filter) . "\n";
 }
