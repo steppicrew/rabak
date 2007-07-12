@@ -165,15 +165,15 @@ This tells B<rabak> to mount C</dev/sda1> before starting backing up C<full>, an
 to unmount when done.
 
 You may specify a list of devices to try more than one device and use the
-first successfully mounted one. That usefull for usb-devices as backup target
+first successfully mounted one. That's useful for usb-devices as backup target
 when you don't know the exact device name.
   full.mount.device= /dev/sd?1 /dev/hd[cd]1
 
 This tells B<rabak> to mount the first available (and mountable) device of
 /dev/sda1, /dev/sdb1... , /dev/hdc1 and /dev/hdd1
 
-If you specify a target group and the istarget falg, B<rabak> will make sure
-that only rabak devices will be mounted (see section C<Target Groups>).
+If you specify a target group, B<rabak> will make sure that only rabak devices
+will be mounted (see section C<Target Groups>).
 
 You can specify file system type and additional mount options with
   samba.mount.device= //sambaserver/share
