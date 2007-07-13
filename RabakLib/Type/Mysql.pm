@@ -25,7 +25,7 @@ sub run {
     my $sPassPar = "";
 
     my $oTargetPath= $self->get_targetPath;
-#    die "Dumps to remote hosts are not supported!\n" if $oTargetPath->remote;
+    my $oSourcePath= $self->get_sourcePath;
 
     $sUser =~ s/[^a-z0-9_]//g;        # simple taint
     $sPassword =~ s/\\\"//g;          # simple taint
@@ -36,15 +36,22 @@ sub run {
     my $bFoundOne= 0;
 
     my $i= 0;
-    for (split(/\n/, `mysqlshow -u"$sUser" $sPassPar`)) {
+    $oSourcePath->run_cmd("mysqlshow -u\"$sUser\" $sPassPar")
+    if ($oSourcePath->get_last_exit) {
+        $self->log($self->errorMsg("command mysql failed with: " . $oSourcePath->get_error));
+        return 9;
+    }
+    for (split(/\n/, $oSourcePath->get_last_out)) {
         $sValidDb{$1}= 1 if $i++ >= 3 && /^\|\s+(.+?)\s+\|$/;
     }
 
-    if ($self->get_value('source') eq '*') {
+    my $sSource= $sSourcePath->get_value("db");
+
+    if ($sSource eq '*') {
         @sDb= sort keys %sValidDb;
     }
     else {
-        for (split(/\s*,\s*/, $self->get_value('source'))) {
+        for (split(/\s*,\s*/, $sSource)) {
             unless (defined $sValidDb{$_}) {
                 $self->log($self->warnMsg("Unknown database: \"$_\""));
                 next;

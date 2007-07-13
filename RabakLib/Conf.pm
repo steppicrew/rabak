@@ -53,7 +53,9 @@ sub get_raw_value {
     my $sName= shift;
     my $sDefault= shift || undef;
 
-    $sName=~ s/^\&//;
+    if ($sName=~ s/^\&//) {
+        print "WARNING: It seems you try to read a value instead of a reference!";
+    }
 
     return $self->{DEFAULTS}{$sName} if defined $self->{DEFAULTS}{$sName};
 
@@ -119,12 +121,17 @@ sub get_node {
     my $self= shift;
     my $sName= shift || '';
 
-    $sName=~ s/^\&//;
+    my $bDepricated= !($sName=~ s/^\&//);
+    
+    return undef if $sName eq '.';
 
     my @sName= split(/\./, $sName);
     for (@sName) {
         return undef unless ref $self->{VALUES}{$_};
         $self= $self->{VALUES}{$_};
+    }
+    if ($bDepricated && defined $self) {
+        print "WARNING: Referencing objects without leading '&' is depricated\nPlease specify '&$sName'\n";
     }
     return $self;
 }

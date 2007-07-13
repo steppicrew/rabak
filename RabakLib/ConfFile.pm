@@ -68,9 +68,9 @@ sub print_set_list {
             && defined $oConf->{VALUES}{$_}->{VALUES}{title}
             && defined $oConf->{VALUES}{$_}->{VALUES}{source}
             && defined $oConf->{VALUES}{$_}->{VALUES}{target};
-        print "  $_ - " . $oConf->{VALUES}{$_}->{VALUES}{title}
-            . ", backs up \"" . $oConf->{VALUES}{$_}->{VALUES}{source}
-            . "\" to \"" . $oConf->{VALUES}{$_}->{VALUES}{target} . "\"\n";
+        print "  $_ - " . $oConf->{VALUES}{$_}->get_value("title")
+            . ", backs up \"" . $oConf->{VALUES}{$_}->get_value("source")
+            . "\" to \"" . $oConf->{VALUES}{$_}->get_value("target") . "\"\n";
         $bFound= 1;
     }
     print "None.\n" unless $bFound;

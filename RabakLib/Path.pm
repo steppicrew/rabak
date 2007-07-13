@@ -42,7 +42,19 @@ sub new {
         }
     };
 
-    map { $self->{VALUES}->{uc $_} = $hParams{$_}; } keys(%hParams);
+    map { $self->{VALUES}{uc $_} = $hParams{$_}; } keys(%hParams);
+
+    if ($self->{VALUES}{PATH} =~ s/^(\S+\@)?([\-0-9a-z\.]+)\://i) {
+        my $sUser= $1 || '';
+        my $sHost= $2;
+        $sUser=~ s/\@$//;
+        # TODO: implement logging for RabakLib::Path
+        print "WARNING: Specifying host and user in path is depricated!\nPlease use path objects!";
+        die "Host specified by object and path!" if $self->{VALUES}{HOST};
+        die "User specified by object and path!" if $self->{VALUES}{USER} && $sUser;
+        $self->{VALUES}{HOST}= $sHost;
+        $self->{VALUES}{USER}= $sUser if $sUser;
+    }
 
     # print Data::Dumper->Dump([$self->{VALUES}]); die;
     bless $self, $class;
@@ -51,7 +63,7 @@ sub new {
 sub get_value {
     my $self= shift;
     my $sValName= shift;
-    return $self->{VALUES}->{uc $sValName};
+    return $self->{VALUES}{uc $sValName};
 }
 
 sub _set_value {
@@ -59,7 +71,7 @@ sub _set_value {
     my $sValName= shift;
     my $sValue= shift;
 
-    $self->{VALUES}->{uc $sValName} = $sValue;
+    $self->{VALUES}{uc $sValName} = $sValue;
 }
 
 sub get_error {
@@ -92,7 +104,7 @@ sub _set_error {
 
 sub remote {
     my $self= shift;
-    return $self->{VALUES}->{HOST};
+    return $self->get_value("host");
 }
 
 sub close {

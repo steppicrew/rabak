@@ -29,6 +29,12 @@ sub get_targetPath {
 #    return File::Spec->rel2abs($self->get_value('target'));
 }
 
+sub get_sourcePath {
+    my $self= shift;
+    return $self->{SET}->get_sourcePath;
+#    return File::Spec->rel2abs($self->get_value('source'));
+}
+
 sub collect_bakdirs {
     my $self= shift;
     my $sSubSetBakDay= shift || 0;
@@ -123,26 +129,6 @@ sub log {
 
 sub tempfile {
     return RabakLib::Path->tempfile();
-}
-
-sub valid_source_dir {
-    my $self= shift;
-
-    my $sSourceDir= $self->get_value('source');
-    unless ($sSourceDir =~ /^(\S+\@)?[\-0-9a-z\.]+\:/i) { # if no remote path
-        $sSourceDir= File::Spec->rel2abs($sSourceDir);
-
-        if (!-d $sSourceDir) {
-            $self->logError("Source \"$sSourceDir\" is not a directory. Backup set skipped.");
-            return undef;
-        }
-        if (!-r $sSourceDir) {
-            $self->logError("Source \"$sSourceDir\" is not readable. Backup set skipped.");
-            return undef;
-        }
-    }
-
-    return $sSourceDir;
 }
 
 1;

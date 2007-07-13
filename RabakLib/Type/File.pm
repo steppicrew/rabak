@@ -274,6 +274,24 @@ sub _show {
     print "Expanded rsync filter (relative to '$sBaseDir'):\n\t" . join("\n\t", $self->_get_filter) . "\n";
 }
 
+sub valid_source_dir {
+    my $self= shift;
+
+    my $oSourcePath= $self->get_sourcePath;
+    my $sSourceDir= $oSourcePath->getFullPath;
+
+    if (!$oSourcePath->isDir) {
+        $self->logError("Source \"$sSourceDir\" is not a directory. Backup set skipped.");
+        return undef;
+    }
+    if (!$oSourcePath->isReadable) {
+        $self->logError("Source \"$sSourceDir\" is not readable. Backup set skipped.");
+        return undef;
+    }
+
+    return $oSourcePath->getPath;
+}
+
 sub run {
     my $self= shift;
     my @sBakDir= @_;
@@ -291,7 +309,7 @@ sub run {
     my $sBandwidth= $oTargetPath->get_value("bandwidth") || '';
     my @sIdentityFiles= $oTargetPath->get_value("identity_files") ? split(/\s+/, $oTargetPath->get_value("identity_files")) : undef;
 
-    my $sSrc= $self->valid_source_dir() or return 3;
+    my $oSourcePath= $self->get_sourcePath or return 3;
 
     # Write filter rules to temp file:
     my ($fhwRules, $sRulesFile)= $self->tempfile();
@@ -345,7 +363,7 @@ sub run {
     splice @sBakDir, $iScanBakDirs if $#sBakDir >= $iScanBakDirs;
     map { $sFlags .= " --link-dest=\"$_\""; } @sBakDir;
 
-    $sSrc .= "/" unless $sSrc =~ /\/$/;
+    my $sSrc = $oSourcePath->getPath . "/";
     my $sDestDir= $oTargetPath->getPath($self->get_value("full_target"));
     if ($oTargetPath->remote) {
         $sDestDir= $oTargetPath->get_value("host") . ":$sDestDir";
@@ -359,7 +377,7 @@ sub run {
     # print Dumper($self); die;
     $oTargetPath->close if $oTargetPath->remote; # close ssh connection (will be opened if needed)
 
-    my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= RabakLib::Path->run_cmd($sRsyncCmd);
+    my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= $oSourcePath->run_cmd($sRsyncCmd);
     $self->log($self->errorMsg($sError)) if $sError;
     $self->log($self->warnMsg("rsync exited with result ".  $iRsyncExit)) if $iRsyncExit;
     my @sRsyncError= split(/\n/, $sRsyncErr || '');

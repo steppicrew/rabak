@@ -71,7 +71,7 @@ sub new {
         #     return "Backup set type of \"$sName.source\" must be \"file\", \"pgsql\" or \"mysql\". (" . $self->{VALUES}{source} . ")";
         # }
     }
-    $self->{VALUES}{name}= $sName;
+    $self->set_value("name", $sName);
 
     bless $self, $class;
 }
@@ -240,26 +240,40 @@ sub _remove_old {
 #  ...
 # -----------------------------------------------------------------------------
 
+sub _get_PathObject {
+    my $self= shift;
+    my $sPathName= shift;
+
+    # may be path, path object or reference to path object
+    my $sPath= $self->get_value($sPathName);
+    my $oPath= ref $sPath ? $sPath : $self->get_node($sPath);
+    my $oResult;
+    if (ref $oPath) {
+        $self->log($self->warnMsg("Specifying $sPathName object without '&' is depricated!", "Please set $sPathName to '&$sPath'!")) unless ref $sPath || $sPath=~ /^\&/;
+        $oResult= RabakLib::Path->new(
+            %{$oPath->{VALUES}}
+        );
+    }
+    else {
+        $oResult= RabakLib::Path->new(
+            PATH => $sPath,
+        );
+    }
+    return $oResult;
+}
+
 sub get_targetPath {
     my $self= shift;
 
-    unless ($self->{_objTarget}) {
-        # target may be path, target object or reference to target object
-        my $sTarget= $self->get_value("target");
-        my $oTarget= ref $sTarget ? $sTarget : $self->get_node($sTarget);
-        if (ref $oTarget) {
-            $self->log($self->warnMsg("Specifying target object without '&' is depricated!", "Please set target to '&$sTarget'!")) unless ref $sTarget || $sTarget=~ /^\&/;
-            $self->{_objTarget}= RabakLib::Path->new(
-                %{$oTarget->{VALUES}}
-            );
-        }
-        else {
-            $self->{_objTarget}= RabakLib::Path->new(
-                PATH   => $sTarget,
-            );
-        }
-    }
+    $self->{_objTarget}= $self->_get_PathObject("target") unless $self->{_objTarget};
     return $self->{_objTarget};
+}
+
+sub get_sourcePath {
+    my $self= shift;
+
+    $self->{_objSource}= $self->_get_PathObject("source") unless $self->{_objSource};
+    return $self->{_objSource};
 }
 
 # collect all backup dirs
@@ -412,17 +426,17 @@ sub _mount {
     my $arUnmount= shift || {};
     my $arAllMount= shift || {};
 
-    my $sMountDeviceList= $oMount->{VALUES}{device} || '';
-    my $sMountDir= $oMount->{VALUES}{directory} || '';
+    my $sMountDeviceList= $oMount->get_value("device") || '';
+    my $sMountDir= $oMount->get_value("directory") || '';
     my $sTargetGroup= $self->get_targetPath->get_value("group");
-    my $sMountType= $oMount->{VALUES}{type} || '';
-    my $sMountOpts= $oMount->{VALUES}{opts} || '';
+    my $sMountType= $oMount->get_value("type") || '';
+    my $sMountOpts= $oMount->get_value("opts") || '';
     my $sUnmount= "";
 
     # backward compatibility
-    if (!$bIsTarget && $oMount->{VALUES}{istarget}) {
-        push @{ $arMessage }, $self->warnMsg("Mount option \"istarget\" is depricated",
-            "Please use \"mount\" in Target Objects! (see Doc)");
+    if (!$bIsTarget && $oMount->get_value("istarget")) {
+        $self->log($self->warnMsg("Mount option \"istarget\" is depricated",
+            "Please use \"mount\" in Target Objects! (see Doc)"));
         $bIsTarget= 1;
     }
     # backward compatibility
@@ -478,8 +492,8 @@ sub _mount {
 
         my $oPath= $bIsTarget ? $self->get_targetPath : RabakLib::Path->new();
         $oPath->mount("$spMountType$spMountDevice$spMountDir$spMountOpts");
-        my $sMountResult= $oPath->get_error;
         if ($?) { # mount failed
+            my $sMountResult= $oPath->get_error;
             chomp $sMountResult;
             $sMountResult =~ s/\r?\n/ - /g;
             push @sCurrentMountMessage, $self->warnMsg("Mounting$spMountDevice$spMountDir failed with: $sMountResult!");
@@ -494,8 +508,9 @@ sub _mount {
                 push @sCurrentMountMessage, $self->warnMsg("Device \"$sMountDevice\" is not mounted!");
             }
             elsif ($checkResult{CODE} == 1) { # device is no valid target
-                $sMountResult= $oPath->umount("$sUnmount 2>&1");
+                $oPath->umount("\"$sUnmount\"");
                 if ($?) { # umount failed
+                    my $sMountResult= $oPath->get_error;
                     chomp $sMountResult;
                     $sMountResult =~ s/\r?\n/ - /g;
                     push @sCurrentMountMessage, $self->warnMsg("Unmounting \"$sUnmount\" failed with: $sMountResult!");
@@ -524,7 +539,7 @@ nextDevice:
 
         $sUnmount= "\@$sUnmount" if $bIsTarget; # mark targets to use $oTargetPath for unmounting
         # We want to unmount in reverse order:
-        unshift @{ $arUnmount }, $sUnmount if $oMount->{VALUES}{unmount} && $iResult;
+        unshift @{ $arUnmount }, $sUnmount if $oMount->get_value("unmount") && $iResult;
     }
 
     push @{ $arMessage }, $self->infoMsg("Mounted$spMountDevice$spMountDir") if $iResult;
@@ -561,8 +576,8 @@ sub mount {
     my $arAllMount= $self->{_ALL_MOUNT_LIST} || [];
 
     if ($self->get_value("targetgroup")) {
-        push @{ $arMessage }, $self->warnMsg("BakSet option \"targetgroup\" is depricated",
-            "Please use \"group\" in Target Objects! (see Doc)")
+        $self->log($self->warnMsg("BakSet option \"targetgroup\" is depricated",
+            "Please use \"group\" in Target Objects! (see Doc)"));
     }
 
     my @sToMount= ({MOUNT => $self->get_value("mount")});
@@ -747,9 +762,9 @@ sub backup_setup {
 
     ($sSubSet, @sBakDir)= $self->collect_bakdirs($sBakDay);
 
-    $self->{VALUES}{unique_target}= "$sBakDay$sSubSet.$sBakSet";
-    my $sTarget= "$sBakMonth.$sBakSet/" . $self->{VALUES}{unique_target};
-    $self->{VALUES}{full_target}= $oTargetPath->getPath . "/$sTarget";
+    $self->set_value("unique_target", "$sBakDay$sSubSet.$sBakSet");
+    my $sTarget= "$sBakMonth.$sBakSet/" . $self->get_value("unique_target");
+    $self->set_value("full_target", $oTargetPath->getPath . "/$sTarget");
     # $self->{VALUES}{bak_dirs}= \@sBakDir;
 
     $self->_mkdir($sTarget);
@@ -757,7 +772,7 @@ sub backup_setup {
     $self->log($self->infoMsg("Backup $sBakDay exists, using subset.")) if $sSubSet;
     $self->log($self->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->get_value("title")));
     $self->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_value('switch.pretend') && $self->get_value('switch.logging');
-    $self->log("Source: " . $self->get_value("type") . ":" . $self->get_value("source"));
+    $self->log("Source: " . $self->get_value("type") . ":" . $self->get_sourcePath->getFullPath);
 
     $self->log(@sMountMessage);
 
