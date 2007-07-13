@@ -246,8 +246,7 @@ sub get_targetPath {
     unless ($self->{_objTarget}) {
         # target may be path, target object or reference to target object
         my $sTarget= $self->get_value("target");
-        my $oTarget= $sTarget if ref $sTarget;
-        $oTarget= $self->get_node($oTarget) unless ref $oTarget;
+        my $oTarget= ref $sTarget ? $sTarget : $self->get_node($sTarget);
         if (ref $oTarget) {
             $self->log($self->warnMsg("Specifying target object without '&' is depricated!", "Please set target to '&$sTarget'!")) unless ref $sTarget || $sTarget=~ /^\&/;
             $self->{_objTarget}= RabakLib::Path->new(
@@ -641,8 +640,9 @@ sub unmount {
         else {
             $oPath= RabakLib::Path->new;
         }
-        my $sResult= $oPath->umount("\"$_\" 2>&1");
+        $oPath->umount("\"$_\"");
         if ($?) {
+            my $sResult= $oPath->get_error;
             chomp $sResult;
             $sResult =~ s/\r?\n/ - /g;
             next unless $sAllMount{$_};
