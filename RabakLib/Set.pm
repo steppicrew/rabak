@@ -568,15 +568,11 @@ sub mount {
 
     my @sToMount= ({MOUNT => $self->get_value("mount")});
     my $sTarget= $self->get_value("target");
-    my $oTarget= $sTarget;
-    unless (ref $oTarget) {
-        $oTarget= $self->get_node($sTarget);
-        $self->log($self->warnMsg("Specifying target object without '&' is depricated.", "Please set target to '&$sTarget'!")) if $sTarget!~ /^\&/ && ref $oTarget;
-    }
+    my $oTarget= $self->get_targetPath;
     push @sToMount, {
         MOUNT => $oTarget->get_value("mount"),
         TARGET => 1,
-    } if ref $oTarget &&  $oTarget->get_value("mount");
+    } if $oTarget->get_value("mount");
 
     my $iResult= 1; # defaults to mount succeeded
 
