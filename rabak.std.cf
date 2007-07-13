@@ -81,7 +81,7 @@ exclude_std =
     $exclude_common
 
 # Default exclude. You probably want to override this in your cf file.
-exclude = $exclude_std
+exclude = 
 
 # Default include: Include everything.
 include =

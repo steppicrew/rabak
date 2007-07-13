@@ -162,11 +162,13 @@ sub _flatten_mixed_filter {
     while (my $aEntry= pop @sResult) {
         my $aNewTails= [];
         for my $sPrefix (@$aEntry) {
+            # do not combine comments
             if ($sPrefix=~ /^\#/) {
                 push @$aNewTails, $sPrefix;
                 next;
             }
             for my $sSuffix (@$aTails) {
+                # do not combine comments
                 if ($sSuffix=~ /^\#/) {
                     push @$aNewTails, $sSuffix;
                     next;
@@ -202,16 +204,31 @@ sub _parseFilter {
     my %sExcDirs= ();
     my @sResult= ();
     for my $sEntry (@sFilter) {
-        my $sIncExc= "+";
-        $sIncExc= $1 if $sEntry=~ s/^([\-\+\#])[\-\+]*\s*//;
         $sEntry= $self->remove_backslashes_part2($sEntry);
-
+        $sEntry=~ s/^([\-\+\#]*)\s*//;
+        my $sIncExc= $1;
+        
         my $isDir= $sEntry=~ /\/$/;
         # simplify path
         $sEntry= File::Spec->canonpath($sEntry);
         # append "/" to directories (stripped by canonpath)
         $sEntry=~ s/([^\/])$/$1\// if $isDir;
 
+        unless ($sIncExc) {
+            $self->log($self->warnMsg("'$sEntry' has no include/exclude prefix. Ignored."));
+            push @sResult, "# WARNING!! '$sEntry' has no include/exclude prefix. Ignored.";
+            next;
+        }
+        if (length $sIncExc > 1) {
+            my $sSearchFor= $sIncExc=~ /^\+/ ? '-' : '+';
+            if (index($sIncExc, $sSearchFor) >= 0) {
+                $self->log($self->warnMsg("'$sEntry' has ambiguous include/exclude prefix. Ignored."));
+                push @sResult, "# WARNING!! '$sEntry' has ambiguous include/exclude prefix. Ignored.";
+                next;
+            }
+            $sIncExc=~ s/(?<=[\-\+]).*//;
+        }
+        
         if ($sEntry=~ /^\// && $sEntry!~ s/^$sqBaseDir/\//) {
             $self->log($self->warnMsg("'$sEntry' is not contained in source path '$sBaseDir'."));
             push @sResult, "# WARNING!! '$sEntry' is not contained in source path '$sBaseDir'. Ignored.";
