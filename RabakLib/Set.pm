@@ -80,7 +80,7 @@ sub _need_value {
     my $self= shift;
     my $sField= shift;
 
-    return "Required value \"" . $self->{VALUES}{name} . ".$sField\" missing." unless defined $self->{VALUES}{$sField};
+    return "Required value \"" . $self->get_value("name") . ".$sField\" missing." unless defined $self->{VALUES}{$sField};
     return undef;
 }
 
@@ -99,7 +99,7 @@ sub show {
     my $sKey= shift || $self->{NAME};
     $self->SUPER::show($sKey);
 
-    my $sType= $self->{VALUES}{type};
+    my $sType= $self->get_value("type");
     eval {
         require "RabakLib/Type/" . ucfirst($sType) . ".pm";
         my $sClass= "RabakLib::Type::" . ucfirst($sType);
@@ -111,7 +111,7 @@ sub show {
 
 sub get_raw_value {
     my $self= shift;
-    my $sName= shift;
+    my $sName= shift || '';
     my $sDefault= shift;
     $sName=~ s/^\&//;
 
@@ -124,7 +124,7 @@ sub get_raw_value {
 
 sub get_node {
     my $self= shift;
-    my $sName= shift;
+    my $sName= shift || '';
     $sName=~ s/^\&//;
 
     my $hResult= $self->SUPER::get_node($sName);
@@ -245,16 +245,18 @@ sub get_targetPath {
 
     unless ($self->{_objTarget}) {
         # target may be path, target object or reference to target object
-        my $oTarget= $self->{VALUES}{target};
+        my $sTarget= $self->get_value("target");
+        my $oTarget= $sTarget if ref $sTarget;
         $oTarget= $self->get_node($oTarget) unless ref $oTarget;
         if (ref $oTarget) {
+            $self->log($self->warnMsg("Specifying target object without '&' is depricated!", "Please set target to '&$sTarget'!")) unless ref $sTarget || $sTarget=~ /^\&/;
             $self->{_objTarget}= RabakLib::Path->new(
                 %{$oTarget->{VALUES}}
             );
         }
         else {
             $self->{_objTarget}= RabakLib::Path->new(
-                PATH   => $self->{VALUES}{target},
+                PATH   => $sTarget,
             );
         }
     }
@@ -266,7 +268,7 @@ sub collect_bakdirs {
     my $self= shift;
     my $sSubSetBakDay= shift || 0;
 
-    my $sBakSet= $self->{VALUES}{name};
+    my $sBakSet= $self->get_value("name");
     my $oTargetPath= $self->get_targetPath();
     my @sBakDir= ();
     my $sSubSet= '';
@@ -425,7 +427,7 @@ sub _mount {
         $bIsTarget= 1;
     }
     # backward compatibility
-    $sTargetGroup= $self->{VALUES}{targetgroup} if !$sTargetGroup && $self->{VALUES}{targetgroup};
+    $sTargetGroup= $self->get_value("targetgroup") if !$sTargetGroup && $self->get_value("targetgroup");
 
 
     # parameters for mount command
@@ -559,18 +561,22 @@ sub mount {
     my $arUnmount= $self->{_UNMOUNT_LIST} || [];
     my $arAllMount= $self->{_ALL_MOUNT_LIST} || [];
 
-    if ($self->{VALUES}{targetgroup}) {
+    if ($self->get_value("targetgroup")) {
         push @{ $arMessage }, $self->warnMsg("BakSet option \"targetgroup\" is depricated",
             "Please use \"group\" in Target Objects! (see Doc)")
     }
 
-    my @sToMount= ({MOUNT => $self->{VALUES}{mount}});
-    my $oTarget= $self->{VALUES}{target};
-    $oTarget= $self->get_node($oTarget) unless ref $oTarget;
+    my @sToMount= ({MOUNT => $self->get_value("mount")});
+    my $sTarget= $self->get_value("target");
+    my $oTarget= $sTarget;
+    unless (ref $oTarget) {
+        $oTarget= $self->get_node($sTarget);
+        $self->log($self->warnMsg("Specifying target object without '&' is depricated.", "Please set target to '&$sTarget'!")) if $sTarget!~ /^\&/ && ref $oTarget;
+    }
     push @sToMount, {
-        MOUNT => $oTarget->{VALUES}->{mount},
+        MOUNT => $oTarget->get_value("mount"),
         TARGET => 1,
-    } if ref $oTarget &&  $oTarget->{VALUES}->{mount};
+    } if ref $oTarget &&  $oTarget->get_value("mount");
 
     my $iResult= 1; # defaults to mount succeeded
 
@@ -587,6 +593,7 @@ sub mount {
             }
             else {
                 for my $sToken (split(/\s+/, $sMount)) {
+                    $self->log($self->warnMsg("Specifying mount object without '&' is depricated.", "Please set mount to '&$sToken'!")) if $sToken!~ /^\&/;
                     my $oMount= $self->get_node($sToken);
                     if (!ref $oMount) {
                         push @{ $arMessage }, $self->warnMsg("Mount information \"$sToken\" not defined in config file");
@@ -713,7 +720,7 @@ sub backup_setup {
 
     my $sBakMonth= strftime("%Y-%m", localtime);
     my $sBakDay= strftime("%Y-%m-%d", localtime);
-    my $sBakSet= $self->{VALUES}{name};
+    my $sBakSet= $self->get_value("name");
 
     my $sLogFile= "$sBakMonth-log/$sBakDay.$sBakSet.log";
 
@@ -752,9 +759,9 @@ sub backup_setup {
     $self->_mkdir($sTarget);
 
     $self->log($self->infoMsg("Backup $sBakDay exists, using subset.")) if $sSubSet;
-    $self->log($self->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->{VALUES}{title}));
+    $self->log($self->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->get_value("title")));
     $self->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_value('switch.pretend') && $self->get_value('switch.logging');
-    $self->log("Source: " . $self->{VALUES}{type} . ":" . $self->{VALUES}{source});
+    $self->log("Source: " . $self->get_value("type") . ":" . $self->get_value("source"));
 
     $self->log(@sMountMessage);
 
@@ -770,7 +777,7 @@ sub backup_setup {
 sub backup_run {
     my $self= shift;
 
-    my $sBakType= $self->{VALUES}{type};
+    my $sBakType= $self->get_value("type");
 
     my @sBakDir= @{ $self->{_BAK_DIR_LIST} };
     my $oTargetPath= $self->get_targetPath;
@@ -876,7 +883,7 @@ sub rm_file {
     my %aFiles= ();
     my %iFoundMask= ();
 
-    my $sBakSet= $self->{VALUES}{name};
+    my $sBakSet= $self->get_value("name");
     my $oTargetPath= $self->get_targetPath();
 
     # TODO: Make a better check!

@@ -117,7 +117,7 @@ sub get_value {
 
 sub get_node {
     my $self= shift;
-    my $sName= shift;
+    my $sName= shift || '';
 
     $sName=~ s/^\&//;
 

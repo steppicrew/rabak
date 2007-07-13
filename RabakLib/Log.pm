@@ -191,7 +191,7 @@ sub levelLog {
         $sMessage= '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
         print "$sMsgPref$sMessage\n" if $iLevel <= $self->{CONF}->get_value('switch.verbose');
 
-        return unless $self->{CONF}->get_value('switch.logging') &&
+        next unless $self->{CONF}->get_value('switch.logging') &&
             !$self->{CONF}->get_value('switch.pretend');
 #            $iLevel <= $self->{CONF}->get_value('switch.verbose');
 
