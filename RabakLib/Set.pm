@@ -249,7 +249,7 @@ sub _get_PathObject {
     my $oPath= ref $sPath ? $sPath : $self->get_node($sPath);
     my $oResult;
     if (ref $oPath) {
-        $self->log($self->warnMsg("Specifying $sPathName object without '&' is depricated!", "Please set $sPathName to '&$sPath'!")) unless ref $sPath || $sPath=~ /^\&/;
+        $self->log($self->warnMsg("Specifying $sPathName object without '&' is deprecated!", "Please set $sPathName to '&$sPath'!")) unless ref $sPath || $sPath=~ /^\&/;
         $oResult= RabakLib::Path->new(
             %{$oPath->{VALUES}}
         );
@@ -435,7 +435,7 @@ sub _mount {
 
     # backward compatibility
     if (!$bIsTarget && $oMount->get_value("istarget")) {
-        $self->log($self->warnMsg("Mount option \"istarget\" is depricated",
+        $self->log($self->warnMsg("Mount option \"istarget\" is deprecated",
             "Please use \"mount\" in Target Objects! (see Doc)"));
         $bIsTarget= 1;
     }
@@ -576,7 +576,7 @@ sub mount {
     my $arAllMount= $self->{_ALL_MOUNT_LIST} || [];
 
     if ($self->get_value("targetgroup")) {
-        $self->log($self->warnMsg("BakSet option \"targetgroup\" is depricated",
+        $self->log($self->warnMsg("BakSet option \"targetgroup\" is deprecated",
             "Please use \"group\" in Target Objects! (see Doc)"));
     }
 
@@ -603,7 +603,7 @@ sub mount {
             }
             else {
                 for my $sToken (split(/\s+/, $sMount)) {
-                    $self->log($self->warnMsg("Specifying mount object without '&' is depricated.", "Please set mount to '&$sToken'!")) if $sToken!~ /^\&/;
+                    $self->log($self->warnMsg("Specifying mount object without '&' is deprecated.", "Please set mount to '&$sToken'!")) if $sToken!~ /^\&/;
                     my $oMount= $self->get_node($sToken);
                     if (!ref $oMount) {
                         push @{ $arMessage }, $self->warnMsg("Mount information \"$sToken\" not defined in config file");
