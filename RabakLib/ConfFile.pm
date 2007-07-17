@@ -136,7 +136,15 @@ sub _read_file {
 
         # TODO: add to documentation
         if ($sLine =~ /^INCLUDE\s+(.+)/) {
-            $self->_read_file($1, $iLine);
+	    my $sInclude= $1;
+	    my $sInclude2= $sInclude;
+
+	    $sInclude2= "$1/$sInclude2" if !-f $sInclude2 && $sFile =~ /(.*)\/(.+?)$/;
+
+	    # TODO:
+	    # $sInclude2= "/etc/rabak/$sInclude" if !-f $sInclude2;
+
+            $self->_read_file($sInclude2, $iLine);
             $self->{FILE}= $sFile;
             next;
         }

@@ -23,6 +23,10 @@ sub new {
     bless $self, $class;
 }
 
+# Stub for inheritance
+sub _show {
+}
+
 sub get_targetPath {
     my $self= shift;
     return $self->{SET}->get_targetPath;

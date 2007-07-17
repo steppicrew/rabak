@@ -18,7 +18,7 @@ sub new {
     my $class= shift;
     my $self= $class->SUPER::new(@_);
 
-    $self->{DEBUG}= 0;
+    $self->{DEBUG}= 1;
 
     # print Data::Dumper->Dump([$self->{VALUES}]); die;
     bless $self, $class;

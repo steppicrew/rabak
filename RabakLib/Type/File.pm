@@ -12,6 +12,12 @@ use RabakLib::Type;
 use Data::Dumper;
 use File::Spec;
 
+sub new {
+    $class= shift;
+    my $self = $class->SUPER::new(@);
+    bless $class, $self;
+}
+
 sub _get_filter {
     my $self= shift;
 

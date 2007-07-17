@@ -5,21 +5,18 @@
 use warnings;
 use strict;
 
-# change to programs directory evalutaing use commands
-my $basedir= `dirname "$0"`;
-chomp $basedir;
-chdir "$basedir" if $basedir; # change
 umask 0077; # make sure all tempfiles are readable only by us
 
-eval "
-  use RabakLib::ConfFile;
-  use RabakLib::Set;
-  use RabakLib::Admin;
-  1;
-" or die @!;
-
+use Cwd;
 use Data::Dumper;
 use Getopt::Std;
+use FindBin qw($Bin);
+
+use lib $Bin;
+
+use RabakLib::ConfFile;
+use RabakLib::Set;
+use RabakLib::Admin;
 
 our $VERSION= "0.6rc3";
 our $DEBUG= 0;
@@ -49,6 +46,8 @@ if ($opt_h) {
 
 cmd_backup() if $sCmd eq 'backup';
 cmd_conf()   if $sCmd eq 'conf';
+
+# Work in progress:
 cmd_rmfile() if $sCmd eq 'rmfile';
 cmd_doc()    if $sCmd eq 'doc';
 cmd_admin()  if $sCmd eq 'admin';
@@ -95,7 +94,9 @@ sub cmd_rmfile {
 # -----------------------------------------------------------------------------
 
 sub cmd_doc {
-    die "Not implemented. Try \"perldoc RabakLib::Doc\"";
+    chdir $Bin;
+    print `perldoc RabakLib::Doc`;
+    _exit(0);
 }
 
 # -----------------------------------------------------------------------------
@@ -112,6 +113,19 @@ sub cmd_admin {
 # -----------------------------------------------------------------------------
 #  HELPER FUNCTIONS
 # -----------------------------------------------------------------------------
+
+# sub eval_inside_rabakdir {
+#     my $sCode= shift;
+#
+#     my $cwd= getcwd();
+#     my $basedir= `dirname "$0"`;
+#     chomp $basedir;
+#     chdir $basedir if $basedir ne ''; # change
+#
+#     eval "$sCode 1;" or die @!;
+#
+#     chdir $cwd if $cwd ne '';
+# }
 
 sub _conf_read {
     $oConfFile= RabakLib::ConfFile->new($opt_c ? $opt_c : 'rabak.cf');
@@ -164,12 +178,17 @@ sub help {
         'backup' => "rabak [switches] backup <set>
 Help not implemented.
 ",
-        'rmfile' => "rabak [switches] rmfile <set> <file-or-dir-mask> [ <file-or-dir-mask> .. ]
-Help not implemented.
-",
         'conf'   => "rabak [switches] conf [<set>]
 Help not implemented.
 ",
+        'doc'   => "rabak doc
+Help not implemented.
+",
+
+#         'rmfile' => "rabak [switches] rmfile <set> <file-or-dir-mask> [ <file-or-dir-mask> .. ]
+# Help not implemented.
+# ",
+
     );
     unless (defined $sHelp{$sCmd}) {
         print "Usage:\n";

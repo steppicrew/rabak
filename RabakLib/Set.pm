@@ -13,6 +13,7 @@ use Data::Dumper;
 use File::Spec ();
 use Mail::Send;
 use POSIX qw(strftime);
+use FindBin qw($Bin);
 # use URI;
 
 use vars qw(@ISA);
@@ -90,10 +91,6 @@ sub _validate {
     return $self->_need_value('title') || $self->_need_value('source') || $self->_need_value('target');
 }
 
-# Stub for inheritance
-sub _show {
-}
-
 sub show {
     my $self= shift;
     my $sKey= shift || $self->{NAME};
@@ -101,7 +98,7 @@ sub show {
 
     my $sType= $self->get_value("type");
     eval {
-        require "RabakLib/Type/" . ucfirst($sType) . ".pm";
+        require "$Bin/RabakLib/Type/" . ucfirst($sType) . ".pm";
         my $sClass= "RabakLib::Type::" . ucfirst($sType);
         my $oSet= $sClass->new($self);
         $oSet->_show;

@@ -1,3 +1,10 @@
+rabak-0.6rc3
+- changed method of detecting script directory
+- remote to local backups
+- remote to remote backups (very cool)
+- make base class for database backup types
+- changed ssh handling to pure ssh (Net::SSH::Perl slow and stubborn)
+
 rabak-0.6rc2
 - better filter expansion
 

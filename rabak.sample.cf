@@ -17,10 +17,10 @@ target_dir = $target_base/rabak
 
 smb_dir = /mnt/samba/e
 smb_user = backup
-# smb_passwd is in rabak.secret.cf
+# smb_password is in rabak.secret.cf
 
 mysql_user = root
-# mysql_passwd is in rabak.secret.cf
+# mysql_password is in rabak.secret.cf
 
 INCLUDE rabak.secret.cf
 INCLUDE rabak.std.cf
@@ -30,12 +30,7 @@ INCLUDE rabak.std.cf
 # =======================================================================================
 
 exclude_smb =
-    $smb_dir/pagefile.sys
-    $smb_dir/SIS?Common?Store/
-    $smb_dir/dfs/
-    $smb_dir/System?Volume?Information/
-    $smb_dir/WSUS/
-    $smb_dir/WUTemp/
+    $smb_dir/( &exclude_std_win )
     $smb_dir/backup/
 
 # =======================================================================================
@@ -68,13 +63,13 @@ mount_boot.unmount= 1
 mount_smb_server.device= //smb_server/e$
 mount_smb_server.directory= $smb_dir
 mount_smb_server.type= cifs
-mount_smb_server.opts= "username=$smb_user,password=$smb_passwd,ro"
+mount_smb_server.opts= "username=$smb_user,password=$smb_password,ro"
 mount_smb_server.unmount= 1
 
 # Target to back up to
 
 sample_target.path = $target_dir
-sample_target.mount = mount_external
+sample_target.mount = &mount_external
 sample_target.group = sample
 # send mail if free space on target drops below this value (possible units: 'B'yte, 'K' (default), 'M'ega, 'G'iga or '%')
 sample_target.discfree_threshold = 10%
@@ -96,9 +91,9 @@ sample_remotetarget.discfree_threshold = 10%
 
 sample.title = Gesamtsystem
 sample.source = /
-sample.target = sample_target
+sample.target = &sample_target
 sample.exclude = $exclude
-sample.mount = mount_boot mount_smb_server
+sample.mount = &mount_boot &mount_smb_server
 
 # =======================================================================================
 #       EXAMPLE: POSTGRESQL BACKUP
@@ -109,8 +104,7 @@ sample_pg.source = pgsql:vbulletin,postnuke
 sample_pg.target = $sample_target
 sample_pg.target.path = $target_base/postgres
 sample_pg.user = *default*
-# TODO: test_pg.password is secret -> look in rabak.secret.cf
-sample_pg.password = test
+# test_pg.password is secret -> look in rabak.secret.cf
 sample_pg.switch.logging = 1
 sample_pg.keep = 3
 
@@ -123,11 +117,11 @@ sample_mysql.source = mysql:*
 sample_mysql.target = $sample_target
 sample_mysql.target.path = $target_base/mysql
 sample_mysql.user = $mysql_user
-# TODO: test_pg.password is secret -> look in rabak.secret.cf
-sample_mysql.password = $mysql_passwd
+# $mysql_password is secret -> look in rabak.secret.cf
+sample_mysql.password = $mysql_password
 sample_mysql.switch.logging = 1
 sample_mysql.keep = 3
-sample_mysql.mount = mount_external
+sample_mysql.mount = &mount_external
 
 # =======================================================================================
 #       TEST RABAK
@@ -153,7 +147,7 @@ mount_test_boot.directory= test-data/mnt_boot
 mount_test_boot.unmount= 1
 
 test_target.path = test-data/mnt_target/rabak
-test_target.mount = mount_test_target
+test_target.mount = &mount_test_target
 
 # =======================================================================================
 #       TEST
@@ -163,12 +157,12 @@ test1.title = Test "firstof" Mount Option
 test1.switch.verbose = 1
 test1.switch.logging = 1
 test1.source = .
-test1.target = test_target
+test1.target = &test_target
 # ", " will be replaced by newline automagically
 test1.exclude = $exclude, test-bak,
     test-data, stuff
 
-test1.mount= mount_test_boot
+test1.mount= &mount_test_boot
 
 # =======================================================================================
 #       TEST TARGETGROUP OPTION
@@ -176,7 +170,7 @@ test1.mount= mount_test_boot
 
 test_targetgroup.title = Test "targetgroup" Option
 test_targetgroup.source = $test1.source
-test_targetgroup.target = $$test1.target
+test_targetgroup.target = $test1.target
 test_targetgroup.target.group = dayofweek
 test_targetgroup.exclude = $test1.exclude
 test_targetgroup.mount= $test1.mount

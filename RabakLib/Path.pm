@@ -642,7 +642,7 @@ sub tempfile {
             # tempfile
             use File::Temp;
             my @result= File::Temp->tempfile("rabak-XXXXXX", UNLINK => 1, DIR => $sDir);
-            close $result[0];
+            CORE::close $result[0];
             $sFileName= $result[1];
         ', { "sDir" => $sDir, }, '$sFileName',
     )};

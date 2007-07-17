@@ -31,7 +31,9 @@ switch.dev_conf_file = rabak.dev.cf
 #       GLOBAL VARIABLES
 # =======================================================================================
 
-exclude_unix =
+# Standard excludes for Linux systems
+
+exclude_std_linux =
     /dev/
     /proc/
     /sys/
@@ -57,16 +59,29 @@ exclude_unix =
     /var/run/
     .ccache/
 
-exclude_win =
+# Standard excludes for Windows systems
+
+exclude_std_win =
     Thumbs.db
     RECYCLER/
     GoogleEarthCache/
+    Temporary\ Internet\ Files/
+    Application\ Data/Sun/Java/Deployment/cache/
     Anwendungsdaten/Sun/Java/Deployment/cache/
+    Application\ Data/Adobe/FileBrowser/
     Anwendungsdaten/Adobe/FileBrowser/
     Lokale\ Einstellungen/Temp/
-    Lokale\ Einstellungen/Temporary\ Internet\ Files/
+    Local\ Settings/Temp/
+    /pagefile.sys
+    /SIS\ Common\ Store/
+    /dfs/
+    /System\ Volume\ Information/
+    /WSUS/
+    /WUTemp/
 
-exclude_common =
+# Standard excludes for all systems
+
+exclude_std_common =
     tmp/
     Trash/
     *.bak
@@ -75,9 +90,9 @@ exclude_common =
 
 exclude_std =
     $target_base/
-    $exclude_unix
-    $exclude_win
-    $exclude_common
+    $exclude_std_linux
+    $exclude_std_win
+    $exclude_std_common
 
 # Default exclude. You probably want to override this in your cf file.
 exclude =
@@ -85,6 +100,10 @@ exclude =
 # Default include: Include everything.
 include =
 
+# Default filter: Exclude everything from 'exclude'-Variable, include everything
+# from 'include'-Variable. Note that &exclude means that the expansion of the
+# variable will happen "just in time", so you can define your 'exclude' later.
+# Using "$exclude" here would not work because of immediate expansion.
 filter=
     - &exclude
     + &include
