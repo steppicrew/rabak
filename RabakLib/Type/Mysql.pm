@@ -36,7 +36,7 @@ sub run {
     my $bFoundOne= 0;
 
     my $i= 0;
-    $oSourcePath->run_cmd("mysqlshow -u\"$sUser\" $sPassPar")
+    $oSourcePath->run_cmd("mysqlshow -u\"$sUser\" $sPassPar");
     if ($oSourcePath->get_last_exit) {
         $self->log($self->errorMsg("command mysql failed with: " . $oSourcePath->get_error));
         return 9;
@@ -45,7 +45,7 @@ sub run {
         $sValidDb{$1}= 1 if $i++ >= 3 && /^\|\s+(.+?)\s+\|$/;
     }
 
-    my $sSource= $sSourcePath->get_value("db");
+    my $sSource= $oSourcePath->get_value("db");
 
     if ($sSource eq '*') {
         @sDb= sort keys %sValidDb;
@@ -64,43 +64,41 @@ sub run {
     my $sZipCmd= "bzip2";
     my $sZipExt= "bz2";
 
-    my ($fhwResult, $sResultFile)= $self->tempfile();
+    my $sResultFile= $oSourcePath->tempfile();
 
     foreach (@sDb) {
         my $sDestFile= $self->get_value('full_target') . "/$_." . $self->get_value('unique_target') . ".$sZipExt";
-        my $sDumpFile= $sDestFile;
-        if ($oTargetPath->remote) {
-            my $fh;
-            ($fh, $sDumpFile)= $oTargetPath->tempfile();
-            close $fh;
-        }
         $sPassPar = "-p\"{{PASSWORD}}\"" if $sPassword;
-        my $sProbeCmd= "mysqldump -d -u\"$sUser\" $sPassPar -r /dev/null \"$_\" 2>&1";
+        my $sProbeCmd= "mysqldump -d -u\"$sUser\" $sPassPar -r /dev/null \"$_\"";
         $self->log("Running probe: $sProbeCmd");
         $sProbeCmd =~ s/\{\{PASSWORD\}\}/$sPassword/;
-        my $sError= `$sProbeCmd` unless $self->get_value('switch.pretend');
-        if ($sError) {
-            chomp $sError;
-            $self->logError("Probe failed. Skipping \"$_\": $sError");
-            next;
+        unless ($self->get_value('switch.pretend')) {
+            $oSourcePath->run_cmd($sProbeCmd);
+            if ($oSourcePath->get_last_exit) {
+                my $sError= $oSourcePath->get_last_error;
+                chomp $sError;
+                $self->logError("Probe failed. Skipping \"$_\": $sError");
+                next;
+            }
         }
 
-        my $sDumpCmd= "mysqldump -a -e --add-drop-table --allow-keywords -q -u\"$sUser\" $sPassPar --databases \"$_\" 2> \"$sResultFile\" | $sZipCmd > \"$sDumpFile\"";
+        my $sDumpCmd= "mysqldump -a -e --add-drop-table --allow-keywords -q -u\"$sUser\" $sPassPar --databases \"$_\" 2> \"$sResultFile\" | $sZipCmd";
         $self->log("Running dump: $sDumpCmd");
         $sDumpCmd =~ s/\{\{PASSWORD\}\}/$sPassword/;
 
         unless ($self->get_value('switch.pretend')) {
-            `$sDumpCmd`;
-            if ($oTargetPath->remote) {
-                $self->log($self->infoMsg("Copying dump \"$sDumpFile\" to \"" . $oTargetPath->getFullPath($sDestFile) ."\""));
-                $oTargetPath->copyLoc2Rem($sDumpFile, $sDestFile);
-                $self->logError($oTargetPath->get_error()) if $oTargetPath->get_error();
-            }
-            $sError= `cat \"$sResultFile\"`;
-            if ($sError) {
+            $oSourcePath->run_cmd($sDumpCmd, 1);
+            if ($oSourcePath->get_last_exit) {
+                my $sRF= $oSourcePath->getLocalFile($sResultFile);
+                my $sError= `cat \"$sRF\"`;
                 chomp $sError;
                 $self->logError("Dump failed. Skipping dump of \"$_\": $sError");
                 next;
+            }
+            else {
+                $self->log($self->infoMsg("Copying dump \"" . $oSourcePath->get_last_out . "\" to \"" . $oTargetPath->getFullPath($sDestFile) ."\""));
+                $oTargetPath->copyLoc2Rem($oSourcePath->get_last_out, $sDestFile);
+                $self->logError($oTargetPath->get_error()) if $oTargetPath->get_error();
             }
         }
 

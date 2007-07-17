@@ -128,7 +128,7 @@ sub log {
 }
 
 sub tempfile {
-    return RabakLib::Path->tempfile();
+    return RabakLib::Path->local_tempfile();
 }
 
 1;

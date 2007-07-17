@@ -85,7 +85,7 @@ sub open {
     $self->{IS_NEW}= !$oTarget->isFile($sFileName);
 
     if ($oTarget->remote) {
-        ($self->{LOG_FH}, $self->{REAL_FILE_NAME})= $oTarget->tempfile;
+        ($self->{LOG_FH}, $self->{REAL_FILE_NAME})= $oTarget->local_tempfile;
     }
     else {
         unless (open ($self->{LOG_FH}, ">>$sFileName")) {

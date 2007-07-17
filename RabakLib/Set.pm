@@ -113,7 +113,6 @@ sub get_raw_value {
     my $self= shift;
     my $sName= shift || '';
     my $sDefault= shift;
-    $sName=~ s/^\&//;
 
     my $sResult= $self->SUPER::get_raw_value($sName);
     $sResult= $self->{CONF}->get_raw_value($sName) unless defined $sResult && $sResult ne '*default*';
@@ -125,7 +124,6 @@ sub get_raw_value {
 sub get_node {
     my $self= shift;
     my $sName= shift || '';
-    $sName=~ s/^\&//;
 
     my $hResult= $self->SUPER::get_node($sName);
     $hResult= $self->{CONF}->get_node($sName) unless defined $hResult;

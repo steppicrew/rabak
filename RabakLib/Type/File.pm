@@ -207,7 +207,7 @@ sub _parseFilter {
         $sEntry= $self->remove_backslashes_part2($sEntry);
         $sEntry=~ s/^([\-\+\#]*)\s*//;
         my $sIncExc= $1;
-        
+
         my $isDir= $sEntry=~ /\/$/;
         # simplify path
         $sEntry= File::Spec->canonpath($sEntry);
@@ -228,7 +228,7 @@ sub _parseFilter {
             }
             $sIncExc=~ s/(?<=[\-\+]).*//;
         }
-        
+
         if ($sEntry=~ /^\// && $sEntry!~ s/^$sqBaseDir/\//) {
             $self->log($self->warnMsg("'$sEntry' is not contained in source path '$sBaseDir'."));
             push @sResult, "# WARNING!! '$sEntry' is not contained in source path '$sBaseDir'. Ignored.";
@@ -310,6 +310,8 @@ sub run {
     my @sIdentityFiles= $oTargetPath->get_value("identity_files") ? split(/\s+/, $oTargetPath->get_value("identity_files")) : undef;
 
     my $oSourcePath= $self->get_sourcePath or return 3;
+    # run rsync command on source by default
+    my $oRsyncPath= $oSourcePath;
 
     # Write filter rules to temp file:
     my ($fhwRules, $sRulesFile)= $self->tempfile();
@@ -320,6 +322,13 @@ sub run {
 
     print $fhwRules join("\n", @sFilter), "\n";
     close $fhwRules;
+
+    # copy filter rules to source if target AND source are remote
+    if ($oTargetPath->remote && $oSourcePath->remote) {
+        my $sRemRulesFile= $oSourcePath->tempfile;
+        $oSourcePath->copyLoc2Rem($sRulesFile, $sRemRulesFile);
+        $sRulesFile = $sRemRulesFile;
+    }
 
     # print `cat $sRulesFile`;
 
@@ -363,21 +372,30 @@ sub run {
     splice @sBakDir, $iScanBakDirs if $#sBakDir >= $iScanBakDirs;
     map { $sFlags .= " --link-dest=\"$_\""; } @sBakDir;
 
-    my $sSrc = $oSourcePath->getPath . "/";
+    my $sSrcDir = $oSourcePath->getPath . "/";
     my $sDestDir= $oTargetPath->getPath($self->get_value("full_target"));
     if ($oTargetPath->remote) {
         $sDestDir= $oTargetPath->get_value("host") . ":$sDestDir";
         $sDestDir= $oTargetPath->get_value("user") . "\@$sDestDir" if $oTargetPath->get_value("user");
     }
+    else {
+        # if target is local and src remote, build remote rsync path for source and run rsync locally
+        if ($oSourcePath->remote) {
+            $sSrcDir= $oSourcePath->get_value("host") . ":$sSrcDir";
+            $sSrcDir= $oSourcePath->get_value("user") . "\@$sSrcDir" if $oSourcePath->get_value("user");
+            $oRsyncPath= $oTargetPath;
+        }
+    }
 
-    my $sRsyncCmd= "rsync $sFlags \"$sSrc\" \"$sDestDir\"";
+    my $sRsyncCmd= "rsync $sFlags \"$sSrcDir\" \"$sDestDir\"";
 
     $self->log($self->infoMsg("Running: $sRsyncCmd"));
 
     # print Dumper($self); die;
     $oTargetPath->close if $oTargetPath->remote; # close ssh connection (will be opened if needed)
 
-    my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= $oSourcePath->run_cmd($sRsyncCmd);
+    # run rsync command
+    my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= $oRsyncPath->run_cmd($sRsyncCmd);
     $self->log($self->errorMsg($sError)) if $sError;
     $self->log($self->warnMsg("rsync exited with result ".  $iRsyncExit)) if $iRsyncExit;
     my @sRsyncError= split(/\n/, $sRsyncErr || '');

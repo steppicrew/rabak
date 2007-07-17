@@ -10,16 +10,7 @@ use strict;
 use Data::Dumper;
 use File::Spec ();
 use File::Temp ();
-
-# include Net::SSH::Perl or create dummy class
-eval "
-    use Net::SSH::Perl;
-    1;
-" or eval "
-    sub Net::SSH::Perl::new {
-        die \"To use ssh you have to install 'Net::SSH::Perl'!\nOn gentoo simply emerge net-ssh-perl\n\";
-    }
-";
+use RabakLib::Path::Ssh;
 
 sub new {
     my $class= shift;
@@ -27,9 +18,8 @@ sub new {
     my $self= {
         ERRORCODE => 0,
         DEBUG => 0,
-        SSH_DEBUG => 0,
+#        SSH_DEBUG => 1,
         VALUES => {
-            PATH => ".",
             PORT => 22,                     # standard ssh port to connect to
             TEMPDIR => File::Spec->tmpdir,  # directory for temporarily stored data
         },
@@ -39,25 +29,54 @@ sub new {
             stderr => '',
             exit => 0,
             error => '',
-        }
+        },
+        TEMPFILES => [],
     };
 
     map { $self->{VALUES}{uc $_} = $hParams{$_}; } keys(%hParams);
 
-    if ($self->{VALUES}{PATH} =~ s/^(\S+\@)?([\-0-9a-z\.]+)\://i) {
+    if ($self->{VALUES}{PATH} && $self->{VALUES}{PATH} =~ s/^(\S+\@)?([\-0-9a-z\.]+)\://i) {
         my $sUser= $1 || '';
         my $sHost= $2;
         $sUser=~ s/\@$//;
         # TODO: implement logging for RabakLib::Path
         print "WARNING: Specifying host and user in path is deprecated!\nPlease use path objects!";
-        die "Host specified by object and path!" if $self->{VALUES}{HOST};
-        die "User specified by object and path!" if $self->{VALUES}{USER} && $sUser;
+        die "Host specified by object *and* path!" if $self->{VALUES}{HOST};
+        die "User specified by object *and* path!" if $self->{VALUES}{USER} && $sUser;
         $self->{VALUES}{HOST}= $sHost;
         $self->{VALUES}{USER}= $sUser if $sUser;
     }
 
     # print Data::Dumper->Dump([$self->{VALUES}]); die;
     bless $self, $class;
+}
+
+# delete all non deleted temp files on exit (important for remote sessions)
+sub DESTROY {
+    my $self= shift;
+
+    for my $sTempFile (@{$self->{TEMPFILES}}) {
+        $self->savecmd("if [ -e '$sTempFile' ]; then rm -rf '$sTempFile'; fi");
+    }
+}
+
+sub local_tempfile {
+    my $self= shift;
+
+    $self= $self->new(@_) unless ref $self;
+    my $sDir= File::Spec->tmpdir;
+    $sDir = $self->get_value("tempdir");
+    return @_= File::Temp->tempfile("rabak-XXXXXX", UNLINK => 1, DIR => $sDir);
+}
+
+sub local_tempdir {
+    my $self= shift;
+
+return $self->tempdir();
+    $self= $self->new(@_) unless ref $self;
+    my $sDir= File::Spec->tmpdir;
+    $sDir= $self->get_value("tempdir");
+    return File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 1, DIR => $sDir);
 }
 
 sub get_value {
@@ -114,7 +133,8 @@ sub close {
 
 sub getFullPath {
     my $self= shift;
-    my $sPath= $self->getPath(shift);
+    # TODO: find a better way to get full path
+    my $sPath= $self->get_value("path") ? $self->getPath(shift) : $self->get_value("db");
 
     if ($self->remote) {
         $sPath = $self->get_value("host") . "\:$sPath";
@@ -127,6 +147,8 @@ sub getPath {
     my $self= shift;
     my $sPath= shift || '.';
 
+    return $sPath unless $self->get_value("path");
+
     $self->_set_value("path", $self->abs_path($self->get_value("path"))) unless File::Spec->file_name_is_absolute($self->get_value("path"));
 
     $sPath= File::Spec->canonpath($sPath); # simplify path
@@ -137,16 +159,8 @@ sub getPath {
 sub _ssh {
     my $self= shift;
 
-    my @sIdentityFiles= $self->get_value("identity_files") ? split(/\s+/, $self->get_value("identity_files")) : undef;
-    unless ($self->{SSH}) {
-        $self->{SSH}= Net::SSH::Perl->new($self->get_value("host"),
-            debug => $self->{SSH_DEBUG},
-            port => $self->get_value("port"),
-            protocol => $self->get_value("protocol"),
-            identity_files => @sIdentityFiles ? \@sIdentityFiles : undef,
-        );
-        $self->{SSH}->login($self->get_value("user"), $self->get_value("passwd"));
-    }
+    $self->{SSH}= RabakLib::Path::Ssh->new(%{$self->{VALUES}}) unless $self->{SSH};
+
     return $self->{SSH};
 }
 
@@ -167,6 +181,7 @@ sub savecmd {
 sub run_cmd {
     my $self= shift;
     my $cmd= shift;
+    my $bPiped= shift || 0;
 
     $self= $self->new() unless ref $self;
 
@@ -174,29 +189,35 @@ sub run_cmd {
         "$cmd\n" .
         "************** COMMAND END ****************\n" if $self->{DEBUG};
 
-    return $self->remote ? $self->_sshcmd($cmd) : $self->run_local_cmd($cmd);
+    return $self->remote ? $self->_run_ssh_cmd($cmd, undef, $bPiped) : $self->_run_local_cmd($cmd, $bPiped);
 }
 
-sub run_local_cmd {
+sub _run_local_cmd {
     my $self= shift;
     my $cmd= shift;
-
-    $self->{LAST_RESULT}= {
-        stdout => '',
-        stderr => '',
-        exit => -1,
-        error => '',
-    };
+    my $bPiped= shift || 0;
 
     $self= $self->new(@_) unless ref $self;
 
-    my ($fhCmdOut, $sCmdOutFile)= $self->tempfile();
-    CORE::close $fhCmdOut;
-    my ($fhCmdErr, $sCmdErrFile)= $self->tempfile();
-    CORE::close $fhCmdErr;
+    unless ($self->{IO}) {
+        my $sTempDir= $self->local_tempdir;
+        $self->{IO}= {
+            dir => $sTempDir,
+            stdout => "$sTempDir/stdout",
+            stderr => "$sTempDir/stderr",
+        };
+    }
 
-    system("$cmd > '$sCmdOutFile' 2> '$sCmdErrFile'");
-    my $iExit= $self->{LAST_RESULT}{exit}= $?;
+    system("( $cmd ) > '$self->{IO}{stdout}' 2> '$self->{IO}{stderr}'");
+
+    my $iExit= $?;
+    $self->{LAST_RESULT}= {
+        stdout => '',
+        stderr => '',
+        exit => $iExit,
+        error => '',
+    };
+
     if ($iExit == -1) {
         $self->{LAST_RESULT}{error}= "failed to execute: $!";
     }
@@ -205,15 +226,22 @@ sub run_local_cmd {
             ($iExit & 127), ($iExit & 128) ? "with" : "without";
     }
 
-    if (-s $sCmdErrFile && open ($fhCmdErr, $sCmdErrFile)) {
-        $self->{LAST_RESULT}{stderr}= join '', (<$fhCmdErr>);
-        CORE::close $fhCmdErr;
+    if ($bPiped) {
+        $self->{LAST_RESULT}{stdout}= $self->{IO}{stdout};
+        $self->{LAST_RESULT}{stderr}= $self->{IO}{stderr};
     }
-    if (-s $sCmdOutFile && open ($fhCmdOut, $sCmdOutFile)) {
-        $self->{LAST_RESULT}{stdout}= join '', (<$fhCmdOut>);
-        CORE::close $fhCmdOut;
+    else {
+        my $fh;
+        if (-s $self->{IO}{stderr} && open ($fh, $self->{IO}{stderr})) {
+            $self->{LAST_RESULT}{stderr}= join '', (<$fh>);
+            CORE::close $fh;
+        }
+        if (-s $self->{IO}{stdout} && open ($fh, $self->{IO}{stdout})) {
+            $self->{LAST_RESULT}{stdout}= join '', (<$fh>);
+            CORE::close $fh;
+        }
+        $self->_set_error($self->{LAST_RESULT}{stderr});
     }
-    $self->_set_error($self->{LAST_RESULT}{stderr});
     return (
         $self->{LAST_RESULT}{stdout},
         $self->{LAST_RESULT}{stderr},
@@ -222,27 +250,26 @@ sub run_local_cmd {
     );
 }
 
-sub _sshcmd {
+sub _run_ssh_cmd {
     my $self= shift;
     my $cmd= shift;
     my $stdin= shift;
-
-    $self->{LAST_RESULT}= {
-        stdout => '',
-        stderr => '',
-        exit => -1,
-        error => '',
-    };
+    my $bPiped= shift || 0;
 
     my $ssh= $self->_ssh;
-    my @result= $ssh->cmd($cmd, $stdin);
-    $self->{LAST_RESULT}{stdout}= shift @result;
-    $self->{LAST_RESULT}{stderr}= shift @result;
-    $self->{LAST_RESULT}{exit}= shift @result || 0;
+    $ssh->cmd($cmd, $stdin, $bPiped);
+    $self->{LAST_RESULT}= {
+        stdout => $ssh->get_last_out,
+        stderr => $ssh->get_last_error,
+        exit => $ssh->get_last_exit,
+        error => $ssh->get_error,
+    };
+
     return (
         $self->{LAST_RESULT}{stdout},
         $self->{LAST_RESULT}{stderr},
         $self->{LAST_RESULT}{exit},
+        $self->{LAST_RESULT}{error}
     );
 }
 
@@ -285,8 +312,6 @@ sub _saveperl {
             "************** SCRIPT$sScriptName END ****************\n";
     }
 
-    # compress script
-    $sPerlScript=~ s/^\s+//mg;
     # now execute script
     my $result;
     if ($self->remote) {
@@ -311,7 +336,7 @@ sub _sshperl {
 
     # replace "'" chars for shell execution
 #    $sPerlScript=~ s/\'/\'\\\'\'/g;
-    $self->_sshcmd("perl", "$sPerlScript");
+    $self->_run_ssh_cmd("perl", "$sPerlScript");
     $self->_set_error($self->{LAST_RESULT}{stderr});
     print "ERR: " . $self->{LAST_RESULT}{stderr} . "\n" if $self->{DEBUG} && $self->{LAST_RESULT}{stderr};
     return $self->{LAST_RESULT}{exit} ? '' : $self->{LAST_RESULT}{stdout};
@@ -404,15 +429,6 @@ sub getDirRecursive {
     )};
 }
 
-sub tempfile {
-    my $self= shift;
-
-    $self= $self->new(@_) unless ref $self;
-    my $sDir= $self->get_value("tempdir") if ref $self;
-#    File::Temp->safe_level( File::Temp::HIGH ); # make sure tempfiles are secure
-    return @_= File::Temp->tempfile("rabak-XXXXXX", UNLINK => 1, DIR => $sDir);
-}
-
 # makes sure the given file exists locally
 # TODO: use ssh->register_handler for large files
 sub getLocalFile {
@@ -420,7 +436,7 @@ sub getLocalFile {
     my $sFile= $self->getPath(shift);
 
     return $sFile unless $self->remote;
-    my ($fh, $sTmpName) = $self->tempfile;
+    my ($fh, $sTmpName) = $self->local_tempfile;
     print $fh $self->savecmd("cat '$sFile'");
     CORE::close $fh;
     return $sTmpName;
@@ -454,7 +470,7 @@ sub copyLoc2Rem {
         my $sData;
         my ($stdout, $stderr, $exit);
         while (my $iRead= read $fh, $sData, $iBufferSize) {
-            ($stdout, $stderr, $exit) = $self->_sshcmd("cat - $sPipe \"$sRemFile\"", $sData);
+            ($stdout, $stderr, $exit) = $self->_run_ssh_cmd("cat - $sPipe \"$sRemFile\"", $sData);
             last if $stderr || $exit;
             $sPipe= ">>";
         }
@@ -614,6 +630,40 @@ sub umount {
     my $sParams= shift || '';
 
     return $self->savecmd("umount $sParams");
+}
+
+sub tempfile {
+    my $self= shift;
+
+    $self= $self->new(@_) unless ref $self;
+    my $sDir= File::Spec->tmpdir;
+    $sDir = $self->get_value("tempdir");
+    my $sFileName= ${$self->_saveperl('
+            # tempfile
+            use File::Temp;
+            my @result= File::Temp->tempfile("rabak-XXXXXX", UNLINK => 1, DIR => $sDir);
+            close $result[0];
+            $sFileName= $result[1];
+        ', { "sDir" => $sDir, }, '$sFileName',
+    )};
+    push @{$self->{TEMPFILES}}, $sFileName;
+    return $sFileName;
+}
+
+sub tempdir {
+    my $self= shift;
+
+    $self= $self->new(@_) unless ref $self;
+    my $sDir= File::Spec->tmpdir;
+    $sDir= $self->get_value("tempdir");
+    my $sDirName= ${$self->_saveperl('
+            # tempdir
+            use File::Temp;
+            $sDirName= File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 0, DIR => $sDir);
+        ', { "sDir" => $sDir, }, '$sDirName',
+    )};
+    push @{$self->{TEMPFILES}}, $sDirName;
+    return $sDirName
 }
 
 1;
