@@ -72,7 +72,7 @@ sub run {
 
     foreach (@sDb) {
         my $sDestFile= $self->get_value('full_target') . "/$_." . $self->get_value('unique_target') . ".$sZipExt";
-	my $sProbeCmd= $self->get_probe_cmd($_);
+        my $sProbeCmd= $self->get_probe_cmd($_);
 
         unless ($self->get_value('switch.pretend')) {
             $oSourcePath->run_cmd($sProbeCmd);
@@ -85,9 +85,9 @@ sub run {
         }
 
         my $sDumpCmd= $self->get_dump_cmd($_) . " 2> $sResultFile | $sZipCmd";
-	if ($oTargetPath->remote || $oSourcePath->remote) {
-	    $sDumpCmd= $oSourcePath->build_ssh_cmd($sDumpCmd);
-	}
+        if ($oTargetPath->remote || $oSourcePath->remote) {
+            $sDumpCmd= $oSourcePath->_ssh->build_ssh_cmd($sDumpCmd);
+        }
         unless ($self->get_value('switch.pretend')) {
             $oTargetPath->run_cmd("$sDumpCmd > $sDestFile");
             if ($oSourcePath->get_last_exit) {

@@ -1,10 +1,12 @@
-#!/bin/bash
+#!/usr/bin/perl
 
 # wrapper for backward compatibility
-scriptname="`basename "$0" ".pl"`"
-dirname="`dirname "$0"`"
+my $scriptname=`basename "$0" ".pl"`;
+my $dirname=`dirname "$0"`;
+chomp $scriptname;
+chomp $dirname;
 
-echo "WARNING: please use '$dirname/$scriptname'!"
-echo "calling $0 is deprecated!"
+print "WARNING: please use '$dirname/$scriptname'!\n";
+print "calling $0 is deprecated!\n";
 
-"$dirname/$scriptname" "$@"
+exec "$dirname/$scriptname", @ARGV;

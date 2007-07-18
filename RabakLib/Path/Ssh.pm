@@ -9,7 +9,6 @@ use strict;
 
 use Data::Dumper;
 use File::Temp ();
-use RabakLib::Path;
 use vars qw(@ISA);
 
 @ISA = qw(RabakLib::Path);
@@ -18,7 +17,7 @@ sub new {
     my $class= shift;
     my $self= $class->SUPER::new(@_);
 
-    $self->{DEBUG}= 1;
+    $self->{DEBUG}= 0;
 
     # print Data::Dumper->Dump([$self->{VALUES}]); die;
     bless $self, $class;
