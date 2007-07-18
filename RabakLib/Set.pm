@@ -98,8 +98,8 @@ sub show {
 
     my $sType= $self->get_value("type");
     eval {
-        require "$Bin/RabakLib/Type/" . ucfirst($sType) . ".pm";
-        my $sClass= "RabakLib::Type::" . ucfirst($sType);
+        require "$Bin/RabakLib/SourceType/" . ucfirst($sType) . ".pm";
+        my $sClass= "RabakLib::SourceType::" . ucfirst($sType);
         my $oSet= $sClass->new($self);
         $oSet->_show;
     };
@@ -792,8 +792,8 @@ sub backup_run {
 
     my $iErrorCode= 0;
     eval {
-        require "RabakLib/Type/" . ucfirst($sBakType) . ".pm";
-        my $sClass= "RabakLib::Type::" . ucfirst($sBakType);
+        require "RabakLib/SourceType/" . ucfirst($sBakType) . ".pm";
+        my $sClass= "RabakLib::SourceType::" . ucfirst($sBakType);
         my $oBackup= $sClass->new($self);
         $self->{LOG_FILE}->set_prefix($sBakType);
         $iErrorCode= $oBackup->run(@sBakDir);

@@ -7,6 +7,7 @@ use strict;
 
 use Data::Dumper;
 use RabakLib::Conf;
+use RabakLib::PathBase;
 use RabakLib::Path;
 
 # use File::Spec ();

@@ -1,13 +1,13 @@
 #!/usr/bin/perl
 
-package RabakLib::Type::Pgsql;
+package RabakLib::SourceType::Pgsql;
 
 use warnings;
 use strict;
 use vars qw(@ISA);
-use RabakLib::Type::DumpDB;
+use RabakLib::SourceType::DBBase;
 
-@ISA = qw(RabakLib::Type::DumpDB);
+@ISA = qw(RabakLib::SourceType::DBBase);
 
 sub _get_user {
     my $self= shift;

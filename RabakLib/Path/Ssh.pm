@@ -2,7 +2,7 @@
 
 package RabakLib::Path::Ssh;
 
-# wrapper class to exceute commands remotely or locally
+# wrapper class for ssh command
 
 use warnings;
 use strict;

@@ -1,11 +1,11 @@
 #!/usr/bin/perl
 
-package RabakLib::Type::File;
+package RabakLib::SourceType::File;
 
 use warnings;
 use strict;
 use vars qw(@ISA);
-use RabakLib::Type;
+use RabakLib::SourcePath;
 
 @ISA = qw(RabakLib::Type);
 

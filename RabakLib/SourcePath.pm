@@ -8,9 +8,9 @@ use strict;
 #use File::Temp ();
 use RabakLib::Path;
 
-# use Rabak::ConfFile;
+use vars qw(@ISA);
 
-# use vars qw(@ISA);
+@ISA = qw(RabakLib::Path);
 
 sub new {
     my $class = shift;

@@ -1,13 +1,13 @@
 #!/usr/bin/perl
 
-package RabakLib::Type::Mysql;
+package RabakLib::SourceType::Mysql;
 
 use warnings;
 use strict;
 use vars qw(@ISA);
-use RabakLib::Type::DumpDB;
+use RabakLib::SourceType::DBBase;
 
-@ISA = qw(RabakLib::Type::DumpDB);
+@ISA = qw(RabakLib::SourceType::DBBase);
 
 use Data::Dumper;
 
