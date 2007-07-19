@@ -18,10 +18,10 @@ use vars qw(@ISA);
 sub new {
     my $class= shift;
     my $oSet= shift;
-    my %Values=(); 
+    my %Values=();
     if (ref $oSet) {
         my $sConfName= shift;
-    
+
         if ($oSet && $sConfName) {
             my $oPath= $oSet->get_node($sConfName);
             my $sPath;
@@ -29,7 +29,7 @@ sub new {
                 $sPath= $oSet->get_value($sConfName);
                 $oPath= $oSet->get_node($sPath);
             }
-        
+
             %Values= $oPath ? %{$oPath->{VALUES}} : ( path => $sPath );
         }
         die "ERROR: Setting 'mount' in bakset is deprecated!\nPlease set mount in Source and/or Target Objects" if $oSet->get_value("mount");

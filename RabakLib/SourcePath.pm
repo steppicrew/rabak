@@ -16,7 +16,9 @@ use vars qw(@ISA);
 sub new {
     my $class = shift;
     my $oSet= shift;
-    my $self= $class->SUPER::new($oSet, "source");
+    my $sConfName= shift || "source";
+    
+    my $self= $class->SUPER::new($oSet, $sConfName);
 
     my $sPath= $self->get_value("path");
     if ($sPath && $sPath=~ s/^(\w+)\://) {
@@ -26,7 +28,7 @@ sub new {
     }
 	my $sFilter= $self->get_value("filter");
 	unless (defined $sFilter) {
-	   $sFilter= $self->get_set_value("filter", "file"); 
+	   $sFilter= $self->get_set_value("filter");
        $self->log($self->warnMsg("Specifying filter in bakset is deprecated", "Please set filter in Source Object!"));
 	   $self->set_value("filter", $sFilter);
 	} 
