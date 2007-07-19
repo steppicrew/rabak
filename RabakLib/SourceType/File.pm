@@ -7,7 +7,7 @@ use strict;
 use vars qw(@ISA);
 use RabakLib::SourcePath;
 
-@ISA = qw(RabakLib::Type);
+@ISA = qw(RabakLib::SourcePath);
 
 use Data::Dumper;
 use File::Spec;
@@ -277,19 +277,18 @@ sub _show {
 sub valid_source_dir {
     my $self= shift;
 
-    my $oSourcePath= $self->get_sourcePath;
-    my $sSourceDir= $oSourcePath->getFullPath;
+    my $sSourceDir= $self->getFullPath;
 
-    if (!$oSourcePath->isDir) {
+    if (!$self->isDir) {
         $self->logError("Source \"$sSourceDir\" is not a directory. Backup set skipped.");
         return undef;
     }
-    if (!$oSourcePath->isReadable) {
+    if (!$self->isReadable) {
         $self->logError("Source \"$sSourceDir\" is not readable. Backup set skipped.");
         return undef;
     }
 
-    return $oSourcePath->getPath;
+    return $self->getPath;
 }
 
 sub run {
@@ -309,12 +308,11 @@ sub run {
     my $sBandwidth= $oTargetPath->get_value("bandwidth") || '';
     my @sIdentityFiles= $oTargetPath->get_value("identity_files") ? split(/\s+/, $oTargetPath->get_value("identity_files")) : undef;
 
-    my $oSourcePath= $self->get_sourcePath or return 3;
     # run rsync command on source by default
-    my $oRsyncPath= $oSourcePath;
+    my $oRsyncPath= $self;
 
     # Write filter rules to temp file:
-    my ($fhwRules, $sRulesFile)= $self->tempfile();
+    my ($fhwRules, $sRulesFile)= $self->local_tempfile();
     my ($fhwPass, $sPassFile);
 
     my @sFilter= $self->_get_filter;
@@ -324,9 +322,9 @@ sub run {
     close $fhwRules;
 
     # copy filter rules to source if target AND source are remote
-    if ($oTargetPath->remote && $oSourcePath->remote) {
-        my $sRemRulesFile= $oSourcePath->tempfile;
-        $oSourcePath->copyLoc2Rem($sRulesFile, $sRemRulesFile);
+    if ($oTargetPath->remote && $self->remote) {
+        my $sRemRulesFile= $self->tempfile;
+        $self->copyLoc2Rem($sRulesFile, $sRemRulesFile);
         $sRulesFile = $sRemRulesFile;
     }
 
@@ -343,11 +341,11 @@ sub run {
     $sFlags .= " --dry-run" if $self->get_value('switch.pretend');
     if ($sRsyncOpts=~ s/\-\-bwlimit\=(\d+)//) {
         $sBandwidth= $1 unless $sBandwidth;
-        $self->log($self->warnMsg("--bandwidth in 'rsync_opts' is depricated.", "Please use 'bandwidth' option (see Doc)!"));
+        $self->log($self->warnMsg("--bandwidth in 'rsync_opts' is deprecated.", "Please use 'bandwidth' option (see Doc)!"));
     }
     if ($sRsyncOpts=~ s/\-\-timeout\=(\d+)//) {
         $sTimeout= $1 unless $oTargetPath->get_value("timeout");
-        $self->log($self->warnMsg("--timeout in 'rsync_opts' is depricated.", "Please use 'timeout' option (see Doc)!"));
+        $self->log($self->warnMsg("--timeout in 'rsync_opts' is deprecated.", "Please use 'timeout' option (see Doc)!"));
     }
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
     if ($oTargetPath->remote) {
@@ -372,17 +370,17 @@ sub run {
     splice @sBakDir, $iScanBakDirs if $#sBakDir >= $iScanBakDirs;
     map { $sFlags .= " --link-dest=\"$_\""; } @sBakDir;
 
-    my $sSrcDir = $oSourcePath->getPath . "/";
-    my $sDestDir= $oTargetPath->getPath($self->get_value("full_target"));
+    my $sSrcDir = $self->getPath . "/";
+    my $sDestDir= $oTargetPath->getPath($self->get_set_value("full_target"));
     if ($oTargetPath->remote) {
         $sDestDir= $oTargetPath->get_value("host") . ":$sDestDir";
         $sDestDir= $oTargetPath->get_value("user") . "\@$sDestDir" if $oTargetPath->get_value("user");
     }
     else {
         # if target is local and src remote, build remote rsync path for source and run rsync locally
-        if ($oSourcePath->remote) {
-            $sSrcDir= $oSourcePath->get_value("host") . ":$sSrcDir";
-            $sSrcDir= $oSourcePath->get_value("user") . "\@$sSrcDir" if $oSourcePath->get_value("user");
+        if ($self->remote) {
+            $sSrcDir= $self->get_value("host") . ":$sSrcDir";
+            $sSrcDir= $self->get_value("user") . "\@$sSrcDir" if $self->get_value("user");
             $oRsyncPath= $oTargetPath;
         }
     }

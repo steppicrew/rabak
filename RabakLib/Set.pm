@@ -8,12 +8,14 @@ use strict;
 use RabakLib::Conf;
 use RabakLib::Log;
 use RabakLib::Path;
+use RabakLib::SourcePath;
+use RabakLib::TargetPath;
 
 use Data::Dumper;
 use File::Spec ();
 use Mail::Send;
 use POSIX qw(strftime);
-use FindBin qw($Bin);
+
 # use URI;
 
 use vars qw(@ISA);
@@ -23,7 +25,7 @@ use vars qw(@ISA);
 sub new {
     my $class= shift;
     my $hConf= shift || {};
-    my $sName= shift || '';
+    my $sName= lc(shift || '');
     my $bSkipValidation= shift;
 
     my $self;
@@ -56,13 +58,13 @@ sub new {
     # print "\n" . $uri->fragment;
     # exit;
 
-    if (defined $self->{VALUES}{source} && !ref $self->{VALUES}{source} && $self->{VALUES}{source} =~ /^([a-z]+):(.*)/) {
-        $self->{VALUES}{type}= $1;
-        $self->{VALUES}{source}= $2;
-    }
-    else {
-        $self->{VALUES}{type}= 'file' unless defined $self->{VALUES}{type} || ref $self->{VALUES}{type};
-    }
+#    if (defined $self->{VALUES}{source} && !ref $self->{VALUES}{source} && $self->{VALUES}{source} =~ /^([a-z]+):(.*)/) {
+#        $self->{VALUES}{type}= $1;
+#        $self->{VALUES}{source}= $2;
+#    }
+#    else {
+#        $self->{VALUES}{type}= 'file' unless defined $self->{VALUES}{type} || ref $self->{VALUES}{type};
+#    }
 
     unless ($bSkipValidation) {
         $self->{ERROR}= $self->_validate();
@@ -97,12 +99,8 @@ sub show {
     $self->SUPER::show($sKey);
 
     my $sType= $self->get_value("type");
-    eval {
-        require "$Bin/RabakLib/SourceType/" . ucfirst($sType) . ".pm";
-        my $sClass= "RabakLib::SourceType::" . ucfirst($sType);
-        my $oSet= $sClass->new($self);
-        $oSet->_show;
-    };
+    my $oSet= $self->_get_object_of_type($sType);
+    $oSet->_show;
     print "$@\n" if $@;
 }
 
@@ -226,7 +224,7 @@ sub _remove_old {
         splice @sBakDir, 0, $iCount;
         foreach (@sBakDir) {
             $self->log("Removing \"$_\"");
-            rmtree($_, $self->{DEBUG}) unless $self->get_value('switch.pretend');
+            $self->get_targetPath->rmtree($_) unless $self->get_value('switch.pretend');
         }
     }
 }
@@ -235,39 +233,17 @@ sub _remove_old {
 #  ...
 # -----------------------------------------------------------------------------
 
-sub _get_PathObject {
-    my $self= shift;
-    my $sPathName= shift;
-
-    # may be path, path object or reference to path object
-    my $sPath= $self->get_value($sPathName);
-    my $oPath= ref $sPath ? $sPath : $self->get_node($sPath);
-    my $oResult;
-    if (ref $oPath) {
-        $self->log($self->warnMsg("Specifying $sPathName object without '&' is deprecated!", "Please set $sPathName to '&$sPath'!")) unless ref $sPath || $sPath=~ /^\&/;
-        $oResult= RabakLib::Path->new(
-            %{$oPath->{VALUES}}
-        );
-    }
-    else {
-        $oResult= RabakLib::Path->new(
-            PATH => $sPath,
-        );
-    }
-    return $oResult;
-}
-
 sub get_targetPath {
     my $self= shift;
 
-    $self->{_objTarget}= $self->_get_PathObject("target") unless $self->{_objTarget};
+    $self->{_objTarget}= RabakLib::TargetPath->new($self) unless $self->{_objTarget};
     return $self->{_objTarget};
 }
 
 sub get_sourcePath {
     my $self= shift;
 
-    $self->{_objSource}= $self->_get_PathObject("source") unless $self->{_objSource};
+    $self->{_objSource}= RabakLib::SourcePath->new($self) unless $self->{_objSource};
     return $self->{_objSource};
 }
 
@@ -318,230 +294,6 @@ sub collect_bakdirs {
 #  Little Helpers
 # -----------------------------------------------------------------------------
 
-# tests if device is mounted and is a valid rabak target
-# @param $sMountDevice
-#   device to check
-# @param $bUnmount
-#   unmount the device if its a valid rabak media
-# @return
-#   hashtable:
-#       {CODE} (int):
-#           -1: no device specified
-#            0: device is not mounted
-#            1: device is mounted but no target media
-#            2: device is/was mounted and is target media
-#       {INFO} (string):
-#            explaining information about CODE
-#       {ERROR} (string):
-#            additional error messages
-#       {UMOUNT} (string):
-#            result string of umount command (if executed)
-sub _mount_check {
-    my $self= shift;
-    my $sMountDevice= shift || '';
-    my $sTargetValue= shift || '';
-    my $bUnmount= shift || 0;
-
-    return { CODE => -1 } if !$sMountDevice;
-
-    my $sqTargetValue= quotemeta $sTargetValue;
-    if ($self->get_value('switch.targetvalue')) {
-        $sTargetValue.= "." . $self->get_value('switch.targetvalue');
-        $sqTargetValue= quotemeta $sTargetValue;
-    }
-    else {
-        $sqTargetValue.= '(\.\w+)?';
-    }
-
-    my $result= {
-        CODE => 0,
-    };
-
-    my $oTargetPath= $self->get_targetPath;
-
-    $sMountDevice= $oTargetPath->abs_path($sMountDevice);
-
-    my $sqMountDevice= quotemeta $sMountDevice;
-
-    my $cur_mounts= $oTargetPath->mount;
-    # TODO:
-    #     check for "mount" outputs different from '/dev/XXX on /mount/dir type ...' on other systems
-    #     notice: the check for "type" after mount dir is because of missing delimiters if mount dir contains spaces!
-    if ($cur_mounts =~ /^$sqMountDevice\son\s+(\/.*)\stype\s/m) {
-        my $sMountDir= $1;
-
-        $result->{CODE}= 1; # defaults to "not a target"
-
-        my $sDevConfFile= File::Spec->join($sMountDir, $self->get_value('switch.dev_conf_file') || "rabak.dev.cf");
-        if ($oTargetPath->isReadable("$sDevConfFile")) {
-            if ($sTargetValue) {
-                my $oDevConfFile= RabakLib::ConfFile->new($oTargetPath->getLocalFile($sDevConfFile));
-                my $oDevConf= $oDevConfFile->conf();
-                my $sFoundTargets = $oDevConf->get_value('targetvalues') || '';
-                if (" $sFoundTargets " =~ /\s$sqTargetValue\s/) {
-                    $result->{CODE}= 2;
-                    $result->{INFO}= "Target value \"$sTargetValue\" found on device \"$sMountDevice\"";
-                }
-                else {
-                    $result->{INFO}= "Target value \"$sTargetValue\" not found on device \"$sMountDevice\" (found: \"" .
-                        join("\", \"", split(/\s+/, $sFoundTargets)) .
-                        "\")";
-                }
-            }
-            else { # no target group specified -> if conf file is present, this is our target
-                $result->{CODE}= 2;
-                $result->{INFO}= "No target group specified";
-            }
-        }
-        else {
-            $result->{INFO}= "Device config file \"".$oTargetPath->getFullPath($sDevConfFile)."\" not found on device \"$sMountDevice\"";
-        }
-
-        $result->{UMOUNT}= $oTargetPath->umount("$sMountDevice 2>&1") if ($result->{CODE} == 2) && $bUnmount;
-    }
-    return $result;
-}
-
-# @param $oMount
-#       A RakakConf object containing the mount point information
-# @param $arMessage
-#       A ref to an array, in which _mount stores warnings and messages
-# @param $arUnmount
-#       A ref to an array, in which _mount stores the mount points that need unmounting
-# @param $arAllMount
-#       A ref to an array, in which _mount stores all mount points
-# return
-#       0: failed
-#       1: succeeded
-sub _mount {
-    my $self= shift;
-    my $oMount= shift;
-    my $bIsTarget= shift;
-    my $arMessage = shift || {};
-    my $arUnmount= shift || {};
-    my $arAllMount= shift || {};
-
-    my $sMountDeviceList= $oMount->get_value("device") || '';
-    my $sMountDir= $oMount->get_value("directory") || '';
-    my $sTargetGroup= $self->get_targetPath->get_value("group");
-    my $sMountType= $oMount->get_value("type") || '';
-    my $sMountOpts= $oMount->get_value("opts") || '';
-    my $sUnmount= "";
-
-    # backward compatibility
-    if (!$bIsTarget && $oMount->get_value("istarget")) {
-        $self->log($self->warnMsg("Mount option \"istarget\" is deprecated",
-            "Please use \"mount\" in Target Objects! (see Doc)"));
-        $bIsTarget= 1;
-    }
-    # backward compatibility
-    $sTargetGroup= $self->get_value("targetgroup") if !$sTargetGroup && $self->get_value("targetgroup");
-
-
-    # parameters for mount command
-    my $spMountDevice= ""; # set later
-    my $spMountDir=    $sMountDir    ? " \"$sMountDir\""     : "";
-    my $spMountType =  $sMountType   ? " -t \"$sMountType\"" : "";
-    my $spMountOpts =  $sMountOpts   ? " -o\"$sMountOpts\""  : "";
-
-    my %checkResult;
-    my $iResult= !$bIsTarget; # for targets default to "failed", for other mounts only warnings are raised
-
-    my @sMountDevices= ();
-
-#    push @{ $arMessage }, $self->infoMsg("Trying to mount \"" .
-#        join("\", \"", split(/\s+/, $sMountDeviceList)) . "\"");
-
-    for my $sMountDevice (split(/\s+/, $sMountDeviceList)) {
-        push @sMountDevices, $self->get_targetPath->glob($sMountDevice);
-    }
-
-    # if no device were given, try mounting by mount point
-    push @sMountDevices, '' if $#sMountDevices < 0;
-
-    my @sMountMessage = ();
-    for my $sMountDevice (@sMountDevices) {
-        my @sCurrentMountMessage = ();
-        $sUnmount= $sMountDevice ne '' ? $sMountDevice : $sMountDir;
-        $spMountDevice= $sMountDevice ? " \"$sMountDevice\""  : "";
-        push @sCurrentMountMessage, $self->infoMsg("Trying to mount \"$sUnmount\"");
-
-        # if device is target, check if its already mounted.
-        # if mounted, check if it's our target (and unmount if it is)
-        if ($bIsTarget) {
-            unless ($sMountDevice) {
-                push @sCurrentMountMessage, $self->warnMsg("Target devices have to be specified with device name");
-                goto nextDevice;
-            }
-            %checkResult = %{ $self->_mount_check($sMountDevice, $sTargetGroup, 1) };
-            push @sCurrentMountMessage, $self->infoMsg($checkResult{INFO}) if $checkResult{INFO};
-            push @sCurrentMountMessage, $self->errMsg($checkResult{ERROR}) if $checkResult{ERROR};
-            if ($checkResult{CODE} == 1) {
-                goto nextDevice;
-            }
-            if ($checkResult{CODE} == 2) {
-                push @sCurrentMountMessage, $self->warnMsg("Device $sMountDevice was already mounted");
-                push @sCurrentMountMessage, $self->warnMsg("Umount result: \"${checkResult{UMOUNT}}\"") if $checkResult{UMOUNT};
-            }
-        }
-
-        my $oPath= $bIsTarget ? $self->get_targetPath : RabakLib::Path->new();
-        $oPath->mount("$spMountType$spMountDevice$spMountDir$spMountOpts");
-        if ($?) { # mount failed
-            my $sMountResult= $oPath->get_error;
-            chomp $sMountResult;
-            $sMountResult =~ s/\r?\n/ - /g;
-            push @sCurrentMountMessage, $self->warnMsg("Mounting$spMountDevice$spMountDir failed with: $sMountResult!");
-            goto nextDevice;
-        }
-
-        if ($bIsTarget) { # this mount object is a target -> check for right target device
-            %checkResult = %{ $self->_mount_check($sMountDevice, $sTargetGroup, 0) };
-            push @sCurrentMountMessage, $self->infoMsg($checkResult{INFO}) if $checkResult{INFO};
-            push @sCurrentMountMessage, $self->errMsg($checkResult{ERROR}) if $checkResult{ERROR};
-            if ($checkResult{CODE} == 0) { # device is not mounted
-                push @sCurrentMountMessage, $self->warnMsg("Device \"$sMountDevice\" is not mounted!");
-            }
-            elsif ($checkResult{CODE} == 1) { # device is no valid target
-                $oPath->umount("\"$sUnmount\"");
-                if ($?) { # umount failed
-                    my $sMountResult= $oPath->get_error;
-                    chomp $sMountResult;
-                    $sMountResult =~ s/\r?\n/ - /g;
-                    push @sCurrentMountMessage, $self->warnMsg("Unmounting \"$sUnmount\" failed with: $sMountResult!");
-                }
-                else {
-                    push @sCurrentMountMessage, $self->infoMsg("Unmounted \"$sUnmount\"");
-                }
-            }
-            elsif ($checkResult{CODE} == 2) { #
-                $iResult= 1;
-                @sMountMessage= (); # drop old mount messages if this one succeeded
-            }
-        }
-        else { # this mount object is no target -> everything is fine
-            $iResult= 1;
-            @sMountMessage= (); # drop old mount messages if this one succeeded
-        }
-nextDevice:
-        push @sMountMessage, @sCurrentMountMessage;
-        last if $iResult;
-    }
-    push @{ $arMessage }, @sMountMessage;
-
-    if ($sUnmount) {
-        push @{ $arAllMount }, $sUnmount;
-
-        $sUnmount= "\@$sUnmount" if $bIsTarget; # mark targets to use $oTargetPath for unmounting
-        # We want to unmount in reverse order:
-        unshift @{ $arUnmount }, $sUnmount if $oMount->get_value("unmount") && $iResult;
-    }
-
-    push @{ $arMessage }, $self->infoMsg("Mounted$spMountDevice$spMountDir") if $iResult;
-    push @{ $arMessage }, $self->errorMsg("All mounts failed") unless $iResult;
-    return $iResult;
-}
-
 sub _mkdir {
     my $self= shift;
     my $sDir= shift;
@@ -553,118 +305,6 @@ sub _mkdir {
 
     $self->log($self->warnMsg("Mkdir '$sDir' failed: $!"));
     return 0;
-}
-
-# -----------------------------------------------------------------------------
-#  Mount & Unmount
-# -----------------------------------------------------------------------------
-
-# return
-#       0: failed
-#       1: succeeded
-sub mount {
-    my $self= shift;
-    my $arMessage= shift || {};
-
-    # Collect all mount errors, we want to output them later
-    my $arUnmount= $self->{_UNMOUNT_LIST} || [];
-    my $arAllMount= $self->{_ALL_MOUNT_LIST} || [];
-
-    if ($self->get_value("targetgroup")) {
-        $self->log($self->warnMsg("BakSet option \"targetgroup\" is deprecated",
-            "Please use \"group\" in Target Objects! (see Doc)"));
-    }
-
-    my @sToMount= ({MOUNT => $self->get_value("mount")});
-    my $sTarget= $self->get_value("target");
-    my $oTarget= $self->get_targetPath;
-    push @sToMount, {
-        MOUNT => $oTarget->get_value("mount"),
-        TARGET => 1,
-    } if $oTarget->get_value("mount");
-
-    my $iResult= 1; # defaults to mount succeeded
-
-    for my $hMount (@sToMount) {
-        my $sMount= $hMount->{MOUNT};
-        my $bIsTarget = $hMount->{TARGET};
-        last unless $iResult;
-
-        if ($sMount) {
-
-            # If the 'mount' setting is a node, then just do one mount:
-            if (ref $sMount) {
-                $iResult = $self->_mount($sMount, $bIsTarget, $arMessage, $arUnmount, $arAllMount);
-            }
-            else {
-                for my $sToken (split(/\s+/, $sMount)) {
-                    $self->log($self->warnMsg("Specifying mount object without '&' is deprecated.", "Please set mount to '&$sToken'!")) if $sToken!~ /^\&/;
-                    my $oMount= $self->get_node($sToken);
-                    if (!ref $oMount) {
-                        push @{ $arMessage }, $self->warnMsg("Mount information \"$sToken\" not defined in config file");
-                        next;
-                    }
-                    $iResult= $self->_mount($oMount, $bIsTarget, $arMessage, $arUnmount, $arAllMount);
-                    if (!$iResult && $bIsTarget) { # on targets mount failures are fatal -> exit
-                        $iResult= 0;
-                        last;
-                    }
-                }
-            }
-        }
-    }
-
-    $self->{_UNMOUNT_LIST}= $arUnmount;
-    $self->{_ALL_MOUNT_LIST}= $arAllMount;
-
-    return $iResult;
-}
-
-sub get_mounts {
-    my $self= shift;
-
-    return $self->{_UNMOUNT_LIST} || [];
-}
-
-sub unmount {
-    my $self= shift;
-    my $bBlaimLogFile= shift || 0;
-
-    my @sAllMount= @{ $self->{_ALL_MOUNT_LIST} };
-    my @sUnmount= @{ $self->{_UNMOUNT_LIST} };
-
-    my %sAllMount;
-    map { $sAllMount{$_}= 1; } @sAllMount;
-    my @sUnmount2= ();
-
-    for (@sUnmount) {
-        my $sUnmount2= $_;
-        my $oPath;
-        if (s/^\@//) { # is target mount
-            $oPath= $self->get_targetPath;
-            if ($bBlaimLogFile) { # do not unmount targets while log file is open
-                push @sUnmount2, $sUnmount2;
-                next;
-            }
-        }
-        else {
-            $oPath= RabakLib::Path->new;
-        }
-        $oPath->umount("\"$_\"");
-        if ($?) {
-            my $sResult= $oPath->get_error;
-            chomp $sResult;
-            $sResult =~ s/\r?\n/ - /g;
-            next unless $sAllMount{$_};
-            $self->log($self->warnMsg("Unmounting \"$_\" failed: $sResult!"));
-            $self->log($self->warnMsg("(Maybe because of the log file. Retrying after log file was closed)")) if $bBlaimLogFile;
-            push @sUnmount2, $sUnmount2;
-            next;
-        }
-        $self->log("Unmounted \"$_\"");
-    }
-
-    $self->{_UNMOUNT_LIST}= \@sUnmount2;
 }
 
 # -----------------------------------------------------------------------------
@@ -690,16 +330,15 @@ sub backup_setup {
     my $sSubSet= "";
     my @sBakDir= ();
 
-    $self->log($self->infoMsg("Rabak Version " . $self->{VERSION}));
+    $self->log($self->infoMsg("Rabak Version " . $self->get_value("version")));
     $self->logPretending();
 
     my @sMountMessage;
-    my $iMountResult= $self->mount(\@sMountMessage, 1);
+#    my $iMountResult= $self->mount(\@sMountMessage, 1);
+    my $iMountResult= $self->get_targetPath->mountAll(\@sMountMessage);
+    $iMountResult= $self->get_sourcePath->mountAll(\@sMountMessage) if $iMountResult;
 
     # my @sMountMessage= @{ $self->{_MOUNT_MESSAGE_LIST} };
-
-    my @sAllMount= @{ $self->{_ALL_MOUNT_LIST} };
-    my @sUnmount= @{ $self->{_UNMOUNT_LIST} };
 
     unless ($iMountResult) { # fatal mount error
         $self->logError("There was at least one fatal mount error. Backup set skipped.");
@@ -767,7 +406,7 @@ sub backup_setup {
     $self->log($self->infoMsg("Backup $sBakDay exists, using subset.")) if $sSubSet;
     $self->log($self->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->get_value("title")));
     $self->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_value('switch.pretend') && $self->get_value('switch.logging');
-    $self->log("Source: " . $self->get_value("type") . ":" . $self->get_sourcePath->getFullPath);
+    $self->log("Source: " . $self->get_sourcePath->get_value("type") . ":" . $self->get_sourcePath->getFullPath);
 
     $self->log(@sMountMessage);
 
@@ -791,14 +430,10 @@ sub backup_run {
     my $sTarget= $self->{_TARGET};
 
     my $iErrorCode= 0;
-    eval {
-        require "RabakLib/SourceType/" . ucfirst($sBakType) . ".pm";
-        my $sClass= "RabakLib::SourceType::" . ucfirst($sBakType);
-        my $oBackup= $sClass->new($self);
-        $self->{LOG_FILE}->set_prefix($sBakType);
-        $iErrorCode= $oBackup->run(@sBakDir);
-        $self->{LOG_FILE}->set_prefix();
-    };
+    my $oBackup= $self->get_sourcePath;
+    $self->{LOG_FILE}->set_prefix($sBakType);
+    $iErrorCode= $oBackup->run(@sBakDir);
+    $self->{LOG_FILE}->set_prefix();
 
     if ($@) {
         if ($@ =~ /^Can\'t locate/) {
@@ -848,7 +483,7 @@ sub backup_run {
 sub backup_cleanup {
     my $self= shift;
 
-    $self->unmount(1);
+    $self->get_sourcePath->unmountAll;
 
     # $self->logError(@sMountMessage);
 
@@ -859,7 +494,7 @@ sub backup_cleanup {
 
     $self->log($self->infoMsg("Backup done at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet")) if $sBakSet && $sBakDay && $sSubSet;
     $self->{LOG_FILE}->close();
-    $self->unmount(0);
+    $self->get_targetPath->unmountAll;
 
     $self->_mail_log();
 }
@@ -867,8 +502,6 @@ sub backup_cleanup {
 # -----------------------------------------------------------------------------
 #  Remove file
 # -----------------------------------------------------------------------------
-
-use File::Path;
 
 sub rm_file {
 

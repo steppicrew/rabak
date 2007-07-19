@@ -5,8 +5,13 @@ package RabakLib::Conf;
 use warnings;
 use strict;
 
+use RabakLib::CommonBase;
+
 # our @ISA = qw(Exporter);
 # our @EXPORT = qw($sFile);
+use vars qw(@ISA);
+
+@ISA = qw(RabakLib::CommonBase);
 
 use Data::Dumper;
 
@@ -33,10 +38,9 @@ Format very similar to postfix config files:
 sub new {
     my $class = shift;
     my $sName= shift || '';
-    my $self= shift || {};
+    my $self= $class->SUPER::new(@_);
     $self->{DEFAULTS}= {};
     $self->{NAME}= $sName;
-    $self->{VALUES}= {} unless ref $self->{VALUES};
     bless $self, $class;
 }
 
@@ -45,100 +49,22 @@ sub new {
 sub set_defaults {
     my $self= shift;
     my $hDefaults= shift;
-    $self->{DEFAULTS}= $hDefaults;
+    my %sDefaults= map { lc($_) => $hDefaults->{$_} } keys(%{$hDefaults});
+    $self->{DEFAULTS}= \%sDefaults;
 }
 
 sub get_raw_value {
     my $self= shift;
-    my $sName= shift;
+    my $sName= lc(shift || '');
     my $sDefault= shift || undef;
-
-    if ($sName=~ s/^\&//) {
-        print "WARNING: It seems you try to read a value instead of a reference!";
-    }
 
     return $self->{DEFAULTS}{$sName} if defined $self->{DEFAULTS}{$sName};
-
-    my @sName= split(/\./, $sName);
-    $sName= pop @sName;
-    for (@sName) {
-        return $sDefault unless ref $self->{VALUES}{$_};
-        $self= $self->{VALUES}{$_};
-    }
-    return $self->{VALUES}{$sName} unless ref $self->{VALUES}{$sName};
-    return $sDefault;
-}
-
-sub remove_backslashes_part1 {
-    my $self= shift;
-    my $sValue= shift;
-
-    return $sValue unless $sValue;
-
-    if ($sValue =~ /\\$/) {
-        print "WARNING: Conf-File contains lines ending with backslashes!\n";
-    }
-
-    # make every "°" preceeded by "." (not space to keep word separators)
-    $sValue =~ s/\°/\.\°/g;
-    # replace every double backslash with "\_"
-    $sValue =~ s/\\\\/\\\°/g;
-    return $sValue;
-}
-
-sub remove_backslashes_part2 {
-    my $self= shift;
-    my $sValue= shift;
-
-    return $sValue unless $sValue;
-
-    # Insert support for tab etc.. here
-    # $sValue =~ s/\\t/\t/g;
-
-    # remove all backslashes
-    $sValue =~ s/\\(?!_)//g;
-    # rereplace changes made in part1
-    $sValue =~ s/\\\°/\\/g;
-    $sValue =~ s/\.\°/\°/g;
-    return $sValue;
-}
-sub remove_backslashes {
-    my $self= shift;
-    my $sValue= shift;
-
-    return $self->remove_backslashes_part2($self->remove_backslashes_part1($sValue));
-}
-
-sub get_value {
-    my $self= shift;
-    my $sName= shift;
-    my $sDefault= shift || undef;
-
-    return $self->remove_backslashes($self->get_raw_value($sName, $sDefault));
-}
-
-sub get_node {
-    my $self= shift;
-    my $sName= shift || '';
-
-    my $bDepricated= !($sName=~ s/^\&//);
-    
-    return undef if $sName eq '.';
-
-    my @sName= split(/\./, $sName);
-    for (@sName) {
-        return undef unless ref $self->{VALUES}{$_};
-        $self= $self->{VALUES}{$_};
-    }
-    if ($bDepricated && defined $self) {
-        print "WARNING: Referencing objects without leading '&' is depricated\nPlease specify '&$sName'\n";
-    }
-    return $self;
+    return $self->SUPER::get_raw_value($sName, $sDefault);
 }
 
 sub set_value {
     my $self= shift;
-    my $sName= shift;
+    my $sName= lc(shift || '');
     my $sValue= shift;
 
     my @sName= split(/\./, $sName);
@@ -147,7 +73,7 @@ sub set_value {
         $self->{VALUES}{$_}= RabakLib::Conf->new($_) unless ref $self->{VALUES}{$_};
         $self= $self->{VALUES}{$_};
     }
-
+    
     # TODO: only allow assignment of undef to refs?
     $self->{VALUES}{$sName}= $sValue;
 }

@@ -4,12 +4,33 @@ package RabakLib::SourceType::DBBase;
 
 use warnings;
 use strict;
-use vars qw(@ISA);
 use RabakLib::SourcePath;
+use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Type);
+@ISA = qw(RabakLib::SourcePath);
 
 use Data::Dumper;
+
+sub _init {
+    my $self= shift;
+    
+    unless ($self->get_value("dbuser")) {
+        my $sUser= $self->get_set_value("user");
+        if (defined $sUser) {
+            $self->set_value("dbuser", $sUser);
+            $self->log($self->warnMsg("Specifying database user name in bakset is deprecated",
+                "Please set 'dbuser' in Source Object!"));
+        }
+    }
+    unless ($self->get_value("dbpassword")) {
+        my $sPasswd= $self->get_set_value("password");
+        if (defined $sPasswd) {
+            $self->set_value("dbpassword", $sPasswd);
+            $self->log($self->warnMsg("Specifying database password in bakset is deprecated",
+                "Please set 'dbpassword' in Source Object!"));
+        }
+    }
+}
 
 sub get_show_cmd {
     die "This function has to be overloaded!"
@@ -35,21 +56,20 @@ sub run {
     my @sBakDir= @_;
 
     my $oTargetPath= $self->get_targetPath;
-    my $oSourcePath= $self->get_sourcePath;
 
     my %sValidDb= ();
     my @sDb= ();
     my $bFoundOne= 0;
 
     my $i= 0;
-    $oSourcePath->run_cmd($self->get_show_cmd);
-    if ($oSourcePath->get_last_exit) {
-        $self->log($self->errorMsg("show databases command failed with: " . $oSourcePath->get_error));
+    $self->run_cmd($self->get_show_cmd);
+    if ($self->get_last_exit) {
+        $self->log($self->errorMsg("show databases command failed with: " . $self->get_error));
         return 9;
     }
-    %sValidDb= $self->parse_valid_db($oSourcePath->get_last_out);
+    %sValidDb= $self->parse_valid_db($self->get_last_out);
 
-    my $sSource= $oSourcePath->get_value("db");
+    my $sSource= $self->get_value("path");
 
     if ($sSource eq '*') {
         @sDb= sort keys %sValidDb;
@@ -68,16 +88,17 @@ sub run {
     my $sZipCmd= "bzip2";
     my $sZipExt= "bz2";
 
-    my $sResultFile= $oSourcePath->tempfile();
+    # TODO: use $self->stderr instead of $sResultFile!
+    my $sResultFile= $self->tempfile();
 
     foreach (@sDb) {
-        my $sDestFile= $self->get_value('full_target') . "/$_." . $self->get_value('unique_target') . ".$sZipExt";
+        my $sDestFile= $self->get_set_value('full_target') . "/$_." . $self->get_set_value('unique_target') . ".$sZipExt";
         my $sProbeCmd= $self->get_probe_cmd($_);
 
-        unless ($self->get_value('switch.pretend')) {
-            $oSourcePath->run_cmd($sProbeCmd);
-            if ($oSourcePath->get_last_exit) {
-                my $sError= $oSourcePath->get_last_error;
+        unless ($self->get_set_value('switch.pretend')) {
+            $self->run_cmd($sProbeCmd);
+            if ($self->get_last_exit) {
+                my $sError= $self->get_last_error;
                 chomp $sError;
                 $self->logError("Probe failed. Skipping \"$_\": $sError");
                 next;
@@ -85,13 +106,13 @@ sub run {
         }
 
         my $sDumpCmd= $self->get_dump_cmd($_) . " 2> $sResultFile | $sZipCmd";
-        if ($oTargetPath->remote || $oSourcePath->remote) {
-            $sDumpCmd= $oSourcePath->_ssh->build_ssh_cmd($sDumpCmd);
+        if ($oTargetPath->remote || $self->remote) {
+            $sDumpCmd= $self->_ssh->build_ssh_cmd($sDumpCmd);
         }
         unless ($self->get_value('switch.pretend')) {
             $oTargetPath->run_cmd("$sDumpCmd > $sDestFile");
-            if ($oSourcePath->get_last_exit) {
-                my $sRF= $oSourcePath->getLocalFile($sResultFile);
+            if ($self->get_last_exit) {
+                my $sRF= $self->getLocalFile($sResultFile);
                 my $sError= `cat \"$sRF\"`;
                 chomp $sError;
                 $self->logError("Dump failed. Skipping dump of \"$_\": $sError");
@@ -108,6 +129,11 @@ sub run {
     }
 
     return $bFoundOne ? 0 : 9;
+}
+
+sub getFullPath {
+    my $self= shift;
+    return $self->get_value("path");
 }
 
 1;

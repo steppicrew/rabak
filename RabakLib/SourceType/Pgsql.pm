@@ -5,13 +5,14 @@ package RabakLib::SourceType::Pgsql;
 use warnings;
 use strict;
 use vars qw(@ISA);
+
 use RabakLib::SourceType::DBBase;
 
 @ISA = qw(RabakLib::SourceType::DBBase);
 
 sub _get_user {
     my $self= shift;
-    my $sUser= $self->get_value('user', 'postgres');
+    my $sUser= $self->get_value('dbuser', 'postgres');
     $sUser =~ s/[^a-z0-9_]//g;        # simple taint
     return $sUser;
 }

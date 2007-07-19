@@ -5,6 +5,7 @@ package RabakLib::SourceType::Mysql;
 use warnings;
 use strict;
 use vars qw(@ISA);
+
 use RabakLib::SourceType::DBBase;
 
 @ISA = qw(RabakLib::SourceType::DBBase);
@@ -13,21 +14,23 @@ use Data::Dumper;
 
 sub _get_user {
     my $self= shift;
-    my $sUser= $self->get_value('user', 'mysql');
-    $sUser =~ s/[^a-z0-9_]//g;        # simple taint
+    my $sUser= $self->get_value('dbuser', 'mysql');
+    # simple taint
+    $sUser =~ s/[^a-z0-9_]//g;
     return $sUser;
 }
 
 sub _get_passwd {
     my $self= shift;
-    my $sPassword= $self->get_value('password', 'mysql');
-    $sPassword =~ s/\\\"//g;          # simple taint
+    my $sPassword= $self->get_value('dbpassword', 'mysql');
+    # simple taint
+    $sPassword =~ s/\\\"//g;
     return $sPassword;
 }
 
 sub get_show_cmd {
     my $self= shift;
-    my $sPassPar= $self->_get_passwd;
+    my $sPassPar= $self->_get_passwd || '';
     $sPassPar = "-p\"$sPassPar\"" if $sPassPar;
     return "mysqlshow -u\"" . $self->_get_user . "\" $sPassPar";
 }

@@ -7,6 +7,10 @@ package RabakLib::PathBase;
 use warnings;
 use strict;
 
+use vars qw(@ISA);
+
+@ISA = qw(RabakLib::CommonBase);
+
 use Data::Dumper;
 use File::Spec ();
 use File::Temp ();
@@ -15,39 +19,43 @@ use RabakLib::Path::Ssh;
 sub new {
     my $class= shift;
     my %hParams= @_;
-    my $self= {
-        ERRORCODE => 0,
-        DEBUG => 0,
-        VALUES => {
-            PORT => 22,                     # standard ssh port to connect to
-            TEMPDIR => File::Spec->tmpdir,  # directory for temporarily stored data
-        },
-        ERRORMSG => '',
-        LAST_RESULT => {
-            stdout => '',
-            stderr => '',
-            exit => 0,
-            error => '',
-        },
-        TEMPFILES => [],
+    
+    my $self= $class->SUPER::new();
+    $self->{ERRORCODE}= 0;
+    $self->{DEBUG}= 0;
+    $self->{ERRORMSG}= '';
+    $self->{LAST_RESULT}= {
+        stdout => '',
+        stderr => '',
+        exit => 0,
+        error => '',
     };
+    $self->{TEMPFILES}= [];
 
-    map { $self->{VALUES}{uc $_} = $hParams{$_}; } keys(%hParams);
+    bless $self, $class;
 
-    if ($self->{VALUES}{PATH} && $self->{VALUES}{PATH} =~ s/^(\S+\@)?([\-0-9a-z\.]+)\://i) {
+    # standard ssh port to connect to
+    $self->set_value("port", 22);
+    # directory for temporarily stored data
+
+    map { $self->set_value($_, $hParams{$_}); } keys(%hParams);
+
+    my $sPath= $self->get_value("path");
+    if ($sPath && $sPath=~ s/^(\S+\@)?([\-0-9a-z\.]+)\://i) {
+        $self->set_value("path", $sPath);
         my $sUser= $1 || '';
         my $sHost= $2;
         $sUser=~ s/\@$//;
         # TODO: implement logging for RabakLib::Path
         print "WARNING: Specifying host and user in path is deprecated!\nPlease use path objects!";
-        die "Host specified by object AND path!" if $self->{VALUES}{HOST};
-        die "User specified by object AND path!" if $self->{VALUES}{USER} && $sUser;
-        $self->{VALUES}{HOST}= $sHost;
-        $self->{VALUES}{USER}= $sUser if $sUser;
+        die "Host specified by object AND path!" if $self->get_value("host");
+        die "User specified by object AND path!" if $self->get_value("user") && $sUser;
+        $self->set_value("host", $sHost);
+        $self->set_value("user", $sUser) if $sUser;
     }
 
     # print Data::Dumper->Dump([$self->{VALUES}]); die;
-    bless $self, $class;
+    return $self;
 }
 
 # delete all non deleted temp files on exit (important for remote sessions)
@@ -55,7 +63,7 @@ sub DESTROY {
     my $self= shift;
 
     for my $sTempFile (@{$self->{TEMPFILES}}) {
-        $self->savecmd("if [ -e '$sTempFile' ]; then rm -rf '$sTempFile'; fi");
+        $self->rmtree($sTempFile);
     }
 }
 
@@ -78,18 +86,41 @@ sub local_tempdir {
 #    return File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 1, DIR => $sDir);
 }
 
-sub get_value {
+sub get_set_value {
     my $self= shift;
-    my $sValName= shift;
-    return $self->{VALUES}{uc $sValName};
+    return $self->{SET}->get_value(@_) if $self->{SET};
+    return undef;
 }
 
-sub _set_value {
+sub get_set_raw_value {
     my $self= shift;
-    my $sValName= shift;
-    my $sValue= shift;
+    return $self->{SET}->get_raw_value(@_) if $self->{SET};
+    return undef;
+}
 
-    $self->{VALUES}{uc $sValName} = $sValue;
+sub infoMsg {
+    my $self= shift;
+    return $self->{SET}->infoMsg(@_) if $self->{SET};
+}
+
+sub warnMsg {
+    my $self= shift;
+    return $self->{SET}->warnMsg(@_) if $self->{SET};
+}
+
+sub errorMsg {
+    my $self= shift;
+    return $self->{SET}->errorMsg(@_) if $self->{SET};
+}
+
+sub logError {
+    my $self= shift;
+    return $self->{SET}->logError(@_) if $self->{SET};
+}
+
+sub log {
+    my $self= shift;
+    return $self->{SET}->log(@_) if $self->{SET};
 }
 
 sub get_error {
@@ -654,6 +685,21 @@ sub tempdir {
     )};
     push @{$self->{TEMPFILES}}, $sDirName;
     return $sDirName
+}
+
+sub rmtree {
+    my $self= shift;
+    my $sTree= shift;
+
+    $self= $self->new(@_) unless ref $self;
+    return $self->savecmd("if [ -e '$sTree' ]; then rm -rf '$sTree'; fi");
+	# TODO: why does this not work???
+    return ${$self->_saveperl('
+            # rmtree
+            use File::Path;
+            $result= rmtree($sTree, $bDebug);
+        ', { sTree => $sTree, bDebug => $self->{DEBUG} }, '$result',
+    )};
 }
 
 1;

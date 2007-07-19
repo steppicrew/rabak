@@ -1,12 +1,13 @@
 #!/usr/bin/perl
 
-package RabakLib::Type;
+package RabakLib::SourcePath;
 
 use warnings;
 use strict;
 
-#use File::Temp ();
-use RabakLib::Path;
+# use RabakLib::PathBase;
+# use RabakLib::Path;
+use FindBin qw($Bin);
 
 use vars qw(@ISA);
 
@@ -15,12 +16,49 @@ use vars qw(@ISA);
 sub new {
     my $class = shift;
     my $oSet= shift;
-    my $self= {
-        ERRORCODE => 0,
-        DEBUG => 0,
-        SET => $oSet,
-    };
-    bless $self, $class;
+    my $self= $class->SUPER::new($oSet, "source");
+
+    my $sPath= $self->get_value("path");
+    if ($sPath && $sPath=~ s/^(\w+)\://) {
+        $self->set_value("type", $1);
+        $self->set_value("path", $sPath);
+        $self->log($self->warnMsg("Specifying type in source path is deprecated", "Please set type in Source Object!"));
+    }
+	my $sFilter= $self->get_value("filter");
+	unless (defined $sFilter) {
+	   $sFilter= $self->get_set_value("filter", "file"); 
+       $self->log($self->warnMsg("Specifying filter in bakset is deprecated", "Please set filter in Source Object!"));
+	   $self->set_value("filter", $sFilter);
+	} 
+	my $sType= $self->get_value("type");
+	unless (defined $sType) {
+	   $sType= $self->get_set_value("type", "file"); 
+       $self->log($self->warnMsg("Specifying type in bakset is deprecated", "Please set type in Source Object!"));
+	   $self->set_value("type", $sType);
+	} 
+	$sType= ucfirst $sType;
+	eval {
+		require "$Bin/RabakLib/SourceType/$sType.pm";
+    	my $oClass= "RabakLib::SourceType::$sType";
+    	bless $self, $oClass;
+    	$self->_init;
+    	1;
+    } or die "could not find type '$sType':" . @!;
+
+    unless ($self->get_value("keep")) {
+        my $iKeep= $self->get_set_value("keep");
+        if (defined $iKeep) {
+            $self->set_value("keep", $iKeep);
+            $self->log($self->warnMsg("Specifying keep option in bakset is deprecated",
+                "Please set 'keep' in Source Object!"));
+        }
+    }
+
+    return $self;
+}
+
+# Stub for inheritance
+sub _init {
 }
 
 # Stub for inheritance
@@ -30,13 +68,6 @@ sub _show {
 sub get_targetPath {
     my $self= shift;
     return $self->{SET}->get_targetPath;
-#    return File::Spec->rel2abs($self->get_value('target'));
-}
-
-sub get_sourcePath {
-    my $self= shift;
-    return $self->{SET}->get_sourcePath;
-#    return File::Spec->rel2abs($self->get_value('source'));
 }
 
 sub collect_bakdirs {
@@ -79,60 +110,6 @@ sub collect_bakdirs {
 
     return @sBakDir;
     # return wantarray ? (\$sBakDir, $sSubSet) : \$sBakDir;
-}
-
-sub remove_backslashes_part1 {
-    my $self= shift;
-    return $self->{SET}->remove_backslashes_part1(@_);
-}
-
-sub remove_backslashes_part2 {
-    my $self= shift;
-    return $self->{SET}->remove_backslashes_part2(@_);
-}
-
-sub remove_backslashes {
-    my $self= shift;
-    return $self->{SET}->remove_backslashes(@_);
-}
-
-sub get_value {
-    my $self= shift;
-    return $self->{SET}->get_value(@_);
-}
-
-sub get_raw_value {
-    my $self= shift;
-    return $self->{SET}->get_raw_value(@_);
-}
-
-sub infoMsg {
-    my $self= shift;
-    return $self->{SET}->infoMsg(@_);
-}
-
-sub warnMsg {
-    my $self= shift;
-    return $self->{SET}->warnMsg(@_);
-}
-
-sub errorMsg {
-    my $self= shift;
-    return $self->{SET}->errorMsg(@_);
-}
-
-sub logError {
-    my $self= shift;
-    return $self->{SET}->logError(@_);
-}
-
-sub log {
-    my $self= shift;
-    return $self->{SET}->log(@_);
-}
-
-sub tempfile {
-    return RabakLib::Path->local_tempfile();
 }
 
 1;
