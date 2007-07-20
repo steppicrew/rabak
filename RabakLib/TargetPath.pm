@@ -148,5 +148,22 @@ sub _mount_check {
     return $result;
 }
 
+sub remove_old {
+    my $self= shift;
+    my $iKeep= shift;
+    my @sBakDir= @_;
+    
+    return unless $iKeep;
+
+    $self->log($self->infoMsg("Keeping last $iKeep versions"));
+    splice @sBakDir, 0, $iKeep;
+    unless ($self->get_set_value('switch.pretend')) {
+        foreach (@sBakDir) {
+            $self->log($self->infoMsg("Removing \"$_\""));
+            $self->rmtree($_);
+            $self->log($self->errorMsg($self->get_last_error)) if $self->get_last_exit;
+        }
+    }
+}
 
 1;

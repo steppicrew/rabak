@@ -4,6 +4,8 @@ rabak-0.6rc3
 - remote to remote backups (very cool)
 - make base class for database backup types
 - changed ssh handling to pure ssh (Net::SSH::Perl slow and stubborn)
+- changed class hierarchy
+- support fo multiple sources per backset
 
 rabak-0.6rc2
 - better filter expansion

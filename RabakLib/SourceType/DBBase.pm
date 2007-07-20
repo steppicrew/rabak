@@ -87,9 +87,6 @@ sub run {
     my $sZipCmd= "bzip2";
     my $sZipExt= "bz2";
 
-    # TODO: use $self->stderr instead of $sResultFile!
-    my $sResultFile= $self->tempfile();
-
     foreach (@sDb) {
         my $sDestFile= $self->get_set_value('full_target') . "/$_." . $self->get_set_value('unique_target') . ".$sZipExt";
         my $sProbeCmd= $self->get_probe_cmd($_);
@@ -104,23 +101,18 @@ sub run {
             }
         }
 
-        my $sDumpCmd= $self->get_dump_cmd($_) . " 2> $sResultFile | $sZipCmd";
+        my $sDumpCmd= $self->get_dump_cmd($_) . " | $sZipCmd";
         if ($oTargetPath->remote || $self->remote) {
+            # TODO: check if target and source are the same users on the same host
             $sDumpCmd= $self->_ssh->build_ssh_cmd($sDumpCmd);
         }
-        unless ($self->get_value('switch.pretend')) {
+        unless ($self->get_set_value('switch.pretend')) {
             $oTargetPath->run_cmd("$sDumpCmd > $sDestFile");
             if ($self->get_last_exit) {
-                my $sRF= $self->getLocalFile($sResultFile);
-                my $sError= `cat \"$sRF\"`;
+                my $sError= $self->get_last_error;
                 chomp $sError;
                 $self->logError("Dump failed. Skipping dump of \"$_\": $sError");
                 next;
-            }
-            else {
-#                $self->log($self->infoMsg("Copying dump \"" . $oSourcePath->get_last_out . "\" to \"" . $oTargetPath->getFullPath($sDestFile) ."\""));
-#                $oTargetPath->copyLoc2Rem($oSourcePath->get_last_out, $sDestFile);
-#                $self->logError($oTargetPath->get_error()) if $oTargetPath->get_error();
             }
         }
 

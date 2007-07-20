@@ -46,8 +46,7 @@ sub new {
         my $sUser= $1 || '';
         my $sHost= $2;
         $sUser=~ s/\@$//;
-        # TODO: implement logging for RabakLib::Path
-        print "WARNING: Specifying host and user in path is deprecated!\nPlease use path objects!";
+        $self->log($self->warnMsg("Specifying host and user in path is deprecated!", "Please use path objects!"));
         die "Host specified by object AND path!" if $self->get_value("host");
         die "User specified by object AND path!" if $self->get_value("user") && $sUser;
         $self->set_value("host", $sHost);

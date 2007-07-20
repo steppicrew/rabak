@@ -5,7 +5,6 @@ package RabakLib::Set;
 use warnings;
 use strict;
 
-use RabakLib::Conf;
 use RabakLib::Log;
 use RabakLib::Path;
 use RabakLib::SourcePath;
@@ -214,21 +213,6 @@ sub _mail_warning {
     return $self->_mail("RABAK WARNING: $sSubject", @aBody);
 }
 
-sub _remove_old {
-    my $self= shift;
-    my @sBakDir= @_;
-
-    my $iCount= $self->get_value('keep');
-    if ($iCount) {
-        $self->log("Keeping last $iCount versions");
-        splice @sBakDir, 0, $iCount;
-        foreach (@sBakDir) {
-            $self->log("Removing \"$_\"");
-            $self->get_targetPath->rmtree($_) unless $self->get_value('switch.pretend');
-        }
-    }
-}
-
 # -----------------------------------------------------------------------------
 #  ...
 # -----------------------------------------------------------------------------
@@ -307,6 +291,12 @@ sub _mkdir {
     return 0;
 }
 
+sub _build_bakMonthDay {
+    my $self= shift;
+    return (strftime("%Y-%m", localtime), strftime("%Y-%m-%d", localtime));
+    
+}
+
 # -----------------------------------------------------------------------------
 #  Backup
 # -----------------------------------------------------------------------------
@@ -326,90 +316,22 @@ sub backup {
 
     # mount all target mount objects
     my @sMountMessage= ();
-    my $iMountResult= $self->get_targetPath->mountAll(\@sMountMessage);
-    unless ($iMountResult) { # fatal mount error
-        $self->logError("There was at least one fatal mount error. Backup set skipped.");
-        $self->logError(@sMountMessage);
-        return 3;
-    }
-    if (scalar @sMountMessage) {
-        $self->log("All mounts completed. More information after log file initialization...");
-    }
-
-    # now try backing up every source 
-    my %sNames= ();
-    for my $sSource (@aSources) {
-        my $oSource= $self->get_sourcePath($sSource); 
-        if ($oSource) {
-            my $sName= $oSource->get_value("name") || '';
-            if ($sNames{$sName}) {
-                $self->log($self->errorMsg("Name '$sName' of Source Object has already been used. Skipping backup of source."));
-                next;
-            }
-            $sNames{$sName}= 1;
-            if ($self->backup_setup($oSource) == 0) {
-                $iResult++ if $self->backup_run($oSource);
-            }
-            $self->backup_cleanup($oSource);
-        }
-        else {
-            $self->log($self->errorMsg("Source Object '$sSource' could not be loaded. Skipped."))
-        }
-    }
-
-    $self->get_targetPath->unmountAll;
-
-    $self->_mail_log();
-    
-    return $iResult;
-}
-
-sub backup_setup {
-    my $self= shift;
-    my $oSource= shift;
-
-    my $sSubSet= "";
-    my @sBakDir= ();
-
-    $self->log($self->infoMsg("Rabak Version " . $self->get_value("version")));
-    $self->logPretending();
-
-    my @sMountMessage;
-    my $iMountResult= $oSource->mountAll(\@sMountMessage);
-
-    # my @sMountMessage= @{ $self->{_MOUNT_MESSAGE_LIST} };
-
-    unless ($iMountResult) { # fatal mount error
-        $self->logError("There was at least one fatal mount error. Backup set skipped.");
-        $self->logError(@sMountMessage);
-        return 3;
-    }
-
-    if (scalar @sMountMessage) {
-        $self->log("All mounts completed. More information after log file initialization...");
-    }
-
     my $oTargetPath= $self->get_targetPath();
+    my $iMountResult= $oTargetPath->mountAll(\@sMountMessage);
 
-    unless ($oTargetPath->isDir) {
+    unless ($iMountResult) { # fatal mount error
+        $self->logError("There was at least one fatal mount error. Backup set skipped.");
         $self->logError(@sMountMessage);
-        $self->logError("Target \"".$oTargetPath->get_value("PATH")."\" is not a directory. Backup set skipped.");
-        return 1;
+        return 3;
     }
-    unless ($oTargetPath->isWritable) {
-        $self->logError(@sMountMessage);
-        $self->logError("Target \"".$oTargetPath->get_value("PATH")."\" is not writable. Backup set skipped.");
-        return 2;
+    if (scalar @sMountMessage) {
+        $self->log("All mounts completed. More information after log file initialization...");
     }
 
-    my $sBakMonth= strftime("%Y-%m", localtime);
-    my $sBakDay= strftime("%Y-%m-%d", localtime);
+    # start logging
+    my ($sBakMonth, $sBakDay)= $self->_build_bakMonthDay;
     my $sBakSet= $self->get_value("name");
-    $sBakSet.= "-" . $oSource->get_value("name") if $oSource->get_value("name");
-
     my $sLogFile= "$sBakMonth-log/$sBakDay.$sBakSet.log";
-
-    $self->_mkdir("$sBakMonth.$sBakSet");
 
     if (!$self->get_value('switch.pretend') && $self->get_value('switch.logging')) {
         $self->_mkdir("$sBakMonth-log");
@@ -433,6 +355,80 @@ sub backup_setup {
             $oTargetPath->symlink($sLogFile, "current-log.$sBakSet");
         }
     }
+    $self->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_value('switch.logging');
+    $self->log($self->infoMsg("Rabak Version " . $self->get_value("version")));
+    $self->logPretending();
+
+    # now try backing up every source 
+    my %sNames= ();
+    for my $sSource (@aSources) {
+        my $oSource= $self->get_sourcePath($sSource); 
+        if ($oSource) {
+            $self->log($self->infoMsg("Backing up source '$sSource'"));
+            my $sName= $oSource->get_value("name") || '';
+            if ($sNames{$sName}) {
+                $self->log($self->errorMsg("Name '$sName' of Source Object has already been used. Skipping backup of source."));
+                next;
+            }
+            $sNames{$sName}= 1;
+            if ($self->backup_setup($oSource) == 0) {
+                $iResult++ if $self->backup_run($oSource);
+            }
+            $self->backup_cleanup($oSource);
+        }
+        else {
+            $self->log($self->errorMsg("Source Object '$sSource' could not be loaded. Skipped."))
+        }
+    }
+
+    $self->{LOG_FILE}->close();
+
+    $oTargetPath->unmountAll;
+
+    $self->_mail_log();
+    
+    return $iResult;
+}
+
+sub backup_setup {
+    my $self= shift;
+    my $oSource= shift;
+
+    my $sSubSet= "";
+    my @sBakDir= ();
+    my $oTargetPath= $self->get_targetPath();
+
+    my @sMountMessage;
+    my $iMountResult= $oSource->mountAll(\@sMountMessage);
+
+    # my @sMountMessage= @{ $self->{_MOUNT_MESSAGE_LIST} };
+
+    unless ($iMountResult) { # fatal mount error
+        $self->logError("There was at least one fatal mount error. Backup set skipped.");
+        $self->logError(@sMountMessage);
+        return 3;
+    }
+
+    if (scalar @sMountMessage) {
+        $self->log("All mounts completed. More information after log file initialization...");
+    }
+
+    unless ($oTargetPath->isDir) {
+        $self->logError(@sMountMessage);
+        $self->logError("Target \"".$oTargetPath->get_value("PATH")."\" is not a directory. Backup set skipped.");
+        return 1;
+    }
+    unless ($oTargetPath->isWritable) {
+        $self->logError(@sMountMessage);
+        $self->logError("Target \"".$oTargetPath->get_value("PATH")."\" is not writable. Backup set skipped.");
+        return 2;
+    }
+
+    my ($sBakMonth, $sBakDay)= $self->_build_bakMonthDay;
+    my $sBakSet= $self->get_value("name");
+    $sBakSet.= "-" . $oSource->get_value("name") if $oSource->get_value("name");
+
+    $self->_mkdir("$sBakMonth.$sBakSet");
 
     ($sSubSet, @sBakDir)= $self->collect_bakdirs($sBakSet, $sBakDay);
 
@@ -445,7 +441,6 @@ sub backup_setup {
 
     $self->log($self->infoMsg("Backup $sBakDay exists, using subset.")) if $sSubSet;
     $self->log($self->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->get_value("title")));
-    $self->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_value('switch.pretend') && $self->get_value('switch.logging');
     $self->log("Source: " . $oSource->get_value("type") . ":" . $oSource->getFullPath);
 
     $self->log(@sMountMessage);
@@ -488,7 +483,7 @@ sub backup_run {
         $self->log("Done!");
     }
 
-    $self->_remove_old(@sBakDir) unless $iErrorCode;    # only remove old if backup was done
+    $oTargetPath->remove_old($oSource->get_value("keep"), @sBakDir) unless $iErrorCode;    # only remove old if backup was done
 
     unless ($self->get_value('switch.pretend')) {
         $oTargetPath->unlink("current.$sBakSet");
@@ -534,7 +529,6 @@ sub backup_cleanup {
     my $sSubSet= $self->{_SUB_SET};
 
     $self->log($self->infoMsg("Backup done at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet")) if $sBakSet && $sBakDay && $sSubSet;
-    $self->{LOG_FILE}->close();
 }
 
 # -----------------------------------------------------------------------------

@@ -69,7 +69,8 @@ sub _show {
 
 sub get_targetPath {
     my $self= shift;
-    return $self->{SET}->get_targetPath;
+    return $self->{SET}->get_targetPath if $self->{SET};
+    return undef;
 }
 
 sub collect_bakdirs {
