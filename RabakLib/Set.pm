@@ -224,18 +224,11 @@ sub get_targetPath {
     return $self->{_objTarget};
 }
 
-sub get_sourcePath {
-    my $self= shift;
-    my $sNode= shift || die "Internal error: no source node name specified";
-
-    return RabakLib::SourcePath->new($self, $sNode);
-}
-
 # collect all backup dirs
 sub collect_bakdirs {
     my $self= shift;
-    my $sBakSetMonth= quotemeta shift;
-    my $sBakSetDay= quotemeta(shift || '');
+    my $sBakSet= quotemeta shift;
+    my $sBakSource= quotemeta shift;
     my $sSubSetBakDay= shift || 0;
 
     my $oTargetPath= $self->get_targetPath();
@@ -246,12 +239,12 @@ sub collect_bakdirs {
     for my $sMonthDir (keys %hBakDirs) {
         next unless ref $hBakDirs{$sMonthDir}; # dirs point to hashes
 
-        next unless $sMonthDir =~ /\/(\d\d\d\d\-\d\d)\.($sBakSetMonth)$/;
+        next unless $sMonthDir =~ /\/(\d\d\d\d\-\d\d)\.($sBakSet)$/;
 
         for my $sDayDir (keys %{$hBakDirs{$sMonthDir}}) {
             next unless ref $hBakDirs{$sMonthDir}->{$sDayDir}; # dirs point to hashes
             # print "$sDayDir??\n";
-            next unless $sDayDir =~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?\.($sBakSetDay)$/; # [a-z] for backward compatibility
+            next unless $sDayDir =~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?\.(($sBakSource)|($sBakSet))$/; # [a-z] for backward compatibility
             if ($sSubSetBakDay eq $1) {
                 my $sCurSubSet= $2 || '';
                 die "Maximum of 1000 backups reached!" if $sCurSubSet eq '_999';
@@ -363,7 +356,7 @@ sub backup {
     # now try backing up every source 
     my %sNames= ();
     for my $sSource (@aSources) {
-        my $oSource= $self->get_sourcePath($sSource); 
+        my $oSource= RabakLib::SourcePath->new($self, $sSource); 
         if ($oSource) {
             $self->log($self->infoMsg("Backing up source '$sSource'"));
             my $sName= $oSource->get_value("name") || '';
@@ -427,14 +420,14 @@ sub backup_setup {
 
     my ($sBakMonth, $sBakDay)= $self->_build_bakMonthDay;
     my $sBakSet= $self->get_value("name");
-    my $sBakSetSource= $oSource->get_value("name") || "";
+    my $sBakSource= $oSource->get_value("name");
 
     my $sTarget= "$sBakMonth.$sBakSet";
     $self->_mkdir($sTarget);
 
-    ($sSubSet, @sBakDir)= $self->collect_bakdirs($sBakSet, $sBakSetSource, $sBakDay);
+    ($sSubSet, @sBakDir)= $self->collect_bakdirs($sBakSet, $sBakSource, $sBakDay);
 
-    $self->set_value("unique_target", "$sBakDay$sSubSet.$sBakSetSource");
+    $self->set_value("unique_target", "$sBakDay$sSubSet.$sBakSource");
     $sTarget.= "/" . $self->get_value("unique_target");
     $self->set_value("full_target", $oTargetPath->getPath . "/$sTarget");
     # $self->{VALUES}{bak_dirs}= \@sBakDir;
@@ -442,15 +435,13 @@ sub backup_setup {
     $self->_mkdir($sTarget);
 
     $self->log($self->infoMsg("Backup $sBakDay exists, using subset.")) if $sSubSet;
-    $self->log($self->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSetSource, $sBakDay$sSubSet, " . $self->get_value("title")));
+    $self->log($self->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSource, $sBakDay$sSubSet, " . $self->get_value("title")));
     $self->log("Source: " . $oSource->get_value("type") . ":" . $oSource->getFullPath);
 
     $self->log(@sMountMessage);
 
     $self->{_BAK_DIR_LIST}= \@sBakDir;
     $self->{_BAK_DAY}= $sBakDay;
-    $self->{_BAK_SET}= $sBakSet;
-    $self->{_BAK_SET_SOURCE}= $sBakSetSource;
     $self->{_SUB_SET}= $sSubSet;
     $self->{_TARGET}= $sTarget;
 
@@ -465,8 +456,7 @@ sub backup_run {
 
     my @sBakDir= @{ $self->{_BAK_DIR_LIST} };
     my $oTargetPath= $self->get_targetPath;
-    my $sBakSet= $self->{_BAK_SET};
-    $sBakSet.= "-" . $self->{_BAK_SET_SOURCE} if $self->{_BAK_SET_SOURCE}; 
+    my $sBakSetSource= $self->get_value("name") . "-" . $oSource->get_value("name");
     my $sTarget= $self->{_TARGET};
 
     my $iErrorCode= 0;
@@ -490,8 +480,8 @@ sub backup_run {
     $oTargetPath->remove_old($oSource->get_value("keep"), @sBakDir) unless $iErrorCode;    # only remove old if backup was done
 
     unless ($self->get_value('switch.pretend')) {
-        $oTargetPath->unlink("current.$sBakSet");
-        $oTargetPath->symlink("$sTarget", "current.$sBakSet");
+        $oTargetPath->unlink("current.$sBakSetSource");
+        $oTargetPath->symlink("$sTarget", "current.$sBakSetSource");
     }
 
     # check for disc space
@@ -528,11 +518,11 @@ sub backup_cleanup {
     # $self->logError(@sMountMessage);
 
     my $oTargetPath= $self->get_targetPath;
-    my $sBakSetSource= $self->{_BAK_SET_SOURCE};
+    my $sBakSource= $oSource->get_value("name");
     my $sBakDay= $self->{_BAK_DAY};
     my $sSubSet= $self->{_SUB_SET};
 
-    $self->log($self->infoMsg("Backup done at " . strftime("%F %X", localtime) . ": $sBakSetSource, $sBakDay$sSubSet")) if $sBakSetSource && $sBakDay && $sSubSet;
+    $self->log($self->infoMsg("Backup done at " . strftime("%F %X", localtime) . ": $sBakSource, $sBakDay$sSubSet")) if $sBakSource && $sBakDay && $sSubSet;
 }
 
 # -----------------------------------------------------------------------------
