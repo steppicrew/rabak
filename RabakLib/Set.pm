@@ -202,8 +202,18 @@ sub _mail {
 
 sub _mail_log {
     my $self= shift;
+    my $sSubject= shift;
 
-    return $self->_mail('Rabak Result', $self->{LOG_FILE}->get_messages());
+    my $iErrors= $self->{LOG_FILE}->get_errorCount;
+    my $iWarns= $self->{LOG_FILE}->get_warnCount;
+    my $sErrWarn;
+    $sErrWarn= "$iErrors errors" if $iErrors; 
+    $sErrWarn.= ", " if $iErrors && $iWarns; 
+    $sErrWarn= "$iWarns warnings" if $iWarns; 
+    $sSubject.= " ($sErrWarn)" if $sErrWarn;
+    
+    $sSubject= "RABAK '" . $self->get_value("name") . "': $sSubject";
+    return $self->_mail($sSubject, $self->{LOG_FILE}->get_messages());
 }
 
 sub _mail_warning {
@@ -375,11 +385,18 @@ sub backup {
         }
     }
 
+    # stop logging
     $self->{LOG_FILE}->close();
 
+    # unmount all target mounts
     $oTargetPath->unmountAll;
 
-    $self->_mail_log();
+    my $sSubject= "successfully finshed";
+    $sSubject= "$iResult of " . scalar(@aSources) . " backups failed" if $iResult;
+    $sSubject= "*PRETENDED* $sSubject" if $self->get_value("switch.pretend");
+
+    # send admin mail
+    $self->_mail_log($sSubject);
     
     return $iResult;
 }
@@ -464,17 +481,12 @@ sub backup_run {
     $iErrorCode= $oSource->run(@sBakDir);
     $self->{LOG_FILE}->set_prefix();
 
-    if ($@) {
-        if ($@ =~ /^Can\'t locate/) {
-            $self->logError("ERROR! Backup type \"" . $sBakType . "\" is not defined: $@");
-        }
-        else {
-            $self->logError("ERROR! An error occured: $@");
-        }
-        $iErrorCode= 9;
-    }
-    elsif (!$iErrorCode) {
+    if (!$iErrorCode) {
         $self->log("Done!");
+    }
+    else {
+        $self->log($self->errorMsg("Backup failed: " . $self->get_last_error));
+        $iErrorCode= 9;
     }
 
     $oTargetPath->remove_old($oSource->get_value("keep"), @sBakDir) unless $iErrorCode;    # only remove old if backup was done

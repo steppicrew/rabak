@@ -31,6 +31,9 @@ sub new {
         INFOLEVEL => 1,
         WARNLEVEL => -1,
         ERRLEVEL => -2,
+        
+        ERRORCOUNT => 0,
+        WARNCOUNT => 0,
 
         TARGET => undef,
     };
@@ -115,6 +118,15 @@ sub get_filename() {
     return $self->{TARGET} ? $self->{FILE_NAME} : undef;
 }
 
+sub get_errorCount {
+    my $self= shift;
+    return $self->{ERRORCOUNT};
+}
+sub get_warnCount {
+    my $self= shift;
+    return $self->{WARNCOUNT};
+}
+
 sub is_new {
     my $self= shift;
     return $self->{IS_NEW};
@@ -175,10 +187,21 @@ sub levelLog {
 
     return if $self->{CONF}->get_value('switch.quiet');
 
-    my $sMsgPref= "LOG($iLevel):  ";
-    $sMsgPref= "ERROR:   " if $iLevel == $self->{ERRLEVEL};
-    $sMsgPref= "WARNING: " if $iLevel == $self->{WARNLEVEL};
-    $sMsgPref= "INFO:    " if $iLevel == $self->{INFOLEVEL};
+    my $sMsgPref;
+    if ($iLevel == $self->{ERRLEVEL}) {
+        $sMsgPref= "ERROR:   ";
+        $self->{ERRORCOUNT}++
+    }
+    elsif ($iLevel == $self->{WARNLEVEL}) {
+        $sMsgPref= "WARNING: ";
+        $self->{WARNCOUNT}++
+    }
+    elsif ($iLevel == $self->{INFOLEVEL}) {
+        $sMsgPref= "INFO:    ";
+    }
+    else {
+        $sMsgPref= "LOG($iLevel):  ";
+    }
 
     for my $sMessage (@sMessage) {
         next unless $sMessage;

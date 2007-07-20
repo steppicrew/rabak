@@ -45,7 +45,16 @@ sub new {
         bless $self, $oClass;
         $self->_init;
         1;
-    } or die "could not find type '$sType':" . @!;
+    };
+    if ($@) {
+        if ($@ =~ /^Can\'t locate/) {
+            $self->log($self->errorMsg("ERROR! Backup type \"" . $sType . "\" is not defined: $@"));
+        }
+        else {
+            $self->log($self->errorMsg("ERROR! An error occured: $@"));
+        }
+        return undef;
+    }
 
     unless ($self->get_value("keep")) {
         my $iKeep= $self->get_set_value("keep");
