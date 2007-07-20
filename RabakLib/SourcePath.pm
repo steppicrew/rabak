@@ -55,6 +55,11 @@ sub new {
                 "Please set 'keep' in Source Object!"));
         }
     }
+    unless ($self->get_value("name")) {
+        my $sName= $self->get_value("type") . $self->getFullPath;
+        $sName=~ s/[^\w\@\.\-]/_/g;
+        $self->set_value("name", $sName);
+    }
 
     return $self;
 }
