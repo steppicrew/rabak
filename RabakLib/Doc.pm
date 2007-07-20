@@ -1,31 +1,13 @@
 #!/usr/bin/perl
 
-# See the bottom of this file for the POD documentation.  Search for the
-# string '=head'.
-
 # You can run this file through either pod2man or pod2html to produce pretty
 # documentation in manual or html file format (these utilities are part of the
 # Perl 5 distribution).
-
-# Copyright 2006 Dietrich Raisin.  All rights reserved.
-# It may be used and modified freely, but I do request that this copyright
-# notice remain attached to the file.  You may modify this module as you
-# wish, but if you redistribute a modified version, please attach a note
-# listing the modifications you have made.
 
 # The most recent version and complete docs are available at:
 #   http://www.raisin.de/rabak
 
 # ---- developer notes ----
-
-# TODO:
-# syslog vs baklog
-# $ in config
-
-# test:-1a
-# test:0 == test
-# test:09-04
-# test:2006-09:2006-10-04
 
 # exitcodes:
 # 1 usage, help
@@ -51,7 +33,7 @@ C<rabak conf myserver>
 
 =head1 DESCRIPTION
 
-=head2 Jay! Another backup solution!
+=head2 A clever backup solution!
 
 If the data you have to back up is not more then 200 GB and daily changes are not more than 1 GB, then
 B<rabak> may be a simple, reliable and inexpensive solution for you.
@@ -62,7 +44,7 @@ still are setting up backup systems based on this assumption. And they have to c
 medias every day, hoping that the data can be restored when needed.
 
 How about using an external 500 GB hard drive as backup media?
-The data that most offices work with is often much less than 500 GB.
+The data that offices work with is often much less than 500 GB.
 And such a drive costs nothing compared with professional streamer hardware (plus media).
 
 =head2 How it works
@@ -111,26 +93,26 @@ That works fine.
 
 =head2 Configuration
 
-The configuration file syntax is quite similar to postfix'.
+The configuration file syntax is based on postfix' configuration syntax.
 It's important to make it read- and writable only to the user who calls the script. Parts of the
 configuration may be fed to system calls, which run with the user's rights.
 
-You define I<backup sets>, each must
-have a title, a source and a target. As a default, B<rabak> looks for I<rabak.cf> as its configuration
+You define I<backup sets>, each must have a title, one or more sources and a target.
+As a default, B<rabak> looks for I<rabak.cf> as its configuration
 file, which may look like this:
 
   mybackup.title = My home directory
   mybackup.source = /home/me
-  mybackup.target = /mnt/sda1
+  mybackup.target = /mnt/sda1/rabak
   mybackup.switch.logging = 1
 
-Check the configuration:
+To check the configuration:
 
   rabak conf mybackup
 
-The following command will I<pretend> to make a backup of C</> in C</mnt/sda1/2006-09.test/2006-09-24.test>
-(these are example dates, of cause)
-and write a log file to C</mnt/sda1/2006-09-log/2006-09-24.test.log>:
+The following command will I<pretend> to make a backup of C</home/me> in
+C</mnt/sda1/rabak/2006-09.test/2006-09-24.test> (these are example dates, of course)
+and write a log file to C</mnt/sda1/rabak/2006-09-log/2006-09-24.test.log>:
 
   rabak -p backup mybackup
 
@@ -140,7 +122,7 @@ To make the actual backup, drop the C<-p> switch:
 
 You can have multiple backup sets in your your configuration file and use variables:
 
-  my_target = /mnt/sda1/bak
+  my_target = /mnt/sda1/rabak
 
   myhome.title = My home directory
   myhome.source = /home/me
@@ -154,7 +136,7 @@ You can have multiple backup sets in your your configuration file and use variab
 
 Setting C<switch.logging> overrides the command line option C<-l>.
 Possible C<switch>es are C<pretend>, C<quiet> and C<logging>.
-C<$my_target> is replaced by C</mnt/sda1>.
+C<$my_target> is replaced by C</mnt/sda1/rabak>.
 Now lets add a mount point:
 
   full.mount.device= /dev/sda1
@@ -162,10 +144,10 @@ Now lets add a mount point:
   full.mount.unmount= 1
 
 This tells B<rabak> to mount C</dev/sda1> before starting backing up C<full>, and
-to unmount when done.
+to unmount it when done.
 
 You may specify a list of devices to try more than one device and use the
-first successfully mounted one. That's useful for usb-devices as backup target
+first successfully mounted one. That's useful for usb-devices as backup targets
 when you don't know the exact device name.
   full.mount.device= /dev/sd?1 /dev/hd[cd]1
 
@@ -190,7 +172,7 @@ use a variable to define it. Replace the last addition by this code:
 
   ..
 
-  full.mount = $mount1
+  full.mount = &mount1
 
 To exclude files from being backed up, add this:
 
@@ -219,19 +201,19 @@ To make sure only desired devices are used to store your backup data, you
 can mark a mount point as a target:
   mount1.istarget = 1
 
-This means, that there have to be a file named I<rabak.dev.cf> (or any other
+This means, that there has to be a file named I<rabak.dev.cf> (or any other
 name specified by C<switch.dev_conf_file>) in the root directory of the specified
 device.
 If this file could not be found, this device will not be used for backup (and
 even not unmounted if already mounted anywhere else).
 
-The syntax of this file follows the one for other rabak conf files.
+The syntax of this file follows the one for other B<rabak> conf files.
 This config file may contain one or more targetvalues (separated by space)
 in the following form:
 targetvalues= <target group>[.<target value>]
 
-You can specify a target group in your backup set by:
-  mybackup.targetgroup = byweekday
+You can specify a target group name in your backup set by:
+  mybackup.target.group = byweekday
 
 In this case the device is only used if there is a target value beginning with
 C<byweekday.>.
@@ -246,34 +228,35 @@ On one backup device your device config file contains the following line:
 and another devices config file contains:
   targetvalues= byweekday.Tue byweekday.Thu byweekday.Sat
 
-If both devices are plugged in, you set up the mount options correctly
-(don't forget the C<istarget>) flag!), and you specified I<byweekday> as
-targetgroup in your backup set, then you could create a daily cron job:
+If both devices are plugged in:
+* set up the mount options correctly (don't forget the C<istarget> flag!)
+* specify I<byweekday> as targetgroup in your backup set
+* create a daily cron job:
   rabak -i "`date "+%a"`" backup mybackup
 
 On Mon, Wed, and Fri your files will be backed up to the first device.
-On Tue, Thu and Sat the second device would be used. On Sun backup would fail.
+On Tue, Thu and Sat the second device would be used. On Sun no backup will be done.
 
 If you don't specify a target value at the command line, the first successfully
-mounted of the two devices would be used.
+mounted of the two devices will be used.
 
 =head2 Notification Mails
 
-Finally you can configure a notification mail when the free space on the target
-device drops below a given value with
+Configure a notification mail when the free space on the target
+device drops below a given value:
   full.target_discfree_threshold = 10%
 
-valid units are 'B'yte, 'K' (default), 'M'ega, 'G'iga and '%'.
-the check is performed after completing the backup job and a mail to rabak admin
+Valid units are 'B'yte, 'K' (default), 'M'ega, 'G'iga and '%'.
+The check is performed after completing the backup job and a mail to B<rabak> admin
 is sent, if free space is below 10%.
 
 =head1 CONFIG FILE REFERENCE
 
-=head2 Global Switches
+=head2 Global Values
 
 B<email>: mail address to send logfiles and warnings to (default: none)
 
-B<include>: includes an other config file.
+B<INCLUDE>: includes an other config file. This is
 
 B<switch.quiet>: suppress all output and do no logging (default: I<0>)
 
@@ -287,7 +270,7 @@ B<switch.verbose>: verbosity level for standard outut.
      I<2>: more verbose (ex: prints rsync stats)
      I<3>: even more verbose (ex: prints synced files)
 
-B<switch.pretend>: do everything but really write files to target (default: I<0>)
+B<switch.pretend>: do everything but don't really write files to target (default: I<0>)
 
 B<switch.dev_conf_file>: name of the device configuration file that has to exist
     on mounted target devices (path relative to device root) (default: I<rabak.dev.cf>)
@@ -295,7 +278,7 @@ B<switch.dev_conf_file>: name of the device configuration file that has to exist
 B<switch.targetvalue>: specific target value that has to exist on the target
     (default: none)
 
-=head2 Backup Set Switches
+=head2 Backup Set Values
 
 You have to specify at least B<title>, B<source>, and B<target>.
 
@@ -304,35 +287,44 @@ B<title>: descriptive title for backup set
 B<type>: backup type. May be overridden with B<source> (default: I<file>)
     (implemented values: I<file> (default), I<mysql>, I<pgsql>)
 
-B<source>: backup source. May start with "<type>:" specifying the bakset type.
-    (see B<type>)
-    for type I<file>: specify "user@host:/path" for remote sources (Target has to
+B<source>: backup source. May start with "<type>:" specifying the bakset type. (see B<type>)
+    For type I<file>: specify "user@host:/path" for remote sources (Target has to
     be local for remote sources!)
 
-B<target>: backup target. May be a (local) directory or B<Target Object>.
+B<target>: backup target. May be a (local) directory or a B<Target Object>.
 
 B<mount>: B<Mount Objects> that have to be mounted before backup
 
 B<keep>: number of old backups to keep. Superfluous versions will be deleted
-    (default: unlimited)
+    (default: 0, meaning unlimited)
 
-B<filter>: (type I<file> only) list of rsync filters (seperated by whitespaces or ',').
+B<filter>: (type I<file> only) list of rsync like filters (seperated by whitespaces or ',').
+
+    Rsync filters tend to be rather wierd and B<rakab> does some magick(TM) to make a
+    hard administators life easier. This option is an I<alternative> to the B<include> and B<exclude>
+    options and lets you describe more complex rules (without feeling more complex).
+
     Literal whitespaces and ",+-&" should be escaped with backslashes ("\").
-    Entries beginning with '+' are treated as includes, entires beginning with '-' are
+    Entries beginning with '+' are treated as includes, entries beginning with '-' are
     interpreted as excludes. If it doesn't start with '+' or '-', '+' is assumed.
+
     You can use parantheses to apply an include/exclude character to multiple entries.
     (Example: "-(/usr/tmp/, /var/tmp/)" is equivalent to "-/usr/temp/, -/var/tmp/")
-    Paranthesis can generally be used to expand to a list of filters. (Example:
-    "-/foo/(bar1 bar2)/bar3" would be expanded to "-/foo/bar1/bar3, -/foo/bar2/bar3"
-    Note that there must be no space before "(" and after ")". Otherwise a new list will
+
+    Paranthesis can generally be used to expand to a list of filters.
+    (Example: "-/foo/(bar1 bar2)/bar3" would be expanded to "-/foo/bar1/bar3, -/foo/bar2/bar3"
+
+    Note that there must be I<no> space before "(" and after ")". Otherwise a new list will
     start at space. Spaces after "(" and before ")" are optional.
     (Example: "-&exclude_std" would be replaced with an exclude list containing the elements
     of config variable $exclude_std). Variable expansion is done at runtime (late expansion).
     (default: I<-&exclude +&include>)
+
     Effective filter rules can be displayed with 'rabak conf <bakset>'.
     B<Attention:> Pathes beginning with "/" are absolute (not relative to "source" as in
     rsync filters)
-    Please specify trailing slashes for directories! Otherwise rabak will not be able to
+
+    You have to add trailing slashes for directories! Otherwise rabak will not be able to
     optimize your rules for rsync and they may not work as expected.
 
     A more complicated example:
@@ -340,6 +332,7 @@ B<filter>: (type I<file> only) list of rsync filters (seperated by whitespaces o
         filter2= +/etc/passwd -/etc/
         vservers= save1 save2
         filter= (&filter1 &filter2), /vservers/*/(&filter1 &filter2), +/vservers/&vservers/, -/vservers/
+
     Would be expanded to:
         + /var/log/www/
         - /var/log/
@@ -352,7 +345,8 @@ B<filter>: (type I<file> only) list of rsync filters (seperated by whitespaces o
         + /vservers/save1/
         + /vservers/save2/
         - /verservers/
-    Or more rsync'ish:
+
+    And would then feed rsync with:
         + /
         + /var/
         + /var/log/
@@ -390,8 +384,7 @@ B<password>: (types I<mysql> and I<pgsql> only) password to retrieve backup data
 
 =head2 Mount Objects
 
-You have to specify at least B<device> or B<directory> (if not listed in B</etc/fstab>
-    both)
+You have to specify at least B<device> or B<directory>. Both if neither is listed in B</etc/fstab>.
 
 B<device>: one or more device(s) to mount (wildcards like C</dev/hd?1> are supported).
     If more than one device is specified, only the first successfully mounted is used.
@@ -423,9 +416,9 @@ B<timeout>: (for remote targets only) connection timeout in seconds (default: I<
 B<bandwidth>: (for remote targets only) max bandwidth (default: I<0> for no limit)
 
 B<identity_files>: (for remote targets only) identity files for ssh authentication.
-    If you get 'Permission denied at RabakLib/Path.pm' try specifying id file.
+    If you get 'Permission denied at RabakLib/Path.pm' try specifying B<identity_files>.
     (default: empty for system settings)
-    example: identity_files= /root/.ssh/id_rsa
+    Example: identity_files= /root/.ssh/id_rsa
 
 B<user>: (for remote targets only) username to connect as
 
@@ -477,7 +470,4 @@ Examples:
 
 =head1 RESTRICTIONS
 
-There are still things missing:
-
-* Send an email report
-
+Can't make coffee.

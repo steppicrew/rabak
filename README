@@ -4,8 +4,7 @@ Welcome! This is Rabak, a backup tool
 
 Requirements
 ============
-You need Linux or Cygwin.
-Other plattforms may work too. I didn't try.
+You need Linux or Cygwin. Other plattforms may work too. We didn't try.
 
 You need rsync. I know rabak does't work before version 2.6.4.
 Maybe even a newer one is requires. The newer the better.
@@ -15,8 +14,8 @@ You need Perl, I don't know which version. Probably >= 5.8
 You need the Mail::Send perl module. Fetch it from CPAN:
 cpan -i Mail::Send
 
-To use faster-dupemerge, you will need the Perl module
-Digest::SHA1. To install it do:
+To use faster-dupemerge, you will need the Perl module Digest::SHA1.
+To install it do:
 cpan -i Digest::SHA1
 
 
@@ -32,7 +31,7 @@ Change to the installation directory:
 cd /usr/local/rabak
 
 Look at the documentation:
-perldoc RabakLib::Doc
+./rabak doc
 
 Make a test backup:
 ./rabak -c rabak.sample.cf backup test
@@ -70,7 +69,17 @@ When you're done, you can remove the test environment:
 
 cd stuff; sh testdev-remove; cd ..
 
-Check out the *.cf files for more insight.
+Check out the docs and the *.cf files for more insight.
+
+
+Further reading
+===============
+
+Documentation is available through rabak itself:
+./rabak doc
+
+The most recent version and complete docs are available at:
+http://www.raisin.de/rabak
 
 
 Developers
@@ -80,5 +89,16 @@ the RabakLib/Type directory.
 
 
 Have fun!
-Dietrich Raisin
+Dietrich Raisin <info1@raisin.de>
 Stephan Hantigk
+
+
+Appendix: faster-dupemerge
+==========================
+Copyright (C) 2003-2006 Zygo Blaxell <zblaxell@feedme.hungrycats.org>
+
+faster-dupemerge, a brilliant tool to replace duplicate files
+by hardlinks, is bundled with this rabak package.
+
+It may be redistributed under the terms of the GPL2.
+Copyright (C) 2003-2006 Zygo Blaxell <zblaxell@feedme.hungrycats.org>

@@ -1,10 +1,18 @@
 
-As you see this is an early version, and there's things missing:
-
-- Documentation is not complete
---- Explain faster-dupemerge
-- More backup types
+Code:
+- More backup types (which?)
 - Proper exit codes
 - Make ACLs work
-- Various TODOs in the library.
-- implement post processing with faster-dupemerge
+- Implement post processing with faster-dupemerge
+- Make "rabak admin" do something useful
+- Implement "rabak clean" to remove unwanted files on the backup media
+
+Docs:
+- Explain all features
+- Tutorial
+- More examples and case studies
+- Explain faster-dupemerge
+
+Ideas:
+- Add weekday to directory names
+- Smarter "keep" rules. e.g. keep "monday backup" when rotating (dbs)
