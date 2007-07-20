@@ -17,10 +17,12 @@ use vars qw(@ISA);
 
 sub new {
     my $class= shift;
-	my $oSet= undef;
+    
+    my $oSet= undef;
     my %Values=();
+    # if first parameter is a reference, a bakset object was specified 
     if (scalar @_ && ref $_[0]) {
-	    $oSet= shift;
+        $oSet= shift;
         my $sConfName= shift;
 
         if ($oSet && $sConfName) {
@@ -28,9 +30,9 @@ sub new {
             my $sPath;
             unless ($oPath) {
                 $sPath= $oSet->get_value($sConfName);
-                $oPath= $oSet->get_node($sPath);
+                $oPath= $oSet->get_node($sPath) if $sPath;
             }
-
+            $sPath= $sConfName unless $sPath;
             %Values= $oPath ? %{$oPath->{VALUES}} : ( path => $sPath );
         }
         die "ERROR: Setting 'mount' in bakset is deprecated!\nPlease set mount in Source and/or Target Objects" if $oSet->get_value("mount");
@@ -41,7 +43,7 @@ sub new {
     my $self= $class->SUPER::new(%Values);
     $self->{ERRORCODE} = 0;
     $self->{DEBUG} = 0;
-	$self->{SET} = $oSet if $oSet;
+    $self->{SET} = $oSet if $oSet;
     bless $self, $class;
 
     return $self;

@@ -5,8 +5,6 @@ package RabakLib::SourcePath;
 use warnings;
 use strict;
 
-# use RabakLib::PathBase;
-# use RabakLib::Path;
 use FindBin qw($Bin);
 
 use vars qw(@ISA);
@@ -26,25 +24,27 @@ sub new {
         $self->set_value("path", $sPath);
         $self->log($self->warnMsg("Specifying type in source path is deprecated", "Please set type in Source Object!"));
     }
-	my $sFilter= $self->get_value("filter");
-	unless (defined $sFilter) {
-	   $sFilter= $self->get_set_value("filter");
-       $self->log($self->warnMsg("Specifying filter in bakset is deprecated", "Please set filter in Source Object!"));
-	   $self->set_value("filter", $sFilter);
-	} 
-	my $sType= $self->get_value("type");
-	unless (defined $sType) {
-	   $sType= $self->get_set_value("type", "file"); 
-       $self->log($self->warnMsg("Specifying type in bakset is deprecated", "Please set type in Source Object!"));
-	   $self->set_value("type", $sType);
-	} 
-	$sType= ucfirst $sType;
-	eval {
-		require "$Bin/RabakLib/SourceType/$sType.pm";
-    	my $oClass= "RabakLib::SourceType::$sType";
-    	bless $self, $oClass;
-    	$self->_init;
-    	1;
+    my $sFilter= $self->get_value("filter");
+    unless (defined $sFilter) {
+       $sFilter= $self->get_set_value("filter");
+       # TODO: check if filter is set in backset or globally
+       # $self->log($self->warnMsg("Specifying filter in bakset is deprecated", "Please set filter in Source Object!")) if $sFilter;
+       $self->set_value("filter", $sFilter);
+    } 
+    my $sType= $self->get_value("type");
+    unless (defined $sType) {
+       $sType= $self->get_set_value("type"); 
+       $self->log($self->warnMsg("Specifying type in bakset is deprecated", "Please set type in Source Object!")) if $sType;
+       $sType= "file" unless $sType;
+       $self->set_value("type", $sType);
+    } 
+    $sType= ucfirst $sType;
+    eval {
+        require "$Bin/RabakLib/SourceType/$sType.pm";
+        my $oClass= "RabakLib::SourceType::$sType";
+        bless $self, $oClass;
+        $self->_init;
+        1;
     } or die "could not find type '$sType':" . @!;
 
     unless ($self->get_value("keep")) {

@@ -23,7 +23,7 @@ sub get_raw_value {
     my $sDefault= shift || undef;
 
     if ($sName=~ s/^\&//) {
-        print "WARNING: It seems you try to read a value instead of an object reference!";
+        print "WARNING: It seems you try to read a value instead of an object reference ('&$sName')!\n";
     }
 
     my @sName= split(/\./, $sName);

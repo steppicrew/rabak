@@ -5,7 +5,6 @@ package RabakLib::SourceType::File;
 use warnings;
 use strict;
 use vars qw(@ISA);
-use RabakLib::SourcePath;
 
 @ISA = qw(RabakLib::SourcePath);
 
@@ -107,7 +106,7 @@ sub _expandMacro {
         $sResult{ERROR}= "Recursion detected ('$sMacroName'). Ignored";
     }
     else {
-        my $sMacro= $self->remove_backslashes_part1($self->get_raw_value($sMacroName));
+        my $sMacro= $self->remove_backslashes_part1($self->get_set_raw_value($sMacroName));
         if (!$sMacro || ref $sMacro) {
             $sResult{ERROR}= "'$sMacroName' does not exist or is an object. Ignored.";
         }
@@ -190,7 +189,7 @@ sub _parseFilter {
     my $self= shift;
     my $sFilter= shift;
     my $sBaseDir= shift;
-
+    
     $sBaseDir=~ s/\/?$/\//;
     my $sqBaseDir= quotemeta $sBaseDir;
 
@@ -268,7 +267,7 @@ sub _parseFilter {
 sub _show {
     my $self= shift;
 
-    return unless $self->get_value("switch.verbose") > 3;
+    return unless $self->get_set_value("switch.verbose") > 3;
 
     my $sBaseDir= $self->valid_source_dir();
     print "Expanded rsync filter (relative to '$sBaseDir'):\n\t" . join("\n\t", $self->_get_filter) . "\n";
@@ -294,6 +293,8 @@ sub valid_source_dir {
 sub run {
     my $self= shift;
     my @sBakDir= @_;
+
+    return 3 unless $self->valid_source_dir;
 
     # print Dumper($self); die;
 
@@ -338,7 +339,7 @@ sub run {
     ;
 
     $sFlags .= " -i" if $self->{DEBUG};
-    $sFlags .= " --dry-run" if $self->get_value('switch.pretend');
+    $sFlags .= " --dry-run" if $self->get_set_value('switch.pretend');
     if ($sRsyncOpts=~ s/\-\-bwlimit\=(\d+)//) {
         $sBandwidth= $1 unless $sBandwidth;
         $self->log($self->warnMsg("--bandwidth in 'rsync_opts' is deprecated.", "Please use 'bandwidth' option (see Doc)!"));

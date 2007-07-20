@@ -79,7 +79,7 @@ sub local_tempfile {
 sub local_tempdir {
     my $self= shift;
 
-	return $self->tempdir();
+    return $self->tempdir();
 #    $self= $self->new(@_) unless ref $self;
 #    my $sDir= File::Spec->tmpdir;
 #    $sDir= $self->get_value("tempdir");
@@ -416,7 +416,7 @@ sub getDirRecursive {
     my $sPerlScript= '
         # getDirRecursive()
         use Cwd;
-        sub _dirlist {
+        local *_dirlist= sub {
             my $sPath= shift;
             my $iLevel= shift;
 
@@ -438,7 +438,7 @@ sub getDirRecursive {
                 $result{$dir}= _dirlist($dir, $iLevel - 1);
             }
             return \%result;
-        }
+        };
         $sPath= Cwd::abs_path($sPath);
         %Dir= %{_dirlist($sPath, $iLevel)};
     ';
@@ -693,7 +693,7 @@ sub rmtree {
 
     $self= $self->new(@_) unless ref $self;
     return $self->savecmd("if [ -e '$sTree' ]; then rm -rf '$sTree'; fi");
-	# TODO: why does this not work???
+    # TODO: why does this not work???
     return ${$self->_saveperl('
             # rmtree
             use File::Path;

@@ -6,8 +6,6 @@ use warnings;
 use strict;
 use vars qw(@ISA);
 
-use RabakLib::SourceType::DBBase;
-
 @ISA = qw(RabakLib::SourceType::DBBase);
 
 sub _get_user {

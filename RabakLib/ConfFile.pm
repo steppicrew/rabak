@@ -117,32 +117,32 @@ sub _read_file {
     my $sName= '';
     my $iLine= 0;
     while (my $sLine= <$fin>) {
-	$iLine++;
-	next if $sLine =~ /^#/;
+    $iLine++;
+    next if $sLine =~ /^#/;
 
         my $bIndent= 0;
         if ($sLine =~ s/^(\s+)//) {
-    	    $bIndent = 1 
+            $bIndent = 1 
         }
         else {
             $sName= '';
         }
 
-	$sLine =~ s/\s+$//;
-	next if $sLine eq '';
+    $sLine =~ s/\s+$//;
+    next if $sLine eq '';
 
         # TODO: add to documentation
         last if $sLine =~ /^END\s*$/;
 
         # TODO: add to documentation
         if ($sLine =~ /^INCLUDE\s+(.+)/) {
-	    my $sInclude= $1;
-	    my $sInclude2= $sInclude;
+        my $sInclude= $1;
+        my $sInclude2= $sInclude;
 
-	    $sInclude2= "$1/$sInclude2" if !-f $sInclude2 && $sFile =~ /(.*)\/(.+?)$/;
+        $sInclude2= "$1/$sInclude2" if !-f $sInclude2 && $sFile =~ /(.*)\/(.+?)$/;
 
-	    # TODO:
-	    # $sInclude2= "/etc/rabak/$sInclude" if !-f $sInclude2;
+        # TODO:
+        # $sInclude2= "/etc/rabak/$sInclude" if !-f $sInclude2;
 
             $self->_read_file($sInclude2, $iLine);
             $self->{FILE}= $sFile;
@@ -150,17 +150,17 @@ sub _read_file {
         }
 
         my $sValue;
-	if ($bIndent) {
+    if ($bIndent) {
             $self->_error("Unexpected value", $iLine, $sLine) unless $sName;
 
             $sValue= $sLine;
-	}
-	else {
+    }
+    else {
             $self->_error("Syntax error", $iLine, $sLine) unless $sLine =~ /^($sIdent)\s*=\s*(.*?)$/i;
 
-	    $sName= $1;
-	    $sValue= $3;
-	}
+        $sName= $1;
+        $sValue= $3;
+    }
 
         my @aKeys= split(/\./, $sName);
         my $sKey= shift @aKeys;
@@ -195,7 +195,7 @@ sub _read_file {
             $hConf->{VALUES}{$sKey}= $sValue;
         }
 
-	# $hConf->{$sKey}= (defined $hConf->{$sKey} && $bIndent && $hConf->{$sKey} ne '') ? $hConf->{$sKey} . "\n$sValue" : $sValue;
+    # $hConf->{$sKey}= (defined $hConf->{$sKey} && $bIndent && $hConf->{$sKey} ne '') ? $hConf->{$sKey} . "\n$sValue" : $sValue;
     }
 
     $self->_expand();

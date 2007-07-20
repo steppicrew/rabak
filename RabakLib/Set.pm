@@ -242,10 +242,9 @@ sub get_targetPath {
 
 sub get_sourcePath {
     my $self= shift;
-    my $sNode= shift;
+    my $sNode= shift || die "Internal error: no source node name specified";
 
-    $self->{_objSource}= RabakLib::SourcePath->new($self, $sNode) unless $self->{_objSource};
-    return $self->{_objSource};
+    return RabakLib::SourcePath->new($self, $sNode);
 }
 
 # collect all backup dirs
@@ -317,13 +316,15 @@ sub backup {
 
     my $iResult= 0;
 
+    # get sources
     my $sSources= $self->remove_backslashes_part1($self->get_raw_value("source"));
     my @aSources= ( "source" );
-    unless (ref $sSources) {
+    if ($sSources) {
         my @aRawSources= split /(?<!\\)\s+/, $sSources;
-        @aSources= map $self->remove_backslashes_part2($_), @aRawSources if scalar @aSources > 1;
+        @aSources= map $self->remove_backslashes_part2($_), @aRawSources if scalar @aRawSources > 1;
     }
 
+    # mount all target mount objects
     my @sMountMessage= ();
     my $iMountResult= $self->get_targetPath->mountAll(\@sMountMessage);
     unless ($iMountResult) { # fatal mount error
@@ -335,20 +336,24 @@ sub backup {
         $self->log("All mounts completed. More information after log file initialization...");
     }
 
+    # now try backing up every source 
     my %sNames= ();
     for my $sSource (@aSources) {
-        delete $self->{_objSource};
-        if ($self->get_sourcePath($sSource)) {
-            my $sName= $self->get_sourcePath->get_value("name") || '';
+        my $oSource= $self->get_sourcePath($sSource); 
+        if ($oSource) {
+            my $sName= $oSource->get_value("name") || '';
             if ($sNames{$sName}) {
-                $self->log($self->errorMsg("Name '$sName' of Source Object has already been used. Skipping backup."));
+                $self->log($self->errorMsg("Name '$sName' of Source Object has already been used. Skipping backup of source."));
                 next;
             }
             $sNames{$sName}= 1;
-            if ($self->backup_setup() == 0) {
-                $iResult++ if $self->backup_run();
+            if ($self->backup_setup($oSource) == 0) {
+                $iResult++ if $self->backup_run($oSource);
             }
-            $self->backup_cleanup();
+            $self->backup_cleanup($oSource);
+        }
+        else {
+            $self->log($self->errorMsg("Source Object '$sSource' could not be loaded. Skipped."))
         }
     }
 
@@ -361,6 +366,7 @@ sub backup {
 
 sub backup_setup {
     my $self= shift;
+    my $oSource= shift;
 
     my $sSubSet= "";
     my @sBakDir= ();
@@ -369,7 +375,7 @@ sub backup_setup {
     $self->logPretending();
 
     my @sMountMessage;
-    my $iMountResult= $self->get_sourcePath->mountAll(\@sMountMessage);
+    my $iMountResult= $oSource->mountAll(\@sMountMessage);
 
     # my @sMountMessage= @{ $self->{_MOUNT_MESSAGE_LIST} };
 
@@ -399,7 +405,7 @@ sub backup_setup {
     my $sBakMonth= strftime("%Y-%m", localtime);
     my $sBakDay= strftime("%Y-%m-%d", localtime);
     my $sBakSet= $self->get_value("name");
-    $sBakSet.= "-" . $self->get_sourcePath->get_value("name") if $self->get_sourcePath->get_value("name");
+    $sBakSet.= "-" . $oSource->get_value("name") if $oSource->get_value("name");
 
     my $sLogFile= "$sBakMonth-log/$sBakDay.$sBakSet.log";
 
@@ -440,7 +446,7 @@ sub backup_setup {
     $self->log($self->infoMsg("Backup $sBakDay exists, using subset.")) if $sSubSet;
     $self->log($self->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSet, $sBakDay$sSubSet, " . $self->get_value("title")));
     $self->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_value('switch.pretend') && $self->get_value('switch.logging');
-    $self->log("Source: " . $self->get_sourcePath->get_value("type") . ":" . $self->get_sourcePath->getFullPath);
+    $self->log("Source: " . $oSource->get_value("type") . ":" . $oSource->getFullPath);
 
     $self->log(@sMountMessage);
 
@@ -455,6 +461,7 @@ sub backup_setup {
 
 sub backup_run {
     my $self= shift;
+    my $oSource= shift;
 
     my $sBakType= $self->get_value("type");
 
@@ -464,9 +471,8 @@ sub backup_run {
     my $sTarget= $self->{_TARGET};
 
     my $iErrorCode= 0;
-    my $oBackup= $self->get_sourcePath;
     $self->{LOG_FILE}->set_prefix($sBakType);
-    $iErrorCode= $oBackup->run(@sBakDir);
+    $iErrorCode= $oSource->run(@sBakDir);
     $self->{LOG_FILE}->set_prefix();
 
     if ($@) {
@@ -516,8 +522,9 @@ sub backup_run {
 
 sub backup_cleanup {
     my $self= shift;
+    my $oSource= shift;
 
-    $self->get_sourcePath->unmountAll;
+    $oSource->unmountAll;
 
     # $self->logError(@sMountMessage);
 
@@ -540,6 +547,7 @@ sub rm_file {
 
     my $self= shift;
     my @sFileMask= shift || ();
+    my $oSource= shift; die "parameter has to be configured";
 
     # print Dumper(\@sFileMask);
 
@@ -554,7 +562,7 @@ sub rm_file {
     my %iFoundMask= ();
 
     my $sBakSet= $self->get_value("name");
-    $sBakSet.= "-" . $self->get_sourcePath->get_value("name") if $self->get_sourcePath->get_value("name");
+    $sBakSet.= "-" . $oSource->get_value("name") if $oSource->get_value("name");
     my $oTargetPath= $self->get_targetPath();
 
     # TODO: Make a better check!

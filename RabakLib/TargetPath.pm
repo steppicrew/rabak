@@ -5,9 +5,6 @@ package RabakLib::TargetPath;
 use warnings;
 use strict;
 
-use RabakLib::PathBase;
-use RabakLib::Path;
-
 use vars qw(@ISA);
 
 @ISA = qw(RabakLib::Path);

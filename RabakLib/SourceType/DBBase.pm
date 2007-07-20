@@ -4,7 +4,6 @@ package RabakLib::SourceType::DBBase;
 
 use warnings;
 use strict;
-use RabakLib::SourcePath;
 use vars qw(@ISA);
 
 @ISA = qw(RabakLib::SourcePath);
