@@ -317,7 +317,7 @@ sub backup {
 
     my $iResult= 0;
 
-    my $sSource= $self->remove_backslashes_part1($self->get_raw_value("source"));
+    my $sSources= $self->remove_backslashes_part1($self->get_raw_value("source"));
     my @aSources= ( "source" );
     unless (ref $sSources) {
         my @aRawSources= split /(?<!\\)\s+/, $sSources;
@@ -336,15 +336,15 @@ sub backup {
     }
 
     my %sNames= ();
-    for $sSource (@aSources) {
+    for my $sSource (@aSources) {
         delete $self->{_objSource};
-        if ($self->_get_sourcePath($sSource)) {
-            my $sName= $self->_get_sourcePath->get_value("name");
-            if ($sName{$sName}) {
+        if ($self->get_sourcePath($sSource)) {
+            my $sName= $self->get_sourcePath->get_value("name") || '';
+            if ($sNames{$sName}) {
                 $self->log($self->errorMsg("Name '$sName' of Source Object has already been used. Skipping backup."));
                 next;
             }
-            $sName{$sName}= 1;
+            $sNames{$sName}= 1;
             if ($self->backup_setup() == 0) {
                 $iResult++ if $self->backup_run();
             }

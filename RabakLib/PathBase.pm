@@ -372,8 +372,8 @@ sub getDir {
 
     my $sPerlScript= '
         # getDir()
-        use Cwd "abs_path";
-        $sPath= abs_path $sPath;
+        use Cwd;
+        $sPath= Cwd::abs_path($sPath);
         @Dir= (<$sPath/*>);
         @Dir= map {
             if (-l) { # symlinks
@@ -415,7 +415,7 @@ sub getDirRecursive {
 
     my $sPerlScript= '
         # getDirRecursive()
-        use Cwd "abs_path";
+        use Cwd;
         sub _dirlist {
             my $sPath= shift;
             my $iLevel= shift;
@@ -439,7 +439,7 @@ sub getDirRecursive {
             }
             return \%result;
         }
-        $sPath= abs_path $sPath;
+        $sPath= Cwd::abs_path($sPath);
         %Dir= %{_dirlist($sPath, $iLevel)};
     ';
 

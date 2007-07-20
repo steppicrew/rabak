@@ -17,9 +17,10 @@ use vars qw(@ISA);
 
 sub new {
     my $class= shift;
-    my $oSet= shift;
+	my $oSet= undef;
     my %Values=();
-    if (ref $oSet) {
+    if (scalar @_ && ref $_[0]) {
+	    $oSet= shift;
         my $sConfName= shift;
 
         if ($oSet && $sConfName) {
@@ -35,12 +36,12 @@ sub new {
         die "ERROR: Setting 'mount' in bakset is deprecated!\nPlease set mount in Source and/or Target Objects" if $oSet->get_value("mount");
     }
     else {
-        %Values= ($oSet, @_);
+        %Values= (@_);
     }
     my $self= $class->SUPER::new(%Values);
     $self->{ERRORCODE} = 0;
     $self->{DEBUG} = 0;
-    $self->{SET} = $oSet;
+	$self->{SET} = $oSet if $oSet;
     bless $self, $class;
 
     return $self;
@@ -63,7 +64,7 @@ sub getPath {
 
     return $sPath unless $self->get_value("path");
 
-    $self->_set_value("path", $self->abs_path($self->get_value("path"))) unless File::Spec->file_name_is_absolute($self->get_value("path"));
+    $self->set_value("path", $self->abs_path($self->get_value("path"))) unless File::Spec->file_name_is_absolute($self->get_value("path"));
 
     $sPath= File::Spec->canonpath($sPath); # simplify path
     $sPath= File::Spec->rel2abs($sPath, $self->get_value("path")) unless File::Spec->file_name_is_absolute($sPath);
