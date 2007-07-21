@@ -66,7 +66,7 @@ sub set_value {
     my $self= shift;
     my $sName= lc(shift || '');
     my $sValue= shift;
-
+    
     my @sName= split(/\./, $sName);
     $sName= pop @sName;
     for (@sName) {

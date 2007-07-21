@@ -342,11 +342,11 @@ sub run {
     $sFlags .= " --dry-run" if $self->get_set_value('switch.pretend');
     if ($sRsyncOpts=~ s/\-\-bwlimit\=(\d+)//) {
         $sBandwidth= $1 unless $sBandwidth;
-        $self->log($self->warnMsg("--bandwidth in 'rsync_opts' is deprecated.", "Please use 'bandwidth' option (see Doc)!"));
+        $self->log($self->warnMsg("--bandwidth in 'rsync_opts' is deprecated. Please use 'bandwidth' option (see Doc)!"));
     }
     if ($sRsyncOpts=~ s/\-\-timeout\=(\d+)//) {
         $sTimeout= $1 unless $oTargetPath->get_value("timeout");
-        $self->log($self->warnMsg("--timeout in 'rsync_opts' is deprecated.", "Please use 'timeout' option (see Doc)!"));
+        $self->log($self->warnMsg("--timeout in 'rsync_opts' is deprecated. Please use 'timeout' option (see Doc)!"));
     }
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
     if ($oTargetPath->remote) {

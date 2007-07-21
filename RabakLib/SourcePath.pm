@@ -22,19 +22,19 @@ sub new {
     if ($sPath && $sPath=~ s/^(\w+)\://) {
         $self->set_value("type", $1);
         $self->set_value("path", $sPath);
-        $self->log($self->warnMsg("Specifying type in source path is deprecated", "Please set type in Source Object!"));
+        $self->log($self->warnMsg("Specifying type in source path is deprecated. Please set type in Source Object!"));
     }
     my $sFilter= $self->get_value("filter");
     unless (defined $sFilter) {
        $sFilter= $self->get_set_value("filter");
        # TODO: check if filter is set in backset or globally
-       # $self->log($self->warnMsg("Specifying filter in bakset is deprecated", "Please set filter in Source Object!")) if $sFilter;
+       # $self->log($self->warnMsg("Specifying filter in bakset is deprecated. Please set filter in Source Object!")) if $sFilter;
        $self->set_value("filter", $sFilter);
     } 
     my $sType= $self->get_value("type");
     unless (defined $sType) {
        $sType= $self->get_set_value("type"); 
-       $self->log($self->warnMsg("Specifying type in bakset is deprecated", "Please set type in Source Object!")) if $sType;
+       $self->log($self->warnMsg("Specifying type in bakset is deprecated. Please set type in Source Object!")) if $sType;
        $sType= "file" unless $sType;
        $self->set_value("type", $sType);
     } 
@@ -48,10 +48,10 @@ sub new {
     };
     if ($@) {
         if ($@ =~ /^Can\'t locate/) {
-            $self->log($self->errorMsg("ERROR! Backup type \"" . $sType . "\" is not defined: $@"));
+            $self->log($self->errorMsg("Backup type \"" . $sType . "\" is not defined: $@"));
         }
         else {
-            $self->log($self->errorMsg("ERROR! An error occured: $@"));
+            $self->log($self->errorMsg("An error occured: $@"));
         }
         return undef;
     }
@@ -60,8 +60,7 @@ sub new {
         my $iKeep= $self->get_set_value("keep");
         if (defined $iKeep) {
             $self->set_value("keep", $iKeep);
-            $self->log($self->warnMsg("Specifying keep option in bakset is deprecated",
-                "Please set 'keep' in Source Object!"));
+            $self->log($self->warnMsg("Specifying keep option in bakset is deprecated. Please set 'keep' in Source Object!"));
         }
     }
     unless ($self->get_value("name")) {

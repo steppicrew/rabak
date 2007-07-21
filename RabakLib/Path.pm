@@ -35,7 +35,7 @@ sub new {
             $sPath= $sConfName unless $sPath;
             %Values= $oPath ? %{$oPath->{VALUES}} : ( path => $sPath );
         }
-        die "ERROR: Setting 'mount' in bakset is deprecated!\nPlease set mount in Source and/or Target Objects" if $oSet->get_value("mount");
+        die "FATAL ERROR: Setting 'mount' in bakset is deprecated! Please set mount in Source and/or Target Objects" if $oSet->get_value("mount");
     }
     else {
         %Values= (@_);
@@ -45,6 +45,8 @@ sub new {
     $self->{DEBUG} = 0;
     $self->{SET} = $oSet if $oSet;
     bless $self, $class;
+
+    $self->set_log($oSet->get_log) if $oSet;
 
     return $self;
 }

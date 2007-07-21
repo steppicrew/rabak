@@ -46,7 +46,7 @@ sub new {
         my $sUser= $1 || '';
         my $sHost= $2;
         $sUser=~ s/\@$//;
-        $self->log($self->warnMsg("Specifying host and user in path is deprecated!", "Please use path objects!"));
+        $self->log($self->warnMsg("Specifying host and user in path is deprecated. Please use path objects!"));
         die "Host specified by object AND path!" if $self->get_value("host");
         die "User specified by object AND path!" if $self->get_value("user") && $sUser;
         $self->set_value("host", $sHost);
@@ -95,31 +95,6 @@ sub get_set_raw_value {
     my $self= shift;
     return $self->{SET}->get_raw_value(@_) if $self->{SET};
     return undef;
-}
-
-sub infoMsg {
-    my $self= shift;
-    return $self->{SET}->infoMsg(@_) if $self->{SET};
-}
-
-sub warnMsg {
-    my $self= shift;
-    return $self->{SET}->warnMsg(@_) if $self->{SET};
-}
-
-sub errorMsg {
-    my $self= shift;
-    return $self->{SET}->errorMsg(@_) if $self->{SET};
-}
-
-sub logError {
-    my $self= shift;
-    return $self->{SET}->logError(@_) if $self->{SET};
-}
-
-sub log {
-    my $self= shift;
-    return $self->{SET}->log(@_) if $self->{SET};
 }
 
 sub get_error {

@@ -17,16 +17,14 @@ sub _init {
         my $sUser= $self->get_set_value("user");
         if (defined $sUser) {
             $self->set_value("dbuser", $sUser);
-            $self->log($self->warnMsg("Specifying database user name in bakset is deprecated",
-                "Please set 'dbuser' in Source Object!"));
+            $self->log($self->warnMsg("Specifying database user name in bakset is deprecated. Please set 'dbuser' in Source Object!"));
         }
     }
     unless ($self->get_value("dbpassword")) {
         my $sPasswd= $self->get_set_value("password");
         if (defined $sPasswd) {
             $self->set_value("dbpassword", $sPasswd);
-            $self->log($self->warnMsg("Specifying database password in bakset is deprecated",
-                "Please set 'dbpassword' in Source Object!"));
+            $self->log($self->warnMsg("Specifying database password in bakset is deprecated. Please set 'dbpassword' in Source Object!"));
         }
     }
 }

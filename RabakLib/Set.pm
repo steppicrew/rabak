@@ -44,8 +44,8 @@ sub new {
     $self->{VERSION}= $hConf->{DEFAULTS}->{VERSION};
     $self->{NAME}= $sName;
 
-    $self->{LOG_FILE}= RabakLib::Log->new($hConf);
-    $self->{LOG_FILE}->set_category($sName);
+    $self->set_log(RabakLib::Log->new($hConf));
+    $self->get_log->set_category($sName);
 
     # my $xx= "file://C:/etc/passwd";
     # my $uri= URI->new($xx); # self->{VALUES}{source});
@@ -109,6 +109,7 @@ sub get_raw_value {
     my $sDefault= shift;
 
     my $sResult= $self->SUPER::get_raw_value($sName);
+    $self->{CONF}->set_log($self->get_log);
     $sResult= $self->{CONF}->get_raw_value($sName) unless defined $sResult && $sResult ne '*default*';
     $sResult= $sDefault unless defined $sResult && $sResult ne '*default*';
     $sResult= undef unless defined $sResult && $sResult ne '*default*';
@@ -120,6 +121,7 @@ sub get_node {
     my $sName= shift || '';
 
     my $hResult= $self->SUPER::get_node($sName);
+    $self->{CONF}->set_log($self->get_log);
     $hResult= $self->{CONF}->get_node($sName) unless defined $hResult;
     return  $hResult;
 }
@@ -130,52 +132,6 @@ sub get_node {
 
 sub _timestr {
     return strftime("%Y-%m-%d %H:%M:%S", localtime);
-}
-
-sub infoMsg {
-    my $self= shift;
-    my @sMessage= @_;
-
-    return $self->{LOG_FILE}->infoMsg(@sMessage);
-}
-
-sub warnMsg {
-    my $self= shift;
-    my @sMessage= @_;
-
-    return $self->{LOG_FILE}->warnMsg(@sMessage);
-}
-
-sub errorMsg {
-    my $self= shift;
-    my @sMessage= @_;
-
-    return $self->{LOG_FILE}->errorMsg(@sMessage);
-}
-
-sub logExitError {
-    my $self= shift;
-    my $iExit=shift || 0;
-    my @sMessage= @_;
-
-    $self->logError(@sMessage);
-    exit $iExit if $iExit;
-}
-
-sub logError {
-    my $self= shift;
-    my @sMessage= @_;
-
-    $self->{LOG_FILE}->log($self->errorMsg(@sMessage));
-
-    $self->{ERRORCODE}= 9;
-}
-
-sub log {
-    my $self= shift;
-    my @sMessage= @_;
-
-    $self->{LOG_FILE}->log(@sMessage);
 }
 
 sub logPretending {
@@ -204,8 +160,8 @@ sub _mail_log {
     my $self= shift;
     my $sSubject= shift;
 
-    my $iErrors= $self->{LOG_FILE}->get_errorCount;
-    my $iWarns= $self->{LOG_FILE}->get_warnCount;
+    my $iErrors= $self->get_log->get_errorCount;
+    my $iWarns= $self->get_log->get_warnCount;
     my $sErrWarn;
     $sErrWarn= "$iErrors errors" if $iErrors; 
     $sErrWarn.= ", " if $iErrors && $iWarns; 
@@ -213,7 +169,7 @@ sub _mail_log {
     $sSubject.= " ($sErrWarn)" if $sErrWarn;
     
     $sSubject= "RABAK '" . $self->get_value("name") . "': $sSubject";
-    return $self->_mail($sSubject, $self->{LOG_FILE}->get_messages());
+    return $self->_mail($sSubject, $self->get_log->get_messages());
 }
 
 sub _mail_warning {
@@ -344,12 +300,12 @@ sub backup {
 
         my $sLogFileName= $oTargetPath->get_value("PATH") . "/$sLogFile";
 
-        my $sError= $self->{LOG_FILE}->open($sLogFileName, $oTargetPath);
+        my $sError= $self->get_log->open($sLogFileName, $oTargetPath);
         if ($sError) {
             $self->log($self->warnMsg("Can't open log file \"$sLogFileName\" ($sError). Going on without..."));
         }
         else {
-            if (!$self->{LOG_FILE}->is_new()) {
+            if (!$self->get_log->is_new()) {
 
                 # TODO: only to file
                 $self->log("", "===========================================================================", "");
@@ -386,7 +342,7 @@ sub backup {
     }
 
     # stop logging
-    $self->{LOG_FILE}->close();
+    $self->get_log->close();
 
     # unmount all target mounts
     $oTargetPath->unmountAll;
@@ -477,9 +433,9 @@ sub backup_run {
     my $sTarget= $self->{_TARGET};
 
     my $iErrorCode= 0;
-    $self->{LOG_FILE}->set_prefix($sBakType);
+    $self->get_log->set_prefix($sBakType);
     $iErrorCode= $oSource->run(@sBakDir);
-    $self->{LOG_FILE}->set_prefix();
+    $self->get_log->set_prefix();
 
     if (!$iErrorCode) {
         $self->log("Done!");

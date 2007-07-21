@@ -13,17 +13,31 @@ use Data::Dumper;
 sub new {
     my $class = shift;
     my $self= shift || {};
+    $self->{SET} = shift;
+    
     $self->{VALUES}= {} unless ref $self->{VALUES};
     bless $self, $class;
+}
+
+sub set_log {
+    my $self= shift;
+    $self->{LOG_FILE}= shift;
+}
+
+sub get_log {
+    my $self= shift;
+    return $self->{LOG_FILE};
 }
 
 sub get_raw_value {
     my $self= shift;
     my $sName= lc(shift || '');
     my $sDefault= shift || undef;
+    
+    my $oLogFile= $self->get_log;
 
     if ($sName=~ s/^\&//) {
-        print "WARNING: It seems you try to read a value instead of an object reference ('&$sName')!\n";
+        $self->log($self->warnMsg("It seems you try to read a value instead of an object reference ('&$sName')!"));
     }
 
     my @sName= split(/\./, $sName);
@@ -31,6 +45,7 @@ sub get_raw_value {
     for (@sName) {
         return $sDefault unless ref $self->{VALUES}{$_};
         $self= $self->{VALUES}{$_};
+        $self->set_log($oLogFile);
     }
     return $sDefault unless $self->{VALUES}{$sName};
     return $self->{VALUES}{$sName} unless ref $self->{VALUES}{$sName};
@@ -44,7 +59,7 @@ sub remove_backslashes_part1 {
     return $sValue unless $sValue;
 
     if ($sValue =~ /\\$/) {
-        print "WARNING: Conf-File contains lines ending with backslashes!\n";
+        $self->log($self->warnMsg("Conf-File contains lines ending with backslashes!"));
     }
 
     # make every "~" preceeded by "." (not space to keep word separators)
@@ -86,6 +101,8 @@ sub get_node {
     my $self= shift;
     my $sName= lc(shift || '');
 
+    my $oLogFile= $self->get_log;
+
     my $bDepricated= !($sName=~ s/^\&//);
     
     return undef if $sName eq '.';
@@ -94,11 +111,58 @@ sub get_node {
     for (@sName) {
         return undef unless ref $self->{VALUES}{$_};
         $self= $self->{VALUES}{$_};
+        $self->set_log($oLogFile);
     }
     if ($bDepricated && defined $self) {
-        print "WARNING: Referencing objects without leading '&' is deprecated\nPlease specify '&$sName'\n";
+        $self->log($self->warnMsg("Referencing objects without leading '&' is deprecated. Please specify '&$sName'"));
     }
     return $self;
+}
+
+sub infoMsg {
+    my $self= shift;
+    my @sMessage= @_;
+
+    return $self->{LOG_FILE}->infoMsg(@sMessage) if $self->{LOG_FILE};
+}
+
+sub warnMsg {
+    my $self= shift;
+    my @sMessage= @_;
+
+    return $self->{LOG_FILE}->warnMsg(@sMessage) if $self->{LOG_FILE};
+}
+
+sub errorMsg {
+    my $self= shift;
+    my @sMessage= @_;
+
+    return $self->{LOG_FILE}->errorMsg(@sMessage) if $self->{LOG_FILE};
+}
+
+sub logExitError {
+    my $self= shift;
+    my $iExit=shift || 0;
+    my @sMessage= @_;
+
+    $self->logError(@sMessage);
+    exit $iExit if $iExit;
+}
+
+sub logError {
+    my $self= shift;
+    my @sMessage= @_;
+
+    $self->{LOG_FILE}->log($self->errorMsg(@sMessage)) if $self->{LOG_FILE};
+
+    $self->{ERRORCODE}= 9;
+}
+
+sub log {
+    my $self= shift;
+    my @sMessage= @_;
+
+    $self->{LOG_FILE}->log(@sMessage) if $self->{LOG_FILE};
 }
 
 sub set_value {

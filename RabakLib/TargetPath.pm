@@ -20,8 +20,7 @@ sub new {
         my $sGroup= $self->get_set_value("targetgroup");
         if ($sGroup) {
             $self->set_value("group", $sGroup);
-            $self->log($self->warnMsg("BakSet option \"targetgroup\" is deprecated",
-                "Please use \"group\" in Target Objects! (see Doc)"));
+            $self->log($self->warnMsg("BakSet option \"targetgroup\" is deprecated. Please use \"group\" in Target Objects! (see Doc)"));
         }
     }
     return $self;
