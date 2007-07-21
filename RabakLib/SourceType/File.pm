@@ -11,6 +11,18 @@ use vars qw(@ISA);
 use Data::Dumper;
 use File::Spec;
 
+sub _init {
+    my $self= shift;
+    
+    unless ($self->get_value("scan_bak_dirs")) {
+        my $iScanBakDirs= $self->get_set_value("scan_bak_dirs");
+        if (defined $iScanBakDirs) {
+            $self->set_value("scan_bak_dirs", $iScanBakDirs);
+            $self->log($self->warnMsg("Specifying scan_bak_dirs in bakset is deprecated. Please set 'scan_bak_dirs' in Source Object!"));
+        }
+    }
+}
+
 sub _get_filter {
     my $self= shift;
 

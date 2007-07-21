@@ -37,6 +37,7 @@ sub new {
 
         TARGET => undef,
     };
+    $hConf->set_log($self);
     bless $self, $class;
 }
 

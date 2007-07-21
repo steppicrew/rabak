@@ -21,7 +21,16 @@ sub new {
 
 sub set_log {
     my $self= shift;
-    $self->{LOG_FILE}= shift;
+    my $oLog= shift;
+    $self->{LOG_FILE}= $oLog;
+
+    if ($self->{VALUES}) {
+        for my $oValue (values %{$self->{VALUES}}) {
+            # if $oValue is an object and inherited from CommonBase set its log too
+            $oValue->set_log($oLog) if ref($oValue)=~ /\:\:/ && $oValue->isa("RabakLib::CommonBase");
+        }
+    }
+    return $oLog;
 }
 
 sub get_log {
@@ -34,8 +43,6 @@ sub get_raw_value {
     my $sName= lc(shift || '');
     my $sDefault= shift || undef;
     
-    my $oLogFile= $self->get_log;
-
     if ($sName=~ s/^\&//) {
         $self->log($self->warnMsg("It seems you try to read a value instead of an object reference ('&$sName')!"));
     }
@@ -45,7 +52,6 @@ sub get_raw_value {
     for (@sName) {
         return $sDefault unless ref $self->{VALUES}{$_};
         $self= $self->{VALUES}{$_};
-        $self->set_log($oLogFile);
     }
     return $sDefault unless $self->{VALUES}{$sName};
     return $self->{VALUES}{$sName} unless ref $self->{VALUES}{$sName};
@@ -101,8 +107,6 @@ sub get_node {
     my $self= shift;
     my $sName= lc(shift || '');
 
-    my $oLogFile= $self->get_log;
-
     my $bDepricated= !($sName=~ s/^\&//);
     
     return undef if $sName eq '.';
@@ -111,7 +115,6 @@ sub get_node {
     for (@sName) {
         return undef unless ref $self->{VALUES}{$_};
         $self= $self->{VALUES}{$_};
-        $self->set_log($oLogFile);
     }
     if ($bDepricated && defined $self) {
         $self->log($self->warnMsg("Referencing objects without leading '&' is deprecated. Please specify '&$sName'"));

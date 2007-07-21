@@ -378,6 +378,9 @@ B<exclude>: (type I<file> only) list of entries to be excluded. This option is
 B<include>: (type I<file> only) list of entries to be included. This option is
     ignored if B<filter> is set (see above).
 
+B<scan_bak_dirs>: (type I<file> only) number of last backups to consider for hard
+    links (default: I<4>)
+
 B<user>: (types I<mysql> and I<pgsql> only) user to retrieve backup data as
 
 B<password>: (types I<mysql> and I<pgsql> only) password to retrieve backup data

@@ -44,11 +44,9 @@ sub new {
     $self->{ERRORCODE} = 0;
     $self->{DEBUG} = 0;
     $self->{SET} = $oSet if $oSet;
-    bless $self, $class;
-
     $self->set_log($oSet->get_log) if $oSet;
 
-    return $self;
+    bless $self, $class;
 }
 
 sub getFullPath {
