@@ -27,7 +27,9 @@ sub set_log {
     if ($self->{VALUES}) {
         for my $oValue (values %{$self->{VALUES}}) {
             # if $oValue is an object and inherited from CommonBase set its log too
-            $oValue->set_log($oLog) if ref($oValue)=~ /\:\:/ && $oValue->isa("RabakLib::CommonBase");
+            if (ref($oValue)=~ /\:\:/ && $oValue->can("get_log") && $oValue->get_log != $oLog) {
+                $oValue->set_log($oLog);
+            }
         }
     }
     return $oLog;

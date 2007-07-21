@@ -195,32 +195,39 @@ You can use variables to define exclude sets and glue them together:
 Additional rsync options (like "-acl") can be specified with
   mybackup.rsync_opts = "-acl"
 
-=head2 Target Groups
+=head2 Targets
 
-To make sure only desired devices are used to store your backup data, you
-can mark a mount point as a target:
-  mount1.istarget = 1
+If you want to mount backup devices, you can define a target object.
+  mount1.device= /dev/sd?1
+  mount1.directory= /mnt/backup
+  ...
+  mytarget.path= /mnt/backup/rabak/
+  mytarget.mount= $mount1
+  ...
+  full.target= mytarget
 
-This means, that there has to be a file named I<rabak.dev.cf> (or any other
-name specified by C<switch.dev_conf_file>) in the root directory of the specified
-device.
+This would mount the device specified in I<$mount1> to back up your data.
+To make sure only desired devices are used to store your backup data,
+devices mounted in a target object have to be a file named rabak.dev.cf
+(or any other name specified by switch.dev_conf_file) in the root directory.
 If this file could not be found, this device will not be used for backup (and
-even not unmounted if already mounted anywhere else).
+even not unmounted if already mounted anywhere else). I you specified
+multiple devices (like in our example) the next device is tried.
 
-The syntax of this file follows the one for other B<rabak> conf files.
-This config file may contain one or more targetvalues (separated by space)
+The syntax of I<rabak.dev.cf> follows the one for other rabak conf files.
+This config file may contain one or more target values (separated by space)
 in the following form:
-targetvalues= <target group>[.<target value>]
+  targetvalues= <target group>[.<target value>]
 
-You can specify a target group name in your backup set by:
-  mybackup.target.group = byweekday
+You can specify a target group in your backup set by:
+  mytarget.group = byweekday
 
-In this case the device is only used if there is a target value beginning with
-C<byweekday.>.
-Additionally you can specify a target value at the command line (parameter
-C<-i 'target value'>) to accept only devices with a matching target value.
+In this case the device is only used if there is a target value beginning
+with I<byweekday.>. Additionally you can specify a target value at the command
+line (parameter -i 'target value') to accept only devices with a matching target
+value.
 
-=head3 Example for target groups and values
+Example for target groups and values
 
 On one backup device your device config file contains the following line:
   targetvalues= byweekday.Mon byweekday.Wed byweekday.Fri
@@ -228,17 +235,27 @@ On one backup device your device config file contains the following line:
 and another devices config file contains:
   targetvalues= byweekday.Tue byweekday.Thu byweekday.Sat
 
-If both devices are plugged in:
-* set up the mount options correctly (don't forget the C<istarget> flag!)
-* specify I<byweekday> as targetgroup in your backup set
-* create a daily cron job:
+If both devices are plugged in, you set up the mount options correctly, and you
+specified I<byweekday> as target group in your Target Object, then you could create
+a daily cron job:
   rabak -i "`date "+%a"`" backup mybackup
 
 On Mon, Wed, and Fri your files will be backed up to the first device.
-On Tue, Thu and Sat the second device would be used. On Sun no backup will be done.
+On Tue, Thu and Sat the second device would be used. On Sun backup would fail.
 
 If you don't specify a target value at the command line, the first successfully
-mounted of the two devices will be used.
+mounted of the two devices would be used.
+
+Remote Targets
+
+To back up your data to remote hosts, you simply have to specify a host name and
+an optional user name in your target object (for full syntax see config file reference):
+  mytarget.host= rabak.localdomain
+  mytarget.user= rabak
+
+rabak will connect to the remote machine via ssh and mount any needed device there,
+before backing up your data.
+B<Note>: You have have to set up key authentication for ssh to login to the remote
 
 =head2 Notification Mails
 
@@ -256,7 +273,7 @@ is sent, if free space is below 10%.
 
 B<email>: mail address to send logfiles and warnings to (default: none)
 
-B<INCLUDE>: includes an other config file. This is
+B<INCLUDE>: includes an other config file.
 
 B<switch.quiet>: suppress all output and do no logging (default: I<0>)
 
@@ -284,16 +301,59 @@ You have to specify at least B<title>, B<source>, and B<target>.
 
 B<title>: descriptive title for backup set
 
-B<type>: backup type. May be overridden with B<source> (default: I<file>)
-    (implemented values: I<file> (default), I<mysql>, I<pgsql>)
-
-B<source>: backup source. May start with "<type>:" specifying the bakset type. (see B<type>)
-    For type I<file>: specify "user@host:/path" for remote sources (Target has to
-    be local for remote sources!)
+B<source>: backup source. May be a (local) directory or a B<Source Object>.
+    You can specify more than one source by path or reference to a Source Object.
+    All those sources will be backed up to your target.
 
 B<target>: backup target. May be a (local) directory or a B<Target Object>.
 
-B<mount>: B<Mount Objects> that have to be mounted before backup
+=head2 Mount Objects
+
+You have to specify at least B<device> or B<directory>. Both if neither is listed in B</etc/fstab>.
+
+B<device>: one or more device(s) to mount (wildcards like C</dev/hd?1> are supported).
+    If more than one device is specified, only the first successfully mounted is used.
+
+B<directory>: directory where to mount the device to.
+
+B<unmount>: specifies if device should be unmounted afterwards
+
+B<type>: filesystem type to mount (default: I<auto>)
+
+B<opts>: additional mount options passed to mount command (default: none)
+    (example: C<username=zuppi,password=zappi,ro>)
+
+=head2 Path Object
+
+Path Objects specify sources or targets for backups. You have at least specify a path value.
+
+Common values for Target and Source Objects are:
+
+B<path>: path of source/target directory
+
+B<host>: (for remote pathes only) hostname to connect to
+
+B<port>: (for remote pathes only) port to connect to (default: I<22>)
+
+B<protocol>: (for remote pathes only) ssh protocol to connect to (default: I<1,2>)
+    possible values: I<1>, I<2>, I<2,1>, and I<1,2>
+
+B<timeout>: (for remote pathes only) connection timeout in seconds (default: I<150>)
+
+B<user>: (for remote pathes only) username to connect as
+
+B<mount>: B<Mount Objects> to mount. See B<Target Objects> for further information
+    on mounts at target.
+
+=head3 Source Object
+
+B<name>: name of source. This value is used to name the backup directory on the target.
+    If not set, a name will be built from path. 
+
+B<type>: backup type. May be overridden with B<source> (default: I<file>)
+    (implemented values: I<file> (default), I<mysql>, I<pgsql>)
+
+B<path>: backup source. May start with "<type>:" specifying the bakset type. (see B<type>)
 
 B<keep>: number of old backups to keep. Superfluous versions will be deleted
     (default: 0, meaning unlimited)
@@ -304,9 +364,16 @@ B<filter>: (type I<file> only) list of rsync like filters (seperated by whitespa
     hard administators life easier. This option is an I<alternative> to the B<include> and B<exclude>
     options and lets you describe more complex rules (without feeling more complex).
 
+    Filters are applied from top to bottom. Filter checking is canceled at the first matching
+    filter entry. You don't have to care about rsync's special filter behavior.
+
+    Entries for directories will match the directory and all contained files.
+    (Note: Please use trailing slashes for directories for those optimizations!)
+
     Literal whitespaces and ",+-&" should be escaped with backslashes ("\").
     Entries beginning with '+' are treated as includes, entries beginning with '-' are
-    interpreted as excludes. If it doesn't start with '+' or '-', '+' is assumed.
+    interpreted as excludes. If it doesn't start with '+' or '-' or if the sign is ambiguous, this
+    rules is ignored and a warning is raised.
 
     You can use parantheses to apply an include/exclude character to multiple entries.
     (Example: "-(/usr/tmp/, /var/tmp/)" is equivalent to "-/usr/temp/, -/var/tmp/")
@@ -320,7 +387,7 @@ B<filter>: (type I<file> only) list of rsync like filters (seperated by whitespa
     of config variable $exclude_std). Variable expansion is done at runtime (late expansion).
     (default: I<-&exclude +&include>)
 
-    Effective filter rules can be displayed with 'rabak conf <bakset>'.
+    Effective filter rules can be displayed with 'rabak -v conf <bakset>'.
     B<Attention:> Pathes beginning with "/" are absolute (not relative to "source" as in
     rsync filters)
 
@@ -328,6 +395,11 @@ B<filter>: (type I<file> only) list of rsync like filters (seperated by whitespa
     optimize your rules for rsync and they may not work as expected.
 
     A more complicated example:
+    Let's assume you want to include everything under /var/log/www/ but nothing else from /var/log/.
+    Additionally you want to save nothing except file 'passwd' from /etc/. These rules should
+    apply to your root directory and to your vservers - but you only want to back up vservers
+    "save1" and "save2".
+    To do so, you could set your rules as follows:
         filter1= +/var/log/www/, -/var/log/
         filter2= +/etc/passwd -/etc/
         vservers= save1 save2
@@ -381,40 +453,14 @@ B<include>: (type I<file> only) list of entries to be included. This option is
 B<scan_bak_dirs>: (type I<file> only) number of last backups to consider for hard
     links (default: I<4>)
 
-B<user>: (types I<mysql> and I<pgsql> only) user to retrieve backup data as
+B<dbuser>: (types I<mysql> and I<pgsql> only) user to connect database as
 
-B<password>: (types I<mysql> and I<pgsql> only) password to retrieve backup data
+B<dbpassword>: (types I<mysql> and I<pgsql> only) password to connect to database
 
-=head2 Mount Objects
+=head3 Target Object
 
-You have to specify at least B<device> or B<directory>. Both if neither is listed in B</etc/fstab>.
-
-B<device>: one or more device(s) to mount (wildcards like C</dev/hd?1> are supported).
-    If more than one device is specified, only the first successfully mounted is used.
-
-B<directory>: directory where to mount the device to.
-
-B<unmount>: specifies if device schould be unmounted afterwards
-
-B<type>: filesystem type to mount (default: I<auto>)
-
-B<opts>: additional mount options passed to mount command (default: none)
-    (example: C<username=zuppi,password=zappi,ro>)
-
-=head2 Target Object
-
-You have at least specify B<path>.
-
-B<path>: path of target directory
-
-B<host>: (for remote targets only) hostname to connect to
-
-B<port>: (for remote targets only) port to connect to (default: I<22>)
-
-B<protocol>: (for remote targets only) ssh protocol to connect to (default: I<1,2>)
-    possible values: I<1>, I<2>, I<2,1>, and I<1,2>
-
-B<timeout>: (for remote targets only) connection timeout in seconds (default: I<150>)
+B<mount>: Devices are considered as valid target media if it contains rabak device config
+    file (see B<switch.dev_conf_file>) and a matching target value (if value was specified)
 
 B<bandwidth>: (for remote targets only) max bandwidth (default: I<0> for no limit)
 
@@ -422,16 +468,6 @@ B<identity_files>: (for remote targets only) identity files for ssh authenticati
     If you get 'Permission denied at RabakLib/Path.pm' try specifying B<identity_files>.
     (default: empty for system settings)
     Example: identity_files= /root/.ssh/id_rsa
-
-B<user>: (for remote targets only) username to connect as
-
-B<password>: (for remote targets only) password to authenticate
-    I<Note:> not implemented yet for rsync! You have to use authentication by
-        certificates
-
-B<mount>: B<Mount Objects> to mount. Devices are considered as valid target media
-    if it contains rabak device config file (see B<switch.dev_conf_file>) and
-    a matching target value (if value was specified)
 
 B<group>: target group that have to be specified on any mounted target device
 
@@ -461,6 +497,8 @@ TODO: Explain Postgresql and MySql Backup:
 * make a separate section for filter rules
 
 =head2 Removing files from the backup media
+
+!!Currently not implemented!!
 
 !!TODO: Doc!!
 
