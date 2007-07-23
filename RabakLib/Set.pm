@@ -445,7 +445,13 @@ sub backup_run {
         $iErrorCode= 9;
     }
 
-    $oTargetPath->remove_old($oSource->get_value("keep"), @sBakDir) unless $iErrorCode;    # only remove old if backup was done
+    # for backward compatiblity use only dir with source name (not set name like for file linking) 
+    my @sKeepDirs= ();
+    my $sqBakSource= quotemeta $oSource->get_value("name");
+    for my $sBakDir (@sBakDir) {
+        push @sKeepDirs, $sBakDir if $sBakDir=~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?\.$sqBakSource$/;
+    }
+    $oTargetPath->remove_old($oSource->get_value("keep"), @sKeepDirs) unless $iErrorCode;    # only remove old if backup was done
 
     unless ($self->get_value('switch.pretend')) {
         $oTargetPath->unlink("current.$sBakSetSource");
