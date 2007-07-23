@@ -326,7 +326,6 @@ sub run {
 
     # Write filter rules to temp file:
     my ($fhwRules, $sRulesFile)= $self->local_tempfile();
-    my ($fhwPass, $sPassFile);
 
     my @sFilter= $self->_get_filter;
     # print join("\n", @sFilter), "\n"; #die;
@@ -370,12 +369,6 @@ sub run {
         }
         $sFlags .= " -e '$sSshCmd' --timeout='$sTimeout'";
         $sFlags .= " --bwlimit='$sBandwidth'" if $sBandwidth;
-        if ($sRsyncPass) {
-            ($fhwPass, $sPassFile)= $self->tempfile();
-            print $fhwPass $sRsyncPass;
-            close $fhwPass;
-            $sFlags .= " --password-file=\"$sPassFile\""
-        }
     }
 
     my $iScanBakDirs= $self->get_value('scan_bak_dirs', 4);

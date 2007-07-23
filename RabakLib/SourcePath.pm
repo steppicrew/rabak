@@ -64,7 +64,7 @@ sub new {
         }
     }
     unless ($self->get_value("name")) {
-        my $sName= $self->get_value("type") . $self->getFullPath;
+        my $sName= $self->get_value("type") . "_" . $self->getFullPath;
         $sName=~ s/[^\w\@\.\-]/_/g;
         $self->set_value("name", $sName);
     }

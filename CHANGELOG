@@ -6,6 +6,7 @@ rabak-0.6rc3
 - changed ssh handling to pure ssh (Net::SSH::Perl slow and stubborn)
 - changed class hierarchy
 - support fo multiple sources per backset
+- subject of admin mail now contains summary
 
 rabak-0.6rc2
 - better filter expansion

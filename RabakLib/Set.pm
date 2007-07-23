@@ -161,9 +161,11 @@ sub _mail_log {
     my $iErrors= $self->get_log->get_errorCount;
     my $iWarns= $self->get_log->get_warnCount;
     my $sErrWarn;
-    $sErrWarn= "$iErrors errors" if $iErrors; 
+    $sErrWarn= "$iErrors error" if $iErrors; 
+    $sErrWarn.= "s" if $iErrors > 1; 
     $sErrWarn.= ", " if $iErrors && $iWarns; 
-    $sErrWarn= "$iWarns warnings" if $iWarns; 
+    $sErrWarn.= "$iWarns warning" if $iWarns; 
+    $sErrWarn.= "s" if $iWarns > 1; 
     $sSubject.= " ($sErrWarn)" if $sErrWarn;
     
     $sSubject= "RABAK '" . $self->get_value("name") . "': $sSubject";
