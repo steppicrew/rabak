@@ -60,6 +60,8 @@ sub getFullPath {
     return $sPath;
 }
 
+# get path works only with file object!
+# should be overwritten by other subclasses
 sub getPath {
     my $self= shift;
     my $sPath= shift || '.';

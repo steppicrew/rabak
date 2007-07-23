@@ -120,9 +120,10 @@ sub run {
     return $bFoundOne ? 0 : 9;
 }
 
-sub getFullPath {
+sub getPath {
     my $self= shift;
-    return $self->get_value("path");
+    my $sPath= shift || $self->get_value("path");
+    return $sPath;
 }
 
 1;
