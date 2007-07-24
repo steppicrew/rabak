@@ -548,7 +548,11 @@ To do so, you could set your rules as follows:
   filter1= +/var/log/www/, -/var/log/
   filter2= +/etc/passwd -/etc/
   vservers= save1 save2
-  filter= (&filter1 &filter2), /vservers/*/(&filter1 &filter2), +/vservers/&vservers/, -/vservers/
+  filter=
+    &filter1 &filter2,
+    /vservers/*/(&filter1 &filter2),
+    +/vservers/&vservers/,
+    -/vservers/
 
 Would be expanded to:
 
@@ -556,13 +560,13 @@ Would be expanded to:
   - /var/log/
   + /etc/passwd
   - /etc/
-  + /verservers/*/var/log/www/
-  - /verservers/*/var/log/
-  + /verservers/*/etc/passwd
-  - /verservers/*/etc/
+  + /vservers/*/var/log/www/
+  - /vservers/*/var/log/
+  + /vservers/*/etc/passwd
+  - /vservers/*/etc/
   + /vservers/save1/
   + /vservers/save2/
-  - /verservers/
+  - /vservers/
 
 And would then feed rsync with:
 
