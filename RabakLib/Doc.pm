@@ -175,7 +175,7 @@ when you don't know the exact device name.
   full.mount.device= /dev/sd?1 /dev/hd[cd]1
 
 This tells B<rabak> to mount the first available (and mountable) device of
-F</dev/sda1>, F</dev/sdb1>... , F</dev/hdc1> and F</dev/hdd1>
+F</dev/sda1>, F</dev/sdb1>..., F</dev/hdc1>, and F</dev/hdd1>
 
 If you specify a target group, B<rabak> will make sure that only rabak devices
 will be mounted (see section L</"Target Groups">).
@@ -378,13 +378,17 @@ specific target value that has to exist on the target
 
 =head2 Backup Set Values
 
-You have to specify at least B<title>, B<source>, and B<target>.
+You have to specify all values B<title>, B<name>, B<source>, and B<target>.
 
 =over 2
 
 =item title
 
 descriptive title for backup set
+
+=item name
+
+name of backup set. Will be used to name the target directory.
 
 =item source
 
@@ -430,7 +434,7 @@ additional mount options passed to mount command (default: none)
 
 =head2 Path Object
 
-Path Objects specify sources or targets for backups. You have at least specify a path value.
+Path Objects specify sources or targets for backups. At least you have to specify a path value.
 
 Common values for Target and Source Objects are:
 
@@ -479,7 +483,7 @@ If not set, a name will be built from path.
 
 =item type
 
-backup type. May be overridden with B<source> (default: C<file>)
+backup type. May be overwritten with L</"path"> (default: C<file>)
 (implemented values: I<file> (default), I<mysql>, I<pgsql>)
 
 =item path
@@ -493,7 +497,7 @@ number of old backups to keep. Superfluous versions will be deleted
 
 =item filter
 
-(type I<file> only) list of rsync like filters (seperated by whitespaces or ',').
+(type I<file> only) list of rsync like filters (seperated by whitespaces or C<,>).
 
 Rsync filters tend to be rather wierd and B<rakab> does some magick(TM) to make a
 hard administators life easier. This option is an I<alternative> to the L</"include"> and L</"exclude">
@@ -540,12 +544,14 @@ apply to your root directory and to your vservers - but you only want to back up
 C<save1> and C<save2>.
 
 To do so, you could set your rules as follows:
+
   filter1= +/var/log/www/, -/var/log/
   filter2= +/etc/passwd -/etc/
   vservers= save1 save2
   filter= (&filter1 &filter2), /vservers/*/(&filter1 &filter2), +/vservers/&vservers/, -/vservers/
 
 Would be expanded to:
+
   + /var/log/www/
   - /var/log/
   + /etc/passwd
@@ -559,6 +565,7 @@ Would be expanded to:
   - /verservers/
 
 And would then feed rsync with:
+
   + /
   + /var/
   + /var/log/
@@ -636,7 +643,7 @@ target group that have to be specified on any mounted target device
 =item diskfree_threshold
 
 if free space on target device drops below the specified
-value after completed backup, a waring mail is sent to B<email> address.
+value after completed backup, a warning mail is sent to B<email> address.
 Valid units are I<B>yte, I<K> (default), I<M>ega, I<G>iga and I<%>.
 
 =back
