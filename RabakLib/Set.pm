@@ -459,7 +459,7 @@ sub backup_run {
     }
 
     # check for disc space
-    my $sSpaceThreshold= $self->get_value('target_discfree_threshold') || '';
+    my $sSpaceThreshold= $oTargetPath->get_value('discfree_threshold') || '';
     if ($sSpaceThreshold) {
         my $iStValue= $sSpaceThreshold =~ /\b([\d\.]+)/ ? $1 : 0;
         my $sStUnit= 'K';

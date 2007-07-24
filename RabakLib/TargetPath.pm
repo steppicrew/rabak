@@ -23,6 +23,13 @@ sub new {
             $self->log($self->warnMsg("BakSet option \"targetgroup\" is deprecated. Please use \"group\" in Target Objects! (see Doc)"));
         }
     }
+    unless ($self->get_value("discfree_threshold")) {
+        my $sDFT= $self->get_set_value("target_discfree_threshold");
+        if ($sDFT) {
+            $self->set_value("discfree_threshold", $sDFT);
+            $self->log($self->warnMsg("BakSet option \"target_discfree_threshold\" is deprecated. Please use \"discfree_threshold\" in Target Objects! (see Doc)"));
+        }
+    }
     return $self;
 }
 

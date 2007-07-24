@@ -51,12 +51,12 @@ And such a drive costs nothing compared with professional streamer hardware (plu
 
 B<rabak> is based on rsync's hardlinking abilities. It I<always> makes a full backup. You'll get a
 directory containing the complete tree with each backup. But an unchanged file from one backup is
-hardlinked to the file from the last backup. So it doesn't consume any disk space.
+hardlinked to the file from the last backup. So it doesn't consume any additional disk space.
 
 Full backups? Won't the backup drive be full very quickly? No! Here's an example:
 You have a 500 GB drive (backup), 100 GB of data with 500 MB changes/day. So your drive
 will fill up in (500 - 100) / 0.5 days. That's 800 days, or 2 1/2 years! When it's full,
-you but in in the cellar in a nice and dry place, and buy the next drive. That will
+you put it in the cellar in a nice and dry place, and buy the next drive. That will
 be a 2 TB drive, probably :-) .
 
 What if the hard drive breaks? Then your data will be gone.
@@ -102,13 +102,13 @@ Or keep every Monday backup and remove the others.
 
 If your backup target is a mounted device, then set your target to a subdirectory and not
 to the root of the device. In this way, if a mount fails, the writing of files fails too.
-So no files are written to your (unmounted) mount point.
+So no files are written to your (unmounted) mount point. (!! Deprecated: L</"Target Object">)
 
 =item *
 
 Workstations can't be backed up directly. This is how to do it: Install a hard drive into the
 server and copy the workstation data on that. Then configure B<rabak> to backup this hard drive.
-That works fine.
+That works fine. (!! Deprecated: L</"Remote Targets and Sources">)
 
 =back
 
@@ -131,9 +131,9 @@ To check the configuration:
 
   rabak conf mybackup
 
-The following command will I<pretend> to make a backup of C</home/me> in
-C</mnt/sda1/rabak/2006-09.test/2006-09-24.test> (these are example dates, of course)
-and write a log file to C</mnt/sda1/rabak/2006-09-log/2006-09-24.test.log>:
+The following command will I<pretend> to make a backup of F</home/me> in
+F</mnt/sda1/rabak/2006-09.test/2006-09-24.test> (these are example dates, of course)
+and write a log file to F</mnt/sda1/rabak/2006-09-log/2006-09-24.test.log>:
 
   rabak -p backup mybackup
 
@@ -141,7 +141,7 @@ To make the actual backup, drop the C<-p> switch:
 
   rabak backup mybackup
 
-You can have multiple backup sets in your your configuration file and use variables:
+You can have multiple backup sets in your configuration file and use variables:
 
   my_target = /mnt/sda1/rabak
 
@@ -165,7 +165,7 @@ Now lets add a mount point:
   full.mount.directory= /mnt/sda1
   full.mount.unmount= 1
 
-This tells B<rabak> to mount C</dev/sda1> before starting backing up C<full>, and
+This tells B<rabak> to mount F</dev/sda1> before starting backing up C<full>, and
 to unmount it when done.
 
 You may specify a list of devices to try more than one device and use the
@@ -175,7 +175,7 @@ when you don't know the exact device name.
   full.mount.device= /dev/sd?1 /dev/hd[cd]1
 
 This tells B<rabak> to mount the first available (and mountable) device of
-/dev/sda1, /dev/sdb1... , /dev/hdc1 and /dev/hdd1
+F</dev/sda1>, F</dev/sdb1>... , F</dev/hdc1> and F</dev/hdd1>
 
 If you specify a target group, B<rabak> will make sure that only rabak devices
 will be mounted (see section L</"Target Groups">).
@@ -203,7 +203,7 @@ To exclude files from being backed up, add this:
         tmp/
         *.bak
 
-See the rsync man page (L<rsync/"EXCLUDE PATTERN RULES">) for details.
+See L</"filter"> and L<rsync/"EXCLUDE PATTERN RULES"> for details.
 You can use variables to define exclude sets and glue them together:
 
   exclude_common =
@@ -250,8 +250,8 @@ You can specify a target group in your backup set by:
   mytarget.group = byweekday
 
 In this case the device is only used if there is a target value beginning
-with I<byweekday.>. Additionally you can specify a target value at the command
-line (parameter -i 'target value') to accept only devices with a matching target
+with C<byweekday.>. Additionally you can specify a target value at the command
+line (parameter C<-i 'target value'>) to accept only devices with a matching target
 value.
 
 Example for target groups and values
@@ -265,7 +265,7 @@ and another devices config file contains:
   targetvalues= byweekday.Tue byweekday.Thu byweekday.Sat
 
 If both devices are plugged in, you set up the mount options correctly, and you
-specified I<byweekday> as target group in your Target Object, then you could create
+specified C<byweekday> as target group in your Target Object, then you could create
 a daily cron job:
 
   rabak -i "`date "+%a"`" backup mybackup
@@ -276,10 +276,11 @@ On Tue, Thu and Sat the second device would be used. On Sun backup would fail.
 If you don't specify a target value at the command line, the first successfully
 mounted of the two devices would be used.
 
-Remote Targets
+=head2 Remote Targets and Sources
 
-To back up your data to remote hosts, you simply have to specify a host name and
-an optional user name in your target object (for full syntax see L</"CONFIG FILE REFERENCE">):
+To back up your data to or from remote hosts, you simply have to specify a host name and
+an optional user name in your target/source object (for full syntax see
+L</"CONFIG FILE REFERENCE"> and L</"Path Object">):
 
   mytarget.host= rabak.localdomain
   mytarget.user= rabak
@@ -287,19 +288,23 @@ an optional user name in your target object (for full syntax see L</"CONFIG FILE
 B<rabak> will connect to the remote machine via ssh and mount any needed device there,
 before backing up your data.
 
-B<Note>: You have have to set up key authentication for ssh to login to the remote
+You may even specify remote sources B<and> target at the same time to back up your
+data from one host to another. 
+
+B<Note>: You have have to set up key authentication for ssh to login to the remote hosts.
+For remote to remote backups make sure that both hosts can connect each other as well. 
 
 =head2 Notification Mails
 
 Configure a notification mail when the free space on the target
 device drops below a given value:
 
-  full.target_discfree_threshold = 10%
-
-Valid units are 'B'yte, 'K' (default), 'M'ega, 'G'iga and '%'.
+  mytarget.discfree_threshold = 10%
 
 The check is performed after completing the backup job and a mail to B<rabak> admin
 is sent, if free space is below 10%.
+
+Valid units are 'B'yte, 'K' (default), 'M'ega, 'G'iga and '%'.
 
 =head1 CONFIG FILE REFERENCE
 
