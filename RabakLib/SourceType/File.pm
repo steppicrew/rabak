@@ -395,9 +395,6 @@ sub run {
 
     $self->log($self->infoMsg("Running: $sRsyncCmd"));
 
-    # print Dumper($self); die;
-    $oTargetPath->close if $oTargetPath->remote; # close ssh connection (will be opened if needed)
-
     # run rsync command
     my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= $oRsyncPath->run_cmd($sRsyncCmd);
     $self->log($self->errorMsg($sError)) if $sError;
@@ -416,7 +413,7 @@ sub run {
     $self->log([ 3, @sRsyncFiles ]);
     $self->log('*** Rsync Statistics: ***', @sRsyncStat);
 
-    return 0;
+    return $iRsyncExit;
 }
 
 1;

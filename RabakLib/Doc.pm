@@ -320,6 +320,10 @@ mail address to send logfiles and warnings to (default: none)
 
 includes an other config file.
 
+=item END
+
+ends config file. Any text following this line is ignored.
+
 =item switch.quiet
 
 suppress all output and do no logging (default: C<0>)
@@ -490,6 +494,9 @@ backup type. May be overwritten with L</"path"> (default: C<file>)
 
 backup source. May start with "<type>:" specifying the bakset type. (see L</"type">)
 
+For types I<mysql> and I<pgsql>: Path can be C<*> for all databases or comma separated
+list with database names. (Example: C<path=mysql:*> or C<path=pgsql:template1,template2>)
+
 =item keep
 
 number of old backups to keep. Superfluous versions will be deleted
@@ -618,6 +625,12 @@ links (default: C<4>)
 
 (types I<mysql> and I<pgsql> only) password to connect to database
 
+=item packer
+
+(types I<mysql> and I<pgsql> only) program for packing dumps.
+valid values are C<bzip2> and C<gzip>.
+default: C<bzip2>
+
 =back
 
 =head3 Target Object
@@ -663,32 +676,6 @@ email = rabakadmin
 =item *
 
 full.include = /something
-
-=back
-
-TODO: Explain Postgresql and MySql Backup:
-
-=over 2
-
-=item *
-
-test_pg.source = pgsql:aga2,maildb
-
-=item *
-
-test_pg.source = pgsql:*
-
-=item *
-
-test_pg.user = *default*
-
-=item *
-
-test_pg.password = test
-
-=item *
-
-test_pg.keep = 7 (Keep 7, remove older)
 
 =item *
 

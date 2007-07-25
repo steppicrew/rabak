@@ -68,7 +68,7 @@ sub new {
     unless ($bSkipValidation) {
         $self->{ERROR}= $self->_validate();
 
-        # TODO: fix
+        # TODO: fix (should be moved to SourcePath??)
         # if ($self->{VALUES}{type} !~ /^(file|pgsql|mysql)$/) {
         #     return "Backup set type of \"$sName.source\" must be \"file\", \"pgsql\" or \"mysql\". (" . $self->{VALUES}{source} . ")";
         # }

@@ -130,11 +130,6 @@ sub remote {
     return $self->get_value("host");
 }
 
-sub close {
-    my $self= shift;
-    undef $self->{SSH};
-}
-
 # dummy function - to be overridden
 sub getFullPath {
     my $self= shift;
@@ -425,7 +420,6 @@ sub getDirRecursive {
 }
 
 # makes sure the given file exists locally
-# TODO: use ssh->register_handler for large files
 sub getLocalFile {
     my $self= shift;
     my $sFile= $self->getPath(shift);

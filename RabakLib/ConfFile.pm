@@ -131,18 +131,15 @@ sub _read_file {
     $sLine =~ s/\s+$//;
     next if $sLine eq '';
 
-        # TODO: add to documentation
         last if $sLine =~ /^END\s*$/;
 
-        # TODO: add to documentation
         if ($sLine =~ /^INCLUDE\s+(.+)/) {
         my $sInclude= $1;
         my $sInclude2= $sInclude;
 
         $sInclude2= "$1/$sInclude2" if !-f $sInclude2 && $sFile =~ /(.*)\/(.+?)$/;
 
-        # TODO:
-        # $sInclude2= "/etc/rabak/$sInclude" if !-f $sInclude2;
+        # TODO: $sInclude2= "/etc/rabak/$sInclude" if !-f $sInclude2;
 
             $self->_read_file($sInclude2, $iLine);
             $self->{FILE}= $sFile;

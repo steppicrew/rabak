@@ -5,8 +5,9 @@ rabak-0.6rc3
 - make base class for database backup types
 - changed ssh handling to pure ssh (Net::SSH::Perl slow and stubborn)
 - changed class hierarchy
-- support fo multiple sources per backset
+- support for multiple sources per backset
 - subject of admin mail now contains summary
+- packer for db dumps is now configurable
 
 rabak-0.6rc2
 - better filter expansion

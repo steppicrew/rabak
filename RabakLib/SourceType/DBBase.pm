@@ -13,6 +13,11 @@ use Data::Dumper;
 sub _init {
     my $self= shift;
     
+    our %sPackers = (
+        bzip2 => { cmd => "bzip2", ext => "bz2"},
+        gzip => { cmd => "gzip", ext => "gz"},
+    );
+    
     unless ($self->get_value("dbuser")) {
         my $sUser= $self->get_set_value("user");
         if (defined $sUser) {
@@ -27,6 +32,13 @@ sub _init {
             $self->log($self->warnMsg("Specifying database password in bakset is deprecated. Please set 'dbpassword' in Source Object!"));
         }
     }
+
+    my $sPacker= lc $self->get_value("packer");
+    $self->log($self->warnMsg("Unknown packer '$sPacker'. Valid Values are: '" .
+        join("', '", keys %sPackers) . 
+        "'. Using default 'bzip2'")) if $sPacker && !$sPackers{$sPacker};
+    $sPacker= "bzip2" unless $sPacker && $sPackers{$sPacker};
+    $self->{PACKER} = $sPackers{$sPacker};
 }
 
 sub get_show_cmd {
@@ -47,7 +59,6 @@ sub get_valid_db {
 # plan: build a tunnel, fetch the db, delete old baks, release tunnel
 # TODO: option dump_oids
 # TODO: support large objects (pg_dump -Fc)
-# TODO: dump *from* remote host
 sub run {
     my $self= shift;
     my @sBakDir= @_;
@@ -81,9 +92,8 @@ sub run {
         }
     }
 
-    # TODO: make configurable
-    my $sZipCmd= "bzip2";
-    my $sZipExt= "bz2";
+    my $sZipCmd= $self->{PACKER}{cmd};
+    my $sZipExt= $self->{PACKER}{ext};
 
     foreach (@sDb) {
         my $sDestFile= $self->get_set_value('full_target') . "/$_." . $self->get_set_value('unique_target') . ".$sZipExt";
