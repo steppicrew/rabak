@@ -102,13 +102,13 @@ Or keep every Monday backup and remove the others.
 
 If your backup target is a mounted device, then set your target to a subdirectory and not
 to the root of the device. In this way, if a mount fails, the writing of files fails too.
-So no files are written to your (unmounted) mount point. (!! Deprecated: L</"Target Object">)
+So no files are written to your (unmounted) mount point. (!! Deprecated: L<Target Objects>)
 
 =item *
 
 Workstations can't be backed up directly. This is how to do it: Install a hard drive into the
 server and copy the workstation data on that. Then configure B<rabak> to backup this hard drive.
-That works fine. (!! Deprecated: L</"Remote Targets and Sources">)
+That works fine. (!! Deprecated: L<Remote Targets and Sources>)
 
 =back
 
@@ -178,7 +178,7 @@ This tells B<rabak> to mount the first available (and mountable) device of
 F</dev/sda1>, F</dev/sdb1>..., F</dev/hdc1>, and F</dev/hdd1>
 
 If you specify a target group, B<rabak> will make sure that only rabak devices
-will be mounted (see section L</"Target Groups">).
+will be mounted (see section L<Target Groups>).
 
 You can specify file system type and additional mount options with
 
@@ -203,7 +203,7 @@ To exclude files from being backed up, add this:
         tmp/
         *.bak
 
-See L</"filter"> and L<rsync/"EXCLUDE PATTERN RULES"> for details.
+See L<filter> and L<rsync/EXCLUDE PATTERN RULES> for details.
 You can use variables to define exclude sets and glue them together:
 
   exclude_common =
@@ -220,7 +220,7 @@ Additional rsync options (like "-acl") can be specified with
 
 =head2 Targets
 
-If you want to mount backup devices, you can define a target object.
+If you want to mount backup devices, you can define a "L<Target Object|Target Objects>".
 
   mount1.device= /dev/sd?1
   mount1.directory= /mnt/backup
@@ -233,7 +233,7 @@ If you want to mount backup devices, you can define a target object.
 This would mount the device specified in I<$mount1> to back up your data.
 
 To make sure only desired devices are used to store your backup data,
-devices mounted in a target object have to be a file named F<rabak.dev.cf>
+devices mounted in a "L<Target Object|Target Objects>" have to be a file named F<rabak.dev.cf>
 (or any other name specified by switch.dev_conf_file) in the root directory.
 If this file could not be found, this device will not be used for backup (and
 even not unmounted if already mounted anywhere else). I you specified
@@ -265,7 +265,7 @@ and another devices config file contains:
   targetvalues= byweekday.Tue byweekday.Thu byweekday.Sat
 
 If both devices are plugged in, you set up the mount options correctly, and you
-specified C<byweekday> as target group in your Target Object, then you could create
+specified C<byweekday> as target group in your L<Target Object|Target Objects>, then you could create
 a daily cron job:
 
   rabak -i "`date "+%a"`" backup mybackup
@@ -279,8 +279,8 @@ mounted of the two devices would be used.
 =head2 Remote Targets and Sources
 
 To back up your data to or from remote hosts, you simply have to specify a host name and
-an optional user name in your target/source object (for full syntax see
-L</"CONFIG FILE REFERENCE"> and L</"Path Object">):
+an optional user name in your L<Source|Source Objects>/L<Target Object|Target Objects> (for full syntax see
+L</"CONFIG FILE REFERENCE"> and L</"Path Objects">):
 
   mytarget.host= rabak.localdomain
   mytarget.user= rabak
@@ -307,6 +307,55 @@ is sent, if free space is below 10%.
 Valid units are 'B'yte, 'K' (default), 'M'ega, 'G'iga and '%'.
 
 =head1 CONFIG FILE REFERENCE
+
+=head2 Introduction
+
+Lines beginning with C<#> are treated as comments.
+Lines beginning with whitespaces are treated as continuation of the previous line.
+
+You can define variables and objects. Variables are simple strings, objects
+contain other objects and/or values.
+object's properties are addressed with points (C<.>).
+
+Example:
+  exclude= /tmp/
+    /home/*/temp/
+  include= /home/
+  bakset1.title= My Bakset Title
+  bakset1.name= My Bakset Name
+  bakset1.type= file 
+  bakset1.mount.path= /mnt/backup 
+
+Referring to other values or objects is done by prefix C<$> or C<&>.
+References prefixed by C<$> are replaced literally during the parsing process
+of the config file. Therefore the referenced object/value has to be defined
+before the reference.
+Example:
+  exclude= -/tmp/
+  filter= $exclude
+  exclude= -/var/
+
+would be expanded to:
+  filter= -/tmp/
+
+References prefixed by C<&> are handled at runtime.
+Example:
+  exclude= -/tmp/
+  filter= &exclude
+  exclude= -/var/
+
+would be expanded to:
+  filter= -/var/
+
+Generally C<&> has to be used where references to multiple objects are required
+(like L<mount> and L<source>) or where values should be handled in a special way
+(L<filter>).
+
+For details on object expansion see L<mount>, L<source>, L<target> and L<filter>.
+
+Currently the following object types are known:
+L<Bak Set Objects|Backup Set Values>, L<Mount Objects>, L<Source Objects>,
+and L<Target Objects>
 
 =head2 Global Values
 
@@ -396,13 +445,14 @@ name of backup set. Will be used to name the target directory.
 
 =item source
 
-backup source. May be a (local) directory or a L</"Source Object">.
-You can specify more than one source by path or reference to a L</"Source Object">.
+backup source. May be a (local) directory or a L<Source Object|Source Objects>.
+You can specify more than one source by path or reference to a L<Source Object|Source Objects>.
 All those sources will be backed up to your target.
+References to L<Source Objects> have to be preceeded by C<&>.
 
 =item target
 
-backup target. May be a (local) directory or a L</"Target Object">.
+backup target. May be a (local) directory or a L<Target Object|Target Objects> (preceeded by C<&>).
 
 =back
 
@@ -436,17 +486,17 @@ additional mount options passed to mount command (default: none)
 
 =back
 
-=head2 Path Object
+=head2 Path Objects
 
 Path Objects specify sources or targets for backups. At least you have to specify a path value.
 
-Common values for Target and Source Objects are:
+Common values for L<Target|Target Objects> and L<Source Objects|Source Objects> are:
 
 =over 2
 
 =item path
 
-path of source/target directory
+path of source/target directory (See L<Source Objects> for further information)
 
 =item host
 
@@ -471,12 +521,12 @@ possible values: I<1>, I<2>
 
 =item mount
 
-L</"Mount Objects"> to mount. See L</"Target Objects"> for further information
+L<Mount Objects> to mount. See L<Target Objects> for further information
 on mounts at target.
 
 =back
 
-=head3 Source Object
+=head3 Source Objects
 
 =over 2
 
@@ -487,12 +537,12 @@ If not set, a name will be built from path.
 
 =item type
 
-backup type. May be overwritten with L</"path"> (default: C<file>)
+backup type. May be overwritten with L<path> (default: C<file>)
 (implemented values: I<file> (default), I<mysql>, I<pgsql>)
 
 =item path
 
-backup source. May start with "<type>:" specifying the bakset type. (see L</"type">)
+backup source. May start with "<type>:" specifying the bakset type. (see L<type>)
 
 For types I<mysql> and I<pgsql>: Path can be C<*> for all databases or comma separated
 list with database names. (Example: C<path=mysql:*> or C<path=pgsql:template1,template2>)
@@ -507,7 +557,7 @@ number of old backups to keep. Superfluous versions will be deleted
 (type I<file> only) list of rsync like filters (seperated by whitespaces or C<,>).
 
 Rsync filters tend to be rather wierd and B<rakab> does some magick(TM) to make a
-hard administators life easier. This option is an I<alternative> to the L</"include"> and L</"exclude">
+hard administators life easier. This option is an I<alternative> to the L<include> and L<exclude>
 options and lets you describe more complex rules (without feeling more complex).
 
 Filters are applied from top to bottom. Filter checking is canceled at the first matching
@@ -525,14 +575,12 @@ You can use parantheses to apply an include/exclude character to multiple entrie
 (Example:C<-(/usr/tmp/, /var/tmp/)> is equivalent to C<-/usr/temp/, -/var/tmp/>)
 
 Paranthesis can generally be used to expand to a list of filters.
-
-Example: C<-/foo/(bar1 bar2)/bar3> would be expanded to C<-/foo/bar1/bar3, -/foo/bar2/bar3>
+(Example: C<-/foo/(bar1 bar2)/bar3> would be expanded to C<-/foo/bar1/bar3, -/foo/bar2/bar3>)
 
 Note that there must be I<no> space before C<(> and after C<)>. Otherwise a new list will
 start at space. Spaces after C<(> and before C<)> are optional.
-
-Example: C<-&exclude_std> would be replaced with an exclude list containing the elements
-of config variable $exclude_std.
+(Example: C<-&exclude_std> would be replaced with an exclude list containing the elements
+of config variable $exclude_std.)
 
 Variable expansion is done at runtime (late expansion).
 (default: C<-&exclude +&include>)
@@ -605,12 +653,12 @@ And would then feed rsync with:
 =item exclude
 
 (type I<file> only) list of entries to be excluded. This option is
-ignored if L</"filter"> is set (see above).
+ignored if L</filter> is set (see above).
 
 =item include
 
 (type I<file> only) list of entries to be included. This option is
-ignored if L</"filter"> is set (see above).
+ignored if L</filter> is set (see above).
 
 =item scan_bak_dirs
 
@@ -633,14 +681,14 @@ default: C<bzip2>
 
 =back
 
-=head3 Target Object
+=head3 Target Objects
 
 =over 2
 
 =item mount
 
 Devices are considered as valid target media if it contains rabak device config
-file (see L</"switch.dev_conf_file">) and a matching target value (if value was specified)
+file (see L<switch.dev_conf_file>) and a matching target value (if value was specified)
 
 =item bandwidth
 
