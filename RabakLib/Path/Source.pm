@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package RabakLib::SourcePath;
+package RabakLib::Path::Source;
 
 use warnings;
 use strict;
@@ -10,6 +10,18 @@ use FindBin qw($Bin);
 use vars qw(@ISA);
 
 @ISA = qw(RabakLib::Path);
+
+sub Factory {
+
+    my $class = shift;
+    my $oSet= shift;
+    my $sConfName= shift || "source";
+
+	# ...
+
+}
+
+
 
 sub new {
     my $class = shift;

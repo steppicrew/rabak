@@ -6,7 +6,7 @@ use warnings;
 use strict;
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::SourcePath);
+@ISA = qw(RabakLib::Path::Source);
 
 use Data::Dumper;
 use File::Spec;
@@ -314,7 +314,7 @@ sub run {
 
     my $sBakSet= $self->get_value('name');
     my $sRsyncOpts = $self->get_value('rsync_opts') || '';
-    my $oTargetPath= $self->get_targetPath;
+    my $oTargetPath= $self->get_targetPath();
     my $sRsyncPass= $oTargetPath->get_value("passwd");
     my $sPort= $oTargetPath->get_value("port") || 22;
     my $sTimeout= $oTargetPath->get_value("timeout") || 150;

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package RabakLib::TargetPath;
+package RabakLib::Path::Target;
 
 use warnings;
 use strict;

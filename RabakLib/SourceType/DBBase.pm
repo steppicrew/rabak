@@ -6,7 +6,7 @@ use warnings;
 use strict;
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::SourcePath);
+@ISA = qw(RabakLib::Path::Source);
 
 use Data::Dumper;
 
@@ -63,7 +63,7 @@ sub run {
     my $self= shift;
     my @sBakDir= @_;
 
-    my $oTargetPath= $self->get_targetPath;
+    my $oTargetPath= $self->get_targetPath();
 
     my %sValidDb= ();
     my @sDb= ();

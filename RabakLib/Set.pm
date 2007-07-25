@@ -7,8 +7,8 @@ use strict;
 
 use RabakLib::Log;
 use RabakLib::Path;
-use RabakLib::SourcePath;
-use RabakLib::TargetPath;
+use RabakLib::Path::Source;
+use RabakLib::Path::Target;
 
 use Data::Dumper;
 use File::Spec ();
@@ -186,7 +186,7 @@ sub _mail_warning {
 sub get_targetPath {
     my $self= shift;
 
-    $self->{_objTarget}= RabakLib::TargetPath->new($self) unless $self->{_objTarget};
+    $self->{_objTarget}= RabakLib::Path::Target->new($self) unless $self->{_objTarget};
     return $self->{_objTarget};
 }
 
@@ -322,7 +322,7 @@ sub backup {
     # now try backing up every source 
     my %sNames= ();
     for my $sSource (@aSources) {
-        my $oSource= RabakLib::SourcePath->new($self, $sSource); 
+        my $oSource= RabakLib::Path::Source->new($self, $sSource); 
         if ($oSource) {
             $self->log($self->infoMsg("Backing up source '$sSource'"));
             my $sName= $oSource->get_value("name") || '';
@@ -459,6 +459,7 @@ sub backup_run {
     }
 
     # check for disc space
+    # TODO: Transfer to Path::Target
     my $sSpaceThreshold= $oTargetPath->get_value('discfree_threshold') || '';
     if ($sSpaceThreshold) {
         my $iStValue= $sSpaceThreshold =~ /\b([\d\.]+)/ ? $1 : 0;

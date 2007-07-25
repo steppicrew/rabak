@@ -11,7 +11,7 @@ use Data::Dumper;
 use File::Temp ();
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Path);
+@ISA = qw(RabakLib::PathBase);
 
 sub new {
     my $class= shift;

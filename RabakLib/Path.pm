@@ -54,7 +54,7 @@ sub getFullPath {
     my $sPath= $self->getPath(shift);
 
     if ($self->remote) {
-        $sPath = $self->get_value("host") . "\:$sPath";
+        $sPath = $self->get_value("host") . ":$sPath";
         $sPath = $self->get_value("user") . "\@$sPath" if $self->get_value("user");
     }
     return $sPath;
