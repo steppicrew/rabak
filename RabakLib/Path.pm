@@ -15,6 +15,9 @@ use vars qw(@ISA);
 
 @ISA = qw(RabakLib::PathBase);
 
+# possible parameters for new:
+#   (RabakLib::Set, $sConfName)
+#   (%Values)
 sub new {
     my $class= shift;
     

@@ -11,9 +11,17 @@ use vars qw(@ISA);
 use Data::Dumper;
 use File::Spec;
 
-sub _init {
-    my $self= shift;
+sub new {
+    my $class = shift;
+    my $self= $class->SUPER::new(@_);
     
+    my $sFilter= $self->get_value("filter");
+    unless (defined $sFilter) {
+       $sFilter= $self->get_set_value("filter");
+       # TODO: check if filter is set in backset or globally
+       # $self->log($self->warnMsg("Specifying filter in bakset is deprecated. Please set filter in Source Object!")) if $sFilter;
+       $self->set_value("filter", $sFilter);
+    } 
     unless ($self->get_value("scan_bak_dirs")) {
         my $iScanBakDirs= $self->get_set_value("scan_bak_dirs");
         if (defined $iScanBakDirs) {
@@ -21,6 +29,7 @@ sub _init {
             $self->log($self->warnMsg("Specifying scan_bak_dirs in bakset is deprecated. Please set 'scan_bak_dirs' in Source Object!"));
         }
     }
+    bless $self, $class;
 }
 
 sub _get_filter {

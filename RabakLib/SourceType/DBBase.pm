@@ -10,8 +10,9 @@ use vars qw(@ISA);
 
 use Data::Dumper;
 
-sub _init {
-    my $self= shift;
+sub new {
+    my $class = shift;
+    my $self= $class->SUPER::new(@_);
     
     our %sPackers = (
         bzip2 => { cmd => "bzip2", ext => "bz2"},
@@ -39,6 +40,7 @@ sub _init {
         "'. Using default 'bzip2'")) if $sPacker && !$sPackers{$sPacker};
     $sPacker= "bzip2" unless $sPacker && $sPackers{$sPacker};
     $self->{PACKER} = $sPackers{$sPacker};
+    bless $self, $class;
 }
 
 sub get_show_cmd {

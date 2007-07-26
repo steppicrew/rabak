@@ -5,18 +5,20 @@ package RabakLib::CommonBase;
 use warnings;
 use strict;
 
-# our @ISA = qw(Exporter);
-# our @EXPORT = qw($sFile);
-
 use Data::Dumper;
 
+# TODO: consistent new parameter convention
 sub new {
     my $class = shift;
     my $self= shift || {};
     $self->{SET} = shift;
+    $self->{LOG_FILE}= undef;
+    $self->{ERRORCODE}= undef;
     
     $self->{VALUES}= {} unless ref $self->{VALUES};
     bless $self, $class;
+    $self->set_log($self->{SET}->get_log()) if $self->{SET};
+    return $self;
 }
 
 sub set_log {

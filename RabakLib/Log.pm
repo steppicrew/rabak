@@ -168,6 +168,21 @@ sub errorMsg {
     return [ $self->{ERRLEVEL}, @sMessage ];
 }
 
+sub logInfo {
+    my $self= shift;
+    $self->log($self->infoMsg(@_));
+}
+
+sub logWarn {
+    my $self= shift;
+    $self->log($self->warnMsg(@_));
+}
+
+sub logError {
+    my $self= shift;
+    $self->log($self->errorMsg(@_));
+}
+
 sub log {
     my $self= shift;
     my @sMessage= @_;

@@ -322,7 +322,7 @@ sub backup {
     # now try backing up every source 
     my %sNames= ();
     for my $sSource (@aSources) {
-        my $oSource= RabakLib::Path::Source->new($self, $sSource); 
+        my $oSource= RabakLib::Path::Source->Factory($self, $sSource); 
         if ($oSource) {
             $self->log($self->infoMsg("Backing up source '$sSource'"));
             my $sName= $oSource->get_value("name") || '';
@@ -331,10 +331,13 @@ sub backup {
                 next;
             }
             $sNames{$sName}= 1;
-            if ($self->backup_setup($oSource) == 0) {
-                $iResult++ if $self->backup_run($oSource);
-            }
-            $self->backup_cleanup($oSource);
+            eval {
+                if ($self->backup_setup($oSource) == 0) {
+                    $iResult++ if $self->backup_run($oSource);
+                }
+                $self->backup_cleanup($oSource);
+            };
+            $self->log($self->errorMsg("An error occured during backup: '$@'")) if $@;
         }
         else {
             $self->log($self->errorMsg("Source Object '$sSource' could not be loaded. Skipped."))
@@ -354,6 +357,7 @@ sub backup {
     # send admin mail
     $self->_mail_log($sSubject);
     
+    # return number of failed backups
     return $iResult;
 }
 

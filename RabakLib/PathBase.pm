@@ -24,6 +24,7 @@ sub new {
     $self->{ERRORCODE}= 0;
     $self->{DEBUG}= 0;
     $self->{ERRORMSG}= '';
+    $self->{SET}= undef;
     $self->{LAST_RESULT}= {
         stdout => '',
         stderr => '',

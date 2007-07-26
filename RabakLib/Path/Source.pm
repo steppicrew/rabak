@@ -17,17 +17,6 @@ sub Factory {
     my $oSet= shift;
     my $sConfName= shift || "source";
 
-	# ...
-
-}
-
-
-
-sub new {
-    my $class = shift;
-    my $oSet= shift;
-    my $sConfName= shift || "source";
-    
     my $self= $class->SUPER::new($oSet, $sConfName);
 
     my $sPath= $self->get_value("path");
@@ -36,13 +25,6 @@ sub new {
         $self->set_value("path", $sPath);
         $self->log($self->warnMsg("Specifying type in source path is deprecated. Please set type in Source Object!"));
     }
-    my $sFilter= $self->get_value("filter");
-    unless (defined $sFilter) {
-       $sFilter= $self->get_set_value("filter");
-       # TODO: check if filter is set in backset or globally
-       # $self->log($self->warnMsg("Specifying filter in bakset is deprecated. Please set filter in Source Object!")) if $sFilter;
-       $self->set_value("filter", $sFilter);
-    } 
     my $sType= $self->get_value("type");
     unless (defined $sType) {
        $sType= $self->get_set_value("type"); 
@@ -51,11 +33,13 @@ sub new {
        $self->set_value("type", $sType);
     } 
     $sType= ucfirst $sType;
+    my $oFactory= undef;
     eval {
         require "$Bin/RabakLib/SourceType/$sType.pm";
         my $oClass= "RabakLib::SourceType::$sType";
-        bless $self, $oClass;
-        $self->_init;
+        $oFactory= $oClass->new(%{$self->{VALUES}});
+        $oFactory->{SET}= $oSet;
+        $oFactory->set_log($self->get_log);
         1;
     };
     if ($@) {
@@ -67,7 +51,15 @@ sub new {
         }
         return undef;
     }
+    return $oFactory;
+}
 
+
+
+sub new {
+    my $class = shift;
+    my $self= $class->SUPER::new(@_);
+    
     unless ($self->get_value("keep")) {
         my $iKeep= $self->get_set_value("keep");
         if (defined $iKeep) {
@@ -81,7 +73,7 @@ sub new {
         $self->set_value("name", $sName);
     }
 
-    return $self;
+    bless $self, $class;
 }
 
 # Stub for inheritance
