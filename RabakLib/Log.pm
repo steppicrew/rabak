@@ -233,7 +233,7 @@ sub levelLog {
 
         next unless $self->{CONF}->get_value('switch.logging') &&
             !$self->{CONF}->get_value('switch.pretend');
-#            $iLevel <= $self->{CONF}->get_value('switch.verbose');
+#            $iLevel <= $self->{CONF}->get_global_value('switch.verbose');
 
         $sMessage= $self->{CATEGORY} . "\t$sMessage" if $self->{CATEGORY};
         $sMessage= _timestr() . "\t$sMsgPref$sMessage\n";

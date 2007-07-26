@@ -101,7 +101,7 @@ sub run {
         my $sDestFile= $self->get_set_value('full_target') . "/$_." . $self->get_set_value('unique_target') . ".$sZipExt";
         my $sProbeCmd= $self->get_probe_cmd($_);
 
-        unless ($self->get_set_value('switch.pretend')) {
+        unless ($self->get_global_set_value('switch.pretend')) {
             $self->run_cmd($sProbeCmd);
             if ($self->get_last_exit) {
                 my $sError= $self->get_last_error;
@@ -116,7 +116,7 @@ sub run {
             # TODO: check if target and source are the same users on the same host
             $sDumpCmd= $self->_ssh->build_ssh_cmd($sDumpCmd);
         }
-        unless ($self->get_set_value('switch.pretend')) {
+        unless ($self->get_global_set_value('switch.pretend')) {
             $oTargetPath->run_cmd("$sDumpCmd > $sDestFile");
             if ($self->get_last_exit) {
                 my $sError= $self->get_last_error;

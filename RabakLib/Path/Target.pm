@@ -13,7 +13,10 @@ sub new {
     my $class = shift;
     my $oSet= shift;
 
-    my $self= $class->SUPER::new($oSet, "target");
+    my $sConfName= $oSet->get_value("target");
+    $sConfName= "&target" unless $sConfName; 
+
+    my $self= $class->SUPER::new($oSet, $sConfName);
     bless $self, $class;
 
     unless ($self->get_value("group")) {
@@ -54,6 +57,7 @@ sub isPossibleValid {
         push @$sCurrentMountMessage, $self->warnMsg("Device $sMountDevice was already mounted");
         push @$sCurrentMountMessage, $self->warnMsg("Umount result: \"${checkResult{UMOUNT}}\"") if $checkResult{UMOUNT};
     }
+    return 1;
 }
 
 sub isValid {
@@ -112,8 +116,8 @@ sub _mount_check {
 
     my $sTargetValue= $self->get_value("group");
     my $sqTargetValue= quotemeta $sTargetValue;
-    if ($self->get_set_value('switch.targetvalue')) {
-        $sTargetValue.= "." . $self->get_set_value('switch.targetvalue');
+    if ($self->get_global_set_value('switch.targetvalue')) {
+        $sTargetValue.= "." . $self->get_global_set_value('switch.targetvalue');
         $sqTargetValue= quotemeta $sTargetValue;
     }
     else {
@@ -124,7 +128,7 @@ sub _mount_check {
     if ($result->{CODE} == 1) {
         my $sMountDir= $result->{PATH};
 
-        my $sDevConfFile= File::Spec->join($sMountDir, $self->get_set_value('switch.dev_conf_file', "rabak.dev.cf"));
+        my $sDevConfFile= File::Spec->join($sMountDir, $self->get_global_set_value('switch.dev_conf_file', "rabak.dev.cf"));
         if ($self->isReadable("$sDevConfFile")) {
             if ($sTargetValue) {
                 my $oDevConfFile= RabakLib::ConfFile->new($self->getLocalFile($sDevConfFile));
@@ -163,7 +167,7 @@ sub remove_old {
 
     $self->log($self->infoMsg("Keeping last $iKeep versions"));
     splice @sBakDir, 0, $iKeep;
-    unless ($self->get_set_value('switch.pretend')) {
+    unless ($self->get_global_set_value('switch.pretend')) {
         foreach (@sBakDir) {
             $self->log($self->infoMsg("Removing \"$_\""));
             $self->rmtree($_);

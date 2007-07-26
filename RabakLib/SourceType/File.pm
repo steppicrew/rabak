@@ -288,7 +288,7 @@ sub _parseFilter {
 sub _show {
     my $self= shift;
 
-    return unless $self->get_set_value("switch.verbose") > 3;
+    return unless $self->get_global_set_value("switch.verbose") > 3;
 
     my $sBaseDir= $self->valid_source_dir();
     print "Expanded rsync filter (relative to '$sBaseDir'):\n\t" . join("\n\t", $self->_get_filter) . "\n";
@@ -319,7 +319,7 @@ sub run {
 
     # print Dumper($self); die;
 
-    # print '**'.$self->get_value('switch.pretend').'**'; die;
+    # print '**'.$self->get_global_set_value('switch.pretend').'**'; die;
 
     my $sBakSet= $self->get_value('name');
     my $sRsyncOpts = $self->get_value('rsync_opts') || '';
@@ -359,7 +359,7 @@ sub run {
     ;
 
     $sFlags .= " -i" if $self->{DEBUG};
-    $sFlags .= " --dry-run" if $self->get_set_value('switch.pretend');
+    $sFlags .= " --dry-run" if $self->get_global_set_value('switch.pretend');
     if ($sRsyncOpts=~ s/\-\-bwlimit\=(\d+)//) {
         $sBandwidth= $1 unless $sBandwidth;
         $self->log($self->warnMsg("--bandwidth in 'rsync_opts' is deprecated. Please use 'bandwidth' option (see Doc)!"));

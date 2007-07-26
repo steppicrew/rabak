@@ -29,11 +29,11 @@ sub new {
         my $sConfName= shift;
 
         if ($oSet && $sConfName) {
-            my $oPath= $oSet->get_node($sConfName);
+            my $oPath= $oSet->get_global_node($sConfName);
             my $sPath;
             unless ($oPath) {
-                $sPath= $oSet->get_value($sConfName);
-                $oPath= $oSet->get_node($sPath) if $sPath;
+                $sPath= $oSet->get_global_value($sConfName);
+                $oPath= $oSet->get_global_node($sPath) if $sPath;
             }
             $sPath= $sConfName unless $sPath;
             %Values= $oPath ? %{$oPath->{VALUES}} : ( path => $sPath );
@@ -156,7 +156,7 @@ sub _mount {
 
     my $sMountDeviceList= $oMount->get_value("device") || '';
     my $sMountDir= $oMount->get_value("directory") || '';
-    my $sTargetGroup= $self->get_targetPath->get_value("group");
+    my $sTargetGroup= $self->get_value("group");
     my $sMountType= $oMount->get_value("type") || '';
     my $sMountOpts= $oMount->get_value("opts") || '';
     my $sUnmount= "";
@@ -231,7 +231,7 @@ sub mountAll {
     }
     else {
         for my $sMountName (split /\s+/, $sMount) {
-            my $oMount= $self->get_node($sMountName);
+            my $oMount= $self->get_global_set_node($sMountName);
             push @aMounts, $oMount if $oMount;
         }
     }
