@@ -18,8 +18,7 @@ sub new {
     my $sFilter= $self->get_value("filter");
     unless (defined $sFilter) {
        $sFilter= $self->get_set_value("filter");
-       # TODO: check if filter is set in backset or globally
-       # $self->log($self->warnMsg("Specifying filter in bakset is deprecated. Please set filter in Source Object!")) if $sFilter;
+       $self->log($self->warnMsg("Specifying filter in bakset is deprecated. Please set filter in Source Object!")) if $sFilter;
        $self->set_value("filter", $sFilter);
     } 
     unless ($self->get_value("scan_bak_dirs")) {
@@ -385,7 +384,9 @@ sub run {
     splice @sBakDir, $iScanBakDirs if $#sBakDir >= $iScanBakDirs;
     map { $sFlags .= " --link-dest=\"$_\""; } @sBakDir;
 
-    my $sSrcDir = $self->getPath . "/";
+    my $sSrcDir = $self->getPath;
+    # make sure path ends with "/"
+    $sSrcDir=~ s/\/?$/\//;
     my $sDestDir= $oTargetPath->getPath($self->get_set_value("full_target"));
     if ($oTargetPath->remote) {
         $sDestDir= $oTargetPath->get_value("host") . ":$sDestDir";

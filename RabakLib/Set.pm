@@ -164,10 +164,12 @@ sub logPretending {
 sub _mail {
     my $self= shift;
     my ($sSubject, @aBody) = @_;
+    
+    my $sMailAddress= $self->get_global_value('email'); 
 
-    return 0 unless $self->get_value('email');
+    return 0 unless $sMailAddress;
 
-    my $oMail = new Mail::Send Subject => $sSubject, To => $self->get_value('email');
+    my $oMail = new Mail::Send Subject => $sSubject, To => $sMailAddress;
     # $msg->cc('user@host');
     my $fh = $oMail->open;
     print $fh join("\n", @aBody);
