@@ -39,9 +39,10 @@ If the data you have to back up is not more then 200 GB and daily changes are no
 B<rabak> may be a simple, reliable and inexpensive solution for you.
 
 Most backup systems are based on the assumption that the space available on a backup media is smaller than
-the space of the data to be backed up. This is like is has been for a very long time and many people
-still are setting up backup systems based on this assumption. And they have to change the backup
-medias every day, hoping that the data can be restored when needed.
+the space of the data to be backed up.
+This is like is has been for a very long time and many people still are setting up backup systems
+based on this assumption.
+And they have to change the backup medias every day, hoping that the data can be restored when needed.
 
 How about using an external 500 GB hard drive as backup media?
 The data that offices work with is often much less than 500 GB.
@@ -49,15 +50,19 @@ And such a drive costs nothing compared with professional streamer hardware (plu
 
 =head2 How it works
 
-B<rabak> is based on rsync's hardlinking abilities. It I<always> makes a full backup. You'll get a
-directory containing the complete tree with each backup. But an unchanged file from one backup is
-hardlinked to the file from the last backup. So it doesn't consume any additional disk space.
+B<rabak> is based on rsync's hardlinking abilities.
+It I<always> makes a full backup.
+You'll get a directory containing the complete tree with each backup.
+But an unchanged file from one backup is hardlinked to the file from the last backup.
+So it doesn't consume any additional disk space.
 
-Full backups? Won't the backup drive be full very quickly? No! Here's an example:
-You have a 500 GB drive (backup), 100 GB of data with 500 MB changes/day. So your drive
-will fill up in (500 - 100) / 0.5 days. That's 800 days, or 2 1/2 years! When it's full,
-you put it in the cellar in a nice and dry place, and buy the next drive. That will
-be a 2 TB drive, probably :-) .
+Full backups? Won't the backup drive be full very quickly?
+No! Here's an example:
+You have a 500 GB drive (backup), 100 GB of data with 500 MB changes/day.
+So your drive will fill up in (500 - 100) / 0.5 days.
+That's 800 days, or 2 1/2 years!
+When it's full, you put it in the cellar in a nice and dry place, and buy the next drive.
+That will be a 2 TB drive then, probably :-) .
 
 What if the hard drive breaks? Then your data will be gone.
 That's why you will need at least two drives. You still want redundancy.
@@ -70,6 +75,14 @@ Using more than three drives probably has no benefits.
 =head2 Features
 
 =over 2
+
+=item *
+
+Each source or target may be local or remote
+
+=item *
+
+Unique support of backup from one remote machine to another. It's like using a remote control!
 
 =item *
 
@@ -101,26 +114,29 @@ Or keep every Monday backup and remove the others.
 =item *
 
 If your backup target is a mounted device, then set your target to a subdirectory and not
-to the root of the device. In this way, if a mount fails, the writing of files fails too.
-So no files are written to your (unmounted) mount point. (!! Deprecated: L<Target Objects>)
+to the root of the device.
+This way, if a mount fails, the writing of files fails too.
+So no files are written to your (unmounted) mount point.
+(!! Deprecated: L<Target Objects>)
 
 =item *
 
-Workstations can't be backed up directly. This is how to do it: Install a hard drive into the
-server and copy the workstation data on that. Then configure B<rabak> to backup this hard drive.
-That works fine. (!! Deprecated: L<Remote Targets and Sources>)
+Workstations can't be backed up directly.
+This is how to do it: Install a hard drive into the server and copy the workstation data on that.
+Then configure B<rabak> to backup this hard drive.
+That works fine.
+(!! Deprecated: L<Remote Targets and Sources>)
 
 =back
 
 =head2 Configuration
 
 The configuration file syntax is based on postfix' configuration syntax.
-It's important to make it read- and writable only to the user who calls the script. Parts of the
-configuration may be fed to system calls, which run with the user's rights.
+It's important to make it read- and writable only to the user who calls the script.
+Parts of the configuration may be fed to system calls, which run with the user's rights.
 
 You define I<backup sets>, each must have a title, one or more sources and a target.
-As a default, B<rabak> looks for F<rabak.cf> as its configuration
-file, which may look like this:
+As a default, B<rabak> looks for F<rabak.cf> as its configuration file, which may look like this:
 
   mybackup.title = My home directory
   mybackup.source = /home/me
@@ -168,9 +184,9 @@ Now lets add a mount point:
 This tells B<rabak> to mount F</dev/sda1> before starting backing up C<full>, and
 to unmount it when done.
 
-You may specify a list of devices to try more than one device and use the
-first successfully mounted one. That's useful for usb-devices as backup targets
-when you don't know the exact device name.
+You may specify a list of devices to try more than one device and use the first successfully
+mounted one.
+That's useful for usb-devices as backup targets when you don't know the exact device name.
 
   full.mount.device= /dev/sd?1 /dev/hd[cd]1
 
@@ -187,8 +203,9 @@ You can specify file system type and additional mount options with
   samba.mount.type= cifs
   samba.mount.opts= "username=$smb_user,password=$smb_passwd,ro"
 
-Probably you want to use the same mount point for several backup sets. So you can
-use a variable to define it. Replace the last addition by this code:
+Probably you want to use the same mount point for several backup sets.
+So you can use a variable to define it.
+Replace the last addition by this code:
 
   mount1.device= /dev/sda1
   mount1.directory= /mnt/sda1
@@ -236,8 +253,8 @@ To make sure only desired devices are used to store your backup data,
 devices mounted in a "L<Target Object|Target Objects>" have to be a file named F<rabak.dev.cf>
 (or any other name specified by switch.dev_conf_file) in the root directory.
 If this file could not be found, this device will not be used for backup (and
-even not unmounted if already mounted anywhere else). I you specified
-multiple devices (like in our example) the next device is tried.
+even not unmounted if already mounted anywhere else).
+I you specified multiple devices (like in our example) the next device is tried.
 
 The syntax of F<rabak.dev.cf> follows the one for other rabak conf files.
 This config file may contain one or more target values (separated by space)
@@ -250,9 +267,9 @@ You can specify a target group in your backup set by:
   mytarget.group = byweekday
 
 In this case the device is only used if there is a target value beginning
-with C<byweekday.>. Additionally you can specify a target value at the command
-line (parameter C<-i 'target value'>) to accept only devices with a matching target
-value.
+with C<byweekday.>.
+Additionally you can specify a target value at the command line (parameter C<-i 'target value'>)
+to accept only devices with a matching target value.
 
 Example for target groups and values
 
@@ -496,28 +513,28 @@ Common values for L<Target|Target Objects> and L<Source Objects|Source Objects> 
 
 =item path
 
-path of source/target directory (See L<Source Objects> for further information)
+Path of source/target directory (See L<Source Objects> for further information).
 
-=item host
+=item host (for remote paths only)
 
-(for remote pathes only) hostname to connect to
+Hostname to connect to.
 
-=item port
+=item port (for remote paths only) 
 
-(for remote pathes only) port to connect to (default: C<22>)
+Port to connect to (default: C<22>).
 
-=item protocol
+=item protocol (for remote paths only) 
 
-(for remote pathes only) ssh protocol to connect to (default: C<2>)
-possible values: I<1>, I<2>
+SSH protocol to connect to (default: C<2>).
+Possible values: I<1>, I<2>
 
-=item timeout
+=item timeout (for remote paths only) 
 
-(for remote pathes only) connection timeout in seconds (default: C<150>)
+Connection timeout in seconds (default: C<150>).
 
-=item user
+=item user (for remote pathes only)
 
-(for remote pathes only) username to connect as
+Username to connect as.
 
 =item mount
 
@@ -532,43 +549,46 @@ on mounts at target.
 
 =item name
 
-name of source. This value is used to name the backup directory on the target.
+Name of source. This value is used to name the backup directory on the target.
 If not set, a name will be built from path. 
 
 =item type
 
-backup type. May be overwritten with L<path> (default: C<file>)
+Backup type. May be overwritten with L<path> (default: C<file>)
 (implemented values: I<file> (default), I<mysql>, I<pgsql>)
 
 =item path
 
-backup source. May start with "<type>:" specifying the bakset type. (see L<type>)
+Backup source. May start with "<type>:" specifying the bakset type. (see L<type>)
 
 For types I<mysql> and I<pgsql>: Path can be C<*> for all databases or comma separated
 list with database names. (Example: C<path=mysql:*> or C<path=pgsql:template1,template2>)
 
 =item keep
 
-number of old backups to keep. Superfluous versions will be deleted
+Number of old backups to keep. Superfluous versions will be deleted
 (default: C<0>, meaning unlimited)
 
-=item filter
+=item filter (type I<file> only)
 
-(type I<file> only) list of rsync like filters (seperated by whitespaces or C<,>).
+List of rsync like filters (seperated by whitespaces or C<,>).
 
 Rsync filters tend to be rather wierd and B<rakab> does some magick(TM) to make a
-hard administators life easier. This option is an I<alternative> to the L<include> and L<exclude>
+hard administators life easier.
+This option is an I<alternative> to the L<include> and L<exclude>
 options and lets you describe more complex rules (without feeling more complex).
 
-Filters are applied from top to bottom. Filter checking is canceled at the first matching
-filter entry. You don't have to care about rsync's special filter behavior.
+Filters are applied from top to bottom.
+Filter checking is canceled at the first matching filter entry.
+You don't have to care about rsync's special filter behavior.
 
 Entries for directories will match the directory and all contained files.
 (Note: Please use trailing slashes for directories for those optimizations!)
 
 Literal whitespaces and C<,+-&> should be escaped with backslashes (C<\>).
 Entries beginning with C<+> are treated as includes, entries beginning with C<-> are
-interpreted as excludes. If it doesn't start with C<+> or C<-> or if the sign is ambiguous, this
+interpreted as excludes.
+If it doesn't start with C<+> or C<-> or if the sign is ambiguous, this
 rules is ignored and a warning is raised.
 
 You can use parantheses to apply an include/exclude character to multiple entries.
@@ -594,9 +614,9 @@ optimize your rules for rsync and they may not work as expected.
 
 A more complicated example:
 Let's assume you want to include everything under F</var/log/www/> but nothing else from F</var/log/>.
-Additionally you want to save nothing except file F<passwd> from F</etc/>. These rules should
-apply to your root directory and to your vservers - but you only want to back up vservers
-C<save1> and C<save2>.
+Additionally you want to save nothing except file F<passwd> from F</etc/>.
+These rules should apply to your root directory and to your vservers
+- but you only want to back up vservers C<save1> and C<save2>.
 
 To do so, you could set your rules as follows:
 
@@ -650,34 +670,29 @@ And would then feed rsync with:
   + /vservers/save2/**
   - /vservers/***
 
-=item exclude
+=item exclude (type I<file> only)
 
-(type I<file> only) list of entries to be excluded. This option is
-ignored if L</filter> is set (see above).
+List of entries to be excluded. This option is ignored if L</filter> is set (see above).
 
-=item include
+=item include (type I<file> only)
 
-(type I<file> only) list of entries to be included. This option is
-ignored if L</filter> is set (see above).
+List of entries to be included. This option is ignored if L</filter> is set (see above).
 
-=item scan_bak_dirs
+=item scan_bak_dirs (type I<file> only)
 
-(type I<file> only) number of last backups to consider for hard
-links (default: C<4>)
+Number of last backups to consider for hard links (default: C<4>).
 
-=item dbuser
+=item dbuser (types I<mysql> and I<pgsql> only)
 
-(types I<mysql> and I<pgsql> only) user to connect database as
+User to connect database as.
 
-=item dbpassword
+=item dbpassword (types I<mysql> and I<pgsql> only).
 
-(types I<mysql> and I<pgsql> only) password to connect to database
+Password to connect to database
 
-=item packer
+=item packer (types I<mysql> and I<pgsql> only)
 
-(types I<mysql> and I<pgsql> only) program for packing dumps.
-valid values are C<bzip2> and C<gzip>.
-default: C<bzip2>
+Program for packing dumps. valid values are C<bzip2> and C<gzip> (default: C<bzip2>).
 
 =back
 
@@ -690,24 +705,24 @@ default: C<bzip2>
 Devices are considered as valid target media if it contains rabak device config
 file (see L<switch.dev_conf_file>) and a matching target value (if value was specified)
 
-=item bandwidth
+=item bandwidth (for remote targets only)
 
-(for remote targets only) max bandwidth (default: C<0> for no limit)
+Max bandwidth (default: C<0> for no limit).
 
-=item identity_files
+=item identity_files (for remote targets only)
 
-(for remote targets only) identity files for ssh authentication.
+Identity files for ssh authentication.
 If you get C<Permission denied at RabakLib/Path.pm> try specifying B<identity_files>.
-(default: empty for system settings)
+(Default: empty for system settings.)
 Example: C<identity_files= /root/.ssh/id_rsa>
 
 =item group
 
-target group that have to be specified on any mounted target device
+Target group that have to be specified on any mounted target device.
 
 =item diskfree_threshold
 
-if free space on target device drops below the specified
+If free space on target device drops below the specified
 value after completed backup, a warning mail is sent to B<email> address.
 Valid units are I<B>yte, I<K> (default), I<M>ega, I<G>iga and I<%>.
 
@@ -741,8 +756,8 @@ Remove all occurencies of a file or directory from the backup media.
 
 Examples:
 
-  rabak -p rmfile /var/cache/*
-  rabak rmfile /var/cache/* /tmp
+  DEPRICATED: rabak -p rmfile /var/cache/*
+  DEPRICATED: rabak rmfile /var/cache/* /tmp
 
 =head1 RESTRICTIONS
 
