@@ -82,6 +82,10 @@ sub _init {
 
 # Stub for inheritance
 sub _show {
+    my $self= shift;
+    print "source name: " . $self->get_value("name") . "\n";
+    print "source type: " . $self->get_value("type") . "\n";
+    print "source path: " . $self->getFullPath() . "\n";
 }
 
 sub get_targetPath {

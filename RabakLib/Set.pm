@@ -99,19 +99,18 @@ sub show {
 
     my $sType= $self->get_value("type");
 
-    my $sSources= $self->remove_backslashes_part1($self->get_raw_value("source"));
-    my @aSources= ( "&source" );
-    if ($sSources) {
-        my @aRawSources= split /(?<!\\)\s+/, $sSources;
-        @aSources= map $self->remove_backslashes_part2($_), @aRawSources;
-    }
-    for my $sSource (@aSources) {
-        my $oSource= RabakLib::Path::Source->Factory($self, $sSource); 
-        if ($oSource) {
-            $oSource->_show();
-        }
+    my @oSources= $self->get_sourcePaths();
+
+    my $oTarget= $self->get_targetPath();
+    print "\nEffective target: " . $oTarget->getFullPath() . "\n";
+    print "\nEffective sources: \n";
+
+    for my $oSource (@oSources) {
+        print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n";# unless $oSource == $oSources[0];
+        $oSource->_show();
     }
     print "$@\n" if $@;
+    print "\n\n";
 }
 
 sub get_raw_value {

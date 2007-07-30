@@ -286,7 +286,9 @@ sub _parseFilter {
 
 sub _show {
     my $self= shift;
-
+    
+    $self->SUPER::_show();
+    
     return unless $self->get_global_set_value("switch.verbose") > 3;
 
     my $sBaseDir= $self->valid_source_dir();
