@@ -30,6 +30,7 @@ sub new {
 
         if ($oSet && $sConfName) {
             my $oPath= $oSet->get_global_node($sConfName);
+            die "FATAL ERROR: Could not resolve '$sConfName'" unless $oPath || $sConfName !~ /^\&/;
             my $sPath;
             unless ($oPath) {
                 $sPath= $oSet->get_global_value($sConfName);

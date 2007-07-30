@@ -104,6 +104,12 @@ sub get_global_set_value {
     return undef;
 }
 
+sub get_global_set_raw_value {
+    my $self= shift;
+    return $self->{SET}->get_global_raw_value(@_) if $self->{SET};
+    return undef;
+}
+
 sub get_global_set_node {
     my $self= shift;
     return $self->{SET}->get_global_node(@_) if $self->{SET};

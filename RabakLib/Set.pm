@@ -125,7 +125,7 @@ sub get_raw_value {
     return  $sResult;
 }
 
-sub get_global_value {
+sub get_global_raw_value {
     my $self= shift;
     my $sName= shift || '';
     my $sDefault= shift;
@@ -134,7 +134,15 @@ sub get_global_value {
     $sResult= $self->{CONF}->get_raw_value($sName) unless defined $sResult && $sResult ne '*default*';
     $sResult= $sDefault unless defined $sResult && $sResult ne '*default*';
     $sResult= undef unless defined $sResult && $sResult ne '*default*';
-    return  $self->remove_backslashes_part2($self->remove_backslashes_part1($sResult));
+    return  $sResult;
+}
+
+sub get_global_value {
+    my $self= shift;
+    my $sName= shift || '';
+    my $sDefault= shift;
+
+    return  $self->remove_backslashes_part2($self->remove_backslashes_part1($self->get_global_raw_value($sName, $sDefault)));
 }
 
 sub get_global_node {

@@ -59,6 +59,10 @@ exclude_std_linux =
     /var/run/
     .ccache/
 
+# Root directory of Windows system (may be overwritten in rabak.cf)
+
+win_root_dir = /cygdrive/c
+
 # Standard excludes for Windows systems
 
 exclude_std_win =
@@ -72,12 +76,14 @@ exclude_std_win =
     Anwendungsdaten/Adobe/FileBrowser/
     Lokale\ Einstellungen/Temp/
     Local\ Settings/Temp/
-    /pagefile.sys
-    /SIS\ Common\ Store/
-    /dfs/
-    /System\ Volume\ Information/
-    /WSUS/
-    /WUTemp/
+    &win_root_dir/(
+	    /pagefile.sys
+	    /SIS\ Common\ Store/
+	    /dfs/
+	    /System\ Volume\ Information/
+	    /WSUS/
+	    /WUTemp/
+	)
 
 # Standard excludes for all systems
 

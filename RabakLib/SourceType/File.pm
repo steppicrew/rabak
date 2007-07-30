@@ -126,7 +126,7 @@ sub _expandMacro {
         $sResult{ERROR}= "Recursion detected ('$sMacroName'). Ignored";
     }
     else {
-        my $sMacro= $self->remove_backslashes_part1($self->get_set_raw_value($sMacroName));
+        my $sMacro= $self->remove_backslashes_part1($self->get_global_set_raw_value($sMacroName));
         if (!$sMacro || ref $sMacro) {
             $sResult{ERROR}= "'$sMacroName' does not exist or is an object. Ignored.";
         }
