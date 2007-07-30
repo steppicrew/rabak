@@ -289,18 +289,35 @@ sub _build_bakMonthDay {
 #  Backup
 # -----------------------------------------------------------------------------
 
+sub get_sourcePaths {
+    my $self= shift;
+    
+    my @oSources= ();
+    my $sSources= $self->remove_backslashes_part1($self->get_raw_value("source"));
+    my @sSources= ( "&source" );
+    if ($sSources) {
+        my @aRawSources= split /(?<!\\)\s+/, $sSources;
+        @sSources= map $self->remove_backslashes_part2($_), @aRawSources;
+    }
+    for my $sSource (@sSources) {
+        my $oSource = RabakLib::Path::Source->Factory($self, $sSource);
+        if ($oSource) {
+            push @oSources, $oSource;
+        }
+        else {
+            $self->log($self->errorMsg("Source Object '$sSource' could not be loaded. Skipped."))
+        }
+        
+    } 
+    return @oSources;
+}
+
 sub backup {
     my $self= shift;
 
     my $iResult= 0;
-
-    # get sources
-    my $sSources= $self->remove_backslashes_part1($self->get_raw_value("source"));
-    my @aSources= ( "&source" );
-    if ($sSources) {
-        my @aRawSources= split /(?<!\\)\s+/, $sSources;
-        @aSources= map $self->remove_backslashes_part2($_), @aRawSources;
-    }
+    
+    my @oSources= $self->get_sourcePaths();
 
     # mount all target mount objects
     my @sMountMessage= ();
@@ -350,27 +367,21 @@ sub backup {
 
     # now try backing up every source 
     my %sNames= ();
-    for my $sSource (@aSources) {
-        my $oSource= RabakLib::Path::Source->Factory($self, $sSource); 
-        if ($oSource) {
-            $self->log($self->infoMsg("Backing up source '$sSource'"));
-            my $sName= $oSource->get_value("name") || '';
-            if ($sNames{$sName}) {
-                $self->log($self->errorMsg("Name '$sName' of Source Object has already been used. Skipping backup of source."));
-                next;
+    for my $oSource (@oSources) {
+        my $sName= $oSource->get_value("name") || '';
+        if ($sNames{$sName}) {
+            $self->log($self->errorMsg("Name '$sName' of Source Object has already been used. Skipping backup of source."));
+            next;
+        }
+        $self->log($self->infoMsg("Backing up source '$sName'"));
+        $sNames{$sName}= 1;
+        eval {
+            if ($self->backup_setup($oSource) == 0) {
+                $iResult++ if $self->backup_run($oSource);
             }
-            $sNames{$sName}= 1;
-            eval {
-                if ($self->backup_setup($oSource) == 0) {
-                    $iResult++ if $self->backup_run($oSource);
-                }
-                $self->backup_cleanup($oSource);
-            };
-            $self->log($self->errorMsg("An error occured during backup: '$@'")) if $@;
-        }
-        else {
-            $self->log($self->errorMsg("Source Object '$sSource' could not be loaded. Skipped."))
-        }
+            $self->backup_cleanup($oSource);
+        };
+        $self->log($self->errorMsg("An error occured during backup: '$@'")) if $@;
     }
 
     # stop logging
@@ -380,7 +391,7 @@ sub backup {
     $oTargetPath->unmountAll;
 
     my $sSubject= "successfully finshed";
-    $sSubject= "$iResult of " . scalar(@aSources) . " backups failed" if $iResult;
+    $sSubject= "$iResult of " . scalar(@oSources) . " backups failed" if $iResult;
     $sSubject= "*PRETENDED* $sSubject" if $self->get_global_value("switch.pretend");
 
     # send admin mail

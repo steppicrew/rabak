@@ -273,7 +273,7 @@ sub _parseFilter {
         # for excluded dirs add "***" to override includeded dirs from expanded includes (see above)
         # example: "+/zuppi/zappi, -/zuppi/" would be expanded to "+/zuppi/, +/zuppi/zappi, -/zuppi/***"
         # so all files except "zappi" under "/zuppi" are excluded (*** means this dir and all following
-        # pathes)
+        # paths)
         if ($sIncExc eq '-') {
             $sExcDirs{$sEntry}= 1 if $isDir;
             $sEntry=~ s/\/$/\/\*\*\*/;

@@ -63,14 +63,23 @@ sub print_set_list {
     print "Available backup sets in \"" . $self->filename() . "\":\n";
     my $bFound= 0;
     my $oConf= $self->{CONF};
-    foreach (sort keys %{ $oConf->{VALUES} }) {
-        next unless ref $oConf->{VALUES}{$_}
-            && defined $oConf->{VALUES}{$_}->{VALUES}{title}
-            && defined $oConf->{VALUES}{$_}->{VALUES}{source}
-            && defined $oConf->{VALUES}{$_}->{VALUES}{target};
-        print "  $_ - " . $oConf->{VALUES}{$_}->get_value("title")
-            . ", backs up \"" . $oConf->{VALUES}{$_}->get_value("source")
-            . "\" to \"" . $oConf->{VALUES}{$_}->get_value("target") . "\"\n";
+    for my $sBakSet (sort keys %{ $oConf->{VALUES} }) {
+        next unless ref $oConf->{VALUES}{$sBakSet}
+            && defined $oConf->{VALUES}{$sBakSet}->{VALUES}{title}
+            && defined $oConf->{VALUES}{$sBakSet}->{VALUES}{source}
+            && defined $oConf->{VALUES}{$sBakSet}->{VALUES}{target};
+        my $oSet= RabakLib::Set->new($oConf, $sBakSet, 1);
+        my $oTarget= $oSet->get_targetPath(); 
+        my @oSources= $oSet->get_sourcePaths();
+        next unless $oTarget && scalar @oSources;
+        my @aSources= ();
+        for (@oSources) {
+            push @aSources, $_->getFullPath();
+        }
+        my $sSources= join '", "', @aSources;
+        print "  $sBakSet - " . $oConf->{VALUES}{$sBakSet}->get_value("title")
+            . ", backs up \"" . $sSources
+            . "\" to \"" . $oTarget->getFullPath() . "\"\n";
         $bFound= 1;
     }
     print "None.\n" unless $bFound;

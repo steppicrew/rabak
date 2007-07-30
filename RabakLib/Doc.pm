@@ -532,7 +532,7 @@ Possible values: I<1>, I<2>
 
 Connection timeout in seconds (default: C<150>).
 
-=item user (for remote pathes only)
+=item user (for remote paths only)
 
 Username to connect as.
 
