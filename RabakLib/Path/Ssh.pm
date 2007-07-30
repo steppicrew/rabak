@@ -51,7 +51,7 @@ sub build_ssh_cmd {
 #    push @sSshCmd, '-vvv' if $self->{DEBUG};
 
     my $sHost= $self->get_value("user");
-    $sHost=~ s/(?<=.)$/\@/;
+    $sHost= defined $sHost ? "$sHost@" : "";
     $sHost.= $self->get_value("host");
     push @sSshCmd, $sHost;
     push @sSshCmd, $sCmd;

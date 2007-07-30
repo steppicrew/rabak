@@ -58,6 +58,7 @@ sub get_raw_value {
         $self= $self->{VALUES}{$_};
     }
     return $sDefault unless $self->{VALUES}{$sName};
+    return $sDefault if $self->{VALUES}{$sName} eq '*default*';
     return $self->{VALUES}{$sName} unless ref $self->{VALUES}{$sName};
     return $sDefault;
 }

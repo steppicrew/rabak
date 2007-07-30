@@ -254,7 +254,7 @@ devices mounted in a "L<Target Object|Target Objects>" have to be a file named F
 (or any other name specified by switch.dev_conf_file) in the root directory.
 If this file could not be found, this device will not be used for backup (and
 even not unmounted if already mounted anywhere else).
-I you specified multiple devices (like in our example) the next device is tried.
+If you specified multiple devices (like in our example) the next device is tried.
 
 The syntax of F<rabak.dev.cf> follows the one for other rabak conf files.
 This config file may contain one or more target values (separated by space)
@@ -743,6 +743,10 @@ full.include = /something
 =item *
 
 make a separate section for filter rules
+
+=item *
+
+explain bug in rsync-2.6.8 (--dry-run raises errors in combination with --link-dest)
 
 =back
 

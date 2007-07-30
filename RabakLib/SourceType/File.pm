@@ -323,14 +323,6 @@ sub run {
     my $sBakSet= $self->get_value('name');
     my $sRsyncOpts = $self->get_value('rsync_opts') || '';
     my $oTargetPath= $self->get_targetPath();
-    my $sRsyncPass= $oTargetPath->get_value("passwd");
-    my $sPort= $oTargetPath->get_value("port") || 22;
-    my $sTimeout= $oTargetPath->get_value("timeout") || 150;
-    my $sBandwidth= $oTargetPath->get_value("bandwidth") || '';
-    my @sIdentityFiles= $oTargetPath->get_value("identity_files") ? split(/\s+/, $oTargetPath->get_value("identity_files")) : undef;
-
-    # run rsync command on source by default
-    my $oRsyncPath= $self;
 
     # Write filter rules to temp file:
     my ($fhwRules, $sRulesFile)= $self->local_tempfile();
@@ -341,8 +333,8 @@ sub run {
     print $fhwRules join("\n", @sFilter), "\n";
     close $fhwRules;
 
-    # copy filter rules to source if target AND source are remote
-    if ($oTargetPath->remote && $self->remote) {
+    # copy filter rules to source if target AND source and remote
+    if ($oTargetPath->remote() && $self->remote()) {
         my $sRemRulesFile= $self->tempfile;
         $self->copyLoc2Rem($sRulesFile, $sRemRulesFile);
         $sRulesFile = $sRemRulesFile;
@@ -359,21 +351,33 @@ sub run {
 
     $sFlags .= " -i" if $self->{DEBUG};
     $sFlags .= " --dry-run" if $self->get_global_set_value('switch.pretend');
-    if ($sRsyncOpts=~ s/\-\-bwlimit\=(\d+)//) {
-        $sBandwidth= $1 unless $sBandwidth;
-        $self->log($self->warnMsg("--bandwidth in 'rsync_opts' is deprecated. Please use 'bandwidth' option (see Doc)!"));
-    }
-    if ($sRsyncOpts=~ s/\-\-timeout\=(\d+)//) {
-        $sTimeout= $1 unless $oTargetPath->get_value("timeout");
-        $self->log($self->warnMsg("--timeout in 'rsync_opts' is deprecated. Please use 'timeout' option (see Doc)!"));
-    }
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
-    if ($oTargetPath->remote) {
+    my $oSshPeer;
+    if ($oTargetPath->remote()) {
+        $oSshPeer= $oTargetPath;
+    }
+    elsif ($self->remote()) {
+        $oSshPeer= $self;
+    }
+    if ($oSshPeer) {
+        my $sPort= $oSshPeer->get_value("port") || 22;
+        my $sTimeout= $oSshPeer->get_value("timeout") || 150;
+        my $sBandwidth= $oSshPeer->get_value("bandwidth") || '';
+        my @sIdentityFiles= $oSshPeer->get_value("identity_files") ? split(/\s+/, $oSshPeer->get_value("identity_files")) : undef;
+
+        if ($sRsyncOpts=~ s/\-\-bwlimit\=(\d+)//) {
+            $sBandwidth= $1 unless $sBandwidth;
+            $self->log($self->warnMsg("--bandwidth in 'rsync_opts' is deprecated. Please use 'bandwidth' option (see Doc)!"));
+        }
+        if ($sRsyncOpts=~ s/\-\-timeout\=(\d+)//) {
+            $sTimeout= $1 unless $oTargetPath->get_value("timeout");
+            $self->log($self->warnMsg("--timeout in 'rsync_opts' is deprecated. Please use 'timeout' option (see Doc)!"));
+        }
         my $sSshCmd= "ssh -p $sPort";
         map { $sSshCmd.= " -i \"$_\"" if $_; } @sIdentityFiles if @sIdentityFiles;
-        if ($oTargetPath->get_value("protocol")) {
-            $sSshCmd.= " -1" if $oTargetPath->get_value("protocol") eq "1";
-            $sSshCmd.= " -2" if $oTargetPath->get_value("protocol") eq "2";
+        if ($oSshPeer->get_value("protocol")) {
+            $sSshCmd.= " -1" if $oSshPeer->get_value("protocol") eq "1";
+            $sSshCmd.= " -2" if $oSshPeer->get_value("protocol") eq "2";
         }
         $sFlags .= " -e '$sSshCmd' --timeout='$sTimeout'";
         $sFlags .= " --bwlimit='$sBandwidth'" if $sBandwidth;
@@ -388,17 +392,16 @@ sub run {
     # make sure path ends with "/"
     $sSrcDir=~ s/\/?$/\//;
     my $sDestDir= $oTargetPath->getPath($self->get_set_value("full_target"));
-    if ($oTargetPath->remote) {
+    # run rsync command on source by default
+    my $oRsyncPath= $self;
+    if ($oTargetPath->remote()) {
         $sDestDir= $oTargetPath->get_value("host") . ":$sDestDir";
         $sDestDir= $oTargetPath->get_value("user") . "\@$sDestDir" if $oTargetPath->get_value("user");
     }
-    else {
-        # if target is local and src remote, build remote rsync path for source and run rsync locally
-        if ($self->remote) {
-            $sSrcDir= $self->get_value("host") . ":$sSrcDir";
-            $sSrcDir= $self->get_value("user") . "\@$sSrcDir" if $self->get_value("user");
-            $oRsyncPath= $oTargetPath;
-        }
+    elsif ($self->remote) {
+        $sSrcDir= $self->get_value("host") . ":$sSrcDir";
+        $sSrcDir= $self->get_value("user") . "\@$sSrcDir" if $self->get_value("user");
+        $oRsyncPath= $oTargetPath;
     }
 
     my $sRsyncCmd= "rsync $sFlags \"$sSrcDir\" \"$sDestDir\"";

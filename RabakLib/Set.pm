@@ -120,8 +120,6 @@ sub get_raw_value {
     my $sDefault= shift;
 
     my $sResult= $self->SUPER::get_raw_value($sName);
-    $sResult= $sDefault unless defined $sResult && $sResult ne '*default*';
-    $sResult= undef unless defined $sResult && $sResult ne '*default*';
     return  $sResult;
 }
 
@@ -131,9 +129,7 @@ sub get_global_raw_value {
     my $sDefault= shift;
 
     my $sResult= $self->get_raw_value($sName);
-    $sResult= $self->{CONF}->get_raw_value($sName) unless defined $sResult && $sResult ne '*default*';
-    $sResult= $sDefault unless defined $sResult && $sResult ne '*default*';
-    $sResult= undef unless defined $sResult && $sResult ne '*default*';
+    $sResult= $self->{CONF}->get_raw_value($sName) unless defined $sResult;
     return  $sResult;
 }
 
@@ -478,7 +474,7 @@ sub backup_run {
         $self->log("Done!");
     }
     else {
-        $self->log($self->errorMsg("Backup failed: " . $self->get_last_error));
+        $self->log($self->errorMsg("Backup failed: " . $oSource->get_last_error));
         $iErrorCode= 9;
     }
 
