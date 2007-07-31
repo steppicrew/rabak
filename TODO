@@ -6,6 +6,8 @@ Code:
 - Implement post processing with faster-dupemerge
 - Make "rabak admin" do something useful
 - Implement "rabak clean" to remove unwanted files on the backup media
+- Build POD from config-file
+- Output effective config file
 
 Docs:
 - Explain all features
@@ -16,3 +18,7 @@ Docs:
 Ideas:
 - Add weekday to directory names
 - Smarter "keep" rules. e.g. keep "monday backup" when rotating (dbs)
+- Save MD5 on target medium for:
+  - finding duplicates
+  - file versioning
+- Collect stats on extra path for reports
