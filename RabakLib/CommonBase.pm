@@ -57,7 +57,7 @@ sub get_raw_value {
         return $sDefault unless ref $self->{VALUES}{$_};
         $self= $self->{VALUES}{$_};
     }
-    return $sDefault unless $self->{VALUES}{$sName};
+    return $sDefault unless defined $self->{VALUES}{$sName};
     return $sDefault if $self->{VALUES}{$sName} eq '*default*';
     return $self->{VALUES}{$sName} unless ref $self->{VALUES}{$sName};
     return $sDefault;
@@ -96,6 +96,7 @@ sub remove_backslashes_part2 {
     $sValue =~ s/\.\~/\~/g;
     return $sValue;
 }
+
 sub remove_backslashes {
     my $self= shift;
     my $sValue= shift;

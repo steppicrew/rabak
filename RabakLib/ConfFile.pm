@@ -140,9 +140,9 @@ sub _read_file {
     $sLine =~ s/\s+$//;
     next if $sLine eq '';
 
-        last if $sLine =~ /^END\s*$/;
+    last if $sLine =~ /^END\s*$/;
 
-        if ($sLine =~ /^INCLUDE\s+(.+)/) {
+    if ($sLine =~ /^INCLUDE\s+(.+)/) {
         my $sInclude= $1;
         my $sInclude2= $sInclude;
 
@@ -156,17 +156,17 @@ sub _read_file {
         }
 
         my $sValue;
-    if ($bIndent) {
+        if ($bIndent) {
             $self->_error("Unexpected value", $iLine, $sLine) unless $sName;
 
             $sValue= $sLine;
-    }
-    else {
+        }
+        else {
             $self->_error("Syntax error", $iLine, $sLine) unless $sLine =~ /^($sIdent)\s*=\s*(.*?)$/i;
 
-        $sName= $1;
-        $sValue= $3;
-    }
+            $sName= $1;
+            $sValue= $3;
+        }
 
         my @aKeys= split(/\./, $sName);
         my $sKey= shift @aKeys;
@@ -201,7 +201,7 @@ sub _read_file {
             $hConf->{VALUES}{$sKey}= $sValue;
         }
 
-    # $hConf->{$sKey}= (defined $hConf->{$sKey} && $bIndent && $hConf->{$sKey} ne '') ? $hConf->{$sKey} . "\n$sValue" : $sValue;
+        # $hConf->{$sKey}= (defined $hConf->{$sKey} && $bIndent && $hConf->{$sKey} ne '') ? $hConf->{$sKey} . "\n$sValue" : $sValue;
     }
 
     $self->_expand();

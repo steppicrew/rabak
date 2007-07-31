@@ -31,6 +31,7 @@ sub new {
         if ($oSet && $sConfName) {
             my $oPath= $oSet->get_global_node($sConfName);
             die "FATAL ERROR: Could not resolve '$sConfName'" unless $oPath || $sConfName !~ /^\&/;
+
             my $sPath;
             unless ($oPath) {
                 $sPath= $oSet->get_global_value($sConfName);
@@ -47,8 +48,11 @@ sub new {
     my $self= $class->SUPER::new(%Values);
     $self->{ERRORCODE} = 0;
     $self->{DEBUG} = 0;
-    $self->{SET} = $oSet if $oSet;
-    $self->set_log($oSet->get_log) if $oSet;
+
+    if ($oSet) {
+        $self->{SET}= $oSet;
+        $self->set_log($oSet->get_log());
+    }
 
     bless $self, $class;
 }
@@ -57,7 +61,7 @@ sub getFullPath {
     my $self= shift;
     my $sPath= $self->getPath(shift);
 
-    if ($self->remote) {
+    if ($self->is_remote()) {
         $sPath = $self->get_value("host") . ":$sPath";
         $sPath = $self->get_value("user") . "\@$sPath" if $self->get_value("user");
     }

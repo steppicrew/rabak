@@ -89,7 +89,7 @@ sub open {
     $self->{FILE_NAME}= $self->{REAL_FILE_NAME}= $sFileName;
     $self->{IS_NEW}= !$oTarget->isFile($sFileName);
 
-    if ($oTarget->remote) {
+    if ($oTarget->is_remote()) {
         ($self->{LOG_FH}, $self->{REAL_FILE_NAME})= $oTarget->local_tempfile;
     }
     else {
@@ -107,7 +107,7 @@ sub close {
     return unless $self->{TARGET};
     close $self->{LOG_FH} if $self->{LOG_FH};
     $self->{LOG_FH}= undef;
-    if ($self->{TARGET}->remote) {
+    if ($self->{TARGET}->is_remote()) {
         $self->log($self->errorMsg($self->{TARGET}->get_error)) unless ($self->{TARGET}->copyLoc2Rem($self->{REAL_FILE_NAME}, $self->{FILE_NAME}, 1));
     }
     $self->{TARGET}= undef;
@@ -189,14 +189,14 @@ sub log {
 
     for my $sMessage (@sMessage) {
         if (ref $sMessage eq "ARRAY") {
-            $self->levelLog(@{ $sMessage });
+            $self->_levelLog(@{ $sMessage });
             next;
         }
-        $self->levelLog($self->{DEFAULTLEVEL}, $sMessage);
+        $self->_levelLog($self->{DEFAULTLEVEL}, $sMessage);
     }
 }
 
-sub levelLog {
+sub _levelLog {
     my $self= shift;
     my $iLevel= shift;
     my @sMessage= @_;
@@ -224,7 +224,7 @@ sub levelLog {
         if (ref $sMessage eq "ARRAY") { # call recursive for nested arrays
             my $iMyLevel = shift @{ $sMessage };
             $iMyLevel= $iLevel if $iMyLevel > $iLevel; # use highest log level TODO: does that make sense?
-            $self->levelLog($iMyLevel, @{ $sMessage });
+            $self->_levelLog($iMyLevel, @{ $sMessage });
             next;
         }
         chomp $sMessage;

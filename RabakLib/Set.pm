@@ -44,6 +44,8 @@ sub new {
     $self->{VERSION}= $hConf->{DEFAULTS}->{VERSION};
     $self->{NAME}= $sName;
 
+    $self->{_TARGET_OBJECT}= undef;
+
     $self->set_log(RabakLib::Log->new($hConf));
     $self->get_log->set_category($sName);
 
@@ -213,8 +215,8 @@ sub _mail_warning {
 sub get_targetPath {
     my $self= shift;
 
-    $self->{_objTarget}= RabakLib::Path::Target->new($self) unless $self->{_objTarget};
-    return $self->{_objTarget};
+    $self->{_TARGET_OBJECT}= RabakLib::Path::Target->new($self) unless $self->{_TARGET_OBJECT};
+    return $self->{_TARGET_OBJECT};
 }
 
 # collect all backup dirs
@@ -273,7 +275,9 @@ sub _mkdir {
     return 1 if $self->get_global_value('switch.pretend');
 
     # TODO: set MASK ?
-    return 1 if $self->{_objTarget}->mkdir($sDir);
+    # return 1 if $self->{_TARGET_OBJECT}->mkdir($sDir);
+
+    return 1 if $self->get_targetPath()->mkdir($sDir);
 
     $self->log($self->warnMsg("Mkdir '$sDir' failed: $!"));
     return 0;
@@ -393,10 +397,10 @@ sub backup {
         }
         $sNames{$sName}= 1;
         eval {
-            if ($self->backup_setup($oSource) == 0) {
-                $iSuccessCount++ unless $self->backup_run($oSource);
+            if ($self->_backup_setup($oSource) == 0) {
+                $iSuccessCount++ unless $self->_backup_run($oSource);
             }
-            $self->backup_cleanup($oSource);
+            $self->_backup_cleanup($oSource);
         };
         $self->log($self->errorMsg("An error occured during backup: '$@'")) if $@;
     }
@@ -422,7 +426,7 @@ cleanup:
     return $iResult;
 }
 
-sub backup_setup {
+sub _backup_setup {
     my $self= shift;
     my $oSource= shift;
 
@@ -468,7 +472,7 @@ sub backup_setup {
     return 0;
 }
 
-sub backup_run {
+sub _backup_run {
     my $self= shift;
     my $oSource= shift;
 
@@ -534,7 +538,7 @@ sub backup_run {
     return $iErrorCode;
 }
 
-sub backup_cleanup {
+sub _backup_cleanup {
     my $self= shift;
     my $oSource= shift;
 

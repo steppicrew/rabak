@@ -112,7 +112,7 @@ sub run {
         }
 
         my $sDumpCmd= $self->get_dump_cmd($_) . " | $sZipCmd";
-        if ($oTargetPath->remote || $self->remote) {
+        if ($oTargetPath->is_remote() || $self->is_remote()) {
             # TODO: check if target and source are the same users on the same host
             $sDumpCmd= $self->_ssh->build_ssh_cmd($sDumpCmd);
         }
@@ -135,6 +135,7 @@ sub run {
 sub getPath {
     my $self= shift;
     my $sPath= shift || $self->get_value("path");
+
     return $sPath;
 }
 

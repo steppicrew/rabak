@@ -26,7 +26,7 @@ sub new {
 sub _ssh {
     die "Internal error: Ssh objects must not call sub _ssh()";
 }
-sub remote {
+sub is_remote {
     # ssh is never remote
     return 0;
 }

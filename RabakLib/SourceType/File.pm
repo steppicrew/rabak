@@ -336,7 +336,7 @@ sub run {
     close $fhwRules;
 
     # copy filter rules to source if target AND source and remote
-    if ($oTargetPath->remote() && $self->remote()) {
+    if ($oTargetPath->is_remote() && $self->is_remote()) {
         my $sRemRulesFile= $self->tempfile;
         $self->copyLoc2Rem($sRulesFile, $sRemRulesFile);
         $sRulesFile = $sRemRulesFile;
@@ -355,10 +355,10 @@ sub run {
     $sFlags .= " --dry-run" if $self->get_global_set_value('switch.pretend');
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
     my $oSshPeer;
-    if ($oTargetPath->remote()) {
+    if ($oTargetPath->is_remote()) {
         $oSshPeer= $oTargetPath;
     }
-    elsif ($self->remote()) {
+    elsif ($self->is_remote()) {
         $oSshPeer= $self;
     }
     if ($oSshPeer) {
@@ -396,11 +396,11 @@ sub run {
     my $sDestDir= $oTargetPath->getPath($self->get_set_value("full_target"));
     # run rsync command on source by default
     my $oRsyncPath= $self;
-    if ($oTargetPath->remote()) {
+    if ($oTargetPath->is_remote()) {
         $sDestDir= $oTargetPath->get_value("host") . ":$sDestDir";
         $sDestDir= $oTargetPath->get_value("user") . "\@$sDestDir" if $oTargetPath->get_value("user");
     }
-    elsif ($self->remote) {
+    elsif ($self->is_remote()) {
         $sSrcDir= $self->get_value("host") . ":$sSrcDir";
         $sSrcDir= $self->get_value("user") . "\@$sSrcDir" if $self->get_value("user");
         $oRsyncPath= $oTargetPath;

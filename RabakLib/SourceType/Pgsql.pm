@@ -20,14 +20,14 @@ sub _get_user {
 sub get_show_cmd {
     my $self= shift;
 
-    return "psql -X -q -t -l -U \"" . $self->_get_user . "\" postgres";
+    return "psql -X -q -t -l -U \"" . $self->_get_user() . "\" postgres";
 }
 
 sub get_probe_cmd {
     my $self= shift;
     my $sDb= shift;
 
-    my $sProbeCmd= "pg_dump -s -U \"" . $self->_get_user . "\" -f /dev/null $_";
+    my $sProbeCmd= "pg_dump -s -U \"" . $self->_get_user() . "\" -f /dev/null $_";
     $self->log("Running probe: $sProbeCmd");
     return $sProbeCmd;
 }
@@ -36,7 +36,7 @@ sub get_dump_cmd {
     my $self= shift;
     my $sDb= shift;
 
-    my $sDumpCmd= "pg_dump -c -U \"" . $self->_get_user . "\" \"$sDb\"";
+    my $sDumpCmd= "pg_dump -c -U \"" . $self->_get_user() . "\" \"$sDb\"";
     $self->log("Running dump: $sDumpCmd");
     return $sDumpCmd;
 }

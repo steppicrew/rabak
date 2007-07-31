@@ -5,6 +5,11 @@
 use warnings;
 use strict;
 
+# Comment out when not debugging
+use Carp ();
+local $SIG{__WARN__} = \&Carp::cluck;
+local $SIG{__DIE__} = \&Carp::cluck;
+
 umask 0077; # make sure all tempfiles are readable only by us
 
 use Cwd;
@@ -46,11 +51,12 @@ if ($opt_h) {
 
 cmd_backup() if $sCmd eq 'backup';
 cmd_conf()   if $sCmd eq 'conf';
+cmd_doc()    if $sCmd eq 'doc';
 
 # Work in progress:
 cmd_rmfile() if $sCmd eq 'rmfile';
-cmd_doc()    if $sCmd eq 'doc';
 cmd_admin()  if $sCmd eq 'admin';
+cmd_test1()  if $sCmd eq 'test1';
 
 usage(); # dies when done
 
@@ -108,6 +114,17 @@ sub cmd_admin {
     my $oAdmin= RabakLib::Admin->new(_conf_read());
     # print Dumper($oAdmin); die;
     _exit($oAdmin->loop());
+}
+
+# -----------------------------------------------------------------------------
+#  COMMAND: TEST1
+# -----------------------------------------------------------------------------
+
+sub cmd_test1 {
+    my $hBakSet= _cmd_setup(shift @ARGV);
+
+    print Dumper($hBakSet); die;
+    _exit(0);
 }
 
 # -----------------------------------------------------------------------------

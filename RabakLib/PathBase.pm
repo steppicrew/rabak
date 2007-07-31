@@ -150,7 +150,7 @@ sub _set_error {
     $self->{ERRORMSG}= $sError;
 }
 
-sub remote {
+sub is_remote {
     my $self= shift;
     return $self->get_value("host");
 }
@@ -204,7 +204,7 @@ sub run_cmd {
         "$cmd\n" .
         "************** COMMAND END ****************\n" if $self->{DEBUG};
 
-    return $self->remote ? $self->_run_ssh_cmd($cmd, undef, $bPiped) : $self->_run_local_cmd($cmd, $bPiped);
+    return $self->is_remote() ? $self->_run_ssh_cmd($cmd, undef, $bPiped) : $self->_run_local_cmd($cmd, $bPiped);
 }
 
 sub _run_local_cmd {
@@ -306,7 +306,7 @@ sub _saveperl {
     # dump result variable to set $OUT_VAR at the end of script execution
     my $sPerlDump= "";
     if ($sOutVar) {
-        $sPerlDump= "print " if $self->remote;
+        $sPerlDump= "print " if $self->is_remote();
         $sPerlDump.= "Data::Dumper->Dump([\\$sOutVar], [\"OUT_VAR\"]);";
     }
     # build modified perl script
@@ -329,7 +329,7 @@ sub _saveperl {
 
     # now execute script
     my $result;
-    if ($self->remote) {
+    if ($self->is_remote()) {
         $result= $self->_sshperl($sPerlScript);
     }
     else {
@@ -449,7 +449,7 @@ sub getLocalFile {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
-    return $sFile unless $self->remote;
+    return $sFile unless $self->is_remote();
     my ($fh, $sTmpName) = $self->local_tempfile;
     print $fh $self->savecmd("cat '$sFile'");
     CORE::close $fh;
@@ -467,7 +467,7 @@ sub copyLoc2Rem {
 
     $self->_set_error();
 
-    unless ($self->remote) {
+    unless ($self->is_remote()) {
         return 1 if $sLocFile eq $sRemFile;
         if ($bAppend) {
             $self->_set_error(`cat "$sLocFile" >> "$sRemFile" 2>&1`);

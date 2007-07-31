@@ -3,7 +3,10 @@ The sample files build on one another. If you don't understand a certain feature
 please look at the previous example.
 
 
-rabak.sample01.cf: Minimal Configuration
+=begin EXTRA
+
+
+rabak.sample01.cf: Quick start! A Minimal Configuration
 rabak.sample02.cf: Excluding specific files
 rabak.sample03.cf: Multiple Backup Sets; Variables Basics
 rabak.sample04.cf: Simple Mount Points

@@ -92,7 +92,7 @@ sub getFullPath {
 
 sub get_targetPath {
     my $self= shift;
-    return $self->{SET}->get_targetPath if $self->{SET};
+    return $self->{SET}->get_targetPath() if $self->{SET};
     return undef;
 }
 
