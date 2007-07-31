@@ -220,10 +220,11 @@ sub get_targetPath {
 # collect all backup dirs
 sub collect_bakdirs {
     my $self= shift;
-    my $sBakSet= quotemeta shift;
-    my $sBakSource= quotemeta shift;
+    my $sqBakSet= quotemeta shift;
+    my $sqBakSource= shift;
     my $sSubSetBakDay= shift || 0;
 
+    $sqBakSource= "(" . quotemeta(".$sqBakSource") . ")|" if $sqBakSource;
     my $oTargetPath= $self->get_targetPath();
     my @sBakDir= ();
     my $sSubSet= '';
@@ -232,12 +233,12 @@ sub collect_bakdirs {
     for my $sMonthDir (keys %hBakDirs) {
         next unless ref $hBakDirs{$sMonthDir}; # dirs point to hashes
 
-        next unless $sMonthDir =~ /\/(\d\d\d\d\-\d\d)\.($sBakSet)$/;
+        next unless $sMonthDir =~ /\/(\d\d\d\d\-\d\d)\.($sqBakSet)$/;
 
         for my $sDayDir (keys %{$hBakDirs{$sMonthDir}}) {
             next unless ref $hBakDirs{$sMonthDir}->{$sDayDir}; # dirs point to hashes
             # print "$sDayDir??\n";
-            next unless $sDayDir =~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?\.(($sBakSource)|($sBakSet))$/; # [a-z] for backward compatibility
+            next unless $sDayDir =~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?($sqBakSource(\.$sqBakSet))$/; # [a-z] for backward compatibility
             if ($sSubSetBakDay eq $1) {
                 my $sCurSubSet= $2 || '';
                 die "Maximum of 1000 backups reached!" if $sCurSubSet eq '_999';
@@ -314,7 +315,8 @@ sub get_sourcePaths {
 sub backup {
     my $self= shift;
 
-    my $iResult= 0;
+    my $iSuccessCount= 0;
+    my $iResult= 0; 
     
     my @oSources= $self->get_sourcePaths();
 
@@ -324,18 +326,35 @@ sub backup {
     my $iMountResult= $oTargetPath->mountAll(\@sMountMessage);
 
     unless ($iMountResult) { # fatal mount error
-        $self->logError("There was at least one fatal mount error. Backup set skipped.");
+        $self->logError("There was at least one fatal mount error on target. Backup set skipped.");
         $self->logError(@sMountMessage);
-        return 3;
-    }
-    if (scalar @sMountMessage) {
-        $self->log("All mounts completed. More information after log file initialization...");
+        $iResult= -3;
+        goto cleanup;
     }
     $self->log(@sMountMessage);
 
-    # start logging
+    # check target dir
+    unless ($oTargetPath->isDir) {
+        $self->logError(@sMountMessage);
+        $self->logError("Target \"".$oTargetPath->get_value("path")."\" is not a directory. Backup set skipped.");
+        $iResult= -1;
+        goto cleanup;
+    }
+    unless ($oTargetPath->isWritable) {
+        $self->logError(@sMountMessage);
+        $self->logError("Target \"".$oTargetPath->get_value("path")."\" is not writable. Backup set skipped.");
+        $iResult= -2;
+        goto cleanup;
+    }
+
     my ($sBakMonth, $sBakDay)= $self->_build_bakMonthDay;
     my $sBakSet= $self->get_value("name");
+
+    # create target month dir
+    my $sTarget= "$sBakMonth.$sBakSet";
+    $self->_mkdir($sTarget);
+
+    # start logging
     my $sLogFile= "$sBakMonth-log/$sBakDay.$sBakSet.log";
 
     if (!$self->get_global_value('switch.pretend') && $self->get_global_value('switch.logging')) {
@@ -372,11 +391,10 @@ sub backup {
             $self->log($self->errorMsg("Name '$sName' of Source Object has already been used. Skipping backup of source."));
             next;
         }
-        $self->log($self->infoMsg("Backing up source '$sName'"));
         $sNames{$sName}= 1;
         eval {
             if ($self->backup_setup($oSource) == 0) {
-                $iResult++ if $self->backup_run($oSource);
+                $iSuccessCount++ unless $self->backup_run($oSource);
             }
             $self->backup_cleanup($oSource);
         };
@@ -385,18 +403,22 @@ sub backup {
 
     # stop logging
     $self->get_log->close();
+    
+    $iResult= scalar(@oSources) - $iSuccessCount;
 
+cleanup:
     # unmount all target mounts
     $oTargetPath->unmountAll;
 
     my $sSubject= "successfully finshed";
-    $sSubject= "$iResult of " . scalar(@oSources) . " backups failed" if $iResult;
+    $sSubject= "$iSuccessCount of " . scalar(@oSources) .
+        " backups successfully finished" if $iResult;
     $sSubject= "*PRETENDED* $sSubject" if $self->get_global_value("switch.pretend");
 
     # send admin mail
     $self->_mail_log($sSubject);
     
-    # return number of failed backups
+    # return number of failed backups or error code (negative)
     return $iResult;
 }
 
@@ -411,50 +433,32 @@ sub backup_setup {
     my @sMountMessage;
     my $iMountResult= $oSource->mountAll(\@sMountMessage);
 
-    # my @sMountMessage= @{ $self->{_MOUNT_MESSAGE_LIST} };
+    # mount errors on source are non-fatal!
+    #unless ($iMountResult) { # fatal mount error
+    #    $self->logError("There was at least one fatal mount error on source. Backup set skipped.");
+    #    $self->logError(@sMountMessage);
+    #    return 3;
+    #}
 
-    unless ($iMountResult) { # fatal mount error
-        $self->logError("There was at least one fatal mount error. Backup set skipped.");
-        $self->logError(@sMountMessage);
-        return 3;
-    }
-
-    if (scalar @sMountMessage) {
-        $self->log("All mounts completed. More information after log file initialization...");
-    }
-
-    unless ($oTargetPath->isDir) {
-        $self->logError(@sMountMessage);
-        $self->logError("Target \"".$oTargetPath->get_value("PATH")."\" is not a directory. Backup set skipped.");
-        return 1;
-    }
-    unless ($oTargetPath->isWritable) {
-        $self->logError(@sMountMessage);
-        $self->logError("Target \"".$oTargetPath->get_value("PATH")."\" is not writable. Backup set skipped.");
-        return 2;
-    }
+    $self->log(@sMountMessage);
 
     my ($sBakMonth, $sBakDay)= $self->_build_bakMonthDay;
     my $sBakSet= $self->get_value("name");
-    my $sBakSource= $oSource->get_value("name");
-
-    my $sTarget= "$sBakMonth.$sBakSet";
-    $self->_mkdir($sTarget);
+    my $sBakSource= $oSource->get_value("name") || '';
 
     ($sSubSet, @sBakDir)= $self->collect_bakdirs($sBakSet, $sBakSource, $sBakDay);
 
-    $self->set_value("unique_target", "$sBakDay$sSubSet.$sBakSource");
-    $sTarget.= "/" . $self->get_value("unique_target");
+    my $sUniqueTarget= "$sBakDay$sSubSet";
+    $sUniqueTarget.= ".$sBakSource" if $sBakSource;
+    $self->set_value("unique_target", $sUniqueTarget);
+    my $sTarget= "$sBakMonth.$sBakSet/$sUniqueTarget";
     $self->set_value("full_target", $oTargetPath->getPath . "/$sTarget");
-    # $self->{VALUES}{bak_dirs}= \@sBakDir;
 
     $self->_mkdir($sTarget);
 
     $self->log($self->infoMsg("Backup $sBakDay exists, using subset.")) if $sSubSet;
     $self->log($self->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSource, $sBakDay$sSubSet, " . $self->get_value("title")));
-    $self->log("Source: " . $oSource->get_value("type") . ":" . $oSource->getFullPath);
-
-    $self->log(@sMountMessage);
+    $self->log("Source: " . $oSource->getFullPath);
 
     $self->{_BAK_DIR_LIST}= \@sBakDir;
     $self->{_BAK_DAY}= $sBakDay;
@@ -472,7 +476,8 @@ sub backup_run {
 
     my @sBakDir= @{ $self->{_BAK_DIR_LIST} };
     my $oTargetPath= $self->get_targetPath;
-    my $sBakSetSource= $self->get_value("name") . "-" . $oSource->get_value("name");
+    my $sBakSetSource= $self->get_value("name");
+    $sBakSetSource.= "-" . $oSource->get_value("name") if $oSource->get_value("name");
     my $sTarget= $self->{_TARGET};
 
     my $iErrorCode= 0;
@@ -490,9 +495,10 @@ sub backup_run {
 
     # for backward compatiblity use only dir with source name (not set name like for file linking) 
     my @sKeepDirs= ();
-    my $sqBakSource= quotemeta $oSource->get_value("name");
+    my $sqBakSource='';
+    $sqBakSource= quotemeta("." . $oSource->get_value("name")) if $oSource->get_value("name");
     for my $sBakDir (@sBakDir) {
-        push @sKeepDirs, $sBakDir if $sBakDir=~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?\.$sqBakSource$/;
+        push @sKeepDirs, $sBakDir if $sBakDir=~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?$sqBakSource$/;
     }
     $oTargetPath->remove_old($oSource->get_value("keep"), @sKeepDirs) unless $iErrorCode;    # only remove old if backup was done
 
@@ -517,7 +523,8 @@ sub backup_run {
         if ($iStValue > $iDfAvail) {
             $self->_mail_warning('disc space too low',
                 (
-                    "The free space on your target \"".$oTargetPath->getFullPath."\" has dropped",
+                    "The free space on your target \"" .
+                    $oTargetPath->getFullPath . "\" has dropped",
                     "below $iStValue$sStUnit to $iDfAvail$sStUnit."
                 )
             );
@@ -533,9 +540,6 @@ sub backup_cleanup {
 
     $oSource->unmountAll;
 
-    # $self->logError(@sMountMessage);
-
-    my $oTargetPath= $self->get_targetPath;
     my $sBakSource= $oSource->get_value("name");
     my $sBakDay= $self->{_BAK_DAY};
     my $sSubSet= $self->{_SUB_SET};

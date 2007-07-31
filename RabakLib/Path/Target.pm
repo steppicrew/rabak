@@ -50,13 +50,16 @@ sub isPossibleValid {
     my %checkResult = %{$self->_mount_check($sMountDevice, 1)};
     push @$sCurrentMountMessage, $self->infoMsg($checkResult{INFO}) if $checkResult{INFO};
     push @$sCurrentMountMessage, $self->errMsg($checkResult{ERROR}) if $checkResult{ERROR};
+    # device is mounted but not target
     if ($checkResult{CODE} == 1) {
         return 0;
     }
+    # device was mounted AND target
     if ($checkResult{CODE} == 2) {
         push @$sCurrentMountMessage, $self->warnMsg("Device $sMountDevice was already mounted");
         push @$sCurrentMountMessage, $self->warnMsg("Umount result: \"${checkResult{UMOUNT}}\"") if $checkResult{UMOUNT};
     }
+    # ($checkResult{CODE} == 0: device not mounted)
     return 1;
 }
 
@@ -87,6 +90,13 @@ sub isValid {
         return 1;
     }
     return 0;
+}
+
+sub mountWasFatal {
+    my $self= shift;
+    my $iMountResult= shift;
+    
+    return $iMountResult;
 }
 
 # tests if device is mounted and is a valid rabak target

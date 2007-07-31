@@ -8,6 +8,7 @@ Code:
 - Implement "rabak clean" to remove unwanted files on the backup media
 - Build POD from config-file
 - Output effective config file
+- Change config format to INI
 
 Docs:
 - Explain all features

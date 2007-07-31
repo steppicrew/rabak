@@ -15,7 +15,7 @@ sub Factory {
 
     my $class = shift;
     my $oSet= shift;
-    my $sConfName= shift || "source";
+    my $sConfName= shift;
 
     my $self= $class->SUPER::new($oSet, $sConfName);
 
@@ -40,6 +40,12 @@ sub Factory {
         $oFactory= $oClass->new(%{$self->{VALUES}});
         $oFactory->{SET}= $oSet;
         $oFactory->set_log($self->get_log);
+        unless ($oFactory->get_value("name")) {
+            my $sName= '';
+            $sName= $sConfName if $sConfName ne $oFactory->get_value("path");
+            $sName=~ s/^\&//;
+            $oFactory->set_value("name", $sName);
+        }
         1;
     };
     if ($@) {
@@ -67,25 +73,21 @@ sub new {
             $self->log($self->warnMsg("Specifying keep option in bakset is deprecated. Please set 'keep' in Source Object!"));
         }
     }
-    unless ($self->get_value("name")) {
-        my $sName= $self->get_value("type") . "_" . $self->getFullPath;
-        $sName=~ s/[^\w\@\.\-]/_/g;
-        $self->set_value("name", $sName);
-    }
 
     bless $self, $class;
-}
-
-# Stub for inheritance
-sub _init {
 }
 
 # Stub for inheritance
 sub _show {
     my $self= shift;
     print "source name: " . $self->get_value("name") . "\n";
-    print "source type: " . $self->get_value("type") . "\n";
     print "source path: " . $self->getFullPath() . "\n";
+}
+
+sub getFullPath {
+    my $self= shift;
+    my $sFullPath= $self->SUPER::getFullPath();
+    return "[" . $self->get_value("type") . "]:$sFullPath";
 }
 
 sub get_targetPath {

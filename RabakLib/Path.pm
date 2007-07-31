@@ -130,11 +130,26 @@ sub _mount_check {
 }
 
 sub isPossibleValid {
+    my $self= shift;
+    my $sMountDevice= shift;
+    my $sCurrentMountMessage= shift;
+
     return 1;
 }
 
 sub isValid {
+    my $self= shift;
+    my $sMountDevice= shift;
+    my $sCurrentMountMessage= shift;
+
     return 1;
+}
+
+sub mountWasFatal {
+    my $self= shift;
+    my $iMountResult= shift;
+    
+    return 0;
 }
 
 # @param $oMount
@@ -199,9 +214,9 @@ sub _mount {
         }
 
         $iResult= $self->isValid($sMountDevice, \@sCurrentMountMessage);
-        last if $iResult;
 nextDevice:
         push @sMountMessage, @sCurrentMountMessage;
+        last if $iResult;
     }
     push @{ $arMessage }, @sMountMessage;
 
@@ -247,7 +262,7 @@ sub mountAll {
         $iResult = $self->_mount($sMount, $arMessage, $arUnmount, $arAllMount);
         # quit if mount failed
         # TODO: is this right for source objects?
-        last unless $iResult;
+        last if $self->mountWasFatal($iResult);
     }
 
     $self->{_UNMOUNT_LIST}= $arUnmount;
