@@ -18,7 +18,7 @@ use RabakLib::ConfFile;
 use RabakLib::Set;
 use RabakLib::Admin;
 
-our $VERSION= "0.6rc5";
+our $VERSION= "0.6rc6";
 our $DEBUG= 0;
 
 $Getopt::Std::STANDARD_HELP_VERSION= 1;
