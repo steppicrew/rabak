@@ -163,18 +163,16 @@ b<Rabak> sees one backup set named 'sample', which will backup all files
 from the directory 'sample-source' into the directory 'sample-target'.
 
 Try this by running
-  ../rabak -c rabak.sample1.cf backup
+  ../rabak -c rabak.sample1.cf backup sample
 
 This will result in something like following output:
   INFO:    Rabak Version 0.6rc4
   INFO:    Backing up source '&source'
   INFO:    Backup start at 2007-07-30 18:01:30: sample, 2007-07-30, Sample1
   INFO:    Running: rsync -a --hard-links --filter=". /tmp/fSmfte1Dwk" --stats --verbose
-                        "(some path)/samples/sample-source/" "(some path)/samples/sample-target/2007-07.sample/2007-07-30.sample-source"
+                        "(some path)/samples/sample-source/" "(some path)/samples/sample-target/2007-07.sample/2007-07-30"
 
-You'll find your backup in 'samples/sample-target/2007-07.sample/2007-07-30.sample-source'.
-
-TODO: Pfade korrigieren
+You'll find your backup in 'samples/sample-target/2007-07.sample/2007-07-30'.
 
 
 =head1 SAMPLE1: Excluding specific files
