@@ -38,9 +38,11 @@ Format very similar to postfix config files:
 sub new {
     my $class = shift;
     my $sName= shift || '';
+
     my $self= $class->SUPER::new(@_);
     $self->{DEFAULTS}= {};
     $self->{NAME}= $sName;
+
     bless $self, $class;
 }
 
@@ -94,5 +96,10 @@ sub show {
         print "$sKey.$_ = $sValue\n";
     }
 }
+
+# Build output as graphviz directed graph
+# sub asDot {
+#     my $self= shift;
+# }
 
 1;

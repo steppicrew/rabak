@@ -7,13 +7,18 @@ use strict;
 
 use Data::Dumper;
 
+our $iElemNo= 0;
+
 # TODO: consistent new parameter convention
 sub new {
     my $class = shift;
     my $self= shift || {};
+
     $self->{SET} = shift;
     $self->{LOG_FILE}= undef;
     $self->{ERRORCODE}= undef;
+
+    $self->{NAME}= "elem_" . ($iElemNo++);
     
     $self->{VALUES}= {} unless ref $self->{VALUES};
     bless $self, $class;
@@ -47,8 +52,8 @@ sub get_raw_value {
     my $sName= lc(shift || '');
     my $sDefault= shift || undef;
     
-    if ($sName=~ s/^\&//) {
-        $self->log($self->warnMsg("It seems you try to read a value instead of an object reference ('&$sName')!"));
+    if ($sName =~ s/^\&//) {
+        $self->log($self->warnMsg("It seems you are trying to read a value instead of an object reference ('&$sName')!"));
     }
 
     my @sName= split(/\./, $sName);

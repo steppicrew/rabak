@@ -109,10 +109,140 @@ sub show {
 
     for my $oSource (@oSources) {
         print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n";# unless $oSource == $oSources[0];
+
+        ##FIXME: Calling private method?
         $oSource->_show();
     }
     print "$@\n" if $@;
     print "\n\n";
+}
+
+our %_boxAdded;
+
+sub dotify {
+    $_[0] =~ s/"/\\"/g;
+    return $_[0];
+}
+
+sub dothtmlify {
+    $_[0] =~ s/&/&amp;/g;
+    $_[0] =~ s/</&lt;/g;
+    $_[0] =~ s/>/&gt;/g;
+    return $_[0];
+}
+
+sub _dotAddBox {
+    my $self= shift;
+    my $sType= shift;
+    my $oConf= shift;
+    my $oParentConf= shift;
+
+    my $sTitleBgColor= '#DDDDDD';
+    $sTitleBgColor= '#DDDD00' if $sType eq 'mount';
+    $sTitleBgColor= '#00DDDD' if $sType eq 'source';
+    $sTitleBgColor= '#DD00DD' if $sType eq 'target';
+
+    my $sName= $oConf->{NAME};
+    my $sTitleText= $oConf->{VALUES}{'name'} || $sName;
+    $sTitleText= ucfirst($sType) . " \"$sTitleText\"";
+
+    $sTitleText= dothtmlify($sTitleText);
+    $sTitleText= "<table border=\"0\"><tr><td>$sTitleText</td></tr></table>";
+
+    my $sResult= '';
+    $sResult .= "$sName [ label=<";
+    $sResult .= "<table cellpadding=\"0\" cellspacing=\"0\" border=\"0\">";
+    $sResult .= "<tr><td colspan=\"3\" bgcolor=\"$sTitleBgColor\">$sTitleText</td></tr>";
+    $sResult .= "<tr><td colspan=\"3\"><font point-size=\"4\">&#160;</font></td></tr>";
+    for my $sKey (sort keys %{ $oConf->{VALUES} }) {
+        my $sValue= $oConf->{VALUES}{$sKey} || '';
+        $sValue= substr($sValue, 0, 27) . "..." if length($sValue) > 30;
+        $sResult .= "<tr><td align=\"left\">" . dothtmlify($sKey) . ":</td><td>&#160;</td><td align=\"left\">" . dothtmlify($sValue) . "</td></tr>";
+        # print Dumper($oSource->{VALUES});
+    }
+    $sResult .= "</table>";
+    $sResult .= "> shape=\"rect\" ]\n";
+
+    $sResult= "" if $_boxAdded{$sName};
+
+    $_boxAdded{$sName}= 1;
+
+    if ($oParentConf) {
+        my $sParentName= $oParentConf->{NAME};
+        if ($sType eq 'target') {
+            $sResult .= "$sParentName -> $sName\n";
+        }
+        else {
+            $sResult .= "$sName -> $sParentName\n";
+        }
+    }
+    return $sResult;
+}
+
+# Build output as graphviz directed graph
+#
+sub toDot {
+    my $self= shift;
+
+    %_boxAdded= ();
+
+    # print "]\n[";
+    # print $self->get_value("name");
+    # print "]\n[";
+    # print $self->get_value("title");
+    # print "]\n[";
+
+    my @oSources= $self->get_sourcePaths();
+
+    my $sResult= '';
+
+    $sResult .= $self->_dotAddBox('set', $self);
+
+    for my $oSource (@oSources) {
+        $sResult .= $self->_dotAddBox('source', $oSource, $self);
+    }
+
+    my $oTarget= $self->get_targetPath();
+    $sResult .= $self->_dotAddBox('target', $oTarget, $self);
+
+    my $sTitle= "Set \"" . ($self->{VALUES}{'name'} || $self->{NAME}) . "\"";
+
+    $sResult= qq(
+        subgraph cluster1 {
+            label=" ) . dotify($sTitle) . qq( "
+            labelfontsize="18"
+            $sResult
+        }
+    );
+
+    for my $oSource (@oSources) {
+        for my $oMount ($oSource->getMountObjects()) {
+            $sResult .= $self->_dotAddBox('mount', $oMount, $oSource);
+        }
+    }
+
+    for my $oMount ($oTarget->getMountObjects()) {
+        $sResult .= $self->_dotAddBox('mount', $oMount, $oTarget);
+    }
+
+    $sResult= qq(
+        digraph {
+            $self->{NAME} [ shape="rect" ]
+            $sResult
+        }
+    );
+
+    print $sResult;
+    die;
+
+    # my $oSource= $self->get_node("&source");
+
+    #my $oSource= $self->get_node("&source");
+
+    # print "]\n[";
+    # print $self->get_value("type");
+    # print "]\n[";
+
 }
 
 sub get_raw_value {
@@ -414,9 +544,8 @@ cleanup:
     # unmount all target mounts
     $oTargetPath->unmountAll;
 
-    my $sSubject= "successfully finshed";
-    $sSubject= "$iSuccessCount of " . scalar(@oSources) .
-        " backups successfully finished" if $iResult;
+    my $sSubject= "successfully finished";
+    $sSubject= "$iSuccessCount of " . scalar(@oSources) . " backups $sSubject" if $iResult;
     $sSubject= "*PRETENDED* $sSubject" if $self->get_global_value("switch.pretend");
 
     # send admin mail

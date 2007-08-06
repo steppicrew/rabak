@@ -123,6 +123,8 @@ sub cmd_admin {
 sub cmd_test1 {
     my $hBakSet= _cmd_setup(shift @ARGV);
 
+    print $hBakSet->toDot(); die;
+
     print Dumper($hBakSet); die;
     _exit(0);
 }

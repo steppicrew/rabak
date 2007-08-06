@@ -72,6 +72,7 @@ sub print_set_list {
         my $oTarget= $oSet->get_targetPath(); 
         my @oSources= $oSet->get_sourcePaths();
         next unless $oTarget && scalar @oSources;
+
         my @aSources= ();
         for (@oSources) {
             push @aSources, $_->getFullPath();

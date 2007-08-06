@@ -156,13 +156,13 @@ test_target.mount = &mount_test_target
 test1.title = Test "firstof" Mount Option
 test1.switch.verbose = 1
 test1.switch.logging = 1
-test1.source = .
+test1.source.path = .
 test1.target = &test_target
 # ", " will be replaced by newline automagically
 test1.exclude = $exclude, test-bak,
     test-data, stuff
 
-test1.mount= &mount_test_boot
+test1.source.mount= &mount_test_boot
 
 # =======================================================================================
 #       TEST TARGETGROUP OPTION

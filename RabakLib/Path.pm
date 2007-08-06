@@ -236,13 +236,9 @@ nextDevice:
     return $iResult;
 }
 
-# return
-#       0: failed
-#       1: succeeded
-sub mountAll {
+sub getMountObjects {
     my $self= shift;
-    my $arMessage= shift || [];
-    
+
     my $sMount= $self->get_value("mount");
     my @aMounts;
     unless ($sMount) {
@@ -255,14 +251,25 @@ sub mountAll {
             push @aMounts, $oMount if $oMount;
         }
     }
+    return @aMounts;
+}
 
+# return
+#       0: failed
+#       1: succeeded
+sub mountAll {
+    my $self= shift;
+    my $arMessage= shift || [];
+
+    my @aMounts= $self->getMountObjects();
+    
     # Collect all mount errors, we want to output them later
     my $arUnmount= $self->{_UNMOUNT_LIST} || [];
     my $arAllMount= $self->{_ALL_MOUNT_LIST} || [];
 
     my $iResult= 1; # defaults to mount succeeded
 
-    for $sMount (@aMounts) {
+    for my $sMount (@aMounts) {
         $iResult = $self->_mount($sMount, $arMessage, $arUnmount, $arAllMount);
         # quit if mount failed
         # TODO: is this right for source objects?
