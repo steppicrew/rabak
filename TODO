@@ -9,6 +9,9 @@ Code:
 - Build POD from config-file
 - Output effective config file
 - Change config format to INI
+- make Conf.pm to CommonBase
+- make path to: type://user@host:path
+- separate class for mount objects
 
 Docs:
 - Explain all features

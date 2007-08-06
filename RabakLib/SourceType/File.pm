@@ -428,6 +428,8 @@ sub run {
     $self->log([ 3, @sRsyncFiles ]);
     $self->log('*** Rsync Statistics: ***', @sRsyncStat);
 
+    # return success for partial transfer errors (errors were raised already above)
+    return 0 if $iRsyncExit == 23 || $iRsyncExit == 24;
     return $iRsyncExit;
 }
 

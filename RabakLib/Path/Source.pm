@@ -20,7 +20,7 @@ sub Factory {
     my $self= $class->SUPER::new($oSet, $sConfName);
 
     my $sPath= $self->get_value("path");
-    if ($sPath && $sPath=~ s/^(\w+)\://) {
+    if ($sPath && $sPath=~ s/^(\w+)\:\/\///) {
         $self->set_value("type", $1);
         $self->set_value("path", $sPath);
         $self->log($self->warnMsg("Specifying type in source path is deprecated. Please set type in Source Object!"));

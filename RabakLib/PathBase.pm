@@ -42,12 +42,12 @@ sub new {
     map { $self->set_value($_, $hParams{$_}); } keys(%hParams);
 
     my $sPath= $self->get_value("path");
-    if ($sPath && $sPath=~ s/^(\S+\@)?([\-0-9a-z\.]+)\://i) {
+    if ($sPath && $sPath=~ s/^(\w+\:\/\/)?(\S+\@)?([\-0-9a-z\.]+)\:/$1/i) {
         $self->set_value("path", $sPath);
-        my $sUser= $1 || '';
-        my $sHost= $2;
+        my $sUser= $2 || '';
+        my $sHost= $3;
         $sUser=~ s/\@$//;
-        $self->log($self->warnMsg("Specifying host and user in path is deprecated. Please use path objects!"));
+#        $self->log($self->warnMsg("Specifying host and user in path is deprecated. Please use path objects!"));
         die "Host specified by object AND path!" if $self->get_value("host");
         die "User specified by object AND path!" if $self->get_value("user") && $sUser;
         $self->set_value("host", $sHost);
@@ -229,7 +229,7 @@ sub _run_local_cmd {
     $self->{LAST_RESULT}= {
         stdout => '',
         stderr => '',
-        exit => $iExit,
+        exit => $iExit >> 8,
         error => '',
     };
 
