@@ -702,7 +702,7 @@ sub rm_file {
 
     # print Dumper(\@sFileMask);
 
-    map { logger->logExitError(2, "Every filemask MUST start with \"/\"!") unless /^\//; } @sFileMask;
+    map { logger->exitError(2, "Every filemask MUST start with \"/\"!") unless /^\//; } @sFileMask;
 
     return 2 unless scalar @sFileMask && defined $sFileMask[0];
 
@@ -718,7 +718,7 @@ sub rm_file {
     my $oTargetPath= $self->get_targetPath();
 
     # TODO: Make a better check!
-    logger->logExitError(3, "Can't remove! \"$sBakSet.target\" is empty or points to file system root.") if $oTargetPath->getPath eq '' || $oTargetPath->getPath eq '/';
+    logger->exitError(3, "Can't remove! \"$sBakSet.target\" is empty or points to file system root.") if $oTargetPath->getPath eq '' || $oTargetPath->getPath eq '/';
 
     my @sBakDir= $self->collect_bakdirs($sBakSet, $sBakSetDay);
 
