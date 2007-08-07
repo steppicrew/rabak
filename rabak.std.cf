@@ -17,7 +17,7 @@ switch.logging = 1
 #    1: print some additional output (mount results etc.)
 #    2: print additional output (rsync: stats)
 #    3: print additional output (rsync: files)
-switch.verbose = 2
+switch.verbose = 4
 
 # switch.dev_conf_file: file that have to exist in root dir on any target device (istarget is set in mount section)
 #    default: rabak.dev.cf

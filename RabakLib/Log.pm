@@ -18,7 +18,7 @@ use vars qw( $VERSION @ISA @EXPORT @EXPORT_OK );
 use Exporter;
 
 @ISA = qw( Exporter );
-@EXPORT = qw( logger );
+@EXPORT = qw( logger LOG_DEBUG_LEVEL LOG_DEFAULT_LEVEL LOG_INFO_LEVEL LOG_WARN_LEVEL LOG_ERROR_LEVEL );
 
 our $oLog;
 
@@ -37,19 +37,12 @@ BEGIN {
         FILE_NAME => '',
         REAL_FILE_NAME => '',   # real file name (tempfile for remote log files)
         IS_NEW => 0,
-
-        DEFAULTLEVEL => 2,
-        INFOLEVEL => 1,
-        WARNLEVEL => -1,
-        ERRLEVEL => -2,
         
         ERRORCOUNT => 0,
         WARNCOUNT => 0,
 
         TARGET => undef,
 
-        SWITCH_QUIET => 0,
-        SWITCH_VERBOSE => 0,
         SWITCH_PRETEND => 0,
         SWITCH_LOGGING => 0,
     };
@@ -69,8 +62,6 @@ sub init {
     my $class= shift;
     my $hConf= shift;
 
-    $oLog->{SWITCH_QUIET}= $hConf->get_value('switch.quiet');
-    $oLog->{SWITCH_VERBOSE}= $hConf->get_value('switch.verbose');
     $oLog->{SWITCH_PRETEND}= $hConf->get_value('switch.pretend');
     $oLog->{SWITCH_LOGGING}= $hConf->get_value('switch.logging');
 
@@ -81,6 +72,13 @@ sub init {
 # -----------------------------------------------------------------------------
 #  Messages
 # -----------------------------------------------------------------------------
+
+sub LOG_DEBUG_LEVEL   { 5 }
+sub LOG_DEFAULT_LEVEL { 4 }
+sub LOG_INFO_LEVEL    { 3 }
+sub LOG_WARN_LEVEL    { 2 }
+sub LOG_ERROR_LEVEL   { 1 }
+
 
 sub _timestr {
     return strftime("%Y-%m-%d %H:%M:%S", localtime);
@@ -188,7 +186,7 @@ sub debug {
     my $self= shift;
     my @sMessage= @_;
 
-    return [ $self->{DEBUGLEVEL}, @sMessage ] if wantarray;
+    return [ LOG_DEBUG_LEVEL, @sMessage ] if wantarray;
     $self->log($self->debug(@_));
 }
 
@@ -196,7 +194,7 @@ sub info {
     my $self= shift;
     my @sMessage= @_;
 
-    return [ $self->{INFOLEVEL}, @sMessage ] if wantarray;
+    return [ LOG_INFO_LEVEL, @sMessage ] if wantarray;
     $self->log($self->info(@_));
 }
 
@@ -204,7 +202,7 @@ sub warn {
     my $self= shift;
     my @sMessage= @_;
 
-    return [ $self->{WARNLEVEL}, @sMessage ] if wantarray;
+    return [ LOG_WARN_LEVEL, @sMessage ] if wantarray;
     $self->log($self->warn(@_));
 }
 
@@ -212,8 +210,17 @@ sub error {
     my $self= shift;
     my @sMessage= @_;
 
-    return [ $self->{ERRLEVEL}, @sMessage ] if wantarray;
+    return [ LOG_ERROR_LEVEL, @sMessage ] if wantarray;
     $self->log($self->error(@_));
+}
+
+sub exitError {
+    my $self= shift;
+    my $iExit=shift || 0;
+    my @sMessage= @_;
+
+    $self->error(@sMessage);
+    exit $iExit if $iExit;
 }
 
 sub log {
@@ -225,7 +232,7 @@ sub log {
             $self->_levelLog(@{ $sMessage });
             next;
         }
-        $self->_levelLog($self->{DEFAULTLEVEL}, $sMessage);
+        $self->_levelLog(LOG_DEFAULT_LEVEL, $sMessage);
     }
 }
 
@@ -234,19 +241,20 @@ sub _levelLog {
     my $iLevel= shift;
     my @sMessage= @_;
 
-    return if $self->{SWITCH_QUIET};
-
     my $sMsgPref;
-    if ($iLevel == $self->{ERRLEVEL}) {
+    if ($iLevel == LOG_ERROR_LEVEL) {
         $sMsgPref= "ERROR:   ";
         $self->{ERRORCOUNT}++
     }
-    elsif ($iLevel == $self->{WARNLEVEL}) {
+    elsif ($iLevel == LOG_WARN_LEVEL) {
         $sMsgPref= "WARNING: ";
         $self->{WARNCOUNT}++
     }
-    elsif ($iLevel == $self->{INFOLEVEL}) {
+    elsif ($iLevel == LOG_INFO_LEVEL) {
         $sMsgPref= "INFO:    ";
+    }
+    elsif ($iLevel == LOG_DEBUG_LEVEL) {
+        $sMsgPref= "DEBUG:   ";
     }
     else {
         $sMsgPref= "LOG($iLevel):  ";
@@ -262,17 +270,15 @@ sub _levelLog {
         }
         chomp $sMessage;
         $sMessage= '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
-        print "$sMsgPref$sMessage\n" if $iLevel <= $self->{SWITCH_VERBOSE};
+        print "$sMsgPref$sMessage\n" if $iLevel <= $self->{SWITCH_LOGGING};
 
         next unless $self->{SWITCH_LOGGING} && !$self->{SWITCH_PRETEND};
-
-        # $iLevel <= $self->{SWITCH_VERBOSE};
 
         $sMessage= $self->{CATEGORY} . "\t$sMessage" if $self->{CATEGORY};
         $sMessage= _timestr() . "\t$sMsgPref$sMessage\n";
 
         $self->{UNFLUSHED_MESSAGES} .= $sMessage;
-        $self->{MESSAGES} .= $sMessage if $iLevel <= $self->{SWITCH_VERBOSE};
+        $self->{MESSAGES} .= $sMessage if $iLevel <= $self->{SWITCH_LOGGING};
     }
     $self->_flush();
 }
