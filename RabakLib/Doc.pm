@@ -172,7 +172,7 @@ You can have multiple backup sets in your configuration file and use variables:
   full.switch.logging = 1
 
 Setting C<switch.logging> overrides the command line option C<-l>.
-Possible C<switch>es are C<pretend>, C<quiet> and C<logging>.
+Possible C<switch>es are C<pretend> and C<logging>.
 C<$my_target> is replaced by C</mnt/sda1/rabak>.
 
 Now lets add a mount point:
@@ -390,45 +390,9 @@ includes an other config file.
 
 ends config file. Any text following this line is ignored.
 
-=item switch.quiet
-
-suppress all output and do no logging (default: C<0>)
-
 =item switch.logging
 
-write log file (default: C<0>)
-
-=item switch.verbose
-
-verbosity level for standard outut.
-
-=over 2
-
-=item -2
-
-only errors are printed;
-
-=item -1
-
-like L</"-2"> but prints warnings too;
-
-=item E<32>0
-
-like L</"-1"> but prints few additional information;
-
-=item E<32>1
-
-like L</"E<32>0"> but prints additional information;
-
-=item E<32>2
-
-more verbose (ex: prints rsync stats)
-
-=item E<32>3
-
-even more verbose (ex: prints synced files)
-
-=back
+log level. 0= none, 1= errors, 2= warnings, 3= info, 4= debug (default: C<2>)
 
 =item switch.pretend
 

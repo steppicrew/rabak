@@ -270,7 +270,7 @@ sub show {
     
     $self->SUPER::_show();
     
-    return unless $self->get_global_set_value("switch.verbose") > 3;
+    return unless $self->get_global_set_value("switch.logging") >= LOG_DEBUG_LEVEL;
 
     my $sBaseDir= $self->valid_source_dir();
     print "Expanded rsync filter (relative to '$sBaseDir'):\n\t" . join("\n\t", $self->_get_filter()) . "\n";

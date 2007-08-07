@@ -153,8 +153,7 @@ sub _conf_read {
     # overwrite values with comand line switches
     $oConf->set_values({
         'switch.pretend' => $opt_p,
-        'switch.verbose' => defined $opt_v ? LOG_DEBUG_LEVEL : ($opt_q ? 0 : LOG_DEFAULT_LEVEL ),
-        'switch.logging' => $opt_l,
+        'switch.logging' => defined $opt_v ? LOG_DEBUG_LEVEL : ($opt_q ? 0 : LOG_DEFAULT_LEVEL ),
         'switch.targetvalue' => $opt_i,
         'VERSION' => $VERSION,
     });
