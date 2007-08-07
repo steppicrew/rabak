@@ -292,19 +292,19 @@ sub _show {
     return unless $self->get_global_set_value("switch.verbose") > 3;
 
     my $sBaseDir= $self->valid_source_dir();
-    print "Expanded rsync filter (relative to '$sBaseDir'):\n\t" . join("\n\t", $self->_get_filter) . "\n";
+    print "Expanded rsync filter (relative to '$sBaseDir'):\n\t" . join("\n\t", $self->_get_filter()) . "\n";
 }
 
 sub valid_source_dir {
     my $self= shift;
 
-    my $sSourceDir= $self->getFullPath;
+    my $sSourceDir= $self->getFullPath();
 
-    if (!$self->isDir) {
+    if (!$self->isDir()) {
         $self->logError("Source \"$sSourceDir\" is not a directory. Backup set skipped.");
         return undef;
     }
-    if (!$self->isReadable) {
+    if (!$self->isReadable()) {
         $self->logError("Source \"$sSourceDir\" is not readable. Backup set skipped.");
         return undef;
     }
@@ -316,7 +316,7 @@ sub run {
     my $self= shift;
     my @sBakDir= @_;
 
-    return 3 unless $self->valid_source_dir;
+    return 3 unless $self->valid_source_dir();
 
     # print Dumper($self); die;
 

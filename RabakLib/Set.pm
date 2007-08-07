@@ -97,6 +97,7 @@ sub _validate {
 sub show {
     my $self= shift;
     my $sKey= shift || $self->{NAME};
+
     $self->SUPER::show($sKey);
 
     my $sType= $self->get_value("type");
@@ -116,6 +117,11 @@ sub show {
     print "$@\n" if $@;
     print "\n\n";
 }
+
+# =============================================================================
+#  Generate Output for dot (graphviz)
+#  TODO: This does not belong into Set.pm (too much overhead)
+# =============================================================================
 
 our %_boxAdded;
 
@@ -142,6 +148,11 @@ sub _dotAddBox {
     $sTitleBgColor= '#00DDDD' if $sType eq 'source';
     $sTitleBgColor= '#DD00DD' if $sType eq 'target';
 
+    my $sAttribs= 'shape="rect"';
+    $sAttribs= 'shape="polygon" skew="0.5"' if $sType eq 'mount';
+    $sAttribs= 'shape="invhouse"' if $sType eq 'mount';
+    $sAttribs= 'shape="rect" style="filled" color="#F0F0E0"' if $sType eq 'mount';
+
     my $sName= $oConf->{NAME};
     my $sTitleText= $oConf->{VALUES}{'name'} || $sName;
     $sTitleText= ucfirst($sType) . " \"$sTitleText\"";
@@ -156,12 +167,13 @@ sub _dotAddBox {
     $sResult .= "<tr><td colspan=\"3\"><font point-size=\"4\">&#160;</font></td></tr>";
     for my $sKey (sort keys %{ $oConf->{VALUES} }) {
         my $sValue= $oConf->{VALUES}{$sKey} || '';
+        next if $sValue eq '';
         $sValue= substr($sValue, 0, 27) . "..." if length($sValue) > 30;
         $sResult .= "<tr><td align=\"left\">" . dothtmlify($sKey) . ":</td><td>&#160;</td><td align=\"left\">" . dothtmlify($sValue) . "</td></tr>";
         # print Dumper($oSource->{VALUES});
     }
     $sResult .= "</table>";
-    $sResult .= "> shape=\"rect\" ]\n";
+    $sResult .= "> $sAttribs ]\n";
 
     $sResult= "" if $_boxAdded{$sName};
 
@@ -213,7 +225,7 @@ sub toDot {
             labelfontsize="18"
             $sResult
         }
-    );
+    ) if 1;
 
     for my $oSource (@oSources) {
         for my $oMount ($oSource->getMountObjects()) {
@@ -227,23 +239,18 @@ sub toDot {
 
     $sResult= qq(
         digraph {
+            // rankdir="LR"
             $self->{NAME} [ shape="rect" ]
             $sResult
         }
     );
 
-    print $sResult;
-    die;
-
-    # my $oSource= $self->get_node("&source");
-
-    #my $oSource= $self->get_node("&source");
-
-    # print "]\n[";
-    # print $self->get_value("type");
-    # print "]\n[";
-
+    return $sResult;
 }
+
+# =============================================================================
+#  ...
+# =============================================================================
 
 sub get_raw_value {
     my $self= shift;

@@ -1,26 +1,37 @@
 
 Code:
++ Build POD from config-file
++ Output effective config file
++ make path to: type://user@host:path
++ separate class for mount objects
++ Tests
++ Log4Perl??
++ rabak.conf nach /etc
++ Alle Values bei Initialisierung uebergeben
+
+
+- Mail::Send optional
+- Change config format to INI?
+- make Conf.pm to CommonBase
 - More backup types (which?)
 - Proper exit codes
 - Make ACLs work
 - Implement post processing with faster-dupemerge
 - Make "rabak admin" do something useful
 - Implement "rabak clean" to remove unwanted files on the backup media
-- Build POD from config-file
-- Output effective config file
-- Change config format to INI
-- make Conf.pm to CommonBase
-- make path to: type://user@host:path
-- separate class for mount objects
 
 Docs:
-- Explain all features
-- Tutorial
+
++ Explain all features
++ Tutorial
+
 - More examples and case studies
 - Explain faster-dupemerge
 
 Ideas:
-- Add weekday to directory names
+
+* Add weekday to directory names
+
 - Smarter "keep" rules. e.g. keep "monday backup" when rotating (dbs)
 - Save MD5 on target medium for:
   - finding duplicates
