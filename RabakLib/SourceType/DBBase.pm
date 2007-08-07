@@ -119,7 +119,7 @@ sub run {
         # is remote
         if ($oTargetPath->is_remote() || $self->is_remote()) {
             # TODO: check if target and source are the same users on the same host
-            $sDumpCmd= $self->_ssh->build_ssh_cmd($sDumpCmd);
+            $sDumpCmd= $self->build_ssh_cmd($sDumpCmd);
         }
 
         # now execute dump command on target

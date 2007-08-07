@@ -14,7 +14,12 @@ use vars qw(@ISA);
 use Data::Dumper;
 use File::Spec ();
 use File::Temp ();
-use RabakLib::Path::Ssh;
+
+=head1 DESCRIPTION
+
+=over 4
+
+=cut
 
 sub new {
     my $class= shift;
@@ -170,14 +175,6 @@ sub getPath {
     return $sPath;
 }
 
-sub _ssh {
-    my $self= shift;
-
-    $self->{SSH}= RabakLib::Path::Ssh->new(%{$self->{VALUES}}) unless $self->{SSH};
-
-    return $self->{SSH};
-}
-
 # run command locally or remote
 # result: stdout of cmd
 sub savecmd {
@@ -192,7 +189,14 @@ sub savecmd {
     return $self->{LAST_RESULT}{stdout} || '';
 }
 
-# result: (stdout, stderr, exit code)
+=item run_cmd($sCmd, $bPiped)
+
+Runs a command either locally or remote.
+
+Result: (stdout, stderr, exit code)
+
+=cut
+
 sub run_cmd {
     my $self= shift;
     my $cmd= shift;
@@ -265,27 +269,59 @@ sub _run_local_cmd {
     );
 }
 
+sub build_ssh_cmd {
+    my $self= shift;
+    my $sCmd= shift;
+
+    die "Ssh.pm: No command specified!" unless defined $sCmd;
+    die "Ssh.pm: No host specified!" unless defined $self->get_value("host");
+
+    my @sSshCmd= ('ssh');
+
+    push @sSshCmd, '-p', $self->get_value("port") if $self->get_value("port");
+    if ($self->get_value("protocol")) {
+        push @sSshCmd, '-1' if $self->get_value("protocol") eq "1";
+        push @sSshCmd, '-2' if $self->get_value("protocol") eq "2";
+    }
+    if ($self->get_value("identity_files")) {
+        push @sSshCmd, '-i', $_ for (split(/\s+/, $self->get_value("identity_files")));
+    }
+#    push @sSshCmd, '-vvv' if $self->{DEBUG};
+
+    my $sHost= $self->get_value("user");
+    $sHost= defined $sHost ? "$sHost@" : "";
+    $sHost.= $self->get_value("host");
+    push @sSshCmd, $sHost;
+    push @sSshCmd, $sCmd;
+    s/\'/\'\\\'\'/g for (@sSshCmd);
+    return "'" . join("' '", @sSshCmd) . "'";
+}
+
 sub _run_ssh_cmd {
     my $self= shift;
-    my $cmd= shift;
-    my $stdin= shift;
+    my $sCmd= shift;
+    my $sStdIn= shift;
     my $bPiped= shift || 0;
 
-    my $ssh= $self->_ssh;
-    $ssh->cmd($cmd, $stdin, $bPiped);
-    $self->{LAST_RESULT}= {
-        stdout => $ssh->get_last_out,
-        stderr => $ssh->get_last_error,
-        exit => $ssh->get_last_exit,
-        error => $ssh->get_error,
-    };
+    my $sRunCmd= '';
 
-    return (
-        $self->{LAST_RESULT}{stdout},
-        $self->{LAST_RESULT}{stderr},
-        $self->{LAST_RESULT}{exit},
-        $self->{LAST_RESULT}{error}
-    );
+    if (defined $sStdIn) {
+        my $fh;
+        if ($self->{STDIN}) {
+            open $fh, ">$self->{STDIN}" or die "could not open file '$self->{STDIN}' for STDIN";
+        }
+        else {
+            ($fh, $self->{STDIN}) = $self->local_tempfile;
+        }
+        print $fh $sStdIn if defined $sStdIn;
+        close $fh;
+        $sRunCmd.= "cat '$self->{STDIN}' | ";
+    }
+
+    $sRunCmd.= $self->build_ssh_cmd($sCmd);
+    print "SSH: stdin [$sStdIn]\n######################\n" if $self->{DEBUG} && defined $sStdIn;
+    print "SSH: running [$sRunCmd]\n" if $self->{DEBUG};
+    return $self->_run_local_cmd($sRunCmd, $bPiped);
 }
 
 # evaluates perl script remote or locally
@@ -684,6 +720,8 @@ sub rmtree {
     my $self= shift;
     my $sTree= shift;
 
+    die "RabakLib::PathBase::rmtree called with dangerous parameter ($sTree)!" if $sTree eq '' || $sTree eq '/';
+
     $self= $self->new(@_) unless ref $self;
     return $self->savecmd("if [ -e '$sTree' ]; then rm -rf '$sTree'; fi");
     # TODO: why does this not work???
@@ -694,5 +732,9 @@ sub rmtree {
         ', { sTree => $sTree, bDebug => $self->{DEBUG} }, '$result',
     )};
 }
+
+=back
+
+=cut
 
 1;
