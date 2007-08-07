@@ -13,18 +13,29 @@ use RabakLib::Path;
 # use File::Spec ();
 use POSIX qw(strftime);
 
-sub new {
-    my $class= shift;
-    my $hConf= shift;
-    my $self= {
-        CONF => $hConf,
+use vars qw( $VERSION @ISA @EXPORT @EXPORT_OK );
 
+use Exporter;
+
+@ISA = qw( Exporter );
+@EXPORT = qw( logger );
+
+our $oLog;
+
+# my ( $LOGLEVEL, $CONFESS )      = ( 0, 0 );
+
+# my $LOGGER              = {
+#     Default => [ \&std_logger ]
+# };
+
+BEGIN {
+    $oLog = {
         PREFIX => '',
         CATEGORY => '',
         MESSAGES => '',
         LOG_FH => undef,
         FILE_NAME => '',
-        REAL_FILE_NAME => '', # real file name (tempfile for remote log files)
+        REAL_FILE_NAME => '',   # real file name (tempfile for remote log files)
         IS_NEW => 0,
 
         DEFAULTLEVEL => 2,
@@ -36,9 +47,36 @@ sub new {
         WARNCOUNT => 0,
 
         TARGET => undef,
+
+        SWITCH_QUIET => 0,
+        SWITCH_VERBOSE => 0,
+        SWITCH_PRETEND => 0,
+        SWITCH_LOGGING => 0,
     };
-    $hConf->set_log($self);
-    bless $self, $class;
+    bless $oLog, "RabakLib::Log";
+}
+
+sub new {
+    my $class = shift;
+    return $oLog;
+}
+
+sub logger {
+    return RabakLib::Log->new();
+}
+
+sub init {
+    my $class= shift;
+    my $hConf= shift;
+
+    my $self= {};
+    $self->{SWITCH_QUIET}= $hConf->get_value('switch.quiet');
+    $self->{SWITCH_VERBOSE}= $hConf->get_value('switch.verbose');
+    $self->{SWITCH_PRETEND}= $hConf->get_value('switch.pretend');
+    $self->{SWITCH_LOGGING}= $hConf->get_value('switch.logging');
+
+    # $hConf->set_log($self);
+    # bless $self, $class;
 }
 
 # -----------------------------------------------------------------------------
@@ -201,7 +239,7 @@ sub _levelLog {
     my $iLevel= shift;
     my @sMessage= @_;
 
-    return if $self->{CONF}->get_value('switch.quiet');
+    return if $self->{SWITCH_QUIET};
 
     my $sMsgPref;
     if ($iLevel == $self->{ERRLEVEL}) {
@@ -229,18 +267,17 @@ sub _levelLog {
         }
         chomp $sMessage;
         $sMessage= '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
-        print "$sMsgPref$sMessage\n" if $iLevel <= $self->{CONF}->get_value('switch.verbose');
+        print "$sMsgPref$sMessage\n" if $iLevel <= $self->{SWITCH_VERBOSE};
 
-        next unless $self->{CONF}->get_value('switch.logging') &&
-            !$self->{CONF}->get_value('switch.pretend');
-#            $iLevel <= $self->{CONF}->get_global_value('switch.verbose');
+        next unless $self->{SWITCH_LOGGING} && !$self->{SWITCH_PRETEND};
+
+        # $iLevel <= $self->{SWITCH_VERBOSE};
 
         $sMessage= $self->{CATEGORY} . "\t$sMessage" if $self->{CATEGORY};
         $sMessage= _timestr() . "\t$sMsgPref$sMessage\n";
 
         $self->{UNFLUSHED_MESSAGES} .= $sMessage;
-        $self->{MESSAGES} .= $sMessage if $iLevel <= $self->{CONF}->get_value('switch.verbose');
-
+        $self->{MESSAGES} .= $sMessage if $iLevel <= $self->{SWITCH_VERBOSE};
     }
     $self->_flush();
 }
