@@ -416,7 +416,7 @@ sub _mkdir {
 
     return 1 if $self->get_targetPath()->mkdir($sDir);
 
-    logger->log(logger->warnMsg("Mkdir '$sDir' failed: $!"));
+    logger->warn("Mkdir '$sDir' failed: $!");
     return 0;
 }
 
@@ -446,7 +446,7 @@ sub get_sourcePaths {
             push @oSources, $oSource;
         }
         else {
-            logger->log(logger->errorMsg("Source Object '$sSource' could not be loaded. Skipped."))
+            logger->error("Source Object '$sSource' could not be loaded. Skipped.");
         }
         
     } 
@@ -467,8 +467,8 @@ sub backup {
     my $iMountResult= $oTargetPath->mountAll(\@sMountMessage);
 
     unless ($iMountResult) { # fatal mount error
-        logger->logError("There was at least one fatal mount error on target. Backup set skipped.");
-        logger->logError(@sMountMessage);
+        logger->error("There was at least one fatal mount error on target. Backup set skipped.");
+        logger->error(@sMountMessage);
         $iResult= -3;
         goto cleanup;
     }
@@ -476,14 +476,14 @@ sub backup {
 
     # check target dir
     unless ($oTargetPath->isDir) {
-        logger->logError(@sMountMessage);
-        logger->logError("Target \"".$oTargetPath->get_value("path")."\" is not a directory. Backup set skipped.");
+        logger->error(@sMountMessage);
+        logger->error("Target \"".$oTargetPath->get_value("path")."\" is not a directory. Backup set skipped.");
         $iResult= -1;
         goto cleanup;
     }
     unless ($oTargetPath->isWritable) {
-        logger->logError(@sMountMessage);
-        logger->logError("Target \"".$oTargetPath->get_value("path")."\" is not writable. Backup set skipped.");
+        logger->error(@sMountMessage);
+        logger->error("Target \"".$oTargetPath->get_value("path")."\" is not writable. Backup set skipped.");
         $iResult= -2;
         goto cleanup;
     }
@@ -507,7 +507,7 @@ sub backup {
 
         my $sError= logger->open($sLogFileName, $oTargetPath);
         if ($sError) {
-            logger->log(logger->warnMsg("Can't open log file \"$sLogFileName\" ($sError). Going on without..."));
+            logger->warn("Can't open log file \"$sLogFileName\" ($sError). Going on without...");
         }
         else {
             # TODO: transfer to Log.pm
@@ -522,7 +522,7 @@ sub backup {
         }
     }
     logger->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_global_value('switch.logging');
-    logger->log(logger->infoMsg("Rabak Version " . $self->get_global_value("version")));
+    logger->info("Rabak Version " . $self->get_global_value("version"));
     $self->logPretending();
 
     # now try backing up every source 
@@ -530,7 +530,7 @@ sub backup {
     for my $oSource (@oSources) {
         my $sName= $oSource->get_value("name") || '';
         if ($sNames{$sName}) {
-            logger->log(logger->errorMsg("Name '$sName' of Source Object has already been used. Skipping backup of source."));
+            logger->error("Name '$sName' of Source Object has already been used. Skipping backup of source.");
             next;
         }
         $sNames{$sName}= 1;
@@ -540,7 +540,7 @@ sub backup {
             }
             $self->_backup_cleanup($oSource);
         };
-        logger->log(logger->errorMsg("An error occured during backup: '$@'")) if $@;
+        logger->log(logger->error("An error occured during backup: '$@'")) if $@;
     }
 
     # stop logging
@@ -576,8 +576,8 @@ sub _backup_setup {
 
     # mount errors on source are non-fatal!
     #unless ($iMountResult) { # fatal mount error
-    #    logger->logError("There was at least one fatal mount error on source. Backup set skipped.");
-    #    logger->logError(@sMountMessage);
+    #    logger->error("There was at least one fatal mount error on source. Backup set skipped.");
+    #    logger->error(@sMountMessage);
     #    return 3;
     #}
 
@@ -597,8 +597,8 @@ sub _backup_setup {
 
     $self->_mkdir($sTarget);
 
-    logger->log(logger->infoMsg("Backup $sBakDay exists, using subset.")) if $sSubSet;
-    logger->log(logger->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSource, $sBakDay$sSubSet, " . $self->get_value("title")));
+    logger->info("Backup $sBakDay exists, using subset.") if $sSubSet;
+    logger->info("Backup start at " . strftime("%F %X", localtime) . ": $sBakSource, $sBakDay$sSubSet, " . $self->get_value("title"));
     logger->log("Source: " . $oSource->getFullPath);
 
     $self->{_BAK_DIR_LIST}= \@sBakDir;
@@ -630,7 +630,7 @@ sub _backup_run {
         logger->log("Done!");
     }
     else {
-        logger->log(logger->errorMsg("Backup failed: " . $oSource->get_last_error));
+        logger->error("Backup failed: " . $oSource->get_last_error);
         $iErrorCode= 9;
     }
 
@@ -685,7 +685,7 @@ sub _backup_cleanup {
     my $sBakDay= $self->{_BAK_DAY};
     my $sSubSet= $self->{_SUB_SET};
 
-    logger->log(logger->infoMsg("Backup done at " . strftime("%F %X", localtime) . ": $sBakSource, $sBakDay$sSubSet")) if $sBakSource && $sBakDay && $sSubSet;
+    logger->info("Backup done at " . strftime("%F %X", localtime) . ": $sBakSource, $sBakDay$sSubSet") if $sBakSource && $sBakDay && $sSubSet;
 }
 
 # -----------------------------------------------------------------------------

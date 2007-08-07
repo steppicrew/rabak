@@ -1,11 +1,14 @@
 
+Done:
++ Log4Perl??
+
+
 Code:
 + Build POD from config-file
 + Output effective config file
 + make path to: type://user@host:path
 + separate class for mount objects
 + Tests
-+ Log4Perl??
 + rabak.conf nach /etc
 + Alle Values bei Initialisierung uebergeben
 

@@ -24,21 +24,21 @@ sub new {
         my $sUser= $self->get_set_value("user");
         if (defined $sUser) {
             $self->set_value("dbuser", $sUser);
-            logger->log(logger->warnMsg("Specifying database user name in bakset is deprecated. Please set 'dbuser' in Source Object!"));
+            logger->warn("Specifying database user name in bakset is deprecated. Please set 'dbuser' in Source Object!");
         }
     }
     unless ($self->get_value("dbpassword")) {
         my $sPasswd= $self->get_set_value("password");
         if (defined $sPasswd) {
             $self->set_value("dbpassword", $sPasswd);
-            logger->log(logger->warnMsg("Specifying database password in bakset is deprecated. Please set 'dbpassword' in Source Object!"));
+            logger->warn("Specifying database password in bakset is deprecated. Please set 'dbpassword' in Source Object!");
         }
     }
 
     my $sPacker= lc $self->get_value("packer");
-    logger->log(logger->warnMsg("Unknown packer '$sPacker'. Valid Values are: '" .
+    logger->warn("Unknown packer '$sPacker'. Valid Values are: '" .
         join("', '", keys %sPackers) . 
-        "'. Using default 'bzip2'")) if $sPacker && !$sPackers{$sPacker};
+        "'. Using default 'bzip2'") if $sPacker && !$sPackers{$sPacker};
     $sPacker= "bzip2" unless $sPacker && $sPackers{$sPacker};
     $self->{PACKER} = $sPackers{$sPacker};
     bless $self, $class;
@@ -77,7 +77,7 @@ sub run {
     my $i= 0;
     $self->run_cmd($self->get_show_cmd);
     if ($self->get_last_exit) {
-        logger->log(logger->errorMsg("show databases command failed with: " . $self->get_error));
+        logger->error("show databases command failed with: " . $self->get_error);
         return 9;
     }
     %sValidDb= $self->parse_valid_db($self->get_last_out);
@@ -90,7 +90,7 @@ sub run {
     else {
         for (split(/\s*,\s*/, $sSource)) {
             unless (defined $sValidDb{$_}) {
-                logger->log(logger->warnMsg("Unknown database: \"$_\""));
+                logger->warn("Unknown database: \"$_\"");
                 next;
             }
             unshift @sDb, $_;
@@ -109,7 +109,7 @@ sub run {
             if ($self->get_last_exit) {
                 my $sError= $self->get_last_error;
                 chomp $sError;
-                logger->logError("Probe failed. Skipping \"$_\": $sError");
+                logger->error("Probe failed. Skipping \"$_\": $sError");
                 next;
             }
         }
@@ -131,7 +131,7 @@ sub run {
             if ($self->get_last_exit) {
                 my $sError= $self->get_last_error;
                 chomp $sError;
-                logger->logError("Dump failed. Skipping dump of \"$_\": $sError");
+                logger->error("Dump failed. Skipping dump of \"$_\": $sError");
                 next;
             }
         }

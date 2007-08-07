@@ -184,40 +184,36 @@ sub set_category {
     $self->{CATEGORY}= $sPrefix;
 }
 
-sub infoMsg {
+sub debug {
     my $self= shift;
     my @sMessage= @_;
 
-    return [ $self->{INFOLEVEL}, @sMessage ];
+    return [ $self->{DEBUGLEVEL}, @sMessage ] if wantarray;
+    $self->log($self->debug(@_));
 }
 
-sub warnMsg {
+sub info {
     my $self= shift;
     my @sMessage= @_;
 
-    return [ $self->{WARNLEVEL}, @sMessage ];
+    return [ $self->{INFOLEVEL}, @sMessage ] if wantarray;
+    $self->log($self->info(@_));
 }
 
-sub errorMsg {
+sub warn {
     my $self= shift;
     my @sMessage= @_;
 
-    return [ $self->{ERRLEVEL}, @sMessage ];
+    return [ $self->{WARNLEVEL}, @sMessage ] if wantarray;
+    $self->log($self->warn(@_));
 }
 
-sub logInfo {
+sub error {
     my $self= shift;
-    $self->log($self->infoMsg(@_));
-}
+    my @sMessage= @_;
 
-sub logWarn {
-    my $self= shift;
-    $self->log($self->warnMsg(@_));
-}
-
-sub logError {
-    my $self= shift;
-    $self->log($self->errorMsg(@_));
+    return [ $self->{ERRLEVEL}, @sMessage ] if wantarray;
+    $self->log($self->error(@_));
 }
 
 sub log {
