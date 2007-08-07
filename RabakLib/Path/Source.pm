@@ -77,8 +77,7 @@ sub new {
     bless $self, $class;
 }
 
-# Stub for inheritance
-sub _show {
+sub show {
     my $self= shift;
     print "source name: " . $self->get_value("name") . "\n";
     print "source path: " . $self->getFullPath() . "\n";

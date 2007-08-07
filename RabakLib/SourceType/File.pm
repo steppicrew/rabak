@@ -284,7 +284,7 @@ sub _parseFilter {
     return @sResult;
 }
 
-sub _show {
+sub show {
     my $self= shift;
     
     $self->SUPER::_show();

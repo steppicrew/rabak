@@ -111,8 +111,7 @@ sub show {
     for my $oSource (@oSources) {
         print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n";# unless $oSource == $oSources[0];
 
-        ##FIXME: Calling private method?
-        $oSource->_show();
+        $oSource->show();
     }
     print "$@\n" if $@;
     print "\n\n";

@@ -112,10 +112,17 @@ sub run {
         }
 
         my $sDumpCmd= $self->get_dump_cmd($_) . " | $sZipCmd";
+
+        # target executes $sDumpCmd on source (may be remote from targets view) to
+        # pipe stdout/stderr to final target file
+        # therefore we have to build a ssh command, if either target or source
+        # is remote
         if ($oTargetPath->is_remote() || $self->is_remote()) {
             # TODO: check if target and source are the same users on the same host
             $sDumpCmd= $self->_ssh->build_ssh_cmd($sDumpCmd);
         }
+
+        # now execute dump command on target
         unless ($self->get_global_set_value('switch.pretend')) {
             $oTargetPath->run_cmd("$sDumpCmd > $sDestFile");
             if ($self->get_last_exit) {
