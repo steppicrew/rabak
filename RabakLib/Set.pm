@@ -30,7 +30,7 @@ sub new {
     my $self;
     # print Dumper($sName); die;
     if ($sName && defined $hConf->{VALUES}{$sName}) {
-        $self= $class->SUPER::new($sName, $hConf->{VALUES}{$sName});
+        $self= $class->SUPER::new($hConf->{VALUES}{$sName});
         $self->{ERROR}= $bSkipValidation ? undef : $self->_validate();
     }
     else {
@@ -46,8 +46,9 @@ sub new {
 
     $self->{_TARGET_OBJECT}= undef;
 
-    $self->set_log(RabakLib::Log->new($hConf));
-    $self->get_log->set_category($sName);
+    logger->init($hConf);
+
+    logger->set_category($sName);
 
     # my $xx= "file://C:/etc/passwd";
     # my $uri= URI->new($xx); # self->{VALUES}{source});
@@ -299,7 +300,7 @@ sub logPretending {
     my $self= shift;
     return unless $self->get_global_value('switch.pretend');
 
-    $self->log("", "*** Only pretending, no changes are made! ****", "");
+    logger->log("", "*** Only pretending, no changes are made! ****", "");
 }
 
 sub _mail {
@@ -323,8 +324,8 @@ sub _mail_log {
     my $self= shift;
     my $sSubject= shift;
 
-    my $iErrors= $self->get_log->get_errorCount;
-    my $iWarns= $self->get_log->get_warnCount;
+    my $iErrors= logger->get_errorCount;
+    my $iWarns= logger->get_warnCount;
     my $sErrWarn;
     $sErrWarn= "$iErrors error" if $iErrors; 
     $sErrWarn.= "s" if $iErrors > 1; 
@@ -334,7 +335,7 @@ sub _mail_log {
     $sSubject.= " ($sErrWarn)" if $sErrWarn;
     
     $sSubject= "RABAK '" . $self->get_value("name") . "': $sSubject";
-    return $self->_mail($sSubject, $self->get_log->get_messages());
+    return $self->_mail($sSubject, logger->get_messages());
 }
 
 sub _mail_warning {
@@ -415,7 +416,7 @@ sub _mkdir {
 
     return 1 if $self->get_targetPath()->mkdir($sDir);
 
-    $self->log($self->warnMsg("Mkdir '$sDir' failed: $!"));
+    logger->log(logger->warnMsg("Mkdir '$sDir' failed: $!"));
     return 0;
 }
 
@@ -445,7 +446,7 @@ sub get_sourcePaths {
             push @oSources, $oSource;
         }
         else {
-            $self->log($self->errorMsg("Source Object '$sSource' could not be loaded. Skipped."))
+            logger->log(logger->errorMsg("Source Object '$sSource' could not be loaded. Skipped."))
         }
         
     } 
@@ -466,23 +467,23 @@ sub backup {
     my $iMountResult= $oTargetPath->mountAll(\@sMountMessage);
 
     unless ($iMountResult) { # fatal mount error
-        $self->logError("There was at least one fatal mount error on target. Backup set skipped.");
-        $self->logError(@sMountMessage);
+        logger->logError("There was at least one fatal mount error on target. Backup set skipped.");
+        logger->logError(@sMountMessage);
         $iResult= -3;
         goto cleanup;
     }
-    $self->log(@sMountMessage);
+    logger->log(@sMountMessage);
 
     # check target dir
     unless ($oTargetPath->isDir) {
-        $self->logError(@sMountMessage);
-        $self->logError("Target \"".$oTargetPath->get_value("path")."\" is not a directory. Backup set skipped.");
+        logger->logError(@sMountMessage);
+        logger->logError("Target \"".$oTargetPath->get_value("path")."\" is not a directory. Backup set skipped.");
         $iResult= -1;
         goto cleanup;
     }
     unless ($oTargetPath->isWritable) {
-        $self->logError(@sMountMessage);
-        $self->logError("Target \"".$oTargetPath->get_value("path")."\" is not writable. Backup set skipped.");
+        logger->logError(@sMountMessage);
+        logger->logError("Target \"".$oTargetPath->get_value("path")."\" is not writable. Backup set skipped.");
         $iResult= -2;
         goto cleanup;
     }
@@ -504,23 +505,24 @@ sub backup {
 
         my $sLogFileName= $oTargetPath->get_value("PATH") . "/$sLogFile";
 
-        my $sError= $self->get_log->open($sLogFileName, $oTargetPath);
+        my $sError= logger->open($sLogFileName, $oTargetPath);
         if ($sError) {
-            $self->log($self->warnMsg("Can't open log file \"$sLogFileName\" ($sError). Going on without..."));
+            logger->log(logger->warnMsg("Can't open log file \"$sLogFileName\" ($sError). Going on without..."));
         }
         else {
-            if (!$self->get_log->is_new()) {
+            # TODO: transfer to Log.pm
+            if (!logger->is_new()) {
 
                 # TODO: only to file
-                $self->log("", "===========================================================================", "");
+                logger->log("", "===========================================================================", "");
             }
             $oTargetPath->symlink("../$sLogFile", "$sLogLink");
             $oTargetPath->unlink("current-log.$sBakSet");
             $oTargetPath->symlink($sLogFile, "current-log.$sBakSet");
         }
     }
-    $self->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_global_value('switch.logging');
-    $self->log($self->infoMsg("Rabak Version " . $self->get_global_value("version")));
+    logger->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_global_value('switch.logging');
+    logger->log(logger->infoMsg("Rabak Version " . $self->get_global_value("version")));
     $self->logPretending();
 
     # now try backing up every source 
@@ -528,7 +530,7 @@ sub backup {
     for my $oSource (@oSources) {
         my $sName= $oSource->get_value("name") || '';
         if ($sNames{$sName}) {
-            $self->log($self->errorMsg("Name '$sName' of Source Object has already been used. Skipping backup of source."));
+            logger->log(logger->errorMsg("Name '$sName' of Source Object has already been used. Skipping backup of source."));
             next;
         }
         $sNames{$sName}= 1;
@@ -538,11 +540,11 @@ sub backup {
             }
             $self->_backup_cleanup($oSource);
         };
-        $self->log($self->errorMsg("An error occured during backup: '$@'")) if $@;
+        logger->log(logger->errorMsg("An error occured during backup: '$@'")) if $@;
     }
 
     # stop logging
-    $self->get_log->close();
+    logger->close();
     
     $iResult= scalar(@oSources) - $iSuccessCount;
 
@@ -574,12 +576,12 @@ sub _backup_setup {
 
     # mount errors on source are non-fatal!
     #unless ($iMountResult) { # fatal mount error
-    #    $self->logError("There was at least one fatal mount error on source. Backup set skipped.");
-    #    $self->logError(@sMountMessage);
+    #    logger->logError("There was at least one fatal mount error on source. Backup set skipped.");
+    #    logger->logError(@sMountMessage);
     #    return 3;
     #}
 
-    $self->log(@sMountMessage);
+    logger->log(@sMountMessage);
 
     my ($sBakMonth, $sBakDay)= $self->_build_bakMonthDay;
     my $sBakSet= $self->get_value("name");
@@ -595,9 +597,9 @@ sub _backup_setup {
 
     $self->_mkdir($sTarget);
 
-    $self->log($self->infoMsg("Backup $sBakDay exists, using subset.")) if $sSubSet;
-    $self->log($self->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSource, $sBakDay$sSubSet, " . $self->get_value("title")));
-    $self->log("Source: " . $oSource->getFullPath);
+    logger->log(logger->infoMsg("Backup $sBakDay exists, using subset.")) if $sSubSet;
+    logger->log(logger->infoMsg("Backup start at " . strftime("%F %X", localtime) . ": $sBakSource, $sBakDay$sSubSet, " . $self->get_value("title")));
+    logger->log("Source: " . $oSource->getFullPath);
 
     $self->{_BAK_DIR_LIST}= \@sBakDir;
     $self->{_BAK_DAY}= $sBakDay;
@@ -620,15 +622,15 @@ sub _backup_run {
     my $sTarget= $self->{_TARGET};
 
     my $iErrorCode= 0;
-    $self->get_log->set_prefix($sBakType);
-    $iErrorCode= $oSource->run(@sBakDir);
-    $self->get_log->set_prefix();
+    logger->set_prefix($sBakType);
+    $iErrorCode= $oSource->run($oTargetPath, $self->get_value("full_target"), $self->get_value("unique_target"), @sBakDir);
+    logger->set_prefix();
 
     if (!$iErrorCode) {
-        $self->log("Done!");
+        logger->log("Done!");
     }
     else {
-        $self->log($self->errorMsg("Backup failed: " . $oSource->get_last_error));
+        logger->log(logger->errorMsg("Backup failed: " . $oSource->get_last_error));
         $iErrorCode= 9;
     }
 
@@ -683,7 +685,7 @@ sub _backup_cleanup {
     my $sBakDay= $self->{_BAK_DAY};
     my $sSubSet= $self->{_SUB_SET};
 
-    $self->log($self->infoMsg("Backup done at " . strftime("%F %X", localtime) . ": $sBakSource, $sBakDay$sSubSet")) if $sBakSource && $sBakDay && $sSubSet;
+    logger->log(logger->infoMsg("Backup done at " . strftime("%F %X", localtime) . ": $sBakSource, $sBakDay$sSubSet")) if $sBakSource && $sBakDay && $sSubSet;
 }
 
 # -----------------------------------------------------------------------------
@@ -700,7 +702,7 @@ sub rm_file {
 
     # print Dumper(\@sFileMask);
 
-    map { $self->logExitError(2, "Every filemask MUST start with \"/\"!") unless /^\//; } @sFileMask;
+    map { logger->logExitError(2, "Every filemask MUST start with \"/\"!") unless /^\//; } @sFileMask;
 
     return 2 unless scalar @sFileMask && defined $sFileMask[0];
 
@@ -716,7 +718,7 @@ sub rm_file {
     my $oTargetPath= $self->get_targetPath();
 
     # TODO: Make a better check!
-    $self->logExitError(3, "Can't remove! \"$sBakSet.target\" is empty or points to file system root.") if $oTargetPath->getPath eq '' || $oTargetPath->getPath eq '/';
+    logger->logExitError(3, "Can't remove! \"$sBakSet.target\" is empty or points to file system root.") if $oTargetPath->getPath eq '' || $oTargetPath->getPath eq '/';
 
     my @sBakDir= $self->collect_bakdirs($sBakSet, $sBakSetDay);
 
@@ -748,7 +750,7 @@ sub rm_file {
     }
 
     map {
-        $self->log("Removing " . scalar @{ $aDirs{$_} } . " directories: $_");
+        logger->log("Removing " . scalar @{ $aDirs{$_} } . " directories: $_");
         !$self->get_global_value('switch.pretend') && rmtree($aDirs{$_}, $self->{DEBUG});
 
         # print Dumper($aDirs{$_});
@@ -756,14 +758,14 @@ sub rm_file {
     } sort { $a cmp $b } keys %aDirs;
 
     map {
-        $self->log("Removing " . scalar @{ $aFiles{$_} } . " files: $_");
+        logger->log("Removing " . scalar @{ $aFiles{$_} } . " files: $_");
 
         # print Dumper($aFiles{$_});
 
         !$self->get_global_value('switch.pretend') && unlink(@{ $aFiles{$_} });
     } sort { $a cmp $b } keys %aFiles;
 
-    map { $self->log("Didn't find: $_") unless defined $iFoundMask{$_} } @sFileMask;
+    map { logger->log("Didn't find: $_") unless defined $iFoundMask{$_} } @sFileMask;
 
     return 0;
 }

@@ -107,7 +107,7 @@ sub read_file {
     my $self= shift;
     my $sFile= shift;
 
-    $self->{CONF}= RabakLib::Conf->new($sFile);
+    $self->{CONF}= RabakLib::Conf->new();
     $self->{ERROR}= undef;
     $self->_read_file($sFile);
 }
@@ -187,7 +187,7 @@ sub _read_file {
                     $self->_error("Variable \"" . substr($sErrKey, 1) . "\" is not a structure", $iLine, $sLine);
                 }
             }
-            $hConf->{VALUES}{$sKey}= RabakLib::Conf->new($sKey) unless $hConf->{VALUES}{$sKey};
+            $hConf->{VALUES}{$sKey}= RabakLib::Conf->new() unless $hConf->{VALUES}{$sKey};
             $hConf= $hConf->{VALUES}{$sKey};
             $sKey= $_;
         }

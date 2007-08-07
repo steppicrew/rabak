@@ -149,7 +149,8 @@ sub cmd_test1 {
 sub _conf_read {
     $oConfFile= RabakLib::ConfFile->new($opt_c ? $opt_c : 'rabak.cf');
     $oConf= $oConfFile->conf();
-    $oConf->set_defaults({
+    # overwrite values with comand line switches
+    $oConf->set_values({
         'switch.pretend' => $opt_p,
         'switch.verbose' => defined $opt_v ? 4 : undef,
         'switch.quiet' => $opt_q,

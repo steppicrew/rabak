@@ -9,7 +9,7 @@ use strict;
 
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::CommonBase);
+@ISA = qw(RabakLib::Conf);
 
 use Data::Dumper;
 use File::Spec ();
@@ -89,18 +89,6 @@ sub local_tempdir {
 #    my $sDir= File::Spec->tmpdir;
 #    $sDir= $self->get_value("tempdir");
 #    return File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 1, DIR => $sDir);
-}
-
-sub get_set_value {
-    my $self= shift;
-    return $self->{SET}->get_value(@_) if $self->{SET};
-    return undef;
-}
-
-sub get_set_node {
-    my $self= shift;
-    return $self->{SET}->get_node(@_) if $self->{SET};
-    return undef;
 }
 
 sub get_global_set_value {

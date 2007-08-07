@@ -19,20 +19,6 @@ sub new {
     my $self= $class->SUPER::new($oSet, $sConfName);
     bless $self, $class;
 
-    unless ($self->get_value("group")) {
-        my $sGroup= $self->get_set_value("targetgroup");
-        if ($sGroup) {
-            $self->set_value("group", $sGroup);
-            $self->log($self->warnMsg("BakSet option \"targetgroup\" is deprecated. Please use \"group\" in Target Objects! (see Doc)"));
-        }
-    }
-    unless ($self->get_value("discfree_threshold")) {
-        my $sDFT= $self->get_set_value("target_discfree_threshold");
-        if ($sDFT) {
-            $self->set_value("discfree_threshold", $sDFT);
-            $self->log($self->warnMsg("BakSet option \"target_discfree_threshold\" is deprecated. Please use \"discfree_threshold\" in Target Objects! (see Doc)"));
-        }
-    }
     return $self;
 }
 

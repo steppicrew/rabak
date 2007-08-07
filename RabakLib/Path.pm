@@ -51,7 +51,6 @@ sub new {
 
     if ($oSet) {
         $self->{SET}= $oSet;
-        $self->set_log($oSet->get_log());
     }
 
     bless $self, $class;

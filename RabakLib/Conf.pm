@@ -5,74 +5,131 @@ package RabakLib::Conf;
 use warnings;
 use strict;
 
-use RabakLib::CommonBase;
-
-# our @ISA = qw(Exporter);
-# our @EXPORT = qw($sFile);
-use vars qw(@ISA);
-
-@ISA = qw(RabakLib::CommonBase);
-
 use Data::Dumper;
+use RabakLib::Log;
 
-=pod
+our $iElemNo= 0;
+#our $oLog= RabakLib::Log->new();
 
-=head1 NAME
-
-RabakLib::Conf - Handle Conf Files
-
-=head1 SYNOPSYS
-
-Format very similar to postfix config files:
-
-    key1 = value1
-    key2 = multi
-        lined           # indent the following lines
-    key3.prop1 = $key1  # -> key3.prop1 = value1
-    key3.prop2 = $key1
-        $key2           # -> key3.prop2 = value1 \n multi \n lined
-    key4.prop3= $key3   # -> key4.prop3.prop1 = value1
-                        #    key4.prop3.prop2 = value1 \n multi \n lined
-=cut
-
+# TODO: consistent new parameter convention
 sub new {
     my $class = shift;
-    my $sName= shift || '';
+    my $self= shift || {};
 
-    my $self= $class->SUPER::new(@_);
-    $self->{DEFAULTS}= {};
-    $self->{NAME}= $sName;
+    $self->{SET} = shift;
+    $self->{ERRORCODE}= undef;
 
+    $self->{NAME}= "elem_" . ($iElemNo++);
+    
+    $self->{VALUES}= {} unless ref $self->{VALUES};
     bless $self, $class;
-}
-
-# TODO: Default values!!
-
-sub set_defaults {
-    my $self= shift;
-    my $hDefaults= shift;
-    my %sDefaults= map { lc($_) => $hDefaults->{$_} } keys(%{$hDefaults});
-    $self->{DEFAULTS}= \%sDefaults;
+    $self->set_log($self->{SET}->get_log()) if $self->{SET};
+    return $self;
 }
 
 sub get_raw_value {
     my $self= shift;
     my $sName= lc(shift || '');
     my $sDefault= shift || undef;
+    
+    if ($sName =~ s/^\&//) {
+        $self->log($self->warnMsg("It seems you are trying to read a value instead of an object reference ('&$sName')!"));
+    }
 
-    return $self->{DEFAULTS}{$sName} if defined $self->{DEFAULTS}{$sName};
-    return $self->SUPER::get_raw_value($sName, $sDefault);
+    my @sName= split(/\./, $sName);
+    $sName= pop @sName;
+    for (@sName) {
+        return $sDefault unless ref $self->{VALUES}{$_};
+        $self= $self->{VALUES}{$_};
+    }
+    return $sDefault unless defined $self->{VALUES}{$sName};
+    return $sDefault if $self->{VALUES}{$sName} eq '*default*';
+    return $self->{VALUES}{$sName} unless ref $self->{VALUES}{$sName};
+    return $sDefault;
+}
+
+sub remove_backslashes_part1 {
+    my $self= shift;
+    my $sValue= shift;
+
+    return $sValue unless $sValue;
+
+    if ($sValue =~ /\\$/) {
+        $self->log($self->warnMsg("Conf-File contains lines ending with backslashes!"));
+    }
+
+    # make every "~" preceeded by "." (not space to keep word separators)
+    $sValue =~ s/\~/\.\~/g;
+    # replace every double backslash with "\~"
+    $sValue =~ s/\\\\/\\\~/g;
+    return $sValue;
+}
+
+sub remove_backslashes_part2 {
+    my $self= shift;
+    my $sValue= shift;
+
+    return $sValue unless $sValue;
+
+    # Insert support for tab etc.. here
+    # $sValue =~ s/\\t/\t/g;
+
+    # remove all backslashes
+    $sValue =~ s/\\(?!_)//g;
+    # rereplace changes made in part1
+    $sValue =~ s/\\\~/\\/g;
+    $sValue =~ s/\.\~/\~/g;
+    return $sValue;
+}
+
+sub remove_backslashes {
+    my $self= shift;
+    my $sValue= shift;
+
+    return $self->remove_backslashes_part2($self->remove_backslashes_part1($sValue));
+}
+
+sub get_value {
+    my $self= shift;
+    return $self->remove_backslashes($self->get_raw_value(@_));
+}
+
+sub get_node {
+    my $self= shift;
+    my $sName= lc(shift || '');
+
+    my $bDepricated= !($sName=~ s/^\&//);
+    
+    return undef if $sName eq '.';
+
+    my @sName= split(/\./, $sName);
+    for (@sName) {
+        return undef unless ref $self->{VALUES}{$_};
+        $self= $self->{VALUES}{$_};
+    }
+    if ($bDepricated && defined $self) {
+        $self->log($self->warnMsg("Referencing objects without leading '&' is deprecated. Please specify '&$sName'"));
+    }
+    return $self;
+}
+
+sub set_values {
+    my $self= shift;
+    my $hValues= shift;
+    for my $sName (keys(%$hValues)) {
+        $self->set_value($sName, $hValues->{$sName}) if defined $hValues->{$sName};
+    }
 }
 
 sub set_value {
     my $self= shift;
     my $sName= lc(shift || '');
     my $sValue= shift;
-    
+
     my @sName= split(/\./, $sName);
     $sName= pop @sName;
     for (@sName) {
-        $self->{VALUES}{$_}= RabakLib::Conf->new($_) unless ref $self->{VALUES}{$_};
+        $self->{VALUES}{$_}= RabakLib::Conf->new() unless ref $self->{VALUES}{$_};
         $self= $self->{VALUES}{$_};
     }
     
@@ -96,10 +153,5 @@ sub show {
         print "$sKey.$_ = $sValue\n";
     }
 }
-
-# Build output as graphviz directed graph
-# sub asDot {
-#     my $self= shift;
-# }
 
 1;

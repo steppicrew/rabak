@@ -27,8 +27,6 @@ sub Factory {
     }
     my $sType= $self->get_value("type");
     unless (defined $sType) {
-       $sType= $self->get_set_value("type"); 
-       $self->log($self->warnMsg("Specifying type in bakset is deprecated. Please set type in Source Object!")) if $sType;
        $sType= "file" unless $sType;
        $self->set_value("type", $sType);
     } 
@@ -38,8 +36,6 @@ sub Factory {
         require "$Bin/RabakLib/SourceType/$sType.pm";
         my $oClass= "RabakLib::SourceType::$sType";
         $oFactory= $oClass->new(%{$self->{VALUES}});
-        $oFactory->{SET}= $oSet;
-        $oFactory->set_log($self->get_log);
         unless ($oFactory->get_value("name")) {
             my $sName= '';
             $sName= $sConfName if $sConfName ne $oFactory->get_value("path");
@@ -62,21 +58,6 @@ sub Factory {
 
 
 
-sub new {
-    my $class = shift;
-    my $self= $class->SUPER::new(@_);
-    
-    unless ($self->get_value("keep")) {
-        my $iKeep= $self->get_set_value("keep");
-        if (defined $iKeep) {
-            $self->set_value("keep", $iKeep);
-            $self->log($self->warnMsg("Specifying keep option in bakset is deprecated. Please set 'keep' in Source Object!"));
-        }
-    }
-
-    bless $self, $class;
-}
-
 sub show {
     my $self= shift;
     print "source name: " . $self->get_value("name") . "\n";
@@ -87,12 +68,6 @@ sub getFullPath {
     my $self= shift;
     my $sFullPath= $self->SUPER::getFullPath();
     return "[" . $self->get_value("type") . "]:$sFullPath";
-}
-
-sub get_targetPath {
-    my $self= shift;
-    return $self->{SET}->get_targetPath() if $self->{SET};
-    return undef;
 }
 
 sub collect_bakdirs {

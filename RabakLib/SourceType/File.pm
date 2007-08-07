@@ -10,26 +10,7 @@ use vars qw(@ISA);
 
 use Data::Dumper;
 use File::Spec;
-
-sub new {
-    my $class = shift;
-    my $self= $class->SUPER::new(@_);
-    
-    my $sFilter= $self->get_value("filter");
-    unless (defined $sFilter) {
-       $sFilter= $self->get_set_value("filter");
-       $self->log($self->warnMsg("Specifying filter in bakset is deprecated. Please set filter in Source Object!")) if $sFilter;
-       $self->set_value("filter", $sFilter);
-    } 
-    unless ($self->get_value("scan_bak_dirs")) {
-        my $iScanBakDirs= $self->get_set_value("scan_bak_dirs");
-        if (defined $iScanBakDirs) {
-            $self->set_value("scan_bak_dirs", $iScanBakDirs);
-            $self->log($self->warnMsg("Specifying scan_bak_dirs in bakset is deprecated. Please set 'scan_bak_dirs' in Source Object!"));
-        }
-    }
-    bless $self, $class;
-}
+use RabakLib::Log;
 
 sub _get_filter {
     my $self= shift;
@@ -137,7 +118,7 @@ sub _expandMacro {
             delete $hStack->{$sMacroName};
         }
     }
-    $self->log($self->errorMsg("Filter expansion: $sResult{ERROR}")) if $sResult{ERROR};
+    logger->log(logger->errorMsg("Filter expansion: $sResult{ERROR}")) if $sResult{ERROR};
 #    return $sResult{DATA};
 # print "Done $sMacroName\n";
     return \%sResult;
@@ -234,14 +215,14 @@ sub _parseFilter {
         $sEntry=~ s/([^\/])$/$1\// if $isDir;
 
         unless ($sIncExc) {
-            $self->log($self->warnMsg("'$sEntry' has no include/exclude prefix. Ignored."));
+            logger->log(logger->warnMsg("'$sEntry' has no include/exclude prefix. Ignored."));
             push @sResult, "# WARNING!! '$sEntry' has no include/exclude prefix. Ignored.";
             next;
         }
         if (length $sIncExc > 1) {
             my $sSearchFor= $sIncExc=~ /^\+/ ? '-' : '+';
             if (index($sIncExc, $sSearchFor) >= 0) {
-                $self->log($self->warnMsg("'$sEntry' has ambiguous include/exclude prefix. Ignored."));
+                logger->log(logger->warnMsg("'$sEntry' has ambiguous include/exclude prefix. Ignored."));
                 push @sResult, "# WARNING!! '$sEntry' has ambiguous include/exclude prefix. Ignored.";
                 next;
             }
@@ -249,7 +230,7 @@ sub _parseFilter {
         }
 
         if ($sEntry=~ /^\// && $sEntry!~ s/^$sqBaseDir/\//) {
-            $self->log($self->warnMsg("'$sEntry' is not contained in source path '$sBaseDir'."));
+            logger->log(logger->warnMsg("'$sEntry' is not contained in source path '$sBaseDir'."));
             push @sResult, "# WARNING!! '$sEntry' is not contained in source path '$sBaseDir'. Ignored.";
             next;
         }
@@ -260,7 +241,7 @@ sub _parseFilter {
                 $sDir.= "$_";
 #                next if $sDir eq "/";
                 unless ($sIncDirs{$sDir}) {
-                    $self->log($self->warnMsg("Include '$sDir' is masked by exclude rule.")) if $sExcDirs{$sDir};
+                    logger->log(logger->warnMsg("Include '$sDir' is masked by exclude rule.")) if $sExcDirs{$sDir};
                     push @sResult, "$sIncExc $sDir" if $_ eq "/"; # push directory
                     $sIncDirs{$sDir}= 1;
                 }
@@ -301,11 +282,11 @@ sub valid_source_dir {
     my $sSourceDir= $self->getFullPath();
 
     if (!$self->isDir()) {
-        $self->logError("Source \"$sSourceDir\" is not a directory. Backup set skipped.");
+        logger->logError("Source \"$sSourceDir\" is not a directory. Backup set skipped.");
         return undef;
     }
     if (!$self->isReadable()) {
-        $self->logError("Source \"$sSourceDir\" is not readable. Backup set skipped.");
+        logger->logError("Source \"$sSourceDir\" is not readable. Backup set skipped.");
         return undef;
     }
 
@@ -314,6 +295,9 @@ sub valid_source_dir {
 
 sub run {
     my $self= shift;
+    my $oTargetPath= shift;
+    my $sFullTarget= shift;
+    my $sUniqueTarget= shift;
     my @sBakDir= @_;
 
     return 3 unless $self->valid_source_dir();
@@ -324,7 +308,6 @@ sub run {
 
     my $sBakSet= $self->get_value('name');
     my $sRsyncOpts = $self->get_value('rsync_opts') || '';
-    my $oTargetPath= $self->get_targetPath();
 
     # Write filter rules to temp file:
     my ($fhwRules, $sRulesFile)= $self->local_tempfile();
@@ -369,11 +352,11 @@ sub run {
 
         if ($sRsyncOpts=~ s/\-\-bwlimit\=(\d+)//) {
             $sBandwidth= $1 unless $sBandwidth;
-            $self->log($self->warnMsg("--bandwidth in 'rsync_opts' is deprecated. Please use 'bandwidth' option (see Doc)!"));
+            logger->log(logger->warnMsg("--bandwidth in 'rsync_opts' is deprecated. Please use 'bandwidth' option (see Doc)!"));
         }
         if ($sRsyncOpts=~ s/\-\-timeout\=(\d+)//) {
             $sTimeout= $1 unless $oTargetPath->get_value("timeout");
-            $self->log($self->warnMsg("--timeout in 'rsync_opts' is deprecated. Please use 'timeout' option (see Doc)!"));
+            logger->log(logger->warnMsg("--timeout in 'rsync_opts' is deprecated. Please use 'timeout' option (see Doc)!"));
         }
         my $sSshCmd= "ssh -p $sPort";
         map { $sSshCmd.= " -i \"$_\"" if $_; } @sIdentityFiles if @sIdentityFiles;
@@ -393,7 +376,7 @@ sub run {
     my $sSrcDir = $self->getPath;
     # make sure path ends with "/"
     $sSrcDir=~ s/\/?$/\//;
-    my $sDestDir= $oTargetPath->getPath($self->get_set_value("full_target"));
+    my $sDestDir= $oTargetPath->getPath($sFullTarget);
     # run rsync command on source by default
     my $oRsyncPath= $self;
     if ($oTargetPath->is_remote()) {
@@ -408,14 +391,14 @@ sub run {
 
     my $sRsyncCmd= "rsync $sFlags \"$sSrcDir\" \"$sDestDir\"";
 
-    $self->log($self->infoMsg("Running: $sRsyncCmd"));
+    logger->log(logger->infoMsg("Running: $sRsyncCmd"));
 
     # run rsync command
     my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= $oRsyncPath->run_cmd($sRsyncCmd);
-    $self->log($self->errorMsg($sError)) if $sError;
-    $self->log($self->warnMsg("rsync exited with result ".  $iRsyncExit)) if $iRsyncExit;
+    logger->log(logger->errorMsg($sError)) if $sError;
+    logger->log(logger->warnMsg("rsync exited with result ".  $iRsyncExit)) if $iRsyncExit;
     my @sRsyncError= split(/\n/, $sRsyncErr || '');
-    $self->log($self->errorMsg(@sRsyncError)) if @sRsyncError;
+    logger->log(logger->errorMsg(@sRsyncError)) if @sRsyncError;
     my @sRsyncStat= ();
 
     for (split(/\n/, $sRsyncOut || '')) {
@@ -425,8 +408,8 @@ sub run {
     my @sRsyncFiles= ();
     push @sRsyncFiles, shift @sRsyncStat while ((scalar @sRsyncStat) && $sRsyncStat[0] !~ /^Number of .*\:\s+\d+$/);
 
-    $self->log([ 3, @sRsyncFiles ]);
-    $self->log('*** Rsync Statistics: ***', @sRsyncStat);
+    logger->log([ 3, @sRsyncFiles ]);
+    logger->log('*** Rsync Statistics: ***', @sRsyncStat);
 
     # return success for partial transfer errors (errors were raised already above)
     return 0 if $iRsyncExit == 23 || $iRsyncExit == 24;

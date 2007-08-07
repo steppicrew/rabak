@@ -9,6 +9,7 @@ use vars qw(@ISA);
 @ISA = qw(RabakLib::Path::Source);
 
 use Data::Dumper;
+use RabakLib::Log;
 
 sub new {
     my $class = shift;
@@ -23,19 +24,19 @@ sub new {
         my $sUser= $self->get_set_value("user");
         if (defined $sUser) {
             $self->set_value("dbuser", $sUser);
-            $self->log($self->warnMsg("Specifying database user name in bakset is deprecated. Please set 'dbuser' in Source Object!"));
+            logger->log(logger->warnMsg("Specifying database user name in bakset is deprecated. Please set 'dbuser' in Source Object!"));
         }
     }
     unless ($self->get_value("dbpassword")) {
         my $sPasswd= $self->get_set_value("password");
         if (defined $sPasswd) {
             $self->set_value("dbpassword", $sPasswd);
-            $self->log($self->warnMsg("Specifying database password in bakset is deprecated. Please set 'dbpassword' in Source Object!"));
+            logger->log(logger->warnMsg("Specifying database password in bakset is deprecated. Please set 'dbpassword' in Source Object!"));
         }
     }
 
     my $sPacker= lc $self->get_value("packer");
-    $self->log($self->warnMsg("Unknown packer '$sPacker'. Valid Values are: '" .
+    logger->log(logger->warnMsg("Unknown packer '$sPacker'. Valid Values are: '" .
         join("', '", keys %sPackers) . 
         "'. Using default 'bzip2'")) if $sPacker && !$sPackers{$sPacker};
     $sPacker= "bzip2" unless $sPacker && $sPackers{$sPacker};
@@ -63,9 +64,11 @@ sub get_valid_db {
 # TODO: support large objects (pg_dump -Fc)
 sub run {
     my $self= shift;
+    my $oTargetPath= shift;
+    my $sFullTarget= shift;
+    my $sUniqueTarget= shift;
     my @sBakDir= @_;
 
-    my $oTargetPath= $self->get_targetPath();
 
     my %sValidDb= ();
     my @sDb= ();
@@ -74,7 +77,7 @@ sub run {
     my $i= 0;
     $self->run_cmd($self->get_show_cmd);
     if ($self->get_last_exit) {
-        $self->log($self->errorMsg("show databases command failed with: " . $self->get_error));
+        logger->log(logger->errorMsg("show databases command failed with: " . $self->get_error));
         return 9;
     }
     %sValidDb= $self->parse_valid_db($self->get_last_out);
@@ -87,7 +90,7 @@ sub run {
     else {
         for (split(/\s*,\s*/, $sSource)) {
             unless (defined $sValidDb{$_}) {
-                $self->log($self->warnMsg("Unknown database: \"$_\""));
+                logger->log(logger->warnMsg("Unknown database: \"$_\""));
                 next;
             }
             unshift @sDb, $_;
@@ -98,7 +101,7 @@ sub run {
     my $sZipExt= $self->{PACKER}{ext};
 
     foreach (@sDb) {
-        my $sDestFile= $self->get_set_value('full_target') . "/$_." . $self->get_set_value('unique_target') . ".$sZipExt";
+        my $sDestFile= "$sFullTarget/$_.$sUniqueTarget.$sZipExt";
         my $sProbeCmd= $self->get_probe_cmd($_);
 
         unless ($self->get_global_set_value('switch.pretend')) {
@@ -106,7 +109,7 @@ sub run {
             if ($self->get_last_exit) {
                 my $sError= $self->get_last_error;
                 chomp $sError;
-                $self->logError("Probe failed. Skipping \"$_\": $sError");
+                logger->logError("Probe failed. Skipping \"$_\": $sError");
                 next;
             }
         }
@@ -128,7 +131,7 @@ sub run {
             if ($self->get_last_exit) {
                 my $sError= $self->get_last_error;
                 chomp $sError;
-                $self->logError("Dump failed. Skipping dump of \"$_\": $sError");
+                logger->logError("Dump failed. Skipping dump of \"$_\": $sError");
                 next;
             }
         }
