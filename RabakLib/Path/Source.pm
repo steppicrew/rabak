@@ -23,7 +23,7 @@ sub Factory {
     if ($sPath && $sPath=~ s/^(\w+)\:\/\///) {
         $self->set_value("type", $1);
         $self->set_value("path", $sPath);
-        $self->log($self->warnMsg("Specifying type in source path is deprecated. Please set type in Source Object!"));
+        logger->warn("Specifying type in source path is deprecated. Please set type in Source Object!");
     }
     my $sType= $self->get_value("type");
     unless (defined $sType) {
@@ -46,10 +46,10 @@ sub Factory {
     };
     if ($@) {
         if ($@ =~ /^Can\'t locate/) {
-            $self->log($self->errorMsg("Backup type \"" . $sType . "\" is not defined: $@"));
+            logger->error("Backup type \"" . $sType . "\" is not defined: $@");
         }
         else {
-            $self->log($self->errorMsg("An error occured: $@"));
+            logger->error("An error occured: $@");
         }
         return undef;
     }

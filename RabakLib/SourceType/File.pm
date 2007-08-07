@@ -230,7 +230,7 @@ sub _parseFilter {
         }
 
         if ($sEntry=~ /^\// && $sEntry!~ s/^$sqBaseDir/\//) {
-            logger->log(logger->warnMsg("'$sEntry' is not contained in source path '$sBaseDir'."));
+            logger->warn("'$sEntry' is not contained in source path '$sBaseDir'.");
             push @sResult, "# WARNING!! '$sEntry' is not contained in source path '$sBaseDir'. Ignored.";
             next;
         }

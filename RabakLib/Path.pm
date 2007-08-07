@@ -203,7 +203,7 @@ sub _mount {
         my @sCurrentMountMessage = ();
         $sUnmount= $sMountDevice ne '' ? $sMountDevice : $sMountDir;
         $spMountDevice= $sMountDevice ? " \"$sMountDevice\""  : "";
-        push @sCurrentMountMessage, $self->infoMsg("Trying to mount \"$sUnmount\"");
+        push @sCurrentMountMessage, logger->info("Trying to mount \"$sUnmount\"");
 
         goto nextDevice unless $self->isPossibleValid($sMountDevice, \@sCurrentMountMessage);
 
@@ -212,7 +212,7 @@ sub _mount {
             my $sMountResult= $self->get_error;
             chomp $sMountResult;
             $sMountResult =~ s/\r?\n/ - /g;
-            push @sCurrentMountMessage, $self->warnMsg("Mounting$spMountDevice$spMountDir failed with: $sMountResult!");
+            push @sCurrentMountMessage, logger->warn("Mounting$spMountDevice$spMountDir failed with: $sMountResult!");
             goto nextDevice;
         }
 
@@ -230,8 +230,8 @@ nextDevice:
         unshift @{ $arUnmount }, $sUnmount if $oMount->get_value("unmount") && $iResult;
     }
 
-    push @{ $arMessage }, $self->infoMsg("Mounted$spMountDevice$spMountDir") if $iResult;
-    push @{ $arMessage }, $self->errorMsg("All mounts failed") unless $iResult;
+    push @{ $arMessage }, logger->info("Mounted$spMountDevice$spMountDir") if $iResult;
+    push @{ $arMessage }, logger->error("All mounts failed") unless $iResult;
     return $iResult;
 }
 
@@ -305,7 +305,8 @@ sub unmountAll {
             chomp $sResult;
             $sResult =~ s/\r?\n/ - /g;
             next unless $sAllMount{$_};
-            $self->log($self->warnMsg("Unmounting \"$_\" failed: $sResult!"));
+
+            logger->warn("Unmounting \"$_\" failed: $sResult!");
             next;
         }
         $self->log("Unmounted \"$_\"");

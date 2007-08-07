@@ -52,7 +52,9 @@ sub new {
         my $sUser= $2 || '';
         my $sHost= $3;
         $sUser=~ s/\@$//;
-#        $self->log($self->warnMsg("Specifying host and user in path is deprecated. Please use path objects!"));
+
+#        logger->warn("Specifying host and user in path is deprecated. Please use path objects!");
+
         die "Host specified by object AND path!" if $self->get_value("host");
         die "User specified by object AND path!" if $self->get_value("user") && $sUser;
         $self->set_value("host", $sHost);

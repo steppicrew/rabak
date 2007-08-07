@@ -33,7 +33,7 @@ sub get_raw_value {
     my $sDefault= shift || undef;
     
     if ($sName =~ s/^\&//) {
-        $self->log($self->warnMsg("It seems you are trying to read a value instead of an object reference ('&$sName')!"));
+        logger->warn("It seems you are trying to read a value instead of an object reference ('&$sName')!");
     }
 
     my @sName= split(/\./, $sName);
@@ -55,7 +55,7 @@ sub remove_backslashes_part1 {
     return $sValue unless $sValue;
 
     if ($sValue =~ /\\$/) {
-        $self->log($self->warnMsg("Conf-File contains lines ending with backslashes!"));
+        logger->warn("Conf-File contains lines ending with backslashes!");
     }
 
     # make every "~" preceeded by "." (not space to keep word separators)
@@ -108,7 +108,7 @@ sub get_node {
         $self= $self->{VALUES}{$_};
     }
     if ($bDepricated && defined $self) {
-        $self->log($self->warnMsg("Referencing objects without leading '&' is deprecated. Please specify '&$sName'"));
+        logger->warn("Referencing objects without leading '&' is deprecated. Please specify '&$sName'");
     }
     return $self;
 }

@@ -30,20 +30,20 @@ sub isPossibleValid {
     # if device is target, check if its already mounted.
     # if mounted, check if it's our target (and unmount if it is)
     unless ($sMountDevice) {
-        push @$sCurrentMountMessage, $self->warnMsg("Target devices have to be specified with device name");
+        push @$sCurrentMountMessage, logger->warn("Target devices have to be specified with device name");
         return 0;
     }
     my %checkResult = %{$self->_mount_check($sMountDevice, 1)};
-    push @$sCurrentMountMessage, $self->infoMsg($checkResult{INFO}) if $checkResult{INFO};
-    push @$sCurrentMountMessage, $self->errMsg($checkResult{ERROR}) if $checkResult{ERROR};
+    push @$sCurrentMountMessage, logger->info($checkResult{INFO}) if $checkResult{INFO};
+    push @$sCurrentMountMessage, logger->error($checkResult{ERROR}) if $checkResult{ERROR};
     # device is mounted but not target
     if ($checkResult{CODE} == 1) {
         return 0;
     }
     # device was mounted AND target
     if ($checkResult{CODE} == 2) {
-        push @$sCurrentMountMessage, $self->warnMsg("Device $sMountDevice was already mounted");
-        push @$sCurrentMountMessage, $self->warnMsg("Umount result: \"${checkResult{UMOUNT}}\"") if $checkResult{UMOUNT};
+        push @$sCurrentMountMessage, logger->warn("Device $sMountDevice was already mounted");
+        push @$sCurrentMountMessage, logger->warn("Umount result: \"${checkResult{UMOUNT}}\"") if $checkResult{UMOUNT};
     }
     # ($checkResult{CODE} == 0: device not mounted)
     return 1;
@@ -55,8 +55,8 @@ sub isValid {
     my $sCurrentMountMessage= shift;
 
     my %checkResult = %{ $self->_mount_check($sMountDevice, 0) };
-    push @$sCurrentMountMessage, $self->infoMsg($checkResult{INFO}) if $checkResult{INFO};
-    push @$sCurrentMountMessage, $self->errMsg($checkResult{ERROR}) if $checkResult{ERROR};
+    push @$sCurrentMountMessage, logger->info($checkResult{INFO}) if $checkResult{INFO};
+    push @$sCurrentMountMessage, logger->error($checkResult{ERROR}) if $checkResult{ERROR};
     if ($checkResult{CODE} == 0) { # device is not mounted
         push @$sCurrentMountMessage, $self->warnMsg("Device \"$sMountDevice\" is not mounted!");
     }
@@ -66,10 +66,10 @@ sub isValid {
             my $sMountResult= $self->get_error;
             chomp $sMountResult;
             $sMountResult =~ s/\r?\n/ - /g;
-            push @$sCurrentMountMessage, $self->warnMsg("Unmounting \"$sMountDevice\" failed with: $sMountResult!");
+            push @$sCurrentMountMessage, logger->warn("Unmounting \"$sMountDevice\" failed with: $sMountResult!");
         }
         else {
-            push @$sCurrentMountMessage, $self->infoMsg("Unmounted \"$sMountDevice\"");
+            push @$sCurrentMountMessage, logger->info("Unmounted \"$sMountDevice\"");
         }
     }
     elsif ($checkResult{CODE} == 2) { # device mounted and valid target
@@ -161,13 +161,13 @@ sub remove_old {
     
     return unless $iKeep;
 
-    $self->log($self->infoMsg("Keeping last $iKeep versions"));
+    logger->info("Keeping last $iKeep versions");
     splice @sBakDir, 0, $iKeep;
     unless ($self->get_global_set_value('switch.pretend')) {
         foreach (@sBakDir) {
-            $self->log($self->infoMsg("Removing \"$_\""));
+            logger->info("Removing \"$_\"");
             $self->rmtree($_);
-            $self->log($self->errorMsg($self->get_last_error)) if $self->get_last_exit;
+            logger->error($self->get_last_error()) if $self->get_last_exit;
         }
     }
 }
