@@ -11,6 +11,8 @@ use Data::Dumper;
 use File::Spec ();
 use File::Temp ();
 
+use RabakLib::Mount;
+
 use vars qw(@ISA);
 
 @ISA = qw(RabakLib::PathBase);
@@ -127,7 +129,7 @@ sub getMountObjects {
             $oConf= RabakLib::Conf->new(undef, $self);
             $oConf->set_value("directory", $sPath);
         }
-        push @oMounts, RabakLib::Path::Mount->cloneConf($oConf);
+        push @oMounts, RabakLib::Mount->cloneConf($oConf);
     } 
     return @oMounts;
 }

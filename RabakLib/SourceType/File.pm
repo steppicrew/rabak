@@ -268,7 +268,7 @@ sub _parseFilter {
 sub show {
     my $self= shift;
     
-    $self->SUPER::_show();
+    $self->SUPER::show();
     
     return unless $self->get_value("switch.logging") >= LOG_DEBUG_LEVEL;
 

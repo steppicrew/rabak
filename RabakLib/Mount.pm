@@ -9,6 +9,8 @@ use Data::Dumper;
 
 use vars qw(@ISA);
 
+use RabakLib::Log;
+
 @ISA = qw(RabakLib::Conf);
 
 sub new {
@@ -20,7 +22,7 @@ sub new {
     
     $self->{IS_MOUNTED} = 0;
     $self->{PATH_OBJECT} = undef;
-    $self->{UNMOUNT} ) undef;
+    $self->{UNMOUNT} = undef;
 
     bless $self, $class;
 }
@@ -98,7 +100,7 @@ sub mount {
 
     my @sMountMessage = ();
     my $iResult= 0;
-    for $sMountDevice (@sMountDevices) {
+    for my $sMountDevice (@sMountDevices) {
         my @sCurrentMountMessage = ();
         $sUnmount= $sMountDevice ne '' ? $sMountDevice : $sMountDir;
         $self->{UNMOUNT}= $sUnmount;
