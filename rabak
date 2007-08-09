@@ -170,7 +170,7 @@ sub _cmd_setup {
     	_exit(3);
     }
 
-    my $oSet= RabakLib::Set->cloneConf($oSetConf);
+    my $oSet= RabakLib::Set->CloneConf($oSetConf);
     return $oSet;
 }
 
