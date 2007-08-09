@@ -11,36 +11,31 @@ use vars qw(@ISA);
 use Data::Dumper;
 use RabakLib::Log;
 
-sub new {
-    my $class = shift;
-    my $self= $class->SUPER::new(@_);
-    
-    our %sPackers = (
-        bzip2 => { cmd => "bzip2", ext => "bz2"},
-        gzip => { cmd => "gzip", ext => "gz"},
-    );
-    
-    unless ($self->get_value("dbuser")) {
-        my $sUser= $self->get_set_value("user");
-        if (defined $sUser) {
-            $self->set_value("dbuser", $sUser);
-            logger->warn("Specifying database user name in bakset is deprecated. Please set 'dbuser' in Source Object!");
-        }
-    }
-    unless ($self->get_value("dbpassword")) {
-        my $sPasswd= $self->get_set_value("password");
-        if (defined $sPasswd) {
-            $self->set_value("dbpassword", $sPasswd);
-            logger->warn("Specifying database password in bakset is deprecated. Please set 'dbpassword' in Source Object!");
-        }
-    }
+our %sPackers = (
+    bzip2 => { cmd => "bzip2", ext => "bz2"},
+    gzip  => { cmd => "gzip" , ext => "gz"},
+);
 
-    my $sPacker= lc $self->get_value("packer");
+sub cloneConf {
+    my $class= shift;
+    my $oOrigConf= shift;
+    
+    my $new= $class->SUPER::cloneConf($oOrigConf);
+
+    my $sPacker= lc $new->get_value("packer");
     logger->warn("Unknown packer '$sPacker'. Valid Values are: '" .
         join("', '", keys %sPackers) . 
         "'. Using default 'bzip2'") if $sPacker && !$sPackers{$sPacker};
     $sPacker= "bzip2" unless $sPacker && $sPackers{$sPacker};
-    $self->{PACKER} = $sPackers{$sPacker};
+    $new->{PACKER} = $sPackers{$sPacker};
+
+    return $new;
+}
+
+sub new {
+    my $class = shift;
+    my $self= $class->SUPER::new(@_);
+    
     bless $self, $class;
 }
 
@@ -104,7 +99,7 @@ sub run {
         my $sDestFile= "$sFullTarget/$_.$sUniqueTarget.$sZipExt";
         my $sProbeCmd= $self->get_probe_cmd($_);
 
-        unless ($self->get_global_set_value('switch.pretend')) {
+        unless ($self->get_value('switch.pretend')) {
             $self->run_cmd($sProbeCmd);
             if ($self->get_last_exit) {
                 my $sError= $self->get_last_error;
@@ -126,7 +121,7 @@ sub run {
         }
 
         # now execute dump command on target
-        unless ($self->get_global_set_value('switch.pretend')) {
+        unless ($self->get_value('switch.pretend')) {
             $oTargetPath->run_cmd("$sDumpCmd > $sDestFile");
             if ($self->get_last_exit) {
                 my $sError= $self->get_last_error;

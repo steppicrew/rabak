@@ -162,14 +162,15 @@ sub _conf_read {
 
 sub _cmd_setup {
     my $sBakSet= shift;
-    my $bSkipChecks= shift;
 
     _conf_read();
-    my $oSet= RabakLib::Set->new($oConf, $sBakSet, $bSkipChecks);
-    if ($oSet->{ERROR}) {
-        print $oSet->{ERROR} . "\n";
-        _exit(3);
+    my $oSetConf= $oConf->get_node($sBakSet);
+    unless ($oSetConf) {
+    	print "Bakset '$sBakSet' does not exist!";
+    	_exit(3);
     }
+
+    my $oSet= RabakLib::Set->cloneConf($oSetConf);
     return $oSet;
 }
 

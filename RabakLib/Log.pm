@@ -128,7 +128,7 @@ sub open {
         ($self->{LOG_FH}, $self->{REAL_FILE_NAME})= $oTarget->local_tempfile;
     }
     else {
-        unless (open ($self->{LOG_FH}, ">>$sFileName")) {
+        unless (CORE::open ($self->{LOG_FH}, ">>$sFileName")) {
             $self->{LOG_FH}= undef;
             return $!;
         }
@@ -140,7 +140,7 @@ sub close {
     my $self= shift;
 
     return unless $self->{TARGET};
-    close $self->{LOG_FH} if $self->{LOG_FH};
+    CORE::close $self->{LOG_FH} if $self->{LOG_FH};
     $self->{LOG_FH}= undef;
     if ($self->{TARGET}->is_remote()) {
         logger->error($self->{TARGET}->get_error()) unless ($self->{TARGET}->copyLoc2Rem($self->{REAL_FILE_NAME}, $self->{FILE_NAME}, 1));

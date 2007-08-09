@@ -23,13 +23,13 @@ use File::Temp ();
 
 sub new {
     my $class= shift;
-    my %hParams= @_;
+    my $sName= shift;
+    my $hParentConf= shift;
     
-    my $self= $class->SUPER::new();
+    my $self= $class->SUPER::new($sName, $hParentConf);
     $self->{ERRORCODE}= 0;
     $self->{DEBUG}= 0;
     $self->{ERRORMSG}= '';
-    $self->{SET}= undef;
     $self->{LAST_RESULT}= {
         stdout => '',
         stderr => '',
@@ -40,29 +40,27 @@ sub new {
 
     bless $self, $class;
 
-    # standard ssh port to connect to
-    $self->set_value("port", 22);
-    # directory for temporarily stored data
+}
 
-    map { $self->set_value($_, $hParams{$_}); } keys(%hParams);
+sub cloneConf {
+    my $class= shift;
+    my $oOrigConf= shift;
+    
+    my $new= $class->SUPER::cloneConf($oOrigConf);
 
-    my $sPath= $self->get_value("path");
-    if ($sPath && $sPath=~ s/^(\w+\:\/\/)?(\S+\@)?([\-0-9a-z\.]+)\:/$1/i) {
-        $self->set_value("path", $sPath);
+    my $sPath= $new->get_value("path");
+    if ($sPath && $sPath=~ s/^(\w+\:\/\/)?(\S+\@)?([\-0-9a-z\.]+)\://i) {
+        $sPath= "$1$sPath" if $1;
+        $new->set_value("path", $sPath);
         my $sUser= $2 || '';
         my $sHost= $3;
         $sUser=~ s/\@$//;
-
-#        logger->warn("Specifying host and user in path is deprecated. Please use path objects!");
-
-        die "Host specified by object AND path!" if $self->get_value("host");
-        die "User specified by object AND path!" if $self->get_value("user") && $sUser;
-        $self->set_value("host", $sHost);
-        $self->set_value("user", $sUser) if $sUser;
+        $new->set_value("host", $sHost);
+        $new->set_value("user", $sUser) if $sUser;
     }
 
     # print Data::Dumper->Dump([$self->{VALUES}]); die;
-    return $self;
+    return $new;
 }
 
 # delete all non deleted temp files on exit (important for remote sessions)
@@ -77,7 +75,7 @@ sub DESTROY {
 sub local_tempfile {
     my $self= shift;
 
-    $self= $self->new(@_) unless ref $self;
+    $self= $self->new() unless ref $self;
     my $sDir= File::Spec->tmpdir;
     $sDir = $self->get_value("tempdir");
     return @_= File::Temp->tempfile("rabak-XXXXXX", UNLINK => 1, DIR => $sDir);
@@ -85,36 +83,11 @@ sub local_tempfile {
 
 sub local_tempdir {
     my $self= shift;
+    
+    my $sDir= $self->get_value("tempdir");
+    my $sDirName= File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 1, DIR => $sDir);
 
-    return $self->tempdir();
-#    $self= $self->new(@_) unless ref $self;
-#    my $sDir= File::Spec->tmpdir;
-#    $sDir= $self->get_value("tempdir");
-#    return File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 1, DIR => $sDir);
-}
-
-sub get_global_set_value {
-    my $self= shift;
-    return $self->{SET}->get_global_value(@_) if $self->{SET};
-    return undef;
-}
-
-sub get_global_set_raw_value {
-    my $self= shift;
-    return $self->{SET}->get_global_raw_value(@_) if $self->{SET};
-    return undef;
-}
-
-sub get_global_set_node {
-    my $self= shift;
-    return $self->{SET}->get_global_node(@_) if $self->{SET};
-    return undef;
-}
-
-sub get_set_raw_value {
-    my $self= shift;
-    return $self->{SET}->get_raw_value(@_) if $self->{SET};
-    return undef;
+    return $sDirName;
 }
 
 sub get_error {
@@ -206,7 +179,7 @@ sub _run_local_cmd {
     my $cmd= shift;
     my $bPiped= shift || 0;
 
-    $self= $self->new(@_) unless ref $self;
+    $self= $self->new() unless ref $self;
 
     unless ($self->{IO}) {
         my $sTempDir= $self->local_tempdir;
@@ -675,7 +648,7 @@ sub umount {
 sub tempfile {
     my $self= shift;
 
-    $self= $self->new(@_) unless ref $self;
+    $self= $self->new() unless ref $self;
     my $sDir= File::Spec->tmpdir;
     $sDir = $self->get_value("tempdir");
     my $sFileName= ${$self->_saveperl('
@@ -693,7 +666,7 @@ sub tempfile {
 sub tempdir {
     my $self= shift;
 
-    $self= $self->new(@_) unless ref $self;
+    $self= $self->new() unless ref $self;
     my $sDir= File::Spec->tmpdir;
     $sDir= $self->get_value("tempdir");
     my $sDirName= ${$self->_saveperl('
@@ -710,9 +683,9 @@ sub rmtree {
     my $self= shift;
     my $sTree= shift;
 
-    die "RabakLib::PathBase::rmtree called with dangerous parameter ($sTree)!" if $sTree eq '' || $sTree eq '/';
+    die "RabakLib::PathBase::rmtree called with dangerous parameter ($sTree)!" if $sTree eq '' || $sTree eq '/' || $sTree=~ /\*/;
 
-    $self= $self->new(@_) unless ref $self;
+    $self= $self->new() unless ref $self;
     return $self->savecmd("if [ -e '$sTree' ]; then rm -rf '$sTree'; fi");
     # TODO: why does this not work???
     return ${$self->_saveperl('

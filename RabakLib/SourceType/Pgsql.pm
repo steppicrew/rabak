@@ -7,6 +7,7 @@ use strict;
 use vars qw(@ISA);
 
 use RabakLib::SourceType::DBBase;
+use RabakLib::Log;
 
 @ISA = qw(RabakLib::SourceType::DBBase);
 
@@ -28,7 +29,7 @@ sub get_probe_cmd {
     my $sDb= shift;
 
     my $sProbeCmd= "pg_dump -s -U \"" . $self->_get_user() . "\" -f /dev/null $_";
-    $self->log("Running probe: $sProbeCmd");
+    logger->log("Running probe: $sProbeCmd");
     return $sProbeCmd;
 }
 
@@ -37,7 +38,7 @@ sub get_dump_cmd {
     my $sDb= shift;
 
     my $sDumpCmd= "pg_dump -c -U \"" . $self->_get_user() . "\" \"$sDb\"";
-    $self->log("Running dump: $sDumpCmd");
+    logger->log("Running dump: $sDumpCmd");
     return $sDumpCmd;
 }
 

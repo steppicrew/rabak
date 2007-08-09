@@ -12,36 +12,27 @@ use vars qw(@ISA);
 @ISA = qw(RabakLib::Path);
 
 sub Factory {
-
-    my $class = shift;
-    my $oSet= shift;
-    my $sConfName= shift;
-
-    my $self= $class->SUPER::new($oSet, $sConfName);
-
-    my $sPath= $self->get_value("path");
+    my $class= shift;
+    my $oOrigConf= shift;
+    
+    my $sPath= $oOrigConf->get_value("path");
     if ($sPath && $sPath=~ s/^(\w+)\:\/\///) {
-        $self->set_value("type", $1);
-        $self->set_value("path", $sPath);
+        $oOrigConf->set_value("type", $1);
+        $oOrigConf->set_value("path", $sPath);
         logger->warn("Specifying type in source path is deprecated. Please set type in Source Object!");
     }
-    my $sType= $self->get_value("type");
+    my $sType= $oOrigConf->get_value("type");
     unless (defined $sType) {
        $sType= "file" unless $sType;
-       $self->set_value("type", $sType);
+       $oOrigConf->set_value("type", $sType);
     } 
     $sType= ucfirst $sType;
-    my $oFactory= undef;
+
+    my $new;
     eval {
         require "$Bin/RabakLib/SourceType/$sType.pm";
-        my $oClass= "RabakLib::SourceType::$sType";
-        $oFactory= $oClass->new(%{$self->{VALUES}});
-        unless ($oFactory->get_value("name")) {
-            my $sName= '';
-            $sName= $sConfName if $sConfName ne $oFactory->get_value("path");
-            $sName=~ s/^\&//;
-            $oFactory->set_value("name", $sName);
-        }
+        my $sClass= "RabakLib::SourceType::$sType";
+        $new= $sClass->cloneConf($oOrigConf);
         1;
     };
     if ($@) {
@@ -53,10 +44,19 @@ sub Factory {
         }
         return undef;
     }
-    return $oFactory;
+
+    return $new;
 }
 
+sub cloneConf {
+    my $class= shift;
+    my $oOrigConf= shift;
+    
+    my $new= $class->SUPER::cloneConf($oOrigConf);
 
+    $new->set_value("name", $new->{NAME}) unless $new->get_value("name");
+    return $new;
+}
 
 sub show {
     my $self= shift;

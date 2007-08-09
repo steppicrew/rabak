@@ -7,6 +7,7 @@ use strict;
 use vars qw(@ISA);
 
 use RabakLib::SourceType::DBBase;
+use RabakLib::Log;
 
 @ISA = qw(RabakLib::SourceType::DBBase);
 
@@ -43,7 +44,7 @@ sub get_probe_cmd {
     my $sPassPar= '';
     $sPassPar = "-p\"{{PASSWORD}}\"" if $sPassword;
     my $sProbeCmd= "mysqldump -d -u\"" . $self->_get_user() . "\" $sPassPar -r /dev/null \"$sDb\"";
-    $self->log("Running probe: $sProbeCmd");
+    logger->log("Running probe: $sProbeCmd");
     $sProbeCmd =~ s/\{\{PASSWORD\}\}/$sPassword/;
     return $sProbeCmd;
 }
@@ -56,7 +57,7 @@ sub get_dump_cmd {
     my $sPassPar= '';
     $sPassPar = "-p\"{{PASSWORD}}\"" if $sPassword;
     my $sDumpCmd= "mysqldump -a -e --add-drop-table --allow-keywords -q -u\"" . $self->_get_user . "\" $sPassPar --databases \"$sDb\"";
-    $self->log("Running dump: $sDumpCmd");
+    logger->log("Running dump: $sDumpCmd");
     $sDumpCmd =~ s/\{\{PASSWORD\}\}/$sPassword/;
     return $sDumpCmd;
 }

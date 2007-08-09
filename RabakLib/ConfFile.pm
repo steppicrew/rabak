@@ -73,7 +73,7 @@ sub print_set_list {
             && defined $oConf->{VALUES}{$sBakSet}->{VALUES}{title}
             && defined $oConf->{VALUES}{$sBakSet}->{VALUES}{source}
             && defined $oConf->{VALUES}{$sBakSet}->{VALUES}{target};
-        my $oSet= RabakLib::Set->new($oConf, $sBakSet, 1);
+        my $oSet= RabakLib::Set->new($sBakSet, $oConf);
         my $oTarget= $oSet->get_targetPath(); 
         my @oSources= $oSet->get_sourcePaths();
         next unless $oTarget && scalar @oSources;
@@ -107,7 +107,7 @@ sub read_file {
     my $self= shift;
     my $sFile= shift;
 
-    $self->{CONF}= RabakLib::Conf->new();
+    $self->{CONF}= RabakLib::Conf->new($sFile);
     $self->{ERROR}= undef;
     $self->_read_file($sFile);
 }
@@ -187,7 +187,7 @@ sub _read_file {
                     $self->_error("Variable \"" . substr($sErrKey, 1) . "\" is not a structure", $iLine, $sLine);
                 }
             }
-            $hConf->{VALUES}{$sKey}= RabakLib::Conf->new() unless $hConf->{VALUES}{$sKey};
+            $hConf->{VALUES}{$sKey}= RabakLib::Conf->new($sKey, $hConf) unless $hConf->{VALUES}{$sKey};
             $hConf= $hConf->{VALUES}{$sKey};
             $sKey= $_;
         }

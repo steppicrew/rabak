@@ -23,62 +23,32 @@ use vars qw(@ISA);
 
 sub new {
     my $class= shift;
-    my $hConf= shift || {};
-    my $sName= lc(shift || '');
-    my $bSkipValidation= shift;
+    my $sName= shift;
+    my $oParentConf= shift;
 
-    my $self;
-    # print Dumper($sName); die;
-    if ($sName && defined $hConf->{VALUES}{$sName}) {
-        $self= $class->SUPER::new($hConf->{VALUES}{$sName});
-        $self->{ERROR}= $bSkipValidation ? undef : $self->_validate();
-    }
-    else {
-        $self= $class->SUPER::new();
-        $self->{ERROR}= "No set \"$sName\" defined";
-        $bSkipValidation= 1;
-    }
+    my $self= $class->SUPER::new($sName, $oParentConf);
+
     $self->{ERRORCODE}= 0;
     $self->{DEBUG}= 0;
-    $self->{CONF}= $hConf;
-    $self->{VERSION}= $hConf->{DEFAULTS}->{VERSION};
-    $self->{NAME}= $sName;
 
     $self->{_TARGET_OBJECT}= undef;
 
-    logger->init($hConf);
+    logger->init($self);
 
     logger->set_category($sName);
 
-    # my $xx= "file://C:/etc/passwd";
-    # my $uri= URI->new($xx); # self->{VALUES}{source});
-    # print Dumper($uri);
-
-    # print "\n" . $uri->scheme;
-    # print "\n" . $uri->opaque;
-    # print "\n" . $uri->path;
-    # print "\n" . $uri->fragment;
-    # exit;
-
-#    if (defined $self->{VALUES}{source} && !ref $self->{VALUES}{source} && $self->{VALUES}{source} =~ /^([a-z]+):(.*)/) {
-#        $self->{VALUES}{type}= $1;
-#        $self->{VALUES}{source}= $2;
-#    }
-#    else {
-#        $self->{VALUES}{type}= 'file' unless defined $self->{VALUES}{type} || ref $self->{VALUES}{type};
-#    }
-
-    unless ($bSkipValidation) {
-        $self->{ERROR}= $self->_validate();
-
-        # TODO: fix (should be moved to SourcePath??)
-        # if ($self->{VALUES}{type} !~ /^(file|pgsql|mysql)$/) {
-        #     return "Backup set type of \"$sName.source\" must be \"file\", \"pgsql\" or \"mysql\". (" . $self->{VALUES}{source} . ")";
-        # }
-    }
     $self->set_value("name", $sName);
-
     bless $self, $class;
+}
+
+sub cloneConf {
+    my $class= shift;
+    my $oOrigConf= shift;
+    
+    my $new= $class->SUPER::cloneConf($oOrigConf);
+
+    $new->{ERROR}= $new->_validate();
+    return $new;
 }
 
 sub _need_value {
@@ -252,42 +222,6 @@ sub toDot {
 #  ...
 # =============================================================================
 
-sub get_raw_value {
-    my $self= shift;
-    my $sName= shift || '';
-    my $sDefault= shift;
-
-    my $sResult= $self->SUPER::get_raw_value($sName);
-    return  $sResult;
-}
-
-sub get_global_raw_value {
-    my $self= shift;
-    my $sName= shift || '';
-    my $sDefault= shift;
-
-    my $sResult= $self->get_raw_value($sName);
-    $sResult= $self->{CONF}->get_raw_value($sName) unless defined $sResult;
-    return  $sResult;
-}
-
-sub get_global_value {
-    my $self= shift;
-    my $sName= shift || '';
-    my $sDefault= shift;
-
-    return  $self->remove_backslashes_part2($self->remove_backslashes_part1($self->get_global_raw_value($sName, $sDefault)));
-}
-
-sub get_global_node {
-    my $self= shift;
-    my $sName= shift || '';
-
-    my $hResult= $self->SUPER::get_node($sName);
-    $hResult= $self->{CONF}->get_node($sName) unless defined $hResult;
-    return  $hResult;
-}
-
 # -----------------------------------------------------------------------------
 #  Messages
 # -----------------------------------------------------------------------------
@@ -298,7 +232,7 @@ sub _timestr {
 
 sub logPretending {
     my $self= shift;
-    return unless $self->get_global_value('switch.pretend');
+    return unless $self->get_value('switch.pretend');
 
     logger->log("", "*** Only pretending, no changes are made! ****", "");
 }
@@ -307,7 +241,7 @@ sub _mail {
     my $self= shift;
     my ($sSubject, @aBody) = @_;
     
-    my $sMailAddress= $self->get_global_value('email'); 
+    my $sMailAddress= $self->get_value('email'); 
 
     return 0 unless $sMailAddress;
 
@@ -352,7 +286,18 @@ sub _mail_warning {
 sub get_targetPath {
     my $self= shift;
 
-    $self->{_TARGET_OBJECT}= RabakLib::Path::Target->new($self) unless $self->{_TARGET_OBJECT};
+    unless ($self->{_TARGET_OBJECT}) {
+        my @oConfs= $self->resolveObjects("target");
+        my $oConf= shift @oConfs;
+        logger->error("Specifying more than one target is not allowed") if scalar @oConfs;
+        unless (ref $oConf) {
+            my $sPath= $oConf;
+            # TODO: for 'anonymous' targets: should this set parent for inheriting values?
+            $oConf= RabakLib::Conf->new(undef, $self);
+            $oConf->set_value("path", $sPath);
+        }
+        $self->{_TARGET_OBJECT}= RabakLib::Path::Target->cloneConf($oConf);
+    }
     return $self->{_TARGET_OBJECT};
 }
 
@@ -409,7 +354,7 @@ sub _mkdir {
     my $self= shift;
     my $sDir= shift;
 
-    return 1 if $self->get_global_value('switch.pretend');
+    return 1 if $self->get_value('switch.pretend');
 
     # TODO: set MASK ?
     # return 1 if $self->{_TARGET_OBJECT}->mkdir($sDir);
@@ -433,22 +378,16 @@ sub _build_bakMonthDay {
 sub get_sourcePaths {
     my $self= shift;
     
+    my @oConfs= $self->resolveObjects("source");
     my @oSources= ();
-    my $sSources= $self->remove_backslashes_part1($self->get_raw_value("source"));
-    my @sSources= ( "&source" );
-    if ($sSources) {
-        my @aRawSources= split /(?<!\\)\s+/, $sSources;
-        @sSources= map $self->remove_backslashes_part2($_), @aRawSources;
-    }
-    for my $sSource (@sSources) {
-        my $oSource = RabakLib::Path::Source->Factory($self, $sSource);
-        if ($oSource) {
-            push @oSources, $oSource;
+    for my $oConf (@oConfs) {
+        unless (ref $oConf) {
+            my $sPath= $oConf;
+            # TODO: for 'anonymous' sources: should this set parent for inheriting values?
+            $oConf= RabakLib::Conf->new(undef, $self);
+            $oConf->set_value("path", $sPath);
         }
-        else {
-            logger->error("Source Object '$sSource' could not be loaded. Skipped.");
-        }
-        
+        push @oSources, RabakLib::Path::Source->Factory($oConf);
     } 
     return @oSources;
 }
@@ -498,12 +437,12 @@ sub backup {
     # start logging
     my $sLogFile= "$sBakMonth-log/$sBakDay.$sBakSet.log";
 
-    if (!$self->get_global_value('switch.pretend') && $self->get_global_value('switch.logging')) {
+    if (!$self->get_value('switch.pretend') && $self->get_value('switch.logging')) {
         $self->_mkdir("$sBakMonth-log");
 
         my $sLogLink= "$sBakMonth.$sBakSet/$sBakDay.$sBakSet.log";
 
-        my $sLogFileName= $oTargetPath->get_value("PATH") . "/$sLogFile";
+        my $sLogFileName= $oTargetPath->get_value("path") . "/$sLogFile";
 
         my $sError= logger->open($sLogFileName, $oTargetPath);
         if ($sError) {
@@ -521,8 +460,8 @@ sub backup {
             $oTargetPath->symlink($sLogFile, "current-log.$sBakSet");
         }
     }
-    logger->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_global_value('switch.logging');
-    logger->info("Rabak Version " . $self->get_global_value("version"));
+    logger->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_value('switch.logging');
+    logger->info("Rabak Version " . $self->get_value("version"));
     $self->logPretending();
 
     # now try backing up every source 
@@ -554,7 +493,7 @@ cleanup:
 
     my $sSubject= "successfully finished";
     $sSubject= "$iSuccessCount of " . scalar(@oSources) . " backups $sSubject" if $iResult;
-    $sSubject= "*PRETENDED* $sSubject" if $self->get_global_value("switch.pretend");
+    $sSubject= "*PRETENDED* $sSubject" if $self->get_value("switch.pretend");
 
     # send admin mail
     $self->_mail_log($sSubject);
@@ -643,7 +582,7 @@ sub _backup_run {
     }
     $oTargetPath->remove_old($oSource->get_value("keep"), @sKeepDirs) unless $iErrorCode;    # only remove old if backup was done
 
-    unless ($self->get_global_value('switch.pretend')) {
+    unless ($self->get_value('switch.pretend')) {
         $oTargetPath->unlink("current.$sBakSetSource");
         $oTargetPath->symlink("$sTarget", "current.$sBakSetSource");
     }
@@ -751,7 +690,7 @@ sub rm_file {
 
     map {
         logger->log("Removing " . scalar @{ $aDirs{$_} } . " directories: $_");
-        !$self->get_global_value('switch.pretend') && rmtree($aDirs{$_}, $self->{DEBUG});
+        !$self->get_value('switch.pretend') && rmtree($aDirs{$_}, $self->{DEBUG});
 
         # print Dumper($aDirs{$_});
 
@@ -762,7 +701,7 @@ sub rm_file {
 
         # print Dumper($aFiles{$_});
 
-        !$self->get_global_value('switch.pretend') && unlink(@{ $aFiles{$_} });
+        !$self->get_value('switch.pretend') && unlink(@{ $aFiles{$_} });
     } sort { $a cmp $b } keys %aFiles;
 
     map { logger->log("Didn't find: $_") unless defined $iFoundMask{$_} } @sFileMask;

@@ -9,43 +9,59 @@ use Data::Dumper;
 use RabakLib::Log;
 
 our $iElemNo= 0;
-#our $oLog= RabakLib::Log->new();
 
-# TODO: consistent new parameter convention
 sub new {
     my $class = shift;
-    my $self= shift || {};
-
-    $self->{SET} = shift;
+    my $sName= shift || "elem_" . ($iElemNo++);
+    my $oParentConf= shift;
+    
+    my $self= {};
+    $self->{VALUES}= {} unless $self->{VALUES};
+    $self->{PARENT_CONF}= $oParentConf;
+    $self->{NAME}= $sName;
     $self->{ERRORCODE}= undef;
 
-    $self->{NAME}= "elem_" . ($iElemNo++);
-    
-    $self->{VALUES}= {} unless ref $self->{VALUES};
     bless $self, $class;
-    $self->set_log($self->{SET}->get_log()) if $self->{SET};
-    return $self;
+}
+
+sub cloneConf {
+    my $class= shift;
+    my $oOrigConf= shift;
+
+    my $new= $class->new($oOrigConf->{NAME}, $oOrigConf->{PARENT_CONF});
+    
+    $new->copyValues($oOrigConf);
+
+    return $new;
+}
+
+# creates duplicates of all values and objects
+sub copyValues {
+    my $self= shift;
+    my $oSource= shift;
+
+    for my $sKey (keys(%{$oSource->{VALUES}})) {
+        if (ref $oSource->{VALUES}{$sKey}) {
+            my $oSrcSubConf= $oSource->{VALUES}{$sKey};
+            $self->{VALUES}{$sKey}= ref($oSrcSubConf)->cloneConf($oSrcSubConf);
+        }
+        else {
+            $self->{VALUES}{$sKey}= $oSource->{VALUES}{$sKey};
+        }
+    }
 }
 
 sub get_raw_value {
     my $self= shift;
-    my $sName= lc(shift || '');
+    my $sName= shift;
     my $sDefault= shift || undef;
     
-    if ($sName =~ s/^\&//) {
-        logger->warn("It seems you are trying to read a value instead of an object reference ('&$sName')!");
-    }
-
-    my @sName= split(/\./, $sName);
-    $sName= pop @sName;
-    for (@sName) {
-        return $sDefault unless ref $self->{VALUES}{$_};
-        $self= $self->{VALUES}{$_};
-    }
-    return $sDefault unless defined $self->{VALUES}{$sName};
-    return $sDefault if $self->{VALUES}{$sName} eq '*default*';
-    return $self->{VALUES}{$sName} unless ref $self->{VALUES}{$sName};
-    return $sDefault;
+    my $sValue= $self->get_property($sName);
+    
+    return $sDefault unless defined $sValue;
+    return $sDefault if ref $sValue;
+    return $sDefault if $sValue eq '*default*';
+    return $sValue;
 }
 
 sub remove_backslashes_part1 {
@@ -94,23 +110,42 @@ sub get_value {
     return $self->remove_backslashes($self->get_raw_value(@_));
 }
 
-sub get_node {
+sub get_property {
     my $self= shift;
-    my $sName= lc(shift || '');
-
-    my $bDepricated= !($sName=~ s/^\&//);
+    my $sName= shift;
     
+    return undef unless defined $sName;
     return undef if $sName eq '.';
+    
+    if ($sName=~ s/^\.//) {
+        return $self->{PARENT_CONF}->get_property($sName) if $self->{PARENT_CONF}; 
+        return undef;
+    }
+    
+    $sName= lc $sName;
 
+    my $oProp= $self;
+    my $oParentProp= $self->{PARENT_CONF};
     my @sName= split(/\./, $sName);
     for (@sName) {
-        return undef unless ref $self->{VALUES}{$_};
-        $self= $self->{VALUES}{$_};
+        unless (defined $oProp->{VALUES}{$_}) {
+            return $self->{PARENT_CONF}->get_property($sName) if $self->{PARENT_CONF}; 
+            return undef;
+        }
+        $oParentProp= $oProp;
+        $oProp= $oProp->{VALUES}{$_};
     }
-    if ($bDepricated && defined $self) {
-        logger->warn("Referencing objects without leading '&' is deprecated. Please specify '&$sName'");
-    }
-    return $self;
+    return ($oProp, $oParentProp) if wantarray;
+    return $oProp;
+}
+
+sub get_node {
+    my $self= shift;
+    my $sName= shift;
+    
+    my $oConf= $self->get_property($sName);
+    return $oConf if ref $oConf;
+    return undef;
 }
 
 sub set_values {
@@ -129,12 +164,53 @@ sub set_value {
     my @sName= split(/\./, $sName);
     $sName= pop @sName;
     for (@sName) {
-        $self->{VALUES}{$_}= RabakLib::Conf->new() unless ref $self->{VALUES}{$_};
+        $self->{VALUES}{$_}= RabakLib::Conf->new($_, $self) unless ref $self->{VALUES}{$_};
         $self= $self->{VALUES}{$_};
     }
     
     # TODO: only allow assignment of undef to refs?
     $self->{VALUES}{$sName}= $sValue;
+}
+
+# returns array of properties contents, resolving referenced objects
+# array contains refrences to RabakLib::Conf or scalars
+sub resolveObjects {
+    my $self= shift;
+    my $sProperty= shift;
+    my $hStack= shift || {};
+
+    my @oResult= ();
+
+    if ($hStack->{"$self.$sProperty"}) {
+        logger->error("Recursive reference to '$sProperty'.");
+        return @oResult; 
+    }
+    $hStack->{$sProperty}= 1;
+    
+    my ($Value, $oParentConf)= $self->get_property($sProperty); 
+
+    if (defined $Value) {
+        if (ref $Value) {
+            push @oResult, $Value;
+        }
+        else {
+            my $sValue= $self->remove_backslashes_part1($Value);
+            my @sValues= split /(?<!\\)\s+/, $sValue;
+            for $sValue (@sValues) {
+                if ($sValue=~ s/^\&//) {
+                    push @oResult, $oParentConf->resolveObjects($sValue, $hStack) if $oParentConf;
+                }
+                else {
+                    push @oResult, $sValue;
+                }
+            }
+        }
+    }
+    else {
+        logger->error("Object '$sProperty' could not be loaded. Skipped.");
+    }
+    delete $hStack->{"$self.$sProperty"};
+    return @oResult;
 }
 
 sub show {

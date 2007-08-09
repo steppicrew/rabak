@@ -15,47 +15,6 @@ use vars qw(@ISA);
 
 @ISA = qw(RabakLib::PathBase);
 
-# possible parameters for new:
-#   (RabakLib::Set, $sConfName)
-#   (%Values)
-sub new {
-    my $class= shift;
-    
-    my $oSet= undef;
-    my %Values=();
-    # if first parameter is a reference, a bakset object was specified 
-    if (scalar @_ && ref $_[0]) {
-        $oSet= shift;
-        my $sConfName= shift;
-
-        if ($oSet && $sConfName) {
-            my $oPath= $oSet->get_global_node($sConfName);
-            die "FATAL ERROR: Could not resolve '$sConfName'" unless $oPath || $sConfName !~ /^\&/;
-
-            my $sPath;
-            unless ($oPath) {
-                $sPath= $oSet->get_global_value($sConfName);
-                $oPath= $oSet->get_global_node($sPath) if $sPath;
-            }
-            $sPath= $sConfName unless $sPath;
-            %Values= $oPath ? %{$oPath->{VALUES}} : ( path => $sPath );
-        }
-        die "FATAL ERROR: Setting 'mount' in bakset is deprecated! Please set mount in Source and/or Target Objects" if $oSet->get_value("mount");
-    }
-    else {
-        %Values= (@_);
-    }
-    my $self= $class->SUPER::new(%Values);
-    $self->{ERRORCODE} = 0;
-    $self->{DEBUG} = 0;
-
-    if ($oSet) {
-        $self->{SET}= $oSet;
-    }
-
-    bless $self, $class;
-}
-
 sub getFullPath {
     my $self= shift;
     my $sPath= $self->getPath(shift);
@@ -309,7 +268,7 @@ sub unmountAll {
             logger->warn("Unmounting \"$_\" failed: $sResult!");
             next;
         }
-        $self->log("Unmounted \"$_\"");
+        logger->log("Unmounted \"$_\"");
     }
 
     $self->{_UNMOUNT_LIST}= []
