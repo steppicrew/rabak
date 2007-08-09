@@ -123,8 +123,8 @@ sub _dotAddBox {
     $sAttribs= 'shape="invhouse"' if $sType eq 'mount';
     $sAttribs= 'shape="rect" style="filled" color="#F0F0E0"' if $sType eq 'mount';
 
-    my %sKeys= ( @{ $oConf->{VALUES} } );
-    print STDERR Dumper(\%sKeys);
+    # my %sKeys= ( @{ $oConf->{VALUES} } );
+    # print STDERR Dumper(\%sKeys);
 
     my $sName= $oConf->{NAME};
     my $sTitleText= $oConf->{VALUES}{'name'} || $sName;
