@@ -122,7 +122,7 @@ sub open {
     $self->{TARGET}= $oTarget;
 
     $self->{FILE_NAME}= $self->{REAL_FILE_NAME}= $sFileName;
-    $self->{IS_NEW}= !$oTarget->isFile($sFileName);
+    my $bIsNew= !$oTarget->isFile($sFileName);
 
     if ($oTarget->is_remote()) {
         ($self->{LOG_FH}, $self->{REAL_FILE_NAME})= $oTarget->local_tempfile;
@@ -132,6 +132,10 @@ sub open {
             $self->{LOG_FH}= undef;
             return $!;
         }
+    }
+    if (!$bIsNew) {
+        my $fh= $self->{LOG_FH}; 
+        print $fh "\n===========================================================================\n\n";
     }
     return '';
 }
@@ -161,11 +165,6 @@ sub get_errorCount {
 sub get_warnCount {
     my $self= shift;
     return $self->{WARNCOUNT};
-}
-
-sub is_new {
-    my $self= shift;
-    return $self->{IS_NEW};
 }
 
 sub set_prefix {

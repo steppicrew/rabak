@@ -43,6 +43,8 @@ our $opt_i;
 
 getopts("hi:lc:pqv") or die HELP_MESSAGE();
 
+our $sCommandLine= "'" . join("' '", $0, @ARGV) . "'";
+
 our $sCmd= shift @ARGV || '';
 
 if ($opt_h) {
@@ -151,11 +153,15 @@ sub _conf_read {
     $oConfFile= RabakLib::ConfFile->new($opt_c ? $opt_c : 'rabak.cf');
     $oConf= $oConfFile->conf();
     # overwrite values with comand line switches
+    my $sHostname= `hostname -f`;
+    chomp $sHostname;
     $oConf->set_values({
         'switch.pretend' => $opt_p,
         'switch.logging' => defined $opt_v ? LOG_DEBUG_LEVEL : ($opt_q ? 0 : LOG_DEFAULT_LEVEL ),
         'switch.targetvalue' => $opt_i,
-        'VERSION' => $VERSION,
+        'switch.version' => $VERSION,
+        'switch.hostname' => $sHostname,
+        'switch.commandline' => $sCommandLine,
     });
     return $oConfFile;
 }

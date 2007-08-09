@@ -407,6 +407,9 @@ sub backup {
     my $iSuccessCount= 0;
     my $iResult= 0; 
     
+    logger->info("Rabak Version " . $self->get_switch("version"). " on \"" . $self->get_switch("hostname") . "\" as user \"" . getpwuid($>) . "\"");
+    logger->info("Command line: " . $self->get_switch("commandline"));
+
     my @oSources= $self->get_sourcePaths();
 
     # mount all target mount objects
@@ -458,19 +461,12 @@ sub backup {
             logger->warn("Can't open log file \"$sLogFileName\" ($sError). Going on without...");
         }
         else {
-            # TODO: transfer to Log.pm
-            if (!logger->is_new()) {
-
-                # TODO: only to file
-                logger->log("", "===========================================================================", "");
-            }
             $oTargetPath->symlink("../$sLogFile", "$sLogLink");
             $oTargetPath->unlink("current-log.$sBakSet");
             $oTargetPath->symlink($sLogFile, "current-log.$sBakSet");
         }
     }
     logger->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_switch('logging');
-    logger->info("Rabak Version " . $self->get_value("version"));
     $self->logPretending();
 
     # now try backing up every source 

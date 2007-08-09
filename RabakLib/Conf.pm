@@ -217,10 +217,10 @@ sub resolveObjects {
             my @sValues= split /(?<!\\)\s+/, $sValue;
             for $sValue (@sValues) {
                 if ($sValue=~ s/^\&//) {
-                    push @oResult, $oOwningConf->resolveObjects($self->remove_backslashes_part2($Value), $hStack) if $oOwningConf;
+                    push @oResult, $oOwningConf->resolveObjects($self->remove_backslashes_part2($sValue), $hStack) if $oOwningConf;
                 }
                 else {
-                    push @oResult, $self->remove_backslashes_part2($Value);
+                    push @oResult, $self->remove_backslashes_part2($sValue);
                 }
             }
         }

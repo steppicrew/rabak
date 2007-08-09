@@ -68,7 +68,7 @@ sub isValid {
     return 0;
 }
 
-sub mountWasFatal {
+sub mountErrorIsFatal {
     my $self= shift;
     my $iMountResult= shift;
     
