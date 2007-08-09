@@ -66,9 +66,9 @@ sub getPath {
 #            path where device is mounted (if executed)
 sub _mount_check {
     my $self= shift;
-    my $sMountDevice= shift || '';
-    my $sTargetValue= shift || '';
-    my $bUnmount= shift || 0;
+    my $oMount= shift;
+    
+    my $sMountDevice= $oMount->get_value("device");
 
     return { CODE => -1 } if !$sMountDevice;
 
@@ -107,109 +107,29 @@ sub isValid {
     return 1;
 }
 
-sub mountWasFatal {
+sub mountErrorIsFatal {
     my $self= shift;
     my $iMountResult= shift;
     
     return 0;
 }
-
-# @param $oMount
-#       A RakakConf object containing the mount point information
-# @param $arMessage
-#       A ref to an array, in which _mount stores warnings and messages
-# @param $arUnmount
-#       A ref to an array, in which _mount stores the mount points that need unmounting
-# @param $arAllMount
-#       A ref to an array, in which _mount stores all mount points
-# return
-#       0: failed
-#       1: succeeded
-sub _mount {
-    my $self= shift;
-    my $oMount= shift;
-    my $arMessage = shift || {};
-    my $arUnmount= shift || {};
-    my $arAllMount= shift || {};
-
-    my $sMountDeviceList= $oMount->get_value("device") || '';
-    my $sMountDir= $oMount->get_value("directory") || '';
-    my $sTargetGroup= $self->get_value("group");
-    my $sMountType= $oMount->get_value("type") || '';
-    my $sMountOpts= $oMount->get_value("opts") || '';
-    my $sUnmount= "";
-
-    # parameters for mount command
-    my $spMountDevice= ""; # set later
-    my $spMountDir=    $sMountDir    ? " \"$sMountDir\""     : "";
-    my $spMountType =  $sMountType   ? " -t \"$sMountType\"" : "";
-    my $spMountOpts =  $sMountOpts   ? " -o\"$sMountOpts\""  : "";
-
-    my %checkResult;
-
-    my @sMountDevices= ();
-
-    for my $sMountDevice (split(/\s+/, $sMountDeviceList)) {
-        push @sMountDevices, $self->glob($sMountDevice);
-    }
-
-    # if no device were given, try mounting by mount point
-    push @sMountDevices, '' if $#sMountDevices < 0;
-
-    my @sMountMessage = ();
-    my $iResult= 0;
-    for my $sMountDevice (@sMountDevices) {
-        my @sCurrentMountMessage = ();
-        $sUnmount= $sMountDevice ne '' ? $sMountDevice : $sMountDir;
-        $spMountDevice= $sMountDevice ? " \"$sMountDevice\""  : "";
-        push @sCurrentMountMessage, logger->info("Trying to mount \"$sUnmount\"");
-
-        goto nextDevice unless $self->isPossibleValid($sMountDevice, \@sCurrentMountMessage);
-
-        $self->mount("$spMountType$spMountDevice$spMountDir$spMountOpts");
-        if ($?) { # mount failed
-            my $sMountResult= $self->get_error;
-            chomp $sMountResult;
-            $sMountResult =~ s/\r?\n/ - /g;
-            push @sCurrentMountMessage, logger->warn("Mounting$spMountDevice$spMountDir failed with: $sMountResult!");
-            goto nextDevice;
-        }
-
-        $iResult= $self->isValid($sMountDevice, \@sCurrentMountMessage);
-nextDevice:
-        push @sMountMessage, @sCurrentMountMessage;
-        last if $iResult;
-    }
-    push @{ $arMessage }, @sMountMessage;
-
-    if ($sUnmount) {
-        push @{ $arAllMount }, $sUnmount;
-
-        # We want to unmount in reverse order:
-        unshift @{ $arUnmount }, $sUnmount if $oMount->get_value("unmount") && $iResult;
-    }
-
-    push @{ $arMessage }, logger->info("Mounted$spMountDevice$spMountDir") if $iResult;
-    push @{ $arMessage }, logger->error("All mounts failed") unless $iResult;
-    return $iResult;
-}
-
 sub getMountObjects {
     my $self= shift;
 
-    my $sMount= $self->get_value("mount");
-    my @aMounts;
-    unless ($sMount) {
-        my $oMount= $self->get_node("mount");
-        push @aMounts, $oMount if $oMount;
-    }
-    else {
-        for my $sMountName (split /\s+/, $sMount) {
-            my $oMount= $self->get_global_set_node($sMountName);
-            push @aMounts, $oMount if $oMount;
+    return () unless $self->get_property("mount");
+
+    my @oConfs= $self->resolveObjects("mount");
+    my @oMounts= ();
+    for my $oConf (@oConfs) {
+        unless (ref $oConf) {
+            my $sPath= $oConf;
+            # TODO: for 'anonymous' mounts: should this set parent for inheriting values?
+            $oConf= RabakLib::Conf->new(undef, $self);
+            $oConf->set_value("directory", $sPath);
         }
-    }
-    return @aMounts;
+        push @oMounts, RabakLib::Path::Mount->cloneConf($oConf);
+    } 
+    return @oMounts;
 }
 
 # return
@@ -222,20 +142,17 @@ sub mountAll {
     my @aMounts= $self->getMountObjects();
     
     # Collect all mount errors, we want to output them later
-    my $arUnmount= $self->{_UNMOUNT_LIST} || [];
-    my $arAllMount= $self->{_ALL_MOUNT_LIST} || [];
-
     my $iResult= 1; # defaults to mount succeeded
+    
+    my $arAllMounts= [];
 
-    for my $sMount (@aMounts) {
-        $iResult = $self->_mount($sMount, $arMessage, $arUnmount, $arAllMount);
+    for my $oMount (@aMounts) {
+        $iResult = $oMount->mount($self, $arMessage, $arAllMounts);
         # quit if mount failed
         # TODO: is this right for source objects?
-        last if $self->mountWasFatal($iResult);
+        last if $self->mountErrorIsFatal($iResult);
     }
-
-    $self->{_UNMOUNT_LIST}= $arUnmount;
-    $self->{_ALL_MOUNT_LIST}= $arAllMount;
+    $self->{_MOUNT_LIST}= $arAllMounts;
 
     return $iResult;
 }
@@ -243,35 +160,21 @@ sub mountAll {
 sub get_mounts {
     my $self= shift;
 
-    return $self->{_UNMOUNT_LIST} || [];
+    return $self->{_MOUNT_LIST} || [];
 }
 
 sub unmountAll {
     my $self= shift;
     
-    return unless $self->{_UNMOUNT_LIST};
+    return unless $self->{_MOUNT_LIST};
 
-    my @sAllMount= @{ $self->{_ALL_MOUNT_LIST} };
-    my @sUnmount= @{ $self->{_UNMOUNT_LIST} };
+    my @sUnmount= @{ $self->{_MOUNT_LIST} };
 
-    my %sAllMount;
-    map { $sAllMount{$_}= 1; } @sAllMount;
-
-    for (@sUnmount) {
-        $self->umount("\"$_\"");
-        if ($?) {
-            my $sResult= $self->get_error;
-            chomp $sResult;
-            $sResult =~ s/\r?\n/ - /g;
-            next unless $sAllMount{$_};
-
-            logger->warn("Unmounting \"$_\" failed: $sResult!");
-            next;
-        }
-        logger->log("Unmounted \"$_\"");
+    for my $oMount (@sUnmount) {
+        $oMount->umount();
     }
 
-    $self->{_UNMOUNT_LIST}= []
+    $self->{_MOUNT_LIST}= []
 }
 
 1;

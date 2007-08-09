@@ -31,8 +31,9 @@ sub isPossibleValid {
     }
     # device was mounted AND target
     if ($checkResult{CODE} == 2) {
+        my $umountResult= $self->umount("$sMountDevice 2>&1");
         push @$sCurrentMountMessage, logger->warn("Device $sMountDevice was already mounted");
-        push @$sCurrentMountMessage, logger->warn("Umount result: \"${checkResult{UMOUNT}}\"") if $checkResult{UMOUNT};
+        push @$sCurrentMountMessage, logger->warn("Umount result: \"$umountResult\"") if $umountResult;
     }
     # ($checkResult{CODE} == 0: device not mounted)
     return 1;
@@ -94,10 +95,11 @@ sub mountWasFatal {
 #            result string of umount command (if executed)
 sub _mount_check {
     my $self= shift;
-    my $sMountDevice= shift || '';
-    my $bUnmount= shift || 0;
+    my $oMount= shift;
     
-    my $result= $self->SUPER::_mount_check($sMountDevice, $bUnmount);
+    my $sMountDevice= $oMount->get_value("device");
+    
+    my $result= $self->SUPER::_mount_check($oMount);
 
     my $sTargetValue= $self->get_value("group");
     my $sqTargetValue= quotemeta $sTargetValue;
@@ -138,7 +140,6 @@ sub _mount_check {
             $result->{INFO}= "Device config file \"".$self->getFullPath($sDevConfFile)."\" not found on device \"$sMountDevice\"";
         }
 
-        $result->{UMOUNT}= $self->umount("$sMountDevice 2>&1") if ($result->{CODE} == 2) && $bUnmount;
     }
     return $result;
 }

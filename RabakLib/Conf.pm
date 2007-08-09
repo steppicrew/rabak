@@ -187,7 +187,7 @@ sub resolveObjects {
     }
     $hStack->{$sProperty}= 1;
     
-    my ($Value, $oParentConf)= $self->get_property($sProperty); 
+    my ($Value, $oOwningConf)= $self->get_property($sProperty); 
 
     if (defined $Value) {
         if (ref $Value) {
@@ -198,7 +198,7 @@ sub resolveObjects {
             my @sValues= split /(?<!\\)\s+/, $sValue;
             for $sValue (@sValues) {
                 if ($sValue=~ s/^\&//) {
-                    push @oResult, $oParentConf->resolveObjects($sValue, $hStack) if $oParentConf;
+                    push @oResult, $oOwningConf->resolveObjects($sValue, $hStack) if $oOwningConf;
                 }
                 else {
                     push @oResult, $sValue;
