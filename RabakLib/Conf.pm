@@ -128,7 +128,7 @@ sub get_property {
     my $oParentProp= $self->{PARENT_CONF};
     my @sName= split(/\./, $sName);
     for (@sName) {
-        unless (defined $oProp->{VALUES}{$_}) {
+        unless (ref $oProp && defined $oProp->{VALUES}{$_}) {
             return $self->{PARENT_CONF}->get_property($sName) if $self->{PARENT_CONF}; 
             return undef;
         }
