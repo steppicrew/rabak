@@ -117,6 +117,7 @@ sub get_property {
     return undef unless defined $sName;
     return undef if $sName eq '.';
     
+    # you can use leading "." for going up one level in name space
     if ($sName=~ s/^\.//) {
         return $self->{PARENT_CONF}->get_property($sName) if $self->{PARENT_CONF}; 
         return undef;
@@ -198,10 +199,10 @@ sub resolveObjects {
             my @sValues= split /(?<!\\)\s+/, $sValue;
             for $sValue (@sValues) {
                 if ($sValue=~ s/^\&//) {
-                    push @oResult, $oOwningConf->resolveObjects($sValue, $hStack) if $oOwningConf;
+                    push @oResult, $oOwningConf->resolveObjects($self->remove_backslashes_part2($Value), $hStack) if $oOwningConf;
                 }
                 else {
-                    push @oResult, $sValue;
+                    push @oResult, $self->remove_backslashes_part2($Value);
                 }
             }
         }
