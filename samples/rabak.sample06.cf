@@ -14,27 +14,33 @@ switch.logging = 1
 #####################################
 
 switch.pretend = 1
+sample_target = sample-target
+
+# Some external device
+
+mount_external.device= /dev/sda1
+mount_external.directory= /mnt/external
 
 # Postgresql Database
 
 sample_pg.title = Databases of sample
-sample_pg.source = pgsql:vbulletin,postnuke
+sample_pg.source.path = pgsql://vbulletin,postnuke
+sample_pg.source.user = *default*
+sample_pg.source.password = secret
 sample_pg.target = $sample_target
-sample_pg.target.path = $target_base/postgres
-sample_pg.user = *default*
-sample_pg.password = secret
+#sample_pg.target.path = $target_base/postgres
 sample_pg.keep = 3
 
 # MySql Database
 
 sample_mysql.title = Mysql-DBs
-sample_mysql.source = mysql:*
+sample_mysql.source.path = mysql://*
+sample_mysql.source.user = mysql_user
+sample_mysql.source.password = secret
+sample_mysql.source.mount = &mount_external
 sample_mysql.target = $sample_target
-sample_mysql.target.path = $target_base/mysql
-sample_mysql.user = $mysql_user
-sample_mysql.password = $mysql_password
+#sample_mysql.target.path = $target_base/mysql
 sample_mysql.keep = 3
-sample_mysql.mount = &mount_external
 
 # TBD!
 # 

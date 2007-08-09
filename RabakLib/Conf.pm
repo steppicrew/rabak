@@ -24,7 +24,7 @@ sub new {
     bless $self, $class;
 }
 
-sub cloneConf {
+sub CloneConf {
     my $class= shift;
     my $oOrigConf= shift;
 
@@ -43,7 +43,7 @@ sub copyValues {
     for my $sKey (keys(%{$oSource->{VALUES}})) {
         if (ref $oSource->{VALUES}{$sKey}) {
             my $oSrcSubConf= $oSource->{VALUES}{$sKey};
-            $self->{VALUES}{$sKey}= ref($oSrcSubConf)->cloneConf($oSrcSubConf);
+            $self->{VALUES}{$sKey}= ref($oSrcSubConf)->CloneConf($oSrcSubConf);
         }
         else {
             $self->{VALUES}{$sKey}= $oSource->{VALUES}{$sKey};
@@ -224,7 +224,7 @@ sub show {
             $self->{VALUES}{$_}->show("$sKey.$_");
             next;
         }
-        my $sValue= $self->get_value($_);
+        my $sValue= $self->get_value($_) || '';
         $sValue =~ s/\n/\n\t/g;
         print "$sKey.$_ = $sValue\n";
     }

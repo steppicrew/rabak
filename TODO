@@ -1,6 +1,7 @@
 
 Done:
 + Log4Perl??
++ Alle Values bei Initialisierung uebergeben
 
 
 Code:
@@ -10,8 +11,9 @@ Code:
 + separate class for mount objects
 + Tests
 + rabak.conf nach /etc
-+ Alle Values bei Initialisierung uebergeben
 
+- Set Mail-Sender to <user@hostname>
+- Log rabak log command line, file name etc. include into mail
 
 - Mail::Send optional
 - Change config format to INI?

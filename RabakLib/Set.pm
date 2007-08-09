@@ -41,11 +41,11 @@ sub new {
     bless $self, $class;
 }
 
-sub cloneConf {
+sub CloneConf {
     my $class= shift;
     my $oOrigConf= shift;
     
-    my $new= $class->SUPER::cloneConf($oOrigConf);
+    my $new= $class->SUPER::CloneConf($oOrigConf);
 
     $new->{ERROR}= $new->_validate();
     return $new;
@@ -136,7 +136,13 @@ sub _dotAddBox {
     $sResult .= "<tr><td colspan=\"3\" bgcolor=\"$sTitleBgColor\">$sTitleText</td></tr>";
     $sResult .= "<tr><td colspan=\"3\"><font point-size=\"4\">&#160;</font></td></tr>";
     for my $sKey (sort keys %{ $oConf->{VALUES} }) {
-        my $sValue= $oConf->{VALUES}{$sKey} || '';
+        my $sValue;
+        if (ref $oConf->{VALUES}{$sKey}) {
+            $sValue= '$' . $oConf->{VALUES}{$sKey}{NAME};
+        }
+        else {
+            $sValue= $oConf->{VALUES}{$sKey} || '';
+        }
         next if $sValue eq '';
         $sValue= substr($sValue, 0, 27) . "..." if length($sValue) > 30;
         $sResult .= "<tr><td align=\"left\">" . dothtmlify($sKey) . ":</td><td>&#160;</td><td align=\"left\">" . dothtmlify($sValue) . "</td></tr>";
@@ -296,7 +302,7 @@ sub get_targetPath {
             $oConf= RabakLib::Conf->new(undef, $self);
             $oConf->set_value("path", $sPath);
         }
-        $self->{_TARGET_OBJECT}= RabakLib::Path::Target->cloneConf($oConf);
+        $self->{_TARGET_OBJECT}= RabakLib::Path::Target->CloneConf($oConf);
     }
     return $self->{_TARGET_OBJECT};
 }
@@ -603,8 +609,7 @@ sub _backup_run {
         if ($iStValue > $iDfAvail) {
             $self->_mail_warning('disc space too low',
                 (
-                    "The free space on your target \"" .
-                    $oTargetPath->getFullPath . "\" has dropped",
+                    "The free space on your target \"" . $oTargetPath->getFullPath . "\" has dropped",
                     "below $iStValue$sStUnit to $iDfAvail$sStUnit."
                 )
             );

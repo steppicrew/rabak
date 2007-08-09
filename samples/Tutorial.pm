@@ -41,7 +41,9 @@ sub expand_body {
         my ($indent, $line)= ($1, $2) if /^(\s*)(.*)/;
 
         if ($no_code || $state == 2 || (!$indent && $line)) {
-            $state= 2 if $state == 1;
+
+            # $state= 2 if $state == 1;
+
             if (/^=head\d\s+(.*)/) {
                 $contents .= "#\n"
                     . "# $1\n"
@@ -270,27 +272,33 @@ TBD!
 =head1 SAMPLE1: Backing up databases
 
   switch.pretend = 1
+  sample_target = sample-target
+
+  # Some external device
+
+  mount_external.device= /dev/sda1
+  mount_external.directory= /mnt/external
 
   # Postgresql Database
 
   sample_pg.title = Databases of sample
-  sample_pg.source = pgsql:vbulletin,postnuke
+  sample_pg.source.path = pgsql://vbulletin,postnuke
+  sample_pg.source.user = *default*
+  sample_pg.source.password = secret
   sample_pg.target = $sample_target
-  sample_pg.target.path = $target_base/postgres
-  sample_pg.user = *default*
-  sample_pg.password = secret
+  #sample_pg.target.path = $target_base/postgres
   sample_pg.keep = 3
 
   # MySql Database
 
   sample_mysql.title = Mysql-DBs
-  sample_mysql.source = mysql:*
+  sample_mysql.source.path = mysql://*
+  sample_mysql.source.user = mysql_user
+  sample_mysql.source.password = secret
+  sample_mysql.source.mount = &mount_external
   sample_mysql.target = $sample_target
-  sample_mysql.target.path = $target_base/mysql
-  sample_mysql.user = $mysql_user
-  sample_mysql.password = $mysql_password
+  #sample_mysql.target.path = $target_base/mysql
   sample_mysql.keep = 3
-  sample_mysql.mount = &mount_external
 
 TBD!
 
@@ -356,6 +364,49 @@ TBD!
 
 =head1 SAMPLE1: Variables in depth
 
+Variables are defined in a simple 'key=value' manner. E.g., the code
+
+  server1= lisa
+
+assigns the string 'lisa' to the variable 'server1'.
+
+Variables can be clustered in objects simply by adding a name and a
+dot in front of a variable name. Examples:
+
+  mount1.title= My Mount Point
+  mount1.path= /mnt/data
+
+  lisa.title= Server "Lisa"
+  lisa.mount_data.title= One of Lisa's Mount Points
+  lisa.mount_data.path= /mnt/data
+
+Here, 'mount1' and 'lisa.mount1' are objects that contain simple variables.
+'lisa' is an object containing a variable 'title' and an object 'mount_data'.
+
+There are two ways in using a variable: substitution or binding.
+Here are examples for substitution:
+
+  mount2= $mount1
+  mount2.title= Copy of the "mount1" Mount Point
+
+  bart.title= Server "Bart"
+  bart.mount_data= $lisa.mount_data
+  bart.mount_data.title= Now it's Bart's Mount Point
+
+The b<$>-Sign followed by a variable name is substituted by the value of that
+variable.
+The above assignments will result in the following values:
+
+  mount2.title= Copy of the "mount1" Mount Point
+  mount2.path= /mnt/data
+
+  bart.title= Server "Bart"
+  bart.mount_data.title= Now it's Bart's Mount Point
+  bart.mount_data.path= /mnt/data
+
+Binding: TBD
+
+Variables ar
   b.x = 1
   b.y = 2
   a = &b

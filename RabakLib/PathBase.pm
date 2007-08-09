@@ -42,11 +42,11 @@ sub new {
 
 }
 
-sub cloneConf {
+sub CloneConf {
     my $class= shift;
     my $oOrigConf= shift;
     
-    my $new= $class->SUPER::cloneConf($oOrigConf);
+    my $new= $class->SUPER::CloneConf($oOrigConf);
 
     my $sPath= $new->get_value("path");
     if ($sPath && $sPath=~ s/^(\w+\:\/\/)?(\S+\@)?([\-0-9a-z\.]+)\://i) {

@@ -1,3 +1,8 @@
+rabak-0.6rc6
+- Refactored logging
+- Refactored config handling
+- Removed 'switch.verbose', replaced by 'switch.logging'
+
 rabak-0.6rc3
 - changed method of detecting script directory
 - remote to local backups

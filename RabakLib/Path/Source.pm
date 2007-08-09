@@ -5,6 +5,7 @@ package RabakLib::Path::Source;
 use warnings;
 use strict;
 
+use RabakLib::Log;
 use FindBin qw($Bin);
 
 use vars qw(@ISA);
@@ -19,7 +20,6 @@ sub Factory {
     if ($sPath && $sPath=~ s/^(\w+)\:\/\///) {
         $oOrigConf->set_value("type", $1);
         $oOrigConf->set_value("path", $sPath);
-        logger->warn("Specifying type in source path is deprecated. Please set type in Source Object!");
     }
     my $sType= $oOrigConf->get_value("type");
     unless (defined $sType) {
@@ -32,7 +32,7 @@ sub Factory {
     eval {
         require "$Bin/RabakLib/SourceType/$sType.pm";
         my $sClass= "RabakLib::SourceType::$sType";
-        $new= $sClass->cloneConf($oOrigConf);
+        $new= $sClass->CloneConf($oOrigConf);
         1;
     };
     if ($@) {
@@ -48,11 +48,11 @@ sub Factory {
     return $new;
 }
 
-sub cloneConf {
+sub CloneConf {
     my $class= shift;
     my $oOrigConf= shift;
     
-    my $new= $class->SUPER::cloneConf($oOrigConf);
+    my $new= $class->SUPER::CloneConf($oOrigConf);
 
     $new->set_value("name", $new->{NAME}) unless $new->get_value("name");
     return $new;

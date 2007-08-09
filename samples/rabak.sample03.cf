@@ -33,14 +33,14 @@ sample_home.exclude = $exclude
 
 # Variables are defined in a simple 'key=value' manner.
 # Here, 'target_path' is assigned the value 'sample-target'.
-# 
+
 # The 'exclude_files' value has a multi-line assignment.
 # An expression may be extended across multiple lines by indenting them.
 # The result is equal to 'exclude= *.bak *.~' but has an increased legibility.
-# 
+
 # Finally, the 'exclude' value uses the 'exclude_files' value, the result being
 # the same as 'exclude= *.bak *.~ /tmp'.
-# 
+
 # TBD!
 # 
 #

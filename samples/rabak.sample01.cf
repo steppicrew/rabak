@@ -21,30 +21,28 @@ sample.target = sample-target
 #
 # Explanation
 # -----------
-# 
+
 # Running
-#   ../rabak -c rabak.sample01.cf conf
+../rabak -c rabak.sample01.cf conf
 # will produce following output:
-# 
-#   Available backup sets in "rabak.sample01.cf":
-#     sample - Sample01, backs up "sample-source" to "sample-target"
-# 
+
+Available backup sets in "rabak.sample01.cf":
+  sample - Sample01, backs up "sample-source" to "sample-target"
+
 # b<Rabak> sees one backup set named 'sample', which will backup all files
 # from the directory 'sample-source' into the directory 'sample-target'.
-# 
+
 # Try this by running
-#   ../rabak -c rabak.sample01.cf backup
-# 
+../rabak -c rabak.sample01.cf backup sample
+
 # This will result in something like following output:
-#   INFO:    Rabak Version 0.6rc4
-#   INFO:    Backing up source '&source'
-#   INFO:    Backup start at 2007-07-30 18:01:30: sample, 2007-07-30, Sample01
-#   INFO:    Running: rsync -a --hard-links --filter=". /tmp/fSmfte1Dwk" --stats --verbose
-#                         "(some path)/samples/sample-source/" "(some path)/samples/sample-target/2007-07.sample/2007-07-30.sample-source"
-# 
-# You'll find your backup in 'samples/sample-target/2007-07.sample/2007-07-30.sample-source'.
-# 
-# TODO: Pfade korrigieren
+INFO:    Rabak Version 0.6rc4
+INFO:    Backing up source '&source'
+INFO:    Backup start at 2007-07-30 18:01:30: sample, 2007-07-30, Sample01
+INFO:    Running: rsync -a --hard-links --filter=". /tmp/fSmfte1Dwk" --stats --verbose
+                    "(some path)/samples/sample-source/" "(some path)/samples/sample-target/2007-07.sample/2007-07-30"
+
+# You'll find your backup in 'samples/sample-target/2007-07.sample/2007-07-30'.
 # 
 #
 # Further information

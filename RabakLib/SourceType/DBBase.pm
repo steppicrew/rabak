@@ -16,16 +16,18 @@ our %sPackers = (
     gzip  => { cmd => "gzip" , ext => "gz"},
 );
 
-sub cloneConf {
+sub CloneConf {
     my $class= shift;
     my $oOrigConf= shift;
     
-    my $new= $class->SUPER::cloneConf($oOrigConf);
+    my $new= $class->SUPER::CloneConf($oOrigConf);
 
     my $sPacker= lc $new->get_value("packer");
-    logger->warn("Unknown packer '$sPacker'. Valid Values are: '" .
-        join("', '", keys %sPackers) . 
-        "'. Using default 'bzip2'") if $sPacker && !$sPackers{$sPacker};
+
+    logger->warn("Unknown packer '$sPacker'. Valid Values are: '"
+        . join("', '", keys %sPackers)
+        . "'. Using default 'bzip2'") if $sPacker && !$sPackers{$sPacker};
+
     $sPacker= "bzip2" unless $sPacker && $sPackers{$sPacker};
     $new->{PACKER} = $sPackers{$sPacker};
 
@@ -42,12 +44,15 @@ sub new {
 sub get_show_cmd {
     die "This function has to be overloaded!"
 }
+
 sub get_probe_cmd {
     die "This function has to be overloaded!"
 }
+
 sub get_dump_cmd {
     die "This function has to be overloaded!"
 }
+
 sub get_valid_db {
     die "This function has to be overloaded!"
 }

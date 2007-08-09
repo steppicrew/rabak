@@ -312,7 +312,7 @@ sub run {
     # Write filter rules to temp file:
     my ($fhwRules, $sRulesFile)= $self->local_tempfile();
 
-    my @sFilter= $self->_get_filter;
+    my @sFilter= $self->_get_filter();
     # print join("\n", @sFilter), "\n"; #die;
 
     print $fhwRules join("\n", @sFilter), "\n";

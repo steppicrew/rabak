@@ -11,6 +11,8 @@ use Data::Dumper;
 use File::Spec ();
 use File::Temp ();
 
+# use RabakLib::Log;
+
 use RabakLib::Mount;
 
 use vars qw(@ISA);
@@ -129,10 +131,37 @@ sub getMountObjects {
             $oConf= RabakLib::Conf->new(undef, $self);
             $oConf->set_value("directory", $sPath);
         }
-        push @oMounts, RabakLib::Mount->cloneConf($oConf);
+        push @oMounts, RabakLib::Mount->CloneConf($oConf);
     } 
     return @oMounts;
 }
+
+#sub getMountObjects {
+#    my $self= shift;
+#
+#    my $sMount= $self->get_value("mount");
+#    my @aMounts;
+#    unless ($sMount) {
+#        my $oMount= $self->get_node("mount");
+#        push @aMounts, $oMount if $oMount;
+#    }
+#    else {
+#        for my $sMountName (split /\s+/, $sMount) {
+#            my $oMount= $self->get_global_set_node($sMountName);
+#
+#            print STDERR Dumper($self);
+#
+#            if (!$oMount) {
+#                # Geht nicht ohne explizite Angabe von RabakLib::Log. Warum????
+#                RabakLib::Log->logger->error("No such mount: $sMountName");
+#                next;
+#            }
+#
+#            push @aMounts, $oMount if $oMount;
+#        }
+#    }
+#    return @aMounts;
+#}
 
 # return
 #       0: failed
