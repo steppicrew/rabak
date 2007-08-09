@@ -270,7 +270,7 @@ sub show {
     
     $self->SUPER::show();
     
-    return unless $self->get_value("switch.logging") >= LOG_DEBUG_LEVEL;
+    return unless $self->get_switch("logging") >= LOG_DEBUG_LEVEL;
 
     my $sBaseDir= $self->valid_source_dir();
     print "Expanded rsync filter (relative to '$sBaseDir'):\n\t" . join("\n\t", $self->_get_filter()) . "\n";
@@ -298,13 +298,14 @@ sub run {
     my $oTargetPath= shift;
     my $sFullTarget= shift;
     my $sUniqueTarget= shift;
+    my $bPretend= shift;
     my @sBakDir= @_;
 
     return 3 unless $self->valid_source_dir();
 
     # print Dumper($self); die;
 
-    # print '**'.$self->get_value('switch.pretend').'**'; die;
+    # print '**$bPretend**'; die;
 
     my $sBakSet= $self->get_value('name');
     my $sRsyncOpts = $self->get_value('rsync_opts') || '';
@@ -335,7 +336,7 @@ sub run {
     ;
 
     $sFlags .= " -i" if $self->{DEBUG};
-    $sFlags .= " --dry-run" if $self->get_value('switch.pretend');
+    $sFlags .= " --dry-run" if $bPretend;
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
     my $oSshPeer;
     if ($oTargetPath->is_remote()) {

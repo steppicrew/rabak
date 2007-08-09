@@ -241,7 +241,7 @@ sub _timestr {
 
 sub logPretending {
     my $self= shift;
-    return unless $self->get_value('switch.pretend');
+    return unless $self->get_switch('pretend');
 
     logger->log("", "*** Only pretending, no changes are made! ****", "");
 }
@@ -363,7 +363,7 @@ sub _mkdir {
     my $self= shift;
     my $sDir= shift;
 
-    return 1 if $self->get_value('switch.pretend');
+    return 1 if $self->get_switch('pretend');
 
     # TODO: set MASK ?
     # return 1 if $self->{_TARGET_OBJECT}->mkdir($sDir);
@@ -446,7 +446,7 @@ sub backup {
     # start logging
     my $sLogFile= "$sBakMonth-log/$sBakDay.$sBakSet.log";
 
-    if (!$self->get_value('switch.pretend') && $self->get_value('switch.logging')) {
+    if (!$self->get_switch('pretend') && $self->get_switch('logging')) {
         $self->_mkdir("$sBakMonth-log");
 
         my $sLogLink= "$sBakMonth.$sBakSet/$sBakDay.$sBakSet.log";
@@ -469,7 +469,7 @@ sub backup {
             $oTargetPath->symlink($sLogFile, "current-log.$sBakSet");
         }
     }
-    logger->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_value('switch.logging');
+    logger->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_switch('logging');
     logger->info("Rabak Version " . $self->get_value("version"));
     $self->logPretending();
 
@@ -502,7 +502,7 @@ cleanup:
 
     my $sSubject= "successfully finished";
     $sSubject= "$iSuccessCount of " . scalar(@oSources) . " backups $sSubject" if $iResult;
-    $sSubject= "*PRETENDED* $sSubject" if $self->get_value("switch.pretend");
+    $sSubject= "*PRETENDED* $sSubject" if $self->get_switch("pretend");
 
     # send admin mail
     $self->_mail_log($sSubject);
@@ -571,7 +571,8 @@ sub _backup_run {
 
     my $iErrorCode= 0;
     logger->set_prefix($sBakType);
-    $iErrorCode= $oSource->run($oTargetPath, $self->get_value("full_target"), $self->get_value("unique_target"), @sBakDir);
+    $iErrorCode= $oSource->run($oTargetPath, $self->get_value("full_target"),
+        $self->get_value("unique_target"), $self->get_switch('pretend'), @sBakDir);
     logger->set_prefix();
 
     if (!$iErrorCode) {
@@ -589,9 +590,9 @@ sub _backup_run {
     for my $sBakDir (@sBakDir) {
         push @sKeepDirs, $sBakDir if $sBakDir=~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?$sqBakSource$/;
     }
-    $oTargetPath->remove_old($oSource->get_value("keep"), @sKeepDirs) unless $iErrorCode;    # only remove old if backup was done
 
-    unless ($self->get_value('switch.pretend')) {
+    unless ($self->get_switch('pretend')) {
+        $oTargetPath->remove_old($oSource->get_value("keep"), @sKeepDirs) unless $iErrorCode;    # only remove old if backup was done
         $oTargetPath->unlink("current.$sBakSetSource");
         $oTargetPath->symlink("$sTarget", "current.$sBakSetSource");
     }
@@ -698,7 +699,7 @@ sub rm_file {
 
     map {
         logger->log("Removing " . scalar @{ $aDirs{$_} } . " directories: $_");
-        !$self->get_value('switch.pretend') && rmtree($aDirs{$_}, $self->{DEBUG});
+        !$self->get_switch('pretend') && rmtree($aDirs{$_}, $self->{DEBUG});
 
         # print Dumper($aDirs{$_});
 
@@ -709,7 +710,7 @@ sub rm_file {
 
         # print Dumper($aFiles{$_});
 
-        !$self->get_value('switch.pretend') && unlink(@{ $aFiles{$_} });
+        !$self->get_switch('pretend') && unlink(@{ $aFiles{$_} });
     } sort { $a cmp $b } keys %aFiles;
 
     map { logger->log("Didn't find: $_") unless defined $iFoundMask{$_} } @sFileMask;

@@ -62,8 +62,8 @@ sub init {
     my $class= shift;
     my $hConf= shift;
 
-    $oLog->{SWITCH_PRETEND}= $hConf->get_value('switch.pretend');
-    $oLog->{SWITCH_LOGGING}= $hConf->get_value('switch.logging');
+    $oLog->{SWITCH_PRETEND}= $hConf->get_switch('pretend');
+    $oLog->{SWITCH_LOGGING}= $hConf->get_switch('logging');
 
     # $hConf->set_log($self);
     # bless $self, $class;

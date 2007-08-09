@@ -67,6 +67,7 @@ sub run {
     my $oTargetPath= shift;
     my $sFullTarget= shift;
     my $sUniqueTarget= shift;
+    my $bPretend= shift;
     my @sBakDir= @_;
 
 
@@ -104,7 +105,7 @@ sub run {
         my $sDestFile= "$sFullTarget/$_.$sUniqueTarget.$sZipExt";
         my $sProbeCmd= $self->get_probe_cmd($_);
 
-        unless ($self->get_value('switch.pretend')) {
+        unless ($bPretend) {
             $self->run_cmd($sProbeCmd);
             if ($self->get_last_exit) {
                 my $sError= $self->get_last_error;
@@ -126,7 +127,7 @@ sub run {
         }
 
         # now execute dump command on target
-        unless ($self->get_value('switch.pretend')) {
+        unless ($bPretend) {
             $oTargetPath->run_cmd("$sDumpCmd > $sDestFile");
             if ($self->get_last_exit) {
                 my $sError= $self->get_last_error;

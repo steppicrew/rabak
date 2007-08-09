@@ -2,15 +2,17 @@
 Done:
 + Log4Perl??
 + Alle Values bei Initialisierung uebergeben
++ make path to: type://user@host:path
++ separate class for mount objects
 
 
 Code:
 + Build POD from config-file
 + Output effective config file
-+ make path to: type://user@host:path
-+ separate class for mount objects
 + Tests
 + rabak.conf nach /etc
++ make command line switches overwrite objects values
+? is there a better way to reference an object in lower (or top) level than with "." or "/"
 
 - Set Mail-Sender to <user@hostname>
 - Log rabak log command line, file name etc. include into mail

@@ -103,8 +103,8 @@ sub _mount_check {
 
     my $sTargetValue= $self->get_value("group");
     my $sqTargetValue= quotemeta $sTargetValue;
-    if ($self->get_value('switch.targetvalue')) {
-        $sTargetValue.= "." . $self->get_value('switch.targetvalue');
+    if ($self->get_switch('targetvalue')) {
+        $sTargetValue.= "." . $self->get_switch('targetvalue');
         $sqTargetValue= quotemeta $sTargetValue;
     }
     else {
@@ -115,7 +115,7 @@ sub _mount_check {
     if ($result->{CODE} == 1) {
         my $sMountDir= $result->{PATH};
 
-        my $sDevConfFile= File::Spec->join($sMountDir, $self->get_value('switch.dev_conf_file', "rabak.dev.cf"));
+        my $sDevConfFile= File::Spec->join($sMountDir, $self->get_switch('dev_conf_file', "rabak.dev.cf"));
         if ($self->isReadable("$sDevConfFile")) {
             if ($sTargetValue) {
                 my $oDevConfFile= RabakLib::ConfFile->new($self->getLocalFile($sDevConfFile));
@@ -153,12 +153,10 @@ sub remove_old {
 
     logger->info("Keeping last $iKeep versions");
     splice @sBakDir, 0, $iKeep;
-    unless ($self->get_value('switch.pretend')) {
-        foreach (@sBakDir) {
-            logger->info("Removing \"$_\"");
-            $self->rmtree($_);
-            logger->error($self->get_last_error()) if $self->get_last_exit;
-        }
+    foreach (@sBakDir) {
+        logger->info("Removing \"$_\"");
+        $self->rmtree($_);
+        logger->error($self->get_last_error()) if $self->get_last_exit;
     }
 }
 

@@ -110,6 +110,17 @@ sub get_value {
     return $self->remove_backslashes($self->get_raw_value(@_));
 }
 
+# command line switches are set in /switch
+# if not it's a simple property value
+sub get_switch {
+    my $self= shift;
+    my $sName= shift;
+    
+    my $sSwitch= $self->get_value("/switch.$sName");
+    return $sSwitch if defined $sSwitch;
+    return $self->get_value($sName);
+}
+
 sub get_property {
     my $self= shift;
     my $sName= shift;
@@ -117,10 +128,17 @@ sub get_property {
     return undef unless defined $sName;
     return undef if $sName eq '.';
     
-    # you can use leading "." for going up one level in name space
+    # leading slash means: search from root conf
+    if ($sName=~ /^\//) {
+        return $self->{PARENT_CONF}->get_property($sName) if $self->{PARENT_CONF};
+        $sName=~ s/^\///;
+    }
+    
+    # each leading dot means: going up one level in conf tree
     if ($sName=~ s/^\.//) {
-        return $self->{PARENT_CONF}->get_property($sName) if $self->{PARENT_CONF}; 
-        return undef;
+        return $self->{PARENT_CONF}->get_property($sName) if $self->{PARENT_CONF};
+        # if on top conf, get property here
+        $sName=~ s/^\.*//;
     }
     
     $sName= lc $sName;
