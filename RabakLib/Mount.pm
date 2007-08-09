@@ -105,7 +105,7 @@ sub mount {
         $sUnmount= $sMountDevice ne '' ? $sMountDevice : $sMountDir;
         $self->{UNMOUNT}= $sUnmount;
         $spMountDevice= $sMountDevice ? " \"$sMountDevice\""  : "";
-        push @sCurrentMountMessage, logger->info("Trying to mount \"$sUnmount\"");
+        push @sCurrentMountMessage, RabakLib::Log->logger->info("Trying to mount \"$sUnmount\"");
 
         goto nextDevice unless $self->{PATH_OBJECT}->isPossibleValid($self, \@sCurrentMountMessage);
 
@@ -114,7 +114,7 @@ sub mount {
             my $sMountResult= $oPath->get_error;
             chomp $sMountResult;
             $sMountResult =~ s/\r?\n/ - /g;
-            push @sCurrentMountMessage, logger->warn("Mounting$spMountDevice$spMountDir failed with: $sMountResult!");
+            push @sCurrentMountMessage, RabakLib::Log->logger->warn("Mounting$spMountDevice$spMountDir failed with: $sMountResult!");
             goto nextDevice;
         }
 
@@ -131,8 +131,8 @@ nextDevice:
         unshift @{ $arUnmount }, $self if $self->get_value("unmount");
     }
 
-    push @{ $arMessage }, logger->info("Mounted$spMountDevice$spMountDir") if $iResult;
-    push @{ $arMessage }, logger->error("All mounts failed") unless $iResult;
+    push @{ $arMessage }, RabakLib::Log->logger->info("Mounted$spMountDevice$spMountDir") if $iResult;
+    push @{ $arMessage }, RabakLib::Log->logger->error("All mounts failed") unless $iResult;
     return $iResult;
 }
 
@@ -147,10 +147,10 @@ sub unmount {
         chomp $sResult;
         $sResult =~ s/\r?\n/ - /g;
     
-        logger->warn("Unmounting \"$_\" failed: $sResult!");
+        RabakLib::Log->logger->warn("Unmounting \"$_\" failed: $sResult!");
         next;
     }
-    logger->log("Unmounted \"$_\"");
+    RabakLib::Log->logger->log("Unmounted \"$_\"");
 }
 
 1;
