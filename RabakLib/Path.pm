@@ -70,9 +70,7 @@ sub getPath {
 #            path where device is mounted (if executed)
 sub _mount_check {
     my $self= shift;
-    my $oMount= shift;
-    
-    my $sMountDevice= $oMount->get_value("device");
+    my $sMountDevice= shift;
 
     return { CODE => -1 } if !$sMountDevice;
 
@@ -175,7 +173,7 @@ sub unmountAll {
     my @sUnmount= @{ $self->{_MOUNT_LIST} };
 
     for my $oMount (@sUnmount) {
-        $oMount->umount();
+        $oMount->unmount();
     }
 
     $self->{_MOUNT_LIST}= []

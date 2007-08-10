@@ -22,7 +22,7 @@ sub isPossibleValid {
         push @$sCurrentMountMessage, logger->warn("Target devices have to be specified with device name");
         return 0;
     }
-    my %checkResult = %{$self->_mount_check($sMountDevice, 1)};
+    my %checkResult = %{$self->_mount_check($sMountDevice)};
     push @$sCurrentMountMessage, logger->info($checkResult{INFO}) if $checkResult{INFO};
     push @$sCurrentMountMessage, logger->error($checkResult{ERROR}) if $checkResult{ERROR};
     # device is mounted but not target
@@ -44,11 +44,11 @@ sub isValid {
     my $sMountDevice= shift;
     my $sCurrentMountMessage= shift;
 
-    my %checkResult = %{ $self->_mount_check($sMountDevice, 0) };
+    my %checkResult = %{ $self->_mount_check($sMountDevice) };
     push @$sCurrentMountMessage, logger->info($checkResult{INFO}) if $checkResult{INFO};
     push @$sCurrentMountMessage, logger->error($checkResult{ERROR}) if $checkResult{ERROR};
     if ($checkResult{CODE} == 0) { # device is not mounted
-        push @$sCurrentMountMessage, $self->warnMsg("Device \"$sMountDevice\" is not mounted!");
+        push @$sCurrentMountMessage, logger->warn("Device \"$sMountDevice\" is not mounted!");
     }
     elsif ($checkResult{CODE} == 1) { # device is no valid target
         $self->umount("\"$sMountDevice\"");
@@ -95,11 +95,9 @@ sub mountErrorIsFatal {
 #            result string of umount command (if executed)
 sub _mount_check {
     my $self= shift;
-    my $oMount= shift;
+    my $sMountDevice= shift;
     
-    my $sMountDevice= $oMount->get_value("device");
-    
-    my $result= $self->SUPER::_mount_check($oMount);
+    my $result= $self->SUPER::_mount_check($sMountDevice);
 
     my $sTargetValue= $self->get_value("group");
     my $sqTargetValue= quotemeta $sTargetValue;

@@ -86,7 +86,7 @@ sub mount {
         $spMountDevice= $sMountDevice ? " \"$sMountDevice\""  : "";
         push @sCurrentMountMessage, RabakLib::Log->logger->info("Trying to mount \"$sUnmount\"");
 
-        goto nextDevice unless $self->{PATH_OBJECT}->isPossibleValid($self, \@sCurrentMountMessage);
+        goto nextDevice unless $self->{PATH_OBJECT}->isPossibleValid($sMountDevice, \@sCurrentMountMessage);
 
         $oPath->mount("$spMountType$spMountDevice$spMountDir$spMountOpts");
         if ($?) { # mount failed
@@ -97,7 +97,7 @@ sub mount {
             goto nextDevice;
         }
 
-        $iResult= $self->{PATH_OBJECT}->isValid($self, \@sCurrentMountMessage);
+        $iResult= $self->{PATH_OBJECT}->isValid($sMountDevice, \@sCurrentMountMessage);
 nextDevice:
         push @sMountMessage, @sCurrentMountMessage;
         last if $iResult;
@@ -122,7 +122,7 @@ sub unmount {
 
     $self->{PATH_OBJECT}->umount("\"$self->{UNMOUNT}\"");
     if ($?) {
-        my $sResult= $self->get_error;
+        my $sResult= $self->{PATH_OBJECT}->get_error;
         chomp $sResult;
         $sResult =~ s/\r?\n/ - /g;
     
