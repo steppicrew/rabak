@@ -6,6 +6,7 @@ use warnings;
 use strict;
 
 use Data::Dumper;
+use Storable qw(dclone);
 use RabakLib::Log;
 
 our $iElemNo= 0;
@@ -15,11 +16,12 @@ sub new {
     my $sName= shift || "elem_" . ($iElemNo++);
     my $oParentConf= shift;
     
-    my $self= {};
-    $self->{VALUES}= {} unless $self->{VALUES};
-    $self->{PARENT_CONF}= $oParentConf;
-    $self->{NAME}= $sName;
-    $self->{ERRORCODE}= undef;
+    my $self= {
+        VALUES=> {},
+        PARENT_CONF=> $oParentConf,
+        NAME=> $sName,
+        ERRORCODE=> undef,
+    };
 
     bless $self, $class;
 }
@@ -29,26 +31,9 @@ sub CloneConf {
     my $oOrigConf= shift;
 
     my $new= $class->new($oOrigConf->{NAME}, $oOrigConf->{PARENT_CONF});
-    
-    $new->copyValues($oOrigConf);
+    $new->{VALUES}= dclone($oOrigConf->{VALUES});
 
     return $new;
-}
-
-# creates duplicates of all values and objects
-sub copyValues {
-    my $self= shift;
-    my $oSource= shift;
-
-    for my $sKey (keys(%{$oSource->{VALUES}})) {
-        if (ref $oSource->{VALUES}{$sKey}) {
-            my $oSrcSubConf= $oSource->{VALUES}{$sKey};
-            $self->{VALUES}{$sKey}= ref($oSrcSubConf)->CloneConf($oSrcSubConf);
-        }
-        else {
-            $self->{VALUES}{$sKey}= $oSource->{VALUES}{$sKey};
-        }
-    }
 }
 
 sub get_raw_value {
@@ -57,8 +42,11 @@ sub get_raw_value {
     my $sDefault= shift || undef;
     
     my $sValue= $self->get_property($sName);
-    
-    return $sDefault unless defined $sValue;
+
+    unless (defined $sValue) {
+        return $self->{NAME} if lc($sName) eq 'name';      
+        return $sDefault;
+    }
     return $sDefault if ref $sValue;
     return $sDefault if $sValue eq '*default*';
     return $sValue;

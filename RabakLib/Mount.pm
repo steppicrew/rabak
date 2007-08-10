@@ -27,27 +27,6 @@ sub new {
     bless $self, $class;
 }
 
-sub CloneConf {
-    my $class= shift;
-    my $oOrigConf= shift;
-    
-    my $new= $class->SUPER::CloneConf($oOrigConf);
-
-    my $sPath= $new->get_value("path");
-    if ($sPath && $sPath=~ s/^(\w+\:\/\/)?(\S+\@)?([\-0-9a-z\.]+)\://i) {
-        $sPath= "$1$sPath" if $1;
-        $new->set_value("path", $sPath);
-        my $sUser= $2 || '';
-        my $sHost= $3;
-        $sUser=~ s/\@$//;
-        $new->set_value("host", $sHost);
-        $new->set_value("user", $sUser) if $sUser;
-    }
-
-    # print Data::Dumper->Dump([$self->{VALUES}]); die;
-    return $new;
-}
-
 sub is_mounted {
     my $self= shift;
     

@@ -34,13 +34,6 @@ sub CloneConf {
     return $new;
 }
 
-sub new {
-    my $class = shift;
-    my $self= $class->SUPER::new(@_);
-    
-    bless $self, $class;
-}
-
 sub get_show_cmd {
     die "This function has to be overloaded!"
 }

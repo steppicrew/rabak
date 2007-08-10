@@ -48,16 +48,6 @@ sub Factory {
     return $new;
 }
 
-sub CloneConf {
-    my $class= shift;
-    my $oOrigConf= shift;
-    
-    my $new= $class->SUPER::CloneConf($oOrigConf);
-
-    $new->set_value("name", $new->{NAME}) unless $new->get_value("name");
-    return $new;
-}
-
 sub show {
     my $self= shift;
     print "source name: " . $self->get_value("name") . "\n";
