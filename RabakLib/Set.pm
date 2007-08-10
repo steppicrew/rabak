@@ -317,7 +317,13 @@ sub collect_bakdirs {
     my $sqBakSource= shift;
     my $sSubSetBakDay= shift || 0;
 
-    $sqBakSource= "(" . quotemeta(".$sqBakSource") . ")|" if $sqBakSource;
+    if (defined $sqBakSource && $sqBakSource ne '') {
+        $sqBakSource= quotemeta ".$sqBakSource";
+    }
+    else {
+        # match nothing
+        $sqBakSource= ".{0}";
+    }
     my $oTargetPath= $self->get_targetPath();
     my @sBakDir= ();
     my $sSubSet= '';
@@ -331,7 +337,7 @@ sub collect_bakdirs {
         for my $sDayDir (keys %{$hBakDirs{$sMonthDir}}) {
             next unless ref $hBakDirs{$sMonthDir}->{$sDayDir}; # dirs point to hashes
             # print "$sDayDir??\n";
-            next unless $sDayDir =~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?($sqBakSource(\.$sqBakSet))$/; # [a-z] for backward compatibility
+            next unless $sDayDir =~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?(($sqBakSource)|(\.$sqBakSet))$/; # [a-z] for backward compatibility
             if ($sSubSetBakDay eq $1) {
                 my $sCurSubSet= $2 || '';
                 die "Maximum of 1000 backups reached!" if $sCurSubSet eq '_999';
