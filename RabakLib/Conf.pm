@@ -13,7 +13,7 @@ our $iElemNo= 0;
 
 sub new {
     my $class = shift;
-    my $sName= shift || "elem_" . ($iElemNo++);
+    my $sName= shift || "*" . ($iElemNo++);
     my $oParentConf= shift;
     
     my $self= {

@@ -473,6 +473,7 @@ sub backup {
     my %sNames= ();
     for my $oSource (@oSources) {
         my $sName= $oSource->get_value("name") || '';
+        $oSource->set_value("name", "") if $sName=~ s/^\*//;
         if ($sNames{$sName}) {
             logger->error("Name '$sName' of Source Object has already been used. Skipping backup of source.");
             next;
