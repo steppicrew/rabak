@@ -50,56 +50,14 @@ sub Factory {
 
 sub show {
     my $self= shift;
-    print "source name: " . $self->get_value("name") . "\n";
-    print "source path: " . $self->getFullPath() . "\n";
+
+    my $sName= $self->get_value("name");
+    $self->SUPER::show() unless $sName=~ /^\*/;
 }
 
 sub getFullPath {
     my $self= shift;
-    my $sFullPath= $self->SUPER::getFullPath();
-    return "[" . $self->get_value("type") . "]:$sFullPath";
-}
-
-sub collect_bakdirs {
-    my $self= shift;
-    my $sSubSetBakDay= shift || 0;
-
-    my $sBakSet= $self->get_value('name');
-    my $sBakDir= $self->get_bakset_target();
-    my @sBakDir= ();
-    my $sSubSet= '';
-
-    while (<$sBakDir/*>) {
-        next unless /^$sBakDir\/(.*)/;
-        my $sMonthDir= $1;
-
-        next unless -d "$sBakDir/$sMonthDir" && $sMonthDir =~ /^(\d\d\d\d\-\d\d)\.($sBakSet)$/;
-
-        while (<$sBakDir/$sMonthDir/*>) {
-            next unless /^$sBakDir\/$sMonthDir\/(.*)/;
-            my $sDayDir= $1;
-            # print "$sDayDir??\n";
-            next unless -d $_ && $sDayDir =~ /^(\d\d\d\d\-\d\d\-\d\d)([a-z])?\.($sBakSet)$/;
-            if ($sSubSetBakDay eq $1) {
-                die "Maximum of 27 backups reached!" if $2 && $2 eq 'z';
-                if (!$2) {
-                    $sSubSet= 'a' if $sSubSet eq '';
-                }
-                else {
-                    $sSubSet= chr(ord($2)+1) if $sSubSet le $2;
-                }
-            }
-            push @sBakDir, "$sBakDir/$sMonthDir/$sDayDir";
-            # print "$sDayDir\n";
-        }
-    }
-
-    @sBakDir= sort { $b cmp $a } @sBakDir;
-
-    unshift @sBakDir, $sSubSet if $sSubSetBakDay;
-
-    return @sBakDir;
-    # return wantarray ? (\$sBakDir, $sSubSet) : \$sBakDir;
+    return $self->get_value("type") . "://" . $self->SUPER::getFullPath();
 }
 
 1;

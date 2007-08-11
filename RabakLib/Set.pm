@@ -68,6 +68,10 @@ sub _validate {
 sub show {
     my $self= shift;
     my $sKey= shift || $self->{NAME};
+    
+    print "#" x 80 . "\n";
+    print "# Configuration for \"$sKey\"\n";
+    print "#" x 80 . "\n\n";
 
     $self->SUPER::show($sKey);
 
@@ -76,16 +80,20 @@ sub show {
     my @oSources= $self->get_sourcePaths();
 
     my $oTarget= $self->get_targetPath();
-    print "\nEffective target: " . $oTarget->getFullPath() . "\n";
-    print "\nEffective sources: \n";
+    print "\n" . "#" x 80 . "\n";
+    print "# Target \"$oTarget->{NAME}\":\n";
+    print "#" x 80 . "\n";
+    $oTarget->show();
 
     for my $oSource (@oSources) {
-        print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n";# unless $oSource == $oSources[0];
-
+        print "#" x 80 . "\n";
+        print "# Source \"$oSource->{NAME}\":\n";
+        print "#" x 80 . "\n";
         $oSource->show();
+        print "\n";
     }
-    print "$@\n" if $@;
-    print "\n\n";
+#    print "$@\n" if $@;
+    print "\n";
 }
 
 # =============================================================================
@@ -243,7 +251,7 @@ sub logPretending {
     my $self= shift;
     return unless $self->get_switch('pretend');
 
-    logger->log("", "*** Only pretending, no changes are made! ****", "");
+    logger->log("", "**** Only pretending, no changes are made! ****", "");
 }
 
 sub _mail {
@@ -252,6 +260,7 @@ sub _mail {
     
     my $sMailAddress= $self->get_value('email'); 
 
+    return 0 if $self->get_switch('pretend'); 
     return 0 unless $sMailAddress;
 
     my $oMail = new Mail::Send Subject => $sSubject, To => $sMailAddress;

@@ -19,15 +19,56 @@ use vars qw(@ISA);
 
 @ISA = qw(RabakLib::PathBase);
 
+sub CloneConf {
+    my $class= shift;
+    my $oOrigConf= shift;
+    
+    my $new= $class->SUPER::CloneConf($oOrigConf);
+
+    my $sPath= $new->get_value("path");
+    if ($sPath && $sPath=~ s/^(\w+\:\/\/)?(\S+\@)?([\-0-9a-z\.]+)(\:\d+)?\://i) {
+        $sPath= "$1$sPath" if $1;
+        $new->set_value("path", $sPath);
+        my $sUser= $2 || '';
+        my $sHost= $3;
+        my $iPort= $4 || 0;
+        $sUser=~ s/\@$//;
+        $iPort=~ s/^\://;
+        $new->set_value("host", $sHost);
+        $new->set_value("user", $sUser) if $sUser;
+        $new->set_value("port", $iPort) if $iPort;
+    }
+
+    # print Data::Dumper->Dump([$self->{VALUES}]); die;
+    return $new;
+}
+
 sub getFullPath {
     my $self= shift;
     my $sPath= $self->getPath(shift);
 
     if ($self->is_remote()) {
-        $sPath = $self->get_value("host") . ":$sPath";
-        $sPath = $self->get_value("user") . "\@$sPath" if $self->get_value("user");
+        my $sUser= $self->get_value("user");
+        my $sHost= $self->get_value("host");
+        my $iPort= $self->get_value("port", 22);
+        $sPath = "$iPort:$sPath" if $iPort != 22;
+        $sPath = "$sHost:$sPath";
+        $sPath = "$sUser\@$sPath" if $sUser;
     }
     return $sPath;
+}
+
+sub show {
+    my $self= shift;
+    
+    $self->SUPER::show();
+    
+    my  @oMounts= $self->getMountObjects();
+    for my $oMount (@oMounts) {
+        print "\n";
+        $oMount->show();
+    }
+    print "\n";
 }
 
 # get path works only with file object!

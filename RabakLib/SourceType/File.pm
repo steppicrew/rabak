@@ -273,7 +273,7 @@ sub show {
     return unless $self->get_switch("logging") >= LOG_DEBUG_LEVEL;
 
     my $sBaseDir= $self->valid_source_dir();
-    print "Expanded rsync filter (relative to '$sBaseDir'):\n\t" . join("\n\t", $self->_get_filter()) . "\n";
+    print "# Expanded rsync filter (relative to '$sBaseDir'):\n#\t" . join("\n#\t", $self->_get_filter()) . "\n";
 }
 
 sub valid_source_dir {
