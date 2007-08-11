@@ -126,10 +126,10 @@ sub unmount {
         chomp $sResult;
         $sResult =~ s/\r?\n/ - /g;
     
-        RabakLib::Log->logger->warn("Unmounting \"$_\" failed: $sResult!");
+        RabakLib::Log->logger->warn("Unmounting \"$self->{UNMOUNT}\" failed: $sResult!");
         next;
     }
-    RabakLib::Log->logger->log("Unmounted \"$_\"");
+    RabakLib::Log->logger->log("Unmounted \"$self->{UNMOUNT}\"");
 }
 
 1;

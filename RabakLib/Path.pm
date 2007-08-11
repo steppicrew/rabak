@@ -175,8 +175,6 @@ sub unmountAll {
     for my $oMount (@sUnmount) {
         $oMount->unmount();
     }
-
-    $self->{_MOUNT_LIST}= []
 }
 
 1;
