@@ -52,27 +52,29 @@ sub getPath {
 # tests if device is mounted and is a valid rabak target
 # @param $sMountDevice
 #   device to check
-# @param $bUnmount
-#   unmount the device if its a valid rabak media
+# @param $sMountDir
+#   mount dir in fstab if $sMountDevice is not given
 # @return
-#   hashtable:
-#       {CODE} (int):
-#           -1: no device specified
-#            0: device is not mounted
-#            1: device is mounted
-#       {INFO} (string):
-#            explaining information about CODE
-#       {ERROR} (string):
-#            additional error messages
-#       {UMOUNT} (string):
-#            result string of umount command (if executed)
-#       {PATH} (string):
-#            path where device is mounted (if executed)
-sub _mount_check {
+#   0 : don't know which device to check
+#   1 : device is not mounted
+#   2 : device is not valid (set by overwriting method)
+#   <path>: path the device is mounted at
+#   
+sub checkMount {
     my $self= shift;
     my $sMountDevice= shift;
+    my $sMountDir= shift;
+    my $arMountMessages= shift;
+    
+    return 0 unless $sMountDevice || $sMountDir;
 
-    return { CODE => -1 } if !$sMountDevice;
+    unless ($sMountDevice) {
+        my $sFsTab= $self->cat("/etc/fstab") || '';
+        my $sqMountDir= quotemeta $sMountDir;
+        $sMountDevice= $1 if $sFsTab=~ /^(\S+)\s+$sqMountDir\s+/m; 
+    }
+
+    return 0 unless $sMountDevice;
 
     $sMountDevice= $self->abs_path($sMountDevice);
 
@@ -82,30 +84,7 @@ sub _mount_check {
     # TODO:
     #     check for "mount" outputs different from '/dev/XXX on /mount/dir type ...' on other systems
     #     notice: the check for "type" after mount dir is because of missing delimiters if mount dir contains spaces!
-    if ($cur_mounts =~ /^$sqMountDevice\son\s+(\/.*)\stype\s/m) {
-        return {
-            PATH => $1,
-            CODE => 1,
-        }
-    }
-    return {
-        CODE => 0,
-    };
-}
-
-sub isPossibleValid {
-    my $self= shift;
-    my $sMountDevice= shift;
-    my $sCurrentMountMessage= shift;
-
-    return 1;
-}
-
-sub isValid {
-    my $self= shift;
-    my $sMountDevice= shift;
-    my $sCurrentMountMessage= shift;
-
+    return $1 if $cur_mounts =~ /^$sqMountDevice\son\s+(\/.*)\stype\s/m;
     return 1;
 }
 

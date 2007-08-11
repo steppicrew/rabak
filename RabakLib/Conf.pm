@@ -103,10 +103,11 @@ sub get_value {
 sub get_switch {
     my $self= shift;
     my $sName= shift;
+    my $sDefault= shift;
     
     my $sSwitch= $self->get_value("/switch.$sName");
     return $sSwitch if defined $sSwitch;
-    return $self->get_value($sName);
+    return $self->get_value($sName, $sDefault);
 }
 
 sub get_property {

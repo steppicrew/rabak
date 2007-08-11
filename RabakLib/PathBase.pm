@@ -631,6 +631,13 @@ sub echo {
     }
 }
 
+sub cat {
+    my $self= shift;
+    my $sFile= $self->getPath(shift);
+
+    return $self->savecmd("cat '$sFile'");
+}
+
 sub mount {
     my $self= shift;
     my $sParams= shift || '';
