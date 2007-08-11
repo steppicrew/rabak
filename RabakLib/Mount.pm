@@ -127,7 +127,6 @@ sub unmount {
         $sResult =~ s/\r?\n/ - /g;
     
         RabakLib::Log->logger->warn("Unmounting \"$self->{UNMOUNT}\" failed: $sResult!");
-        next;
     }
     RabakLib::Log->logger->log("Unmounted \"$self->{UNMOUNT}\"");
 }
