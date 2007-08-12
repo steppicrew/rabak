@@ -82,13 +82,13 @@ sub show {
 
     my $oTarget= $self->get_targetPath();
     print "\n" . "#" x 80 . "\n";
-    print "# Target \"$oTarget->{NAME}\":\n";
+    print "# Target \"$oTarget->{NAME}\": ". $oTarget->getFullPath() . "\n";
     print "#" x 80 . "\n";
     $oTarget->show(undef, $hConfShowCache);
 
     for my $oSource (@oSources) {
         print "#" x 80 . "\n";
-        print "# Source \"$oSource->{NAME}\":\n";
+        print "# Source \"$oSource->{NAME}\": ". $oSource->getFullPath() . "\n";
         print "#" x 80 . "\n";
         $oSource->show(undef, $hConfShowCache);
         print "\n";

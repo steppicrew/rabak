@@ -32,6 +32,7 @@ sub CloneConf {
 
     my $new= $class->new($oOrigConf->{NAME}, $oOrigConf->{PARENT_CONF});
     # replace reference to $oOrigConf with $new
+    # TODO: is this safe???
     $oOrigConf->{PARENT_CONF}{VALUES}{$oOrigConf->{NAME}}= $new;
     $new->{VALUES}= dclone($oOrigConf->{VALUES});
 
@@ -230,6 +231,8 @@ sub show {
     
     $sKey= $self->get_full_name($sKey) if $sKey eq '';
 
+    return if $sKey=~ /\*\d+$/; # don't show anonymous objects
+    
     for (sort keys %{ $self->{VALUES} }) {
         next if $_ =~ /^\./;
         if (ref($self->{VALUES}{$_})) {

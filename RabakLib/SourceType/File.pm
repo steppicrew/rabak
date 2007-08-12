@@ -13,17 +13,14 @@ use File::Spec;
 use RabakLib::Log;
 
 # hash table for detecting references and list of all used macros in filter expansion
-our %hMacroStack= ();
-
 sub _get_filter {
     my $self= shift;
-
-    %hMacroStack= ();
+    my $hMacroStack= shift || {};
 
     my ($sFilter, $oFilterParent)= $self->get_property('filter'); 
     if (defined $sFilter && ! ref $sFilter) {
         my $sFilterName= $oFilterParent->get_full_name('filter');
-        $hMacroStack{$sFilterName}= 1;
+        $hMacroStack->{$sFilterName}= 1;
         $sFilter= $self->remove_backslashes_part1($sFilter);
     }
     else {
@@ -31,12 +28,13 @@ sub _get_filter {
         $sFilter.= " -(" . $self->remove_backslashes_part1($self->get_raw_value('exclude')) . ")" if $self->get_raw_value('exclude');
         $sFilter.= " +(" . $self->remove_backslashes_part1($self->get_raw_value('include')) . ")" if $self->get_raw_value('include');
     }
-    return $self->_parseFilter($sFilter, $self->valid_source_dir());
+    return $self->_parseFilter($sFilter, $self->valid_source_dir(), $hMacroStack);
 }
 
 sub _expand {
     my $self= shift;
     my $sEntry= shift;
+    my $hMacroStack= shift || {};
 
     # remove spaces between +/- and path
     $sEntry=~ s/(?<!\\)([\-\+])\s+/$1/g;
@@ -73,7 +71,7 @@ sub _expand {
             $hEntries= $hMixed;
         }
         if ($sEntry =~ /^\&/) {
-            my $hMacro= $self->_expandMacro($sEntry);
+            my $hMacro= $self->_expandMacro($sEntry, $hMacroStack);
             if ($hMacro->{ERROR}) {
                 push @{$hEntries->{DATA}}, "# ERROR: $hMacro->{ERROR}";
             }
@@ -107,12 +105,14 @@ sub _expand {
 sub _expandMacro {
     my $self= shift;
     my $sMacroName= shift;
+    my $hMacroStack= shift || {};
+
     my %sResult= ();
 
 # print "Expanding $sMacroName\n";
 
     $sMacroName=~ s/^\&//;
-    if ($hMacroStack{$sMacroName}) {
+    if ($hMacroStack->{$sMacroName}) {
         $sResult{ERROR}= "Recursion detected ('$sMacroName'). Ignored";
     }
     else {
@@ -125,9 +125,9 @@ sub _expandMacro {
             # build full macro name
             $sMacroName= $oMacroParent->get_full_name($sMacroName);
             $sResult{MACRO}= $sMacroName;
-            $hMacroStack{$sMacroName}= 1;
-            $sResult{DATA}= $self->_expand($sMacro);
-            $hMacroStack{$sMacroName} = 0;
+            $hMacroStack->{$sMacroName}= 1;
+            $sResult{DATA}= $self->_expand($sMacro, $hMacroStack);
+            $hMacroStack->{$sMacroName} = 0;
         }
     }
     logger->error("Filter expansion: $sResult{ERROR}") if $sResult{ERROR};
@@ -202,11 +202,12 @@ sub _parseFilter {
     my $self= shift;
     my $sFilter= shift;
     my $sBaseDir= shift;
+    my $hMacroStack= shift || {};
     
     $sBaseDir=~ s/\/?$/\//;
     my $sqBaseDir= quotemeta $sBaseDir;
 
-    $sFilter= $self->_expand($sFilter);
+    $sFilter= $self->_expand($sFilter, $hMacroStack);
 # print Dumper($sFilter);
     my @sFilter= @{$self->_flatten_filter($sFilter)};
 
@@ -242,7 +243,7 @@ sub _parseFilter {
         }
 
         if ($sEntry=~ /^\// && $sEntry!~ s/^$sqBaseDir/\//) {
-            logger->warn("'$sEntry' is not contained in source path '$sBaseDir'.");
+            logger->debug("'$sEntry' is not contained in source path '$sBaseDir'.");
             push @sResult, "# WARNING!! '$sEntry' is not contained in source path '$sBaseDir'. Ignored.";
             next;
         }
@@ -284,8 +285,11 @@ sub show {
     
     $self->SUPER::show($sKey, $hConfShowCache);
     
-    my @sFilter= $self->_get_filter();
-    for my $sMacroName (sort keys %hMacroStack) {
+    my $hMacroStack= {};
+    
+    my @sFilter= $self->_get_filter($hMacroStack);
+    print "# Referenced filters:\n" if scalar @sFilter;
+    for my $sMacroName (sort keys %$hMacroStack) {
         my $sMacro= $self->get_raw_value("/$sMacroName");
         $sMacro=~ s/\n/\n\t/g;
         print "$sMacroName = $sMacro\n" unless defined $hConfShowCache->{$sMacroName};
