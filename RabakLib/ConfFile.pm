@@ -73,7 +73,7 @@ sub print_set_list {
             && defined $oConf->{VALUES}{$sBakSet}->{VALUES}{title}
             && defined $oConf->{VALUES}{$sBakSet}->{VALUES}{source}
             && defined $oConf->{VALUES}{$sBakSet}->{VALUES}{target};
-        my $oSet= RabakLib::Set->new($sBakSet, $oConf);
+        my $oSet= RabakLib::Set->CloneConf($oConf->{VALUES}{$sBakSet});
         my $oTarget= $oSet->get_targetPath(); 
         my @oSources= $oSet->get_sourcePaths();
         next unless $oTarget && scalar @oSources;
