@@ -68,12 +68,13 @@ sub _validate {
 sub show {
     my $self= shift;
     my $sKey= shift || $self->{NAME};
+    my $hConfShowCache= shift || {};
     
     print "#" x 80 . "\n";
     print "# Configuration for \"$sKey\"\n";
     print "#" x 80 . "\n\n";
 
-    $self->SUPER::show($sKey);
+    $self->SUPER::show($sKey, $hConfShowCache);
 
     my $sType= $self->get_value("type");
 
@@ -83,13 +84,13 @@ sub show {
     print "\n" . "#" x 80 . "\n";
     print "# Target \"$oTarget->{NAME}\":\n";
     print "#" x 80 . "\n";
-    $oTarget->show();
+    $oTarget->show(undef, $hConfShowCache);
 
     for my $oSource (@oSources) {
         print "#" x 80 . "\n";
         print "# Source \"$oSource->{NAME}\":\n";
         print "#" x 80 . "\n";
-        $oSource->show();
+        $oSource->show(undef, $hConfShowCache);
         print "\n";
     }
 #    print "$@\n" if $@;

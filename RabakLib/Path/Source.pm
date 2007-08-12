@@ -50,9 +50,11 @@ sub Factory {
 
 sub show {
     my $self= shift;
+    my $sKey= shift || '';
+    my $hConfShowCache= shift || {};
 
     my $sName= $self->get_value("name");
-    $self->SUPER::show() unless $sName=~ /^\*/;
+    $self->SUPER::show($sKey, $hConfShowCache);# unless $sName=~ /^\*/;
 }
 
 sub getFullPath {

@@ -60,13 +60,15 @@ sub getFullPath {
 
 sub show {
     my $self= shift;
+    my $sKey= shift || '';
+    my $hConfShowCache= shift || {};
     
-    $self->SUPER::show();
+    $self->SUPER::show($sKey, $hConfShowCache);
     
     my  @oMounts= $self->getMountObjects();
     for my $oMount (@oMounts) {
         print "\n";
-        $oMount->show();
+        $oMount->show($sKey, $hConfShowCache);
     }
     print "\n";
 }

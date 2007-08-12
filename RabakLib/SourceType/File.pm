@@ -12,11 +12,22 @@ use Data::Dumper;
 use File::Spec;
 use RabakLib::Log;
 
+# hash table for detecting references and list of all used macros in filter expansion
+our %hMacroStack= ();
+
 sub _get_filter {
     my $self= shift;
 
-    my $sFilter= $self->remove_backslashes_part1($self->get_raw_value('filter')) || '';
-    unless ($sFilter) {
+    %hMacroStack= ();
+
+    my ($sFilter, $oFilterParent)= $self->get_property('filter'); 
+    if (defined $sFilter && ! ref $sFilter) {
+        my $sFilterName= $oFilterParent->get_full_name('filter');
+        $hMacroStack{$sFilterName}= 1;
+        $sFilter= $self->remove_backslashes_part1($sFilter);
+    }
+    else {
+        $sFilter="";
         $sFilter.= " -(" . $self->remove_backslashes_part1($self->get_raw_value('exclude')) . ")" if $self->get_raw_value('exclude');
         $sFilter.= " +(" . $self->remove_backslashes_part1($self->get_raw_value('include')) . ")" if $self->get_raw_value('include');
     }
@@ -26,7 +37,6 @@ sub _get_filter {
 sub _expand {
     my $self= shift;
     my $sEntry= shift;
-    my $hStack= shift || {};
 
     # remove spaces between +/- and path
     $sEntry=~ s/(?<!\\)([\-\+])\s+/$1/g;
@@ -63,7 +73,7 @@ sub _expand {
             $hEntries= $hMixed;
         }
         if ($sEntry =~ /^\&/) {
-            my $hMacro= $self->_expandMacro($sEntry, $hStack);
+            my $hMacro= $self->_expandMacro($sEntry);
             if ($hMacro->{ERROR}) {
                 push @{$hEntries->{DATA}}, "# ERROR: $hMacro->{ERROR}";
             }
@@ -97,25 +107,27 @@ sub _expand {
 sub _expandMacro {
     my $self= shift;
     my $sMacroName= shift;
-    my $hStack= shift || {};
     my %sResult= ();
 
 # print "Expanding $sMacroName\n";
 
     $sMacroName=~ s/^\&//;
-    if ($hStack->{$sMacroName}) {
+    if ($hMacroStack{$sMacroName}) {
         $sResult{ERROR}= "Recursion detected ('$sMacroName'). Ignored";
     }
     else {
-        my $sMacro= $self->remove_backslashes_part1($self->get_raw_value($sMacroName));
-        if (!$sMacro || ref $sMacro) {
+        my ($sMacro, $oMacroParent)= $self->get_property($sMacroName); 
+        if (! defined $sMacro || ref $sMacro) {
             $sResult{ERROR}= "'$sMacroName' does not exist or is an object. Ignored.";
         }
         else {
+            my $sMacro= $self->remove_backslashes_part1($sMacro);
+            # build full macro name
+            $sMacroName= $oMacroParent->get_full_name($sMacroName);
             $sResult{MACRO}= $sMacroName;
-            $hStack->{$sMacroName}= 1;
-            $sResult{DATA}= $self->_expand($sMacro, $hStack);
-            delete $hStack->{$sMacroName};
+            $hMacroStack{$sMacroName}= 1;
+            $sResult{DATA}= $self->_expand($sMacro);
+            $hMacroStack{$sMacroName} = 0;
         }
     }
     logger->error("Filter expansion: $sResult{ERROR}") if $sResult{ERROR};
@@ -267,13 +279,23 @@ sub _parseFilter {
 
 sub show {
     my $self= shift;
+    my $sKey= shift || '';
+    my $hConfShowCache= shift || {};
     
-    $self->SUPER::show();
+    $self->SUPER::show($sKey, $hConfShowCache);
+    
+    my @sFilter= $self->_get_filter();
+    for my $sMacroName (sort keys %hMacroStack) {
+        my $sMacro= $self->get_raw_value("/$sMacroName");
+        $sMacro=~ s/\n/\n\t/g;
+        print "$sMacroName = $sMacro\n" unless defined $hConfShowCache->{$sMacroName};
+        $hConfShowCache->{$sMacroName}= 1;
+    }
     
     return unless $self->get_switch("logging") >= LOG_DEBUG_LEVEL;
 
     my $sBaseDir= $self->valid_source_dir();
-    print "# Expanded rsync filter (relative to '$sBaseDir'):\n#\t" . join("\n#\t", $self->_get_filter()) . "\n";
+    print "# Expanded rsync filter (relative to '$sBaseDir'):\n#\t" . join("\n#\t", @sFilter) . "\n";
 }
 
 sub valid_source_dir {

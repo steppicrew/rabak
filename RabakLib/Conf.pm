@@ -31,6 +31,8 @@ sub CloneConf {
     my $oOrigConf= shift;
 
     my $new= $class->new($oOrigConf->{NAME}, $oOrigConf->{PARENT_CONF});
+    # replace reference to $oOrigConf with $new
+    $oOrigConf->{PARENT_CONF}{VALUES}{$oOrigConf->{NAME}}= $new;
     $new->{VALUES}= dclone($oOrigConf->{VALUES});
 
     return $new;
@@ -223,19 +225,36 @@ sub resolveObjects {
 
 sub show {
     my $self= shift;
-    my $sKey= shift || $self->{NAME};
+    my $sKey= shift || '';
+    my $hConfShowCache= shift || {};
+    
+    $sKey= $self->get_full_name($sKey) if $sKey eq '';
 
     for (sort keys %{ $self->{VALUES} }) {
         next if $_ =~ /^\./;
         if (ref($self->{VALUES}{$_})) {
             # print Dumper($self->{VALUES}{$_}); die;
-            $self->{VALUES}{$_}->show("$sKey.$_");
+            $self->{VALUES}{$_}->show("$sKey.$_", $hConfShowCache);
             next;
         }
         my $sValue= $self->get_value($_) || '';
         $sValue =~ s/\n/\n\t/g;
-        print "$sKey.$_ = $sValue\n";
+        print "$sKey.$_ = $sValue\n" unless defined $hConfShowCache->{"$sKey.$_"};
+        $hConfShowCache->{"$sKey.$_"}= 1;
     }
+}
+
+sub get_full_name {
+    my $self= shift;
+    my $sName= shift || '';
+    
+    $sName=~ s/^.*\.//;
+    while ($self->{PARENT_CONF}) {
+        $sName= "$self->{NAME}.$sName";
+        $self= $self->{PARENT_CONF};
+    }
+    $sName=~ s/\.$//;
+    return $sName;
 }
 
 1;
