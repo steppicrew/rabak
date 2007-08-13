@@ -69,6 +69,8 @@ sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
     
+    logger->set_stdout_prefix("# ");
+    
     print "#" x 80 . "\n";
     print "# Configuration for \"$self->{NAME}\"\n";
     print "#" x 80 . "\n\n";

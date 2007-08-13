@@ -37,6 +37,7 @@ BEGIN {
         FILE_NAME => '',
         REAL_FILE_NAME => '',   # real file name (tempfile for remote log files)
         IS_NEW => 0,
+        STDOUT_PREFIX => '',    # prefix for stdout prints (may be "# " for comments)
         
         ERRORCOUNT => 0,
         WARNCOUNT => 0,
@@ -167,6 +168,13 @@ sub get_warnCount {
     return $self->{WARNCOUNT};
 }
 
+sub set_stdout_prefix {
+    my $self= shift;
+    my $sPrefix= shift || '';
+    
+    $self->{STDOUT_PREFIX}= $sPrefix;
+}
+
 sub set_prefix {
     my $self= shift;
     my $sPrefix= shift || '';
@@ -269,7 +277,8 @@ sub _levelLog {
         }
         chomp $sMessage;
         $sMessage= '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
-        print "$sMsgPref$sMessage\n" if $iLevel <= $self->{SWITCH_LOGGING};
+        # print message to stdout
+        print "$self->{STDOUT_PREFIX}$sMsgPref$sMessage\n" if $iLevel <= $self->{SWITCH_LOGGING};
 
         next unless $self->{SWITCH_LOGGING} && !$self->{SWITCH_PRETEND};
 
