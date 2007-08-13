@@ -197,7 +197,7 @@ sub resolveObjects {
         logger->error("Recursive reference to '$sProperty'.");
         return @oResult; 
     }
-    $hStack->{$sProperty}= 1;
+    $hStack->{"$self.$sProperty"}= 1;
     
     my ($Value, $oOwningConf)= $self->get_property($sProperty); 
 
