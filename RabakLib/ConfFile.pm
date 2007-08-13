@@ -241,6 +241,9 @@ sub __expand {
             my $hConf1= $self->_line_expand(substr("$sKey.$_", 1), $1, 1);
             if ($hConf1) {
                 $hConf->{VALUES}{$_}= dclone($hConf1);
+                # correct name and parent conf to new location in conf tree
+                $hConf->{VALUES}{$_}{NAME}= $_;
+                $hConf->{VALUES}{$_}{PARENT_CONF}= $hConf;
                 next;
             }
         }
@@ -252,11 +255,11 @@ sub _line_expand {
     my $self= shift;
     my $sName0= shift;
     my $sName= shift;
+    my $bWantStructure= shift;
 
     if ($sName0 eq $sName) {
         $self->_error("Recursion occured while expanding \"$sName\"");
     }
-    my $bWantStructure= shift;
     my @aKeys= split(/\./, $sName);
     my $sKey= shift @aKeys;
     my $hConf= $self->{CONF};

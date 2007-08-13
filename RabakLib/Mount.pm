@@ -142,7 +142,7 @@ sub mount {
     if ($sUnmount) {
         $self->{IS_MOUNTED}= 1 if $iResult;
         # We want to unmount in reverse order:
-        unshift @{ $arUnmount }, $self if $self->get_value("unmount");
+        unshift @{ $arUnmount }, $self if $self->get_value("unmount", 1);
     }
 
     push @$arMessage, RabakLib::Log->logger->error("All mounts failed") unless $iResult;

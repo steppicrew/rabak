@@ -34,7 +34,8 @@ sub CloneConf {
     # replace reference to $oOrigConf with $new
     # TODO: is this safe???
     $oOrigConf->{PARENT_CONF}{VALUES}{$oOrigConf->{NAME}}= $new;
-    $new->{VALUES}= dclone($oOrigConf->{VALUES});
+    $new->{VALUES}= $oOrigConf->{VALUES};
+#    $new->{VALUES}= dclone($oOrigConf->{VALUES});
 
     return $new;
 }
@@ -226,10 +227,9 @@ sub resolveObjects {
 
 sub show {
     my $self= shift;
-    my $sKey= shift || '';
     my $hConfShowCache= shift || {};
-    
-    $sKey= $self->get_full_name($sKey) if $sKey eq '';
+
+    my $sKey= $self->get_full_name();
 
     return if $sKey=~ /\*\d+$/; # don't show anonymous objects
     
@@ -237,7 +237,7 @@ sub show {
         next if $_ =~ /^\./;
         if (ref($self->{VALUES}{$_})) {
             # print Dumper($self->{VALUES}{$_}); die;
-            $self->{VALUES}{$_}->show("$sKey.$_", $hConfShowCache);
+            $self->{VALUES}{$_}->show($hConfShowCache);
             next;
         }
         my $sValue= $self->get_value($_) || '';

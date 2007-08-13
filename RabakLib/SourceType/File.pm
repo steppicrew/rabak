@@ -280,10 +280,9 @@ sub _parseFilter {
 
 sub show {
     my $self= shift;
-    my $sKey= shift || '';
     my $hConfShowCache= shift || {};
     
-    $self->SUPER::show($sKey, $hConfShowCache);
+    $self->SUPER::show($hConfShowCache);
     
     my $hMacroStack= {};
     

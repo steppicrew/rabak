@@ -60,16 +60,15 @@ sub getFullPath {
 
 sub show {
     my $self= shift;
-    my $sKey= shift || '';
     my $hConfShowCache= shift || {};
     
-    $self->SUPER::show($sKey, $hConfShowCache);
+    $self->SUPER::show($hConfShowCache);
     
     my  @oMounts= $self->getMountObjects();
     print "\n# Referenced mounts:" if scalar @oMounts;
     for my $oMount (@oMounts) {
         print "\n";
-        $oMount->show($sKey, $hConfShowCache);
+        $oMount->show($hConfShowCache);
     }
     print "\n";
 }
