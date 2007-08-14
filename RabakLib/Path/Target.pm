@@ -94,4 +94,9 @@ sub remove_old {
     }
 }
 
+sub sort_show_key_order {
+    my $self= shift;
+    ($self->SUPER::sort_show_key_order(), "group", "mount");
+}
+
 1;

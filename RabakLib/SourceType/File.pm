@@ -280,7 +280,7 @@ sub _parseFilter {
 
 sub sort_show_key_order {
     my $self= shift;
-    ($self->SUPER::sort_show_key_order(), "mount", "exclude", "include", "filter");
+    ($self->SUPER::sort_show_key_order(), "exclude", "include", "filter", "mount");
 }
 
 sub show {
