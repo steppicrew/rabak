@@ -278,6 +278,11 @@ sub _parseFilter {
     return @sResult;
 }
 
+sub sort_show_key_order {
+    my $self= shift;
+    ($self->SUPER::sort_show_key_order(), "mount", "exclude", "include", "filter");
+}
+
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};

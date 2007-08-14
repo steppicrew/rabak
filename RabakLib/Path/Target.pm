@@ -24,10 +24,10 @@ sub mountErrorIsFatal {
 # @param $sMountDir
 #   mount dir in fstab if $sMountDevice is not given
 # @return
-#   0 : don't know which device to check
-#   1 : device is not mounted
+#   0 : don't know which device to check (set by SUPER)
+#   1 : device is not mounted (set by SUPER)
 #   2 : device is not valid
-#   <path>: path the device is mounted at
+#   <path>: path the device is mounted at (set by SUPER)
 #   
 sub checkMount {
     my $self= shift;
@@ -38,10 +38,12 @@ sub checkMount {
     my $sMountPath= $self->SUPER::checkMount($sMountDevice, $sMountDir, $arMountMessages);
     
     return $sMountPath if $sMountPath=~ /^\d+$/;
-    
+
     my $sTargetValue= $self->get_value("group");
+    return $sMountPath unless defined $sTargetValue;
+    
     my $sqTargetValue= quotemeta $sTargetValue;
-    if ($self->get_switch('targetvalue')) {
+    if (defined $self->get_switch('targetvalue')) {
         $sTargetValue.= "." . $self->get_switch('targetvalue');
         $sqTargetValue= quotemeta $sTargetValue;
     }

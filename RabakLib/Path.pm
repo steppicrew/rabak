@@ -58,6 +58,11 @@ sub getFullPath {
     return $sPath;
 }
 
+sub sort_show_key_order {
+    my $self= shift;
+    ("host", "user", "path", $self->SUPER::sort_show_key_order());
+}
+
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};

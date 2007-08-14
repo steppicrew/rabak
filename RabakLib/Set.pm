@@ -65,6 +65,11 @@ sub _validate {
     return $self->_need_value('title') || $self->_need_value('source') || $self->_need_value('target');
 }
 
+sub sort_show_key_order {
+    my $self= shift;
+    ("title", "source", "target", $self->SUPER::sort_show_key_order());
+}
+
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};

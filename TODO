@@ -4,11 +4,12 @@ Done:
 + Alle Values bei Initialisierung uebergeben
 + make path to: type://user@host:path
 + separate class for mount objects
++ Output effective config file
+- make Conf.pm to CommonBase
 
 
 Code:
 + Build POD from config-file
-+ Output effective config file
 + Tests
 + rabak.conf nach /etc
 + make command line switches overwrite objects values
@@ -19,7 +20,6 @@ Code:
 
 - Mail::Send optional
 - Change config format to INI?
-- make Conf.pm to CommonBase
 - More backup types (which?)
 - Proper exit codes
 - Make ACLs work

@@ -50,6 +50,11 @@ sub get_valid_db {
     die "This function has to be overloaded!"
 }
 
+sub sort_show_key_order {
+    my $self= shift;
+    ($self->SUPER::sort_show_key_order(), "dbuser", "dbpassword")
+}
+
 
 # TODO
 # plan: build a tunnel, fetch the db, delete old baks, release tunnel

@@ -48,6 +48,11 @@ sub Factory {
     return $new;
 }
 
+sub sort_show_key_order {
+    my $self= shift;
+    ("type", $self->SUPER::sort_show_key_order(), "keep");
+}
+
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};

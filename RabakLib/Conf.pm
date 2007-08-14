@@ -225,6 +225,28 @@ sub resolveObjects {
     return @oResult;
 }
 
+sub sort_show_key_order {()}
+
+sub sort_show_keys {
+    my $self= shift;
+    my @sKeys= @_;
+    
+    my @sSortOrder= $self->sort_show_key_order();
+    my @sResult= ();
+    for my $sSort (@sSortOrder) {
+        for (my $i= 0; $i < scalar @sKeys; $i++) {
+            my $sKey= $sKeys[$i];
+            $sKey= $1 if $sKey=~ /\.([^\.]+)$/;
+            if ($sKey eq $sSort) {
+                push @sResult, splice(@sKeys, $i, 1);
+                last;
+            }
+        }
+    }
+    push @sResult, sort(@sKeys);
+    return @sResult;
+}
+
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
@@ -233,7 +255,7 @@ sub show {
 
     return if $sKey=~ /\*\d+$/; # don't show anonymous objects
     
-    for (sort keys %{ $self->{VALUES} }) {
+    for ($self->sort_show_keys(keys %{ $self->{VALUES} })) {
         next if $_ =~ /^\./;
         if (ref($self->{VALUES}{$_})) {
             # print Dumper($self->{VALUES}{$_}); die;

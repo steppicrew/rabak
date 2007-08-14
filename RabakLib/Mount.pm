@@ -196,4 +196,9 @@ sub unmount {
     RabakLib::Log->logger->log("Unmounted \"$self->{UNMOUNT}\"");
 }
 
+sub sort_show_key_order {
+    my $self= shift;
+    ("device", "directory", "unmount", $self->SUPER::sort_show_key_order());
+}
+
 1;
