@@ -516,6 +516,7 @@ cleanup:
 
     my $sSubject= "successfully finished";
     $sSubject= "$iSuccessCount of " . scalar(@oSources) . " backups $sSubject" if $iResult;
+    $sSubject= "ERROR: all backups failed" unless $iSuccessCount;
     $sSubject= "*PRETENDED* $sSubject" if $self->get_switch("pretend");
 
     # send admin mail

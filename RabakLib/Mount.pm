@@ -77,25 +77,38 @@ sub mount {
     # if no device were given, try mounting by mount point
     push @sMountDevices, '' if $#sMountDevices < 0;
 
+    # array for collected mount messages (will be reseted if mount succeeds)
     my @sMountMessage = ();
+    # array for mount messages of current try
+    my @sCurMountMessage= ();
     my $iResult= 0;
     for my $sMountDevice (@sMountDevices) {
+        @sCurMountMessage= ();
         $sUnmount= $sMountDevice ne '' ? $sMountDevice : $sMountDir;
-        $self->{UNMOUNT}= $sUnmount;
         $spMountDevice= $sMountDevice ? " \"$sMountDevice\""  : "";
         push @$arMessage, RabakLib::Log->logger->info("Trying to mount \"$sUnmount\"");
 
-        my $sMountPath= $self->{PATH_OBJECT}->checkMount($sMountDevice, $sMountDir, $arMessage);
+        # check if device is already mounted
+        my $sMountPath= $self->{PATH_OBJECT}->checkMount($sMountDevice, $sMountDir, \@sCurMountMessage);
+
+        # don't know which device to check: skip this mount
         if ($sMountPath eq "0") {
             push @$arMessage, RabakLib::Log->logger->error("Don't know which device to check");
             next;
         }
+
+        # device is mounted but not valid: check next device
         next if $sMountPath eq "2";
+
+        # device is mounted on $sMountPath (and valid): stop checking, this is our device
         if ($sMountPath eq $sMountDir) {
             push @$arMessage, RabakLib::Log->logger->info("\"$sUnmount\" is already mounted on \"$sMountDir\"");
             $iResult= 1;
             last;
         }
+
+        # 1: device is not mounted
+        # if mounted, unmount
         unless ($sMountPath eq "1") {
             push @$arMessage, RabakLib::Log->logger->warn("\"$sUnmount\" is already mounted on \"$sMountDir\"");
             my $sUmountResult= $oPath->umount("\"$sUnmount\"");
@@ -106,6 +119,7 @@ sub mount {
             push @$arMessage, RabakLib::Log->logger->info("\"$sUnmount\" successfully unmounted");
         }
 
+        # ...and mount
         $oPath->mount("$spMountType$spMountDevice$spMountDir$spMountOpts");
         if ($?) { # mount failed
             my $sMountResult= $oPath->get_error;
@@ -115,31 +129,48 @@ sub mount {
             next;
         }
 
-        $sMountPath= $self->{PATH_OBJECT}->checkMount($sMountDevice, $sMountDir, $arMessage);
+        # check mount result again
+        $sMountPath= $self->{PATH_OBJECT}->checkMount($sMountDevice, $sMountDir, \@sCurMountMessage);
+
+        # if no $sMountDir was given assume every mount path as correct
         $sMountDir= $sMountPath if $sMountDir eq '';
+
+        # device is not mounted: try next
         if ($sMountPath eq "1") {
             push @$arMessage, RabakLib::Log->logger->error("\"$sUnmount\" not mounted");
             next;
         }
-        next if $sMountPath eq "2";
+
+        # device is mounted at the correct path: quit here
         if ($sMountPath eq $sMountDir) {
             push @$arMessage, RabakLib::Log->logger->info("Mounted$spMountDevice$spMountDir");
             $iResult= 1;
             last;
         }
-        else {
-            push @$arMessage, RabakLib::Log->logger->error("\"$sUnmount\" is  mounted on \"$sMountPath\" instead of \"$sMountDir\"");
-            my $sUmountResult= $oPath->umount("\"$sUnmount\"");
-            if ($sUmountResult) {
-                push @$arMessage, RabakLib::Log->logger->warn("Could not unmount \"$sUnmount\": '$sUmountResult'");
-            }
-            else {
-                push @$arMessage, RabakLib::Log->logger->info("\"$sUnmount\" successfully unmounted");
-            }
+
+        # device is mounted but not valid or mounted at wrong path: unmount again and try next
+        push @$arMessage, RabakLib::Log->logger->error("\"$sUnmount\" is  mounted on \"$sMountPath\" instead of \"$sMountDir\"") unless $sMountPath eq "2";
+        my $sUmountResult= $oPath->umount("\"$sUnmount\"");
+        if ($sUmountResult) {
+            push @$arMessage, RabakLib::Log->logger->warn("Could not unmount \"$sUnmount\": '$sUmountResult'");
         }
+        else {
+            push @$arMessage, RabakLib::Log->logger->info("\"$sUnmount\" successfully unmounted");
+        }
+    }
+    continue {
+        # collect all previous log messages 
+        push @sMountMessage, @sCurMountMessage;
+    }
+    if ($iResult) {
+        push @$arMessage, @sCurMountMessage;
+    }
+    else {
+        push @$arMessage, @sMountMessage;
     }
 
     if ($sUnmount) {
+        $self->{UNMOUNT}= $sUnmount;
         $self->{IS_MOUNTED}= 1 if $iResult;
         # We want to unmount in reverse order:
         unshift @{ $arUnmount }, $self if $self->get_value("unmount", 1);
@@ -152,7 +183,7 @@ sub mount {
 sub unmount {
     my $self= shift;
     
-    return unless $self->{IS_MOUNTED};
+    return unless $self->{IS_MOUNTED} && $self->{UNMOUNT};
 
     $self->{PATH_OBJECT}->umount("\"$self->{UNMOUNT}\"");
     if ($?) {
