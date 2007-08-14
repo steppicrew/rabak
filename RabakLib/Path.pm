@@ -67,9 +67,9 @@ sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
     
+    my  @oMounts= $self->getMountObjects();
     $self->SUPER::show($hConfShowCache);
     
-    my  @oMounts= $self->getMountObjects();
     print "\n# Referenced mounts:" if scalar @oMounts;
     for my $oMount (@oMounts) {
         print "\n";

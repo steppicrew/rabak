@@ -80,13 +80,13 @@ sub show {
     print "# Configuration for \"$self->{NAME}\"\n";
     print "#" x 80 . "\n\n";
 
+    my @oSources= $self->get_sourcePaths();
+    my $oTarget= $self->get_targetPath();
+
     $self->SUPER::show($hConfShowCache);
 
     my $sType= $self->get_value("type");
 
-    my @oSources= $self->get_sourcePaths();
-
-    my $oTarget= $self->get_targetPath();
     print "\n" . "#" x 80 . "\n";
     print "# Target \"$oTarget->{NAME}\": ". $oTarget->getFullPath() . "\n";
     print "#" x 80 . "\n";
