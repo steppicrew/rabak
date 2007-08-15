@@ -32,10 +32,9 @@ sub mountErrorIsFatal {
 sub checkMount {
     my $self= shift;
     my $sMountDevice= shift;
-    my $sMountDir= shift;
     my $arMountMessages= shift;
     
-    my $sMountPath= $self->SUPER::checkMount($sMountDevice, $sMountDir, $arMountMessages);
+    my $sMountPath= $self->SUPER::checkMount($sMountDevice, $arMountMessages);
     
     return $sMountPath if $sMountPath=~ /^\d+$/;
 

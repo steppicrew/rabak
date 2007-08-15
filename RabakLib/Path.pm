@@ -111,17 +111,8 @@ sub getPath {
 sub checkMount {
     my $self= shift;
     my $sMountDevice= shift;
-    my $sMountDir= shift;
     my $arMountMessages= shift;
     
-    return 0 unless $sMountDevice || $sMountDir;
-
-    unless ($sMountDevice) {
-        my $sFsTab= $self->cat("/etc/fstab") || '';
-        my $sqMountDir= quotemeta $sMountDir;
-        $sMountDevice= $1 if $sFsTab=~ /^(\S+)\s+$sqMountDir\s+/m; 
-    }
-
     return 0 unless $sMountDevice;
 
     $sMountDevice= $self->abs_path($sMountDevice);
