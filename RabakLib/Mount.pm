@@ -22,7 +22,7 @@ sub new {
     
     $self->{IS_MOUNTED} = 0;
     $self->{PATH_OBJECT} = undef;
-    $self->{UNMOUNT} = undef;
+    $self->{MOUNTPOINT} = undef;
 
     bless $self, $class;
 }
@@ -135,6 +135,7 @@ sub mount {
         # device is mounted on $sMountPath (and valid): stop checking, this is our device
         if ($sMountPath eq $sMountDir) {
             push @$arMessage, RabakLib::Log->logger->info("\"$sMountDevice\" is already mounted on \"$sMountDir\"");
+            @sMountMessage= @sCurMountMessage;
             $iResult= 1;
             last;
         }
@@ -143,7 +144,7 @@ sub mount {
         # if mounted, unmount
         unless ($sMountPath eq "1") {
             push @$arMessage, RabakLib::Log->logger->warn("\"$sMountDevice\" is already mounted on \"$sMountPath\"");
-            next unless $self->unmount($sMountPath, "force");
+            next unless $self->unmount($sMountPath, $arMessage);
         }
 
         # ...and mount
@@ -168,33 +169,28 @@ sub mount {
         # device is mounted at the correct path: quit here
         if ($sMountPath eq $sMountDir) {
             push @$arMessage, RabakLib::Log->logger->info("Mounted \"$sMountDevice\" on \"$sMountDir\"");
+            @sMountMessage= @sCurMountMessage;
             $iResult= 1;
             last;
         }
 
         # device is mounted but not valid(2) or mounted at wrong path: unmount again and try next
         if ($sMountPath eq "2") {
-            $self->unmount($sMountDevice, "force");
+            $self->unmount($sMountDevice, $arMessage);
         }
         else {
             push @$arMessage, RabakLib::Log->logger->error("\"$sMountDevice\" is  mounted on \"$sMountPath\" instead of \"$sMountDir\"");
-            $self->unmount($sMountPath, "force");
+            $self->unmount($sMountPath, $arMessage);
         }
     }
     continue {
         # collect all previous log messages 
         push @sMountMessage, @sCurMountMessage;
     }
-    if ($iResult) {
-        push @$arMessage, @sCurMountMessage;
-    }
-    else {
-        push @$arMessage, @sMountMessage;
-    }
+    push @$arMessage, @sMountMessage;
 
     if ($sMountDir) {
-        $self->{UNMOUNT}= $sMountDir;
-        $self->{IS_MOUNTED}= 1 if $iResult;
+        $self->{MOUNTPOINT}= $sMountDir;
         # We want to unmount in reverse order:
         unshift @{ $arUnmount }, $self if $self->get_value("unmount", 1);
     }
@@ -205,18 +201,21 @@ sub mount {
 
 sub unmount {
     my $self= shift;
-    my $sMountDir= shift || $self->{UNMOUNT};
-    my $bForce= shift;
+    my $sMountDir= shift || $self->{MOUNTPOINT};
+    my $arMessages= shift;
     
-    return unless $sMountDir && ($bForce || $self->{IS_MOUNTED});
+    my $bLogMessages= ! defined $arMessages;
+    $arMessages= [] unless $arMessages;
+    
+    return unless $sMountDir;
 
     $self->{PATH_OBJECT}->umount("\"$sMountDir\"");
     if ($?) {
         my $sResult= $self->{PATH_OBJECT}->get_error;
         chomp $sResult;
         $sResult =~ s/\r?\n/ - /g;
-        RabakLib::Log->logger->warn("Unmounting \"$sMountDir\" failed: $sResult!");
-        RabakLib::Log->logger->info("Trying lazy unmount.");
+        push @$arMessages, RabakLib::Log->logger->warn("Unmounting \"$sMountDir\" failed: $sResult!");
+        push @$arMessages, RabakLib::Log->logger->info("Trying lazy unmount.");
 
         $self->{PATH_OBJECT}->umount("-l \"$sMountDir\"");
         if ($?) {
@@ -224,11 +223,14 @@ sub unmount {
             chomp $sResult;
             $sResult =~ s/\r?\n/ - /g;
     
-            RabakLib::Log->logger->error("Even lazy unmounting \"$sMountDir\" failed: $sResult!");
+            push @$arMessages, RabakLib::Log->logger->error("Even lazy unmounting \"$sMountDir\" failed: $sResult!");
+            RabakLib::Log->logger->log(@$arMessages) if $bLogMessages;
             return 0;
         }
     }
-    RabakLib::Log->logger->log("Successfully unmounted \"$sMountDir\"");
+    push @$arMessages, RabakLib::Log->logger->log("Successfully unmounted \"$sMountDir\"");
+    RabakLib::Log->logger->log(@$arMessages) if $bLogMessages;
+    $self->{MOUNTPOINT}= undef;
     return 1;
 }
 
