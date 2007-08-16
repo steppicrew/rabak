@@ -205,7 +205,7 @@ sub unmount {
     my $arMessages= shift;
     
     my $bLogMessages= ! defined $arMessages;
-    $arMessages= [] unless $arMessages;
+    $arMessages= [] if $bLogMessages;
     
     return unless $sMountDir;
 
@@ -228,7 +228,7 @@ sub unmount {
             return 0;
         }
     }
-    push @$arMessages, RabakLib::Log->logger->log("Successfully unmounted \"$sMountDir\"");
+    push @$arMessages, RabakLib::Log->logger->info("Successfully unmounted \"$sMountDir\"");
     RabakLib::Log->logger->log(@$arMessages) if $bLogMessages;
     $self->{MOUNTPOINT}= undef;
     return 1;
