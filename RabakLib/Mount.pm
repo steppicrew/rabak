@@ -20,7 +20,6 @@ sub new {
 
     my $self= $class->SUPER::new($sName, $oParentConf);
     
-    $self->{IS_MOUNTED} = 0;
     $self->{PATH_OBJECT} = undef;
     $self->{MOUNTPOINT} = undef;
 
@@ -30,7 +29,7 @@ sub new {
 sub is_mounted {
     my $self= shift;
     
-    return $self->{IS_MOUNTED};
+    return $self->{MOUNTPOINT};
 }
 
 # -----------------------------------------------------------------------------
