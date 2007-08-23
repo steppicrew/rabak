@@ -45,7 +45,7 @@ sub MountDir2Device {
     
     my $sFsTab= $oPath->cat("/etc/fstab") || '';
     my $sqMountDir= quotemeta $sMountDir;
-    return $1 if $sFsTab=~ /^(\S+)\s+$sqMountDir\s+/m;
+    return $oPath->abs_path($1) if $sFsTab=~ /^(\S+)\s+$sqMountDir\s+/m;
     return undef; 
     
 }
@@ -59,7 +59,7 @@ sub MountDevice2Dir {
     
     my $sFsTab= $oPath->cat("/etc/fstab") || '';
     my $sqMountDevice= quotemeta $sMountDevice;
-    return $1 if $sFsTab=~ /^$sqMountDevice\s+(\S+)\s+/m;
+    return $oPath->abs_path($1) if $sFsTab=~ /^$sqMountDevice\s+(\S+)\s+/m;
     return undef; 
     
 }

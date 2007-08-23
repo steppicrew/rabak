@@ -3,7 +3,14 @@
 # Produces a test environment. You can easily get rid of it again
 # with the testdev-remove script.
 
-BASEDIR="../test-data"
+BASEDIR="`dirname "$0"`/../test-data"
+
+if which losetup >/dev/null 2>&1; then
+    dummy=""
+else
+    echo "you have to be root to create dummy devices (losetup not found in path)"
+    exit
+fi
 
 function mk_target {
     DEVI="$1"
@@ -20,12 +27,16 @@ function mk_target {
 
 mk_target "0" "loop0"
 mkdir "$BASEDIR/mnt_loop0/rabak"
-echo "targetvalues = dayofweek.Mon dayofweek.Wed dayofweek.Fri" >  "$BASEDIR/mnt_loop1/rabak.dev.cf"
+echo "targetvalues = dayofweek.Mon dayofweek.Wed dayofweek.Fri" >  "$BASEDIR/mnt_loop0/rabak.dev.cf"
+umount "$BASEDIR/mnt_loop0"
 
 mk_target "1" "loop1"
 mkdir "$BASEDIR/mnt_loop1/rabak"
-echo "targetvalues = dayofweek.Tue dayofweek.Thu dayofweek.Sat" >  "$BASEDIR/mnt_loop0/rabak.dev.cf"
+echo "targetvalues = dayofweek.Tue dayofweek.Thu dayofweek.Sat" >  "$BASEDIR/mnt_loop1/rabak.dev.cf"
+umount "$BASEDIR/mnt_loop1"
 
-mk_target "2" "boot"
+mk_target "2" "source"
+echo "some data" >  "$BASEDIR/mnt_source/data.txt"
+umount "$BASEDIR/mnt_source"
 
 mkdir "$BASEDIR/mnt_target"

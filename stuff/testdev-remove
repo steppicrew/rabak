@@ -1,21 +1,28 @@
 #!/bin/sh
 
-BASEDIR="../test-data"
+BASEDIR="`dirname "$0"`/../test-data"
+
+if which losetup >/dev/null 2>&1; then
+    dummy=""
+else
+    echo "you have to be root to create dummy devices (losetup not found in path)"
+    exit
+fi
 
 function rm_target {
     DEVI="$1"
     DEVN="$2"
-    umount "$BASEDIR/mnt_$DEVN"
+    umount "$BASEDIR/mnt_$DEVN" 2>/dev/null
     losetup -d "$BASEDIR/dev.$DEVN"
     rmdir "$BASEDIR/mnt_$DEVN"
     rm "$BASEDIR/dev_$DEVN"
     rm "$BASEDIR/dev.$DEVN"
 }
 
-umount "$BASEDIR/mnt_target"
+umount "$BASEDIR/mnt_target" 2>/dev/null
 
 rm_target "0" "loop0"
 rm_target "1" "loop1"
-rm_target "2" "boot"
+rm_target "2" "source"
 
 rmdir "$BASEDIR/mnt_target"

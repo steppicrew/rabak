@@ -2,7 +2,7 @@ use strict;
 use Test;
 
 #BEGIN { plan tests => 5, onfail => sub { exit 1; } };
-BEGIN { plan tests => 13 };
+BEGIN { plan tests => 19 };
 #BEGIN { plan };
 
 #use RabakLib::SourceType::File;
@@ -19,15 +19,19 @@ print "# Testing 'RabakLib::SourceType::File'\n";
 # modify bin directory for including
 $Bin.= "/../../..";
 
-my $sTmpDir1= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );
-ok -d "$sTmpDir1", 1, "Creating temporary directory";
+my $sSourceDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );
+ok -d $sSourceDir, 1, "Creating temporary source directory";
 
 my $sTmpDirMount= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );
-ok -d "$sTmpDirMount", 1, "Creating temporary directory";
+ok -d $sTmpDirMount, 1, "Creating temporary directory";
 
 #my $oRootConf;
 my $oRootConf= RabakLib::Conf->new('testconfig');
 ok ref $oRootConf, 'RabakLib::Conf', 'Creating root Conf object';
+$oRootConf->set_values({
+    "switch.logging" => 1,
+    "switch.verbose" => 6,
+});
 
 my $oSetConf= RabakLib::Conf->new('bakset', $oRootConf);
 $oRootConf->set_value('bakset', $oSetConf);
@@ -41,15 +45,15 @@ my $oSourceConf= RabakLib::Conf->new('source_file', $oRootConf);
 $oRootConf->set_value('source_file', $oSourceConf);
 $oSourceConf->set_values({
     type => "file",
-    path => $sTmpDir1,
+    path => $sSourceDir,
     mount => "&source_file_mount",
 });
 
 my $oMountConf= RabakLib::Conf->new('source_file_mount', $oRootConf);
 $oRootConf->set_value('source_file_mount', $oMountConf);
 $oMountConf->set_values({
-    device => "/dev/hd* /dev/sd*",
-    directory => $sTmpDirMount,
+    device => "$Bin/test-data/dev.source",
+    directory => $sSourceDir,
 });
 
 my $oSet= RabakLib::Set->CloneConf($oSetConf);
@@ -65,38 +69,126 @@ my @oMountObjects= $oSource->getMountObjects();
 ok @oMountObjects, 1, 'Getting Mount objects';
 
 skip (
-    $> ? "You have to be root to check mounting" : 0,
-    sub {
-        my $iResult= $oMountObjects[0]->mount($oSource);
-        $oMountObjects[0]->unmount() if $iResult;
-        $iResult; 
-    }, 1, "Checking mounting"
+    $> ? "You have to be root to check mounting" : 0,       # >?
+    sub{$oMountObjects[0]->mount($oSource);}, 1, "Checking mounting"
 );
 
 ####################################################
 # test filter-routines
-$oSource->set_value("exclude", "$sTmpDir1/zuppi");
-my @sFilter= $oSource->_get_filter();
-ok join('][', @sFilter), '- /zuppi', 'correct filter generated from exclude';
 
-$oSource->set_value("exclude", "$sTmpDir1/zuppi1 $sTmpDir1/zuppi2/, $sTmpDir1/zuppi3");
+sub joinFilter {
+    my @sFilter= @_;
+    my $sFilter= "[" . join('][', @sFilter) . "]";
+    # remove comments
+    $sFilter=~ s/\[\#[^\]]+\]//g;
+    return $sFilter;
+}
+
+$oSource->set_value("exclude", "$sSourceDir/zuppi");
+my @sFilter= $oSource->_get_filter();
+ok joinFilter(@sFilter), joinFilter('- /zuppi'), 'correct filter generated from exclude';
+
+$oSource->set_value("exclude", "$sSourceDir/zuppi1 $sSourceDir/zuppi2/, $sSourceDir/zuppi3");
 @sFilter= $oSource->_get_filter();
-ok join('][', @sFilter), '- /zuppi1][- /zuppi2/***][- /zuppi3', 'correct filter generated from exclude';
+ok joinFilter(@sFilter), joinFilter(
+    '- /zuppi1',
+    '- /zuppi2/***',
+    '- /zuppi3',
+), 'correct filter generated from exclude';
 
 $oSource->set_value("exclude", undef);
-$oSource->set_value("include", "$sTmpDir1/zuppi");
+$oSource->set_value("include", "$sSourceDir/zuppi");
 @sFilter= $oSource->_get_filter();
-ok join('][', @sFilter), '+ /][+ /zuppi', 'correct filter generated from include';
+ok joinFilter(@sFilter), joinFilter(
+    '+ /',
+    '+ /zuppi',
+), 'correct filter generated from include';
 
-$oSource->set_value("include", "$sTmpDir1/zuppi/zuppi1 $sTmpDir1/zuppi2/, $sTmpDir1/zuppi3");
+$oSource->set_value("include", "$sSourceDir/zuppi/zuppi1 $sSourceDir/zuppi2/, $sSourceDir/zuppi3");
 @sFilter= $oSource->_get_filter();
-ok join('][', @sFilter), '+ /][+ /zuppi/][+ /zuppi/zuppi1][+ /zuppi2/][+ /zuppi2/**][+ /zuppi3', 'correct filter generated from include';
+ok joinFilter(@sFilter), joinFilter(
+    '+ /',
+    '+ /zuppi/',
+    '+ /zuppi/zuppi1',
+    '+ /zuppi2/',
+    '+ /zuppi2/**',
+    '+ /zuppi3',
+), 'correct filter generated from include';
 
 $oSource->set_value("include", undef);
-$oSource->set_value("filter", "+$sTmpDir1/(zuppi /zappi/ )/zuppi1 -($sTmpDir1/zuppi2/, $sTmpDir1/zuppi3)");
+$oSource->set_value("filter", "+$sSourceDir/(zuppi /zappi/ )/zuppi1 -($sSourceDir/zuppi2/, $sSourceDir/zuppi3)");
 @sFilter= $oSource->_get_filter();
-ok join('][', @sFilter), '+ /][+ /zuppi/][+ /zuppi/zuppi1][+ /zappi/][+ /zappi/zuppi1][- /zuppi2/***][- /zuppi3', 'correct filter generated from filter';
+ok joinFilter(@sFilter), joinFilter(
+    '+ /',
+    '+ /zuppi/',
+    '+ /zuppi/zuppi1',
+    '+ /zappi/',
+    '+ /zappi/zuppi1',
+    '- /zuppi2/***',
+    '- /zuppi3',
+), 'correct filter generated from filter with expansion';
 
-$oSource->set_value("filter", "+$sTmpDir1/zu\\ ppi/");
+$oSource->set_value("filter", "+$sSourceDir/zu\\ ppi/");
 @sFilter= $oSource->_get_filter();
-ok join('][', @sFilter), '+ /][+ /zu ppi/][+ /zu ppi/**', 'correct filter generated from filter';
+ok joinFilter(@sFilter), joinFilter(
+    '+ /',
+    '+ /zu ppi/',
+    '+ /zu ppi/**',
+), 'correct filter generated from filter with spaces';
+
+$oRootConf->set_value('source_file_exclude', "$sSourceDir/zuppi1 $sSourceDir/zuppi2/, $sSourceDir/zuppi3");
+$oRootConf->set_value('source_file_include', "$sSourceDir/zappi/(zuppi1 /zuppi2/, /zuppi3)");
+$oRootConf->set_value('source_file_filter', "+&source_file_exclude -&source_file_include");
+
+$oSource->set_value("filter", undef);
+$oRootConf->set_value('exclude', '&source_file_exclude');
+@sFilter= $oSource->_get_filter();
+ok joinFilter(@sFilter), joinFilter(
+    '- /zuppi1',
+    '- /zuppi2/***',
+    '- /zuppi3',
+), 'correct filter generated from exclude (inherited)';
+
+$oRootConf->set_value('include', '&source_file_include');
+@sFilter= $oSource->_get_filter();
+ok joinFilter(@sFilter), joinFilter(
+    '- /zuppi1',
+    '- /zuppi2/***',
+    '- /zuppi3',
+    '+ /',
+    '+ /zappi/',
+    '+ /zappi/zuppi1',
+    '+ /zappi/zuppi2/',
+    '+ /zappi/zuppi2/**',
+    '+ /zappi/zuppi3',
+), 'correct filter generated from exclude/include (inherited)';
+
+$oRootConf->set_value('include', undef);
+$oRootConf->set_value('exclude', undef);
+$oRootConf->set_value('filter', '&source_file_filter');
+@sFilter= $oSource->_get_filter();
+ok joinFilter(@sFilter), joinFilter(
+    '+ /',
+    '+ /zuppi1',
+    '+ /zuppi2/',
+    '+ /zuppi2/**',
+    '+ /zuppi3',
+    '- /zappi/zuppi1',
+    '- /zappi/zuppi2/***',
+    '- /zappi/zuppi3',
+), 'correct filter generated from filter (inherited)';
+
+####################################################
+# fill source data
+
+$oSource->mkdir('zappi');
+ok $oSource->isDir('zappi'), 1, 'Creating data dir in source';
+$oSource->echo('zappi/zuppi1', "some data");
+ok $oSource->cat('zappi/zuppi1'), "some data\n", 'Writing data to source';
+
+skip (
+    $> ? "You have to be root to check unmounting" : 0,       # >?
+    sub{$oMountObjects[0]->unmount();}, 1, "Checking unmount"
+);
+
+
