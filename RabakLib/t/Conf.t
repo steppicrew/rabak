@@ -1,7 +1,7 @@
 use strict;
 use Test;
 
-BEGIN { plan tests => 55 };
+BEGIN { plan tests => 63 };
 
 use RabakLib::Conf;
 use Data::Dumper;
@@ -99,4 +99,27 @@ ok $oSubConf11->get_value('subconf1.subconf11.test_key'), 'sub11 test value', 'G
 ok $oRootConf->get_value('subconf1.subconf11.test_key'), 'sub11 test value', 'Getting scalar value of SubConf11 from RootConf';
 ok $oRootConf->get_node('subconf1.subconf11'), $oSubConf11, 'Getting node SubConf11 from RootConf';
 
+# test switch setting
+ok $oSubConf11->get_switch('test_key'), 'sub11 test value', 'Getting switch from SubConf11';
+ok $oRootConf->get_switch('test_key'), 'root test value 2', 'Getting switch from RootConf';
+$oRootConf->set_value('switch.test_key', 'test switch');
+$oSubConf11->set_value('switch.test_key', 'test switch sub11');
+ok $oSubConf11->get_switch('test_key'), 'test switch', 'Getting switch from SubConf11';
+ok $oRootConf->get_switch('test_key'), 'test switch', 'Getting switch from RootConf';
+
+# test set_values and resolveObjects() with recursion check and wrong reference
+my $oSubConf2= RabakLib::Conf->new('subconf2', $oRootConf);
+$oRootConf->set_value('subconf2', $oSubConf2);
+$oSubConf11->set_values({
+    '/test_key' => '&subconf2 &subconf1 str\ ing',
+    '.test_key' => 'sub1',
+    '.reference' => '&/test_key &test_key &subconf11.test_key &/subconf11.test_key',
+    'test_key' => 'sub11 &test_key',
+});
+ok $oRootConf->get_value('test_key'), '&subconf2 &subconf1 str ing', 'Setting multiple values (1)';
+ok $oCloneSubConf1->get_value('test_key'), 'sub1', 'Setting multiple values (2)';
+ok $oCloneSubConf1->get_value('reference'), '&/test_key &test_key &subconf11.test_key &/subconf11.test_key', 'Setting multiple values (3)';
+my @oResolvedObjects= $oSubConf11->resolveObjects('reference');
+my @oExpected= ($oSubConf2, $oCloneSubConf1, 'str ing', 'sub1', 'sub11');
+ok join("][", @oResolvedObjects), join("][", @oExpected), 'Resolving Objects with recursion and nonexisting reference';
 

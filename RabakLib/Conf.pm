@@ -200,14 +200,17 @@ sub resolveObjects {
 
     my @oResult= ();
 
-    if ($hStack->{"$self.$sProperty"}) {
+    my ($Value, $oOwningConf)= $self->get_property($sProperty);
+    $sProperty=~ s/^.*\.//;
+
+    return () unless $oOwningConf;
+
+    if ($hStack->{"$oOwningConf.$sProperty"}) {
         logger->error("Recursive reference to '$sProperty'.");
         return @oResult; 
     }
-    $hStack->{"$self.$sProperty"}= 1;
+    $hStack->{"$oOwningConf.$sProperty"}= 1;
     
-    my ($Value, $oOwningConf)= $self->get_property($sProperty); 
-
     if (defined $Value) {
         if (ref $Value) {
             push @oResult, $Value;
@@ -228,7 +231,7 @@ sub resolveObjects {
     else {
         logger->error("Object '$sProperty' could not be loaded. Skipped.");
     }
-    delete $hStack->{"$self.$sProperty"};
+    delete $hStack->{"$oOwningConf.$sProperty"};
     return @oResult;
 }
 
