@@ -10,6 +10,8 @@ use FindBin qw($Bin);
 
 print "# Testing 'RabakLib::SourceType::File'\n";
 
+# TODO: test remote sources (dont know how to)
+
 # modify bin directory for including
 $Bin.= "/../../..";
 
@@ -211,6 +213,8 @@ ok $oTarget->isDir($sFullTarget), 1, "Creating dir '$sFullTarget' in target";
 my $iRunResult= $oSource->run($oTarget, $sFullTarget, $sFullTarget, );
 ok $iRunResult, 0, 'Running backup';
 
+####################################################
+# test source files on target
 sub target_testdir {
     my $sDir= shift;
     ok $oTarget->isDir("$sFullTarget/$sDir"), 1, "Source dir '$sDir' created on Target";
