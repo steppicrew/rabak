@@ -6,6 +6,7 @@ use warnings;
 use strict;
 
 use RabakLib::Log;
+use RabakLib::ConfFile;
 
 use vars qw(@ISA);
 
