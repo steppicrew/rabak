@@ -112,18 +112,18 @@ sub _expandMacro {
 # print "Expanding $sMacroName\n";
 
     $sMacroName=~ s/^\&//;
+    my ($sMacro, $oMacroParent)= $self->get_property($sMacroName); 
+    $sMacroName= $oMacroParent->get_full_name($sMacroName);
     if ($hMacroStack->{$sMacroName}) {
         $sResult{ERROR}= "Recursion detected ('$sMacroName'). Ignored";
     }
     else {
-        my ($sMacro, $oMacroParent)= $self->get_property($sMacroName); 
         if (! defined $sMacro || ref $sMacro) {
             $sResult{ERROR}= "'$sMacroName' does not exist or is an object. Ignored.";
         }
         else {
             my $sMacro= $self->remove_backslashes_part1($sMacro);
             # build full macro name
-            $sMacroName= $oMacroParent->get_full_name($sMacroName);
             $sResult{MACRO}= $sMacroName;
             $hMacroStack->{$sMacroName}= 1;
             $sResult{DATA}= $self->_expand($sMacro, $hMacroStack);
