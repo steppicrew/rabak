@@ -36,6 +36,9 @@ sub CloneConf {
     $oOrigConf->{PARENT_CONF}{VALUES}{$oOrigConf->{NAME}}= $new;
     $new->{VALUES}= $oOrigConf->{VALUES};
 #    $new->{VALUES}= dclone($oOrigConf->{VALUES});
+    for my $oValue (values %{$new->{VALUES}}) {
+        $oValue->{PARENT_CONF}= $new if ref $oValue && $oValue->isa('RabakLib::Conf');
+    }
 
     return $new;
 }
@@ -124,7 +127,7 @@ sub get_property {
     # leading slash means: search from root conf
     if ($sName=~ /^\//) {
         return $self->{PARENT_CONF}->get_property($sName) if $self->{PARENT_CONF};
-        $sName=~ s/^\///;
+        $sName=~ s/^[\/\.]+//;
     }
     
     # each leading dot means: going up one level in conf tree
@@ -172,6 +175,10 @@ sub set_value {
     my $self= shift;
     my $sName= lc(shift || '');
     my $sValue= shift;
+
+    # go up one level for each starting "." or go to top level for $sName starting with "/"
+    $self= $self->{PARENT_CONF} while $self->{PARENT_CONF} && ($sName=~ s/^\.// || $sName=~ /^\//);
+    $sName=~ s/^[\.\/]+//;
 
     my @sName= split(/\./, $sName);
     $sName= pop @sName;
