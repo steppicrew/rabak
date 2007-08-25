@@ -86,10 +86,21 @@ sub remove_old {
     return unless $iKeep;
 
     logger->info("Keeping last $iKeep versions");
-    splice @sBakDir, 0, $iKeep;
-    foreach (@sBakDir) {
-        logger->info("Removing \"$_\"");
-        $self->rmtree($_);
+    my $sqPath= quotemeta $self->getPath();
+    foreach my $sDir (@sBakDir) {
+        $sDir= $self->getPath($sDir);
+        unless ($sDir=~ /^$sqPath/) {
+            logger->error("Directory '$sDir' not beneath Target Dir. Not removing.");
+            next;
+        }
+        # remove directories only
+        next unless $self->isDir($sDir);
+        # skip first $iKeep nonempty directories
+        if (@{[glob "$sDir/*"]}) {
+            next if $iKeep-- > 0;
+        }
+        logger->info("Removing \"$sDir\"");
+        $self->rmtree($sDir);
         logger->error($self->get_last_error()) if $self->get_last_exit;
     }
 }

@@ -36,6 +36,8 @@ sub new {
         exit => 0,
         error => '',
     };
+    $self->{IO}= undef;
+
     $self->{TEMPFILES}= [];
 
     bless $self, $class;
@@ -45,6 +47,13 @@ sub new {
 # delete all non deleted temp files on exit (important for remote sessions)
 sub DESTROY {
     my $self= shift;
+
+    # on destroy tempdirs may be already deleted, so pipe stdout/stderr to /dev/null
+    $self->{IO}= {
+        dir => undef,
+        stdout => "/dev/null",
+        stderr => "/dev/null",
+    };
 
     for my $sTempFile (@{$self->{TEMPFILES}}) {
         $self->rmtree($sTempFile);
@@ -667,7 +676,7 @@ sub tempdir {
 
 sub rmtree {
     my $self= shift;
-    my $sTree= shift;
+    my $sTree= $self->getPath(shift);
 
     die "RabakLib::PathBase::rmtree called with dangerous parameter ($sTree)!" if $sTree eq '' || $sTree eq '/' || $sTree=~ /\*/;
 
