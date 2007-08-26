@@ -96,12 +96,12 @@ sub remove_old {
         # remove directories only
         next unless $self->isDir($sDir);
         # skip first $iKeep nonempty directories
-        if (@{[glob "$sDir/*"]}) {
+        if ($self->glob("$sDir/*")) {
             next if $iKeep-- > 0;
         }
         logger->info("Removing \"$sDir\"");
         $self->rmtree($sDir);
-        logger->error($self->get_last_error()) if $self->get_last_exit;
+        logger->error($self->get_last_error()) if $self->get_last_exit();
     }
 }
 

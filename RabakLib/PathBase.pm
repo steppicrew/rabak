@@ -457,7 +457,7 @@ sub copyLoc2Rem {
     unless ($self->is_remote()) {
         return 1 if $sLocFile eq $sRemFile;
         if ($bAppend) {
-            $self->_set_error(`cat "$sLocFile" >> "$sRemFile" 2>&1`);
+            $self->_set_error(`cat "$sLocFile" 2>&1 >> "$sRemFile"`);
         }
         else {
             $self->_set_error(`cp -f "$sLocFile" "$sRemFile" 2>&1`);

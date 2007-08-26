@@ -83,13 +83,18 @@ sub show {
 sub getPath {
     my $self= shift;
     my $sPath= shift || '.';
+    
+    my $sBasePath= $self->get_value("path");
 
-    return $sPath unless $self->get_value("path");
+    return $sPath unless $sBasePath;
 
-    $self->set_value("path", $self->abs_path($self->get_value("path"))) unless File::Spec->file_name_is_absolute($self->get_value("path"));
+    unless (File::Spec->file_name_is_absolute($sBasePath)) {
+        $sBasePath= $self->abs_path($sBasePath);
+        $self->set_value("path", $sBasePath);
+    }
 
     $sPath= File::Spec->canonpath($sPath); # simplify path
-    $sPath= File::Spec->rel2abs($sPath, $self->get_value("path")) unless File::Spec->file_name_is_absolute($sPath);
+    $sPath= File::Spec->rel2abs($sPath, $sBasePath) unless File::Spec->file_name_is_absolute($sPath);
     return $sPath;
 }
 

@@ -13,6 +13,7 @@ END {`sh "$Bin/stuff/testdev-remove" 2>/dev/null`;}
 
 runtests(
     "RabakLib/t/Conf.t",
+    "RabakLib/t/Path.t",
     "RabakLib/Path/t/Target.t",
     "RabakLib/SourceType/t/File.t",
 );
