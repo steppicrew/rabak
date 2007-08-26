@@ -89,12 +89,12 @@ ok !!$oPath->isWritable("test3"), 1, 'Checking isWritable() on symlink';
 # getDir()
 chmod 0777, "$sOrigPath/test2";
 my @sDir= sort $oPath->getDir();
-my @sExpectedDir= ("$sOrigPath/test", "$sOrigPath/test2", "$sOrigPath/test3", "$sOrigPath/testdir");
+my @sExpectedDir= sort("$sOrigPath/test", "$sOrigPath/test2", "$sOrigPath/test3", "$sOrigPath/testdir");
 ok "[".join("][", @sDir), "[".join("][", @sExpectedDir), 'Checking getDir()';
-@sDir= $oPath->glob("$sOrigPath/*");
+@sDir= sort $oPath->glob("$sOrigPath/*");
 ok "[".join("][", @sDir), "[".join("][", @sExpectedDir), 'Checking glob()';
 @sDir= sort $oPath->getDir(undef, 1);
-@sExpectedDir= ("$sOrigPath/test#", "$sOrigPath/test2*", "$sOrigPath/test3@", "$sOrigPath/testdir/");
+@sExpectedDir= sort("$sOrigPath/test#", "$sOrigPath/test2*", "$sOrigPath/test3@", "$sOrigPath/testdir/");
 ok "[".join("][", @sDir), "[".join("][", @sExpectedDir), 'Checking getDir() with file type';
 # getDirRecursive()
 my %sDir= $oPath->getDirRecursive();
