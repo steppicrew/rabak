@@ -46,7 +46,7 @@ sub CloneConf {
 sub get_raw_value {
     my $self= shift;
     my $sName= shift;
-    my $sDefault= shift || undef;
+    my $sDefault= shift;
     
     my $sValue= $self->get_property($sName);
 
@@ -85,9 +85,9 @@ sub remove_backslashes_part2 {
     # Insert support for tab etc.. here
     # $sValue =~ s/\\t/\t/g;
 
-    # remove all backslashes
-    $sValue =~ s/\\(?!_)//g;
-    # rereplace changes made in part1
+    # remove all backslashes not followed by "~"
+    $sValue =~ s/\\(?!\~)//g;
+    # undo changes made in part1
     $sValue =~ s/\\\~/\\/g;
     $sValue =~ s/\.\~/\~/g;
     return $sValue;

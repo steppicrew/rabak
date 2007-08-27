@@ -23,43 +23,58 @@ sub _get_user {
 
 sub _get_passwd {
     my $self= shift;
-    my $sPassword= $self->get_value('dbpassword', 'mysql');
-    # simple taint
-    $sPassword =~ s/\\\"//g;
+    my $sPassword= $self->get_value('dbpassword', '');
     return $sPassword;
+}
+
+# returns credentials save for logging
+sub _get_log_credentials {
+    my $self= shift;
+    
+    my $sPassword= $self->_get_passwd();
+    my $sResult= "--user=\"" . $self->_get_user() . "\"";
+    $sResult.= " --password=\"{{PASSWORD}}\"" if defined $sPassword;
+    return $sResult;
+}
+
+# returns credentials with password logging
+sub _get_credentials {
+    my $self= shift;
+    
+    my $sResult= $self->_replace_password($self->_get_log_credentials());
+}
+
+# logs passwordless command (optional) and inserts real password
+sub _replace_password {
+    my $self= shift;
+    my $sCommand= shift || $self->_get_log_credentials();
+    my $sLog= shift;
+    
+    logger->log("$sLog: $sCommand") if $sLog;
+    my $sPassword= $self->_get_passwd();
+    $sCommand=~ s/\{\{PASSWORD\}\}/$sPassword/ if defined $sPassword;
+    return $sCommand;
 }
 
 sub get_show_cmd {
     my $self= shift;
-    my $sPassPar= $self->_get_passwd() || '';
-    $sPassPar = "-p\"$sPassPar\"" if $sPassPar;
-    return "mysqlshow -u\"" . $self->_get_user . "\" $sPassPar";
+    return "mysqlshow " . $self->_get_credentials();
 }
 
 sub get_probe_cmd {
     my $self= shift;
     my $sDb= shift;
 
-    my $sPassword= $self->_get_passwd();
-    my $sPassPar= '';
-    $sPassPar = "-p\"{{PASSWORD}}\"" if $sPassword;
-    my $sProbeCmd= "mysqldump -d -u\"" . $self->_get_user() . "\" $sPassPar -r /dev/null \"$sDb\"";
-    logger->log("Running probe: $sProbeCmd");
-    $sProbeCmd =~ s/\{\{PASSWORD\}\}/$sPassword/;
-    return $sProbeCmd;
+    my $sProbeCmd= "mysqldump --no-data " . $self->_get_log_credentials() . "--result-file=\"/dev/null\" \"$sDb\"";
+    return $self->_replace_password($sProbeCmd, "Running probe");
 }
 
 sub get_dump_cmd {
     my $self= shift;
     my $sDb= shift;
 
-    my $sPassword= $self->_get_passwd();
-    my $sPassPar= '';
-    $sPassPar = "-p\"{{PASSWORD}}\"" if $sPassword;
-    my $sDumpCmd= "mysqldump -a -e --add-drop-table --allow-keywords -q -u\"" . $self->_get_user . "\" $sPassPar --databases \"$sDb\"";
-    logger->log("Running dump: $sDumpCmd");
-    $sDumpCmd =~ s/\{\{PASSWORD\}\}/$sPassword/;
-    return $sDumpCmd;
+    my $sDumpCmd= "mysqldump --all --extended-insert --add-drop-table --allow-keywords --quick " . $self->_get_log_credentials() . " --databases \"$sDb\"";
+    return $self->_replace_password($sDumpCmd, "Running dump");
 }
 
 sub parse_valid_db {
