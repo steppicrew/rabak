@@ -148,7 +148,7 @@ sub close {
     CORE::close $self->{LOG_FH} if $self->{LOG_FH};
     $self->{LOG_FH}= undef;
     if ($self->{TARGET}->is_remote()) {
-        logger->error($self->{TARGET}->get_error()) unless ($self->{TARGET}->copyLoc2Rem($self->{REAL_FILE_NAME}, $self->{FILE_NAME}, 1));
+        logger->error($self->{TARGET}->get_error()) unless ($self->{TARGET}->copyLocalFileToRemote($self->{REAL_FILE_NAME}, $self->{FILE_NAME}, 1));
     }
     $self->{TARGET}= undef;
 }

@@ -444,7 +444,7 @@ sub getLocalFile {
 }
 
 # copies a local (temp) file to the remote host
-sub copyLoc2Rem {
+sub copyLocalFileToRemote {
     my $self= shift;
     my $sLocFile= shift;
     my $sRemFile= $self->getPath(shift);

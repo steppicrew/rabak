@@ -43,6 +43,11 @@ sub CloneConf {
     return $new;
 }
 
+# Stub to override. A RabakLib::Conf is always valid.
+sub get_validation_message {
+    return undef;
+}
+
 sub get_raw_value {
     my $self= shift;
     my $sName= shift;
@@ -103,6 +108,15 @@ sub remove_backslashes {
 sub get_value {
     my $self= shift;
     return $self->remove_backslashes($self->get_raw_value(@_));
+}
+
+# TODO: Which is correct: get_property? get_value? get_raw_value? $oCOnf->{VALUES}?
+sub get_value_required_message {
+    my $self= shift;
+    my $sField= shift;
+
+    return "Required value \"" . $self->{NAME} . ".$sField\" missing." unless defined $self->get_property($sField);
+    return undef;
 }
 
 # command line switches are set in /switch
@@ -235,7 +249,9 @@ sub resolveObjects {
     return @oResult;
 }
 
-sub sort_show_key_order {()}
+sub sort_show_key_order {
+    return ();
+}
 
 sub sort_show_keys {
     my $self= shift;
@@ -274,6 +290,11 @@ sub show {
         }
         my $sValue= $self->get_value($_) || '';
         $sValue =~ s/\n/\n\t/g;
+
+        # $_= "$sKey.$_";
+        # s/^\*.//;
+        # print "$_ = $sValue\n";
+
         print "$sKey.$_ = $sValue\n" unless defined $hConfShowCache->{"$sKey.$_"};
         $hConfShowCache->{"$sKey.$_"}= 1;
     }

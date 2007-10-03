@@ -342,8 +342,17 @@ TBD!
 
 =head1 SAMPLE1: Backup from local to remote
 
-TBD!
+To backup to a remote target, you must provide two additional information to the target object: user and host.
+B<rabak> at the moment supports key authentification, so you may have to add a authorised key on the target machine.
+User/password support is tricky because you can't supply a password to ssh because of security reasons.
 
+Once you have a working key authentification, you can specify the same variables to remote targets as to local targets.
+For example, you can specify mount points, and rabak will do the right thing.
+
+  # Setup local source
+  sample_local_source.path = sample-source
+
+  # Setup remote target
   sample_remote_target.path = $target_dir
   sample_remote_target.host = some.host.name
   sample_remote_target.user = username.on.host
@@ -356,10 +365,37 @@ TBD!
   sample_remote_target.group = sample
   sample_remote_target.discfree_threshold = 10%
 
+  sample.title = From local to remote
+  sample.source = &sample_local_source
+  sample.target = &sample_remote_target
+
 
 =head1 SAMPLE1: Backup from remote to remote
 
-TBD!
+Remote to remote backup is essentially the same to local to remote.
+Just specify an user and a host for the source and the target object and you're done.
+
+  # Setup local source
+  sample_remote_source.path = /home/
+  sample_remote_source.host = some.host.name
+  sample_remote_source.user = username.on.host
+
+  # Setup remote target
+  sample_remote_target.path = /rabak
+  sample_remote_target.host = some.host.name
+  sample_remote_target.user = username.on.host
+  sample_remote_target.mount.device = /dev/dev.on.remote.host
+  sample_remote_target.mount.device = /mnt/path/on.remote.host
+  sample_remote_target.mount.umount = 1
+
+  # specify a LOCAL directory to temporarily store files for the remote system (eg. database dumps)
+  sample_remote_target.tempdir = /path/for/temporary/files/on.local.host
+  sample_remote_target.group = sample
+  sample_remote_target.discfree_threshold = 10%
+
+  sample.title = From remote to remote
+  sample.source = &sample_remote_source
+  sample.target = &sample_remote_target
 
 
 =head1 SAMPLE1: Variables in depth
@@ -373,6 +409,10 @@ assigns the string 'lisa' to the variable 'server1'.
 Variables can be clustered in objects simply by adding a name and a
 dot in front of a variable name. Examples:
 
+=over
+
+=item Sample A
+
   mount1.title= My Mount Point
   mount1.path= /mnt/data
 
@@ -380,11 +420,17 @@ dot in front of a variable name. Examples:
   lisa.mount_data.title= One of Lisa's Mount Points
   lisa.mount_data.path= /mnt/data
 
+=back
+
 Here, 'mount1' and 'lisa.mount1' are objects that contain simple variables.
 'lisa' is an object containing a variable 'title' and an object 'mount_data'.
 
 There are two ways in using a variable: substitution or binding.
 Here are examples for substitution:
+
+=over
+
+=item Sample A, continued
 
   mount2= $mount1
   mount2.title= Copy of the "mount1" Mount Point
@@ -393,8 +439,9 @@ Here are examples for substitution:
   bart.mount_data= $lisa.mount_data
   bart.mount_data.title= Now it's Bart's Mount Point
 
-The b<$>-Sign followed by a variable name is substituted by the value of that
-variable.
+=back
+
+The b<$>-Sign followed by a variable name is substituted by the value of that variable.
 The above assignments will result in the following values:
 
   mount2.title= Copy of the "mount1" Mount Point
@@ -406,14 +453,27 @@ The above assignments will result in the following values:
 
 Binding: TBD
 
-Variables ar
+Variables with a b<&> sigil are "bound variabled" and treated differently.
+They act more than references and are assigned at time of use.
+The idea is that you can set up a variable with a reference to anonther variable that is defined later in the configuration file.
+This is mostly useful for common setups that are put into include-files.
+It was actually introduced to support "std_exclude = &exclude", allowing the user to define "exclude" later on.
+So, the standard include file needs it, you probably won't need it often.
+
+=over
+
+=item Sample B
+
   b.x = 1
   b.y = 2
-  a = &b
+
+  a = $b
   a.z= 3
 
-  c = $b
-  c.z= 3
+  # c = &b
+  # c.z= 3      # Won't work!
+
+=back
 
 TBD!
 

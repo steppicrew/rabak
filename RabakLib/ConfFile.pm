@@ -27,6 +27,8 @@ Format very similar to postfix config files:
         $key2           # -> key3.prop2 = value1 \n multi \n lined
     key4.prop3= $key3   # -> key4.prop3.prop1 = value1
                         #    key4.prop3.prop2 = value1 \n multi \n lined
+=over
+
 =cut
 
 sub new {
@@ -34,8 +36,9 @@ sub new {
     my $sFile= shift;
     my $self= {
         FILE => undef,
-        CONF => undef,
+        # CONF => {},
         ERROR => undef,
+        CONF => RabakLib::Conf->new('*'),
     };
     bless $self, $class;
     $self->read_file($sFile) if $sFile;
@@ -61,6 +64,12 @@ sub conf {
     my $self= shift;
     return $self->{CONF};
 }
+
+=item print_set_list
+
+Prints a list of available backup sets.
+
+=cut
 
 sub print_set_list {
     my $self= shift;
@@ -91,6 +100,20 @@ sub print_set_list {
     print "None.\n" unless $bFound;
 }
 
+=item print_all
+
+Prints the complete, parsed configuration.
+
+=cut
+
+sub print_all {
+    my $self= shift;
+
+    print "# These are the resulting values of \"" . $self->filename() . "\":\n";
+    print "# (Btw, this output may be used as a valid configuration file.)\n";
+    $self->{CONF}->show();
+}
+
 sub _error {
     my $self= shift;
     my ($sMsg, $iLine, $sLine)= @_;
@@ -107,7 +130,8 @@ sub read_file {
     my $self= shift;
     my $sFile= shift;
 
-    $self->{CONF}= RabakLib::Conf->new($sFile);
+    $self->{CONF}= RabakLib::Conf->new('*');
+    # $self->{CONF}= RabakLib::Conf->new($sFile);
     $self->{ERROR}= undef;
     $self->_read_file($sFile);
 }
@@ -293,5 +317,7 @@ sub _line_expand {
     $self->{DID_EXPAND}= 1;
     return $hConf->{VALUES}{$sKey};
 }
+
+=back
 
 1;

@@ -222,8 +222,10 @@ sub _parseFilter {
         my $sIncExc= $1;
 
         my $isDir= $sEntry=~ /\/$/;
+
         # simplify path
         $sEntry= File::Spec->canonpath($sEntry);
+
         # append "/" to directories (stripped by canonpath)
         $sEntry=~ s/([^\/])$/$1\// if $isDir;
 
@@ -337,7 +339,8 @@ sub run {
 
     # print '**$bPretend**'; die;
 
-    my $sBakSet= $self->get_value('name');
+    # Unused: my $sBakSet= $self->get_value('name');
+
     my $sRsyncOpts = $self->get_value('rsync_opts') || '';
 
     # Write filter rules to temp file:
@@ -352,7 +355,7 @@ sub run {
     # copy filter rules to source if target AND source and remote
     if ($oTargetPath->is_remote() && $self->is_remote()) {
         my $sRemRulesFile= $self->tempfile;
-        $self->copyLoc2Rem($sRulesFile, $sRemRulesFile);
+        $self->copyLocalFileToRemote($sRulesFile, $sRemRulesFile);
         $sRulesFile = $sRemRulesFile;
     }
 
@@ -389,6 +392,7 @@ sub run {
             $sTimeout= $1 unless $oTargetPath->get_value("timeout");
             logger->warn("--timeout in 'rsync_opts' is deprecated. Please use 'timeout' option (see Doc)!");
         }
+
         my $sSshCmd= "ssh -p $sPort";
         map { $sSshCmd.= " -i \"$_\"" if $_; } @sIdentityFiles if @sIdentityFiles;
         if ($oSshPeer->get_value("protocol")) {
@@ -405,10 +409,13 @@ sub run {
     map { $sFlags .= " --link-dest=\"$_\""; } @sBakDir;
 
     my $sSrcDir = $self->getPath;
+
     # make sure path ends with "/"
     $sSrcDir=~ s/\/?$/\//;
+
     my $sDestDir= $oTargetPath->getPath($sFullTarget);
     # run rsync command on source by default
+
     my $oRsyncPath= $self;
     if ($oTargetPath->is_remote()) {
         $sDestDir= $oTargetPath->get_value("host") . ":$sDestDir";
@@ -428,10 +435,11 @@ sub run {
     my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= $oRsyncPath->run_cmd($sRsyncCmd);
     logger->error($sError) if $sError;
     logger->warn("rsync exited with result ".  $iRsyncExit) if $iRsyncExit;
+
     my @sRsyncError= split(/\n/, $sRsyncErr || '');
     logger->error(@sRsyncError) if @sRsyncError;
-    my @sRsyncStat= ();
 
+    my @sRsyncStat= ();
     for (split(/\n/, $sRsyncOut || '')) {
         push @sRsyncStat, $_ unless /^([^\/]+\/)+$/;
     }
@@ -442,7 +450,7 @@ sub run {
     logger->debug(@sRsyncFiles);
     logger->log('*** Rsync Statistics: ***', @sRsyncStat);
 
-    # return success for partial transfer errors (errors were raised already above)
+    # return success for partial transfer errors (errors were logged already above)
     return 0 if $iRsyncExit == 23 || $iRsyncExit == 24;
     return $iRsyncExit;
 }

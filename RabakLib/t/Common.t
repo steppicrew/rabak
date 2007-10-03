@@ -15,6 +15,9 @@ END {`sh $Bin/stuff/testdev-remove 2>/dev/null`;}
 my $sSourceDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );
 my $sTargetDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );
 
+#my $sSourceDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 0 );
+#my $sTargetDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 0 );
+
 #my $sSourceMountDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );
 #my $sTargetMountDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );
 

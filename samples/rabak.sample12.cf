@@ -22,6 +22,8 @@ server1= lisa
 # Variables can be clustered in objects simply by adding a name and a
 # dot in front of a variable name. Examples:
 
+
+
 mount1.title= My Mount Point
 mount1.path= /mnt/data
 
@@ -29,11 +31,14 @@ lisa.title= Server "Lisa"
 lisa.mount_data.title= One of Lisa's Mount Points
 lisa.mount_data.path= /mnt/data
 
+
 # Here, 'mount1' and 'lisa.mount1' are objects that contain simple variables.
 # 'lisa' is an object containing a variable 'title' and an object 'mount_data'.
 
 # There are two ways in using a variable: substitution or binding.
 # Here are examples for substitution:
+
+
 
 mount2= $mount1
 mount2.title= Copy of the "mount1" Mount Point
@@ -42,8 +47,8 @@ bart.title= Server "Bart"
 bart.mount_data= $lisa.mount_data
 bart.mount_data.title= Now it's Bart's Mount Point
 
-# The b<$>-Sign followed by a variable name is substituted by the value of that
-# variable.
+
+# The b<$>-Sign followed by a variable name is substituted by the value of that variable.
 # The above assignments will result in the following values:
 
 mount2.title= Copy of the "mount1" Mount Point
@@ -55,14 +60,24 @@ bart.mount_data.path= /mnt/data
 
 # Binding: TBD
 
-# Variables ar
+# Variables with a b<&> sigil are "bound variabled" and treated differently.
+# They act more than references and are assigned at time of use.
+# The idea is that you can set up a variable with a reference to anonther variable that is defined later in the configuration file.
+# This is mostly useful for common setups that are put into include-files.
+# It was actually introduced to support "std_exclude = &exclude", allowing the user to define "exclude" later on.
+# So, the standard include file needs it, you probably won't need it often.
+
+
+
 b.x = 1
 b.y = 2
-a = &b
+
+a = $b
 a.z= 3
 
-c = $b
-c.z= 3
+# c = &b
+# c.z= 3      # Won't work!
+
 
 # TBD!
 

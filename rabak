@@ -84,6 +84,11 @@ sub cmd_conf {
         $oConfFile->print_set_list();
         exit 0;
     }
+    if ($sBakSet eq '*') {
+        $oConfFile= _conf_read();
+        $oConfFile->print_all();
+        exit 0;
+    }
     my $hBakSet= _cmd_setup($sBakSet, 1);
     $hBakSet->show();
     exit 0;
@@ -170,13 +175,25 @@ sub _cmd_setup {
     my $sBakSet= shift;
 
     _conf_read();
-    my $oSetConf= $oConf->get_node($sBakSet);
-    unless ($oSetConf) {
-    	print "Bakset '$sBakSet' does not exist!";
+    my $hSetConf= $oConf->get_node($sBakSet);
+
+    unless ($hSetConf) {
+    	print "# Backup Set '$sBakSet' does not exist!\n";
     	_exit(3);
     }
 
-    my $oSet= RabakLib::Set->CloneConf($oSetConf);
+    # Build a Set from Hash
+    my $oSet= RabakLib::Set->CloneConf($hSetConf);
+    my $sError= $oSet->get_validation_message();
+
+    if ($sError) {
+    	print "# Backup Set '$sBakSet' is not properly defined:\n";
+        print "# $sError\n";
+        print "# The following values were found in the configuration:\n";
+        $hSetConf->show();
+    	_exit(3);
+    }
+
     return $oSet;
 }
 

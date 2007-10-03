@@ -47,23 +47,32 @@ sub CloneConf {
     
     my $new= $class->SUPER::CloneConf($oOrigConf);
 
-    $new->{ERROR}= $new->_validate();
+    # FIXME: Where is ERROR used? Use get_validation_message on returned instance!
+
+    $new->{ERROR}= $new->get_validation_message();
     return $new;
 }
 
-sub _need_value {
+sub get_validation_message {
     my $self= shift;
-    my $sField= shift;
-
-    return "Required value \"" . $self->get_value("name") . ".$sField\" missing." unless defined $self->{VALUES}{$sField};
-    return undef;
+    return $self->get_value_required_message("title")
+        || $self->get_value_required_message("source")
+        || $self->get_value_required_message("target");
 }
 
-sub _validate {
-    my $self= shift;
+# sub _need_value {
+#     my $self= shift;
+#     my $sField= shift;
+#
+#     return "Required value \"" . $self->get_value("name") . ".$sField\" missing." unless defined $self->{VALUES}{$sField};
+#     return undef;
+# }
 
-    return $self->_need_value('title') || $self->_need_value('source') || $self->_need_value('target');
-}
+# sub _validate {
+#     my $self= shift;
+#
+#     return $self->_need_value('title') || $self->_need_value('source') || $self->_need_value('target');
+# }
 
 sub sort_show_key_order {
     my $self= shift;
@@ -122,6 +131,16 @@ sub dothtmlify {
     return $_[0];
 }
 
+sub _dotConfTitle {
+    my $sType= shift;
+    my $oConf= shift;
+
+    my $sTitleText= $oConf->{VALUES}{'name'} || $oConf->{NAME};
+    $sTitleText= ucfirst($sType) . " \"$sTitleText\"";
+    $sTitleText .= ': ' . $oConf->{VALUES}{'title'} if $oConf->{VALUES}{'title'};
+    return $sTitleText;
+}
+
 sub _dotAddBox {
     my $self= shift;
     my $sType= shift;
@@ -138,22 +157,22 @@ sub _dotAddBox {
     $sAttribs= 'shape="invhouse"' if $sType eq 'mount';
     $sAttribs= 'shape="rect" style="filled" color="#F0F0E0"' if $sType eq 'mount';
 
-    # my %sKeys= ( @{ $oConf->{VALUES} } );
-    # print STDERR Dumper(\%sKeys);
+    my %hKeys;
+    map { $hKeys{$_}= 1 } keys %{ $oConf->{VALUES} };
 
-    my $sName= $oConf->{NAME};
-    my $sTitleText= $oConf->{VALUES}{'name'} || $sName;
-    $sTitleText= ucfirst($sType) . " \"$sTitleText\"";
-
-    $sTitleText= dothtmlify($sTitleText);
+    my $sTitleText= dothtmlify(_dotConfTitle($sType, $oConf));
     $sTitleText= "<table border=\"0\"><tr><td>$sTitleText</td></tr></table>";
 
+    my $sName= $oConf->{NAME};
+
     my $sResult= '';
-    $sResult .= "$sName [ label=<";
+    $sResult .= "\"$sName\" [ label=<";
     $sResult .= "<table cellpadding=\"0\" cellspacing=\"0\" border=\"0\">";
     $sResult .= "<tr><td colspan=\"3\" bgcolor=\"$sTitleBgColor\">$sTitleText</td></tr>";
     $sResult .= "<tr><td colspan=\"3\"><font point-size=\"4\">&#160;</font></td></tr>";
-    for my $sKey (sort keys %{ $oConf->{VALUES} }) {
+
+    my $_add= sub {
+        my $sKey= shift;
         my $sValue;
         if (ref $oConf->{VALUES}{$sKey}) {
             $sValue= '$' . $oConf->{VALUES}{$sKey}{NAME};
@@ -161,11 +180,22 @@ sub _dotAddBox {
         else {
             $sValue= $oConf->{VALUES}{$sKey} || '';
         }
-        next if $sValue eq '';
+        return if $sValue eq '';
         $sValue= substr($sValue, 0, 27) . "..." if length($sValue) > 30;
         $sResult .= "<tr><td align=\"left\">" . dothtmlify($sKey) . ":</td><td>&#160;</td><td align=\"left\">" . dothtmlify($sValue) . "</td></tr>";
         # print Dumper($oSource->{VALUES});
-    }
+
+        delete $hKeys{$sKey};
+    };
+
+    # force preferred sequence:
+    $_add->("name");
+    $_add->("type");
+    $_add->("path");
+    $_add->("user");
+    $_add->("password");
+    $_add->($_) for sort keys %hKeys;
+
     $sResult .= "</table>";
     $sResult .= "> $sAttribs ]\n";
 
@@ -176,10 +206,10 @@ sub _dotAddBox {
     if ($oParentConf) {
         my $sParentName= $oParentConf->{NAME};
         if ($sType eq 'target') {
-            $sResult .= "$sParentName -> $sName\n";
+            $sResult .= "\"$sParentName\" -> \"$sName\"\n";
         }
         else {
-            $sResult .= "$sName -> $sParentName\n";
+            $sResult .= "\"$sName\" -> \"$sParentName\"\n";
         }
     }
     return $sResult;
@@ -211,11 +241,11 @@ sub toDot {
     my $oTarget= $self->get_targetPath();
     $sResult .= $self->_dotAddBox('target', $oTarget, $self);
 
-    my $sTitle= "Set \"" . ($self->{VALUES}{'name'} || $self->{NAME}) . "\"";
+    my $sTitle= dotify(_dotConfTitle('set', $self));
 
     $sResult= qq(
         subgraph cluster1 {
-            label=" ) . dotify($sTitle) . qq( "
+            label="$sTitle"
             labelfontsize="18"
             $sResult
         }

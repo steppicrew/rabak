@@ -13,8 +13,17 @@ switch.logging = 1
 #  Sample 10: Backup from local to remote  #
 ############################################
 
-# TBD!
+# To backup to a remote target, you must provide two additional information to the target object: user and host.
+# B<rabak> at the moment supports key authentification, so you may have to add a authorised key on the target machine.
+# User/password support is tricky because you can't supply a password to ssh because of security reasons.
 
+# Once you have a working key authentification, you can specify the same variables to remote targets as to local targets.
+# For example, you can specify mount points, and rabak will do the right thing.
+
+# Setup local source
+sample_local_source.path = sample-source
+
+# Setup remote target
 sample_remote_target.path = $target_dir
 sample_remote_target.host = some.host.name
 sample_remote_target.user = username.on.host
@@ -26,6 +35,10 @@ sample_remote_target.mount.umount = 1
 sample_remote_target.tempdir = /path/for/temporary/files/on.local.host
 sample_remote_target.group = sample
 sample_remote_target.discfree_threshold = 10%
+
+sample.title = From local to remote
+sample.source = &sample_local_source
+sample.target = &sample_remote_target
 # 
 #
 # Further information
