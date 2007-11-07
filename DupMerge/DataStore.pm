@@ -52,13 +52,14 @@ sub addInodeFile {
 }
 
 # to be overwritten
-sub addInodeSize {};
-sub getSortedSizes { return []; }
-sub getKeysBySize { return []; }
-sub getInodesBySizeKey { return []; }
-sub getInodeFiles { return []; }
-sub getKeyByInode { return ''; }
+sub addInodeSize { die "Sould have been overriden"; }
+sub getDescSortedSizes { die "Sould have been overriden"; }
+sub getKeysBySize { die "Sould have been overriden"; }
+sub getInodesBySizeKey { die "Sould have been overriden"; }
+sub getInodeFiles { die "Sould have been overriden"; }
+sub getKeyByInode { die "Sould have been overriden"; }
 
 sub beginWork {};
 sub endWork {};
+
 1;

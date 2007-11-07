@@ -20,7 +20,6 @@ $|= 1;
 my @sDirectories= @ARGV;
 my $sDev= undef;
 my $cache_dbh= undef;
-my $temp_dbh= undef;
 my $ds= undef;
 
 my %stats= ();
@@ -87,20 +86,23 @@ sub calcDigest {
     my $sFileName= shift;
     
     my $sDigest= undef;
-    eval {
-        my $fh= undef;
-        if (-r $sFileName && open $fh, '<', $sFileName) {
-            $sDigest= Digest::SHA1->new()->addfile($fh)->b64digest;
-            close $fh;
-        }
-        $stats{files_unreadable}++
-    };
-    warn $@ if $@;
-    $stats{digest_calc}++;
-    return $sDigest;
+    if (-r $sFileName) {
+        eval {
+            my $fh= undef;
+            if (open $fh, '<', $sFileName) {
+                $sDigest= Digest::SHA1->new()->addfile($fh)->b64digest;
+                close $fh;
+            }
+            $stats{digest_calc}++;
+        };
+        return $sDigest unless $@;
+        warn $@;
+    }
+    $stats{files_unreadable}++;
+    return undef;
 }
 
-# get digest from db cache or calculate
+# get digest from cache db or calculate
 sub getDigest {
     my $iInode= shift;
     my $ds= shift;
@@ -132,6 +134,7 @@ sub getDigest {
     return $sDigest;
 }
 
+# write digest to cache db
 sub setDigest {
     my $iInode= shift;
     my $ds= shift;
@@ -146,6 +149,7 @@ sub setDigest {
     };
 }
 
+# remove digest from cache db
 sub removeFromCache {
     my $iInode= shift;
     
@@ -157,9 +161,15 @@ sub removeFromCache {
     };
 }
 
-print "Collecting file information..." unless $opts{q};
+##############################################
+# start actual working here
+##############################################
+
+print "Preparing information store..." unless $opts{q};
 
 $ds->beginWork();
+
+print "done\nCollecting file information..." unless $opts{q};
 
 find({
     wanted => \&processFiles,
@@ -172,8 +182,8 @@ $ds->endWork();
 
 print "done\nSearching for duplicates...\n" unless $opts{q};
 
-# traverse files starting with greatest size 
-for my $iSize (@{$ds->getSortedSizes()}) {
+# traverse files starting with largest
+for my $iSize (@{$ds->getDescSortedSizes()}) {
     print "\rProcessing file size $iSize...", " "x10 unless $opts{q};
     # handle files grouped by permissions etc. separately
     for my $sKey (@{$ds->getKeysBySize($iSize)}) {
@@ -243,6 +253,7 @@ for my $iSize (@{$ds->getSortedSizes()}) {
 
 $ds= $ds->destroy();
 
+# print out some statistics
 unless ($opts{q}) {
     print "\r...done", " "x20, "\n";
     my @sData= (

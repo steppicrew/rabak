@@ -66,7 +66,7 @@ sub addInodeSize {
     $self->{db_sth_inodesize}->execute($iSize, $sKey, $iInode);
 }
 
-sub getSortedSizes {
+sub getDescSortedSizes {
     my $self= shift;
     
     return $self->{dbh}->selectcol_arrayref("SELECT DISTINCT size FROM size ORDER BY size DESC");

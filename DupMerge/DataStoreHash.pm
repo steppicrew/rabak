@@ -28,7 +28,7 @@ sub addInodeFile {
     $self->{InodeFiles}{$iInode}= {
         key => $sKey,
         files => [],
-    } unless (exists $self->{InodeFiles}{$iInode});
+    } unless exists $self->{InodeFiles}{$iInode};
     push @{$self->{InodeFiles}{$iInode}{files}}, $sName;
 }
 
@@ -42,7 +42,7 @@ sub addInodeSize {
     push @{$self->{SizeInodes}->{$iSize}{$sKey}}, $iInode;
 }
 
-sub getSortedSizes {
+sub getDescSortedSizes {
     my $self= shift;
     
     return [sort {$b <=> $a} keys(%{$self->{SizeInodes}})];
