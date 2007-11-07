@@ -17,11 +17,13 @@ sub new {
 
     eval {
         $self->{temp_dir}= File::Temp::tempdir(DIR => $sTempDir, CLEANUP => 1);
-        $self->{dbh} = DBI->connect("dbi:SQLite2:dbname=$self->{temp_dir}/inode_size.db", "", "");
+        $self->{dbfn}= "$self->{temp_dir}/inode_size.db";
+        $self->{dbh} = DBI->connect("dbi:SQLite2:dbname=$self->{dbfn}", "", "")
+            || $DBI::errstr;
         $self->{dbh}->do("CREATE TABLE size (size INTEGER, key TEXT, inode INTEGER)");
         $self->{dbh}->do("CREATE TABLE inodes (inode INTEGER, key TEXT, filename TEXT)");
     };
-    die "Could not create database!" if $@;
+    die "Could not create database!\n$@" if $@;
     
     bless $self, $class;
 }
@@ -32,7 +34,8 @@ sub destroy {
     if ($self->{dbh}) {
         $self->{dbh}->disconnect();
         delete $self->{dbh};
-        unlink "$self->{temp_dir}/inode_size.db";
+        unlink $self->{dbfn};
+        delete $self->{dbfn};
     }
     return $self->SUPER::destroy();
 }
