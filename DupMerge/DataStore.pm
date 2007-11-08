@@ -7,8 +7,8 @@ use strict;
 
 use vars qw(@ISA);
 
-use DupMerge::DataStoreDB;
-use DupMerge::DataStoreHash;
+use DupMerge::DataStore::DataStoreDB;
+use DupMerge::DataStore::DataStoreHash;
 
 sub Factory {
     my $class= shift;
