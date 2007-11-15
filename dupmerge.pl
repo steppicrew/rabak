@@ -9,14 +9,13 @@ use DupMerge::DupMerge;
 $Getopt::Std::STANDARD_HELP_VERSION= 1;
 my %opts= ();
 
-getopts("hdpotvnc:zi:x:e:q", \%opts) or die HELP_MESSAGE();
+getopts("hdpotvnzi:x:w:qb:m:", \%opts) or die HELP_MESSAGE();
 
 my @sDirectories= @ARGV;
 my $dm= DupMerge::DupMerge->new();
 
 $dm->run(\@sDirectories, {
-    digest_db_file  => $opts{c},
-    temp_dir        => $opts{e},
+    work_dir        => $opts{w},
     skip_zero       => $opts{z},
     quiet           => $opts{q},
     verbose         => $opts{v},
@@ -27,6 +26,8 @@ $dm->run(\@sDirectories, {
     ignore_owner    => $opts{o},
     ignore_time     => $opts{t},
     dryrun          => $opts{n},
+    db_engine       => $opts{b},
+    multi_db_prefix => $opts{m},
     
     cb_infoS        => sub {print join "\n", @_; STDOUT->flush();}
 });
@@ -48,10 +49,12 @@ options: -h   Show this help message
          -q   Don't print anything but errors/warnings
          -v   Verbose output
          -n   Dry run (don't change anything)
-         -c <db file>
-              Db for caching hash values
-         -e <tempd dir>
-              Temporary directory for data collection (use ram if not specified)
+         -b <db engine>
+              database engine. possible values: sqlite2, sqlite3 (default)
+         -w <work dir>
+              Working directory for data collection (use ram if not specified)
+         -m <multi db prefix>
+              Enables db for each directory. Specifies prefix for db name
 ";
 }
 

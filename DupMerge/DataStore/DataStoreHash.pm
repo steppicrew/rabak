@@ -1,4 +1,4 @@
-package DupMerge::DataStoreHash;
+package DupMerge::DataStore::DataStoreHash;
 
 use warnings;
 use strict;

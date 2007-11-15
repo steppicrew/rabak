@@ -1,4 +1,4 @@
-package DupMerge::DataStoreDB;
+package DupMerge::DataStore::DataStoreDB;
 
 use warnings;
 use strict;
@@ -7,37 +7,29 @@ use vars qw(@ISA);
 
 @ISA = qw(DupMerge::DataStore);
 
-use File::Temp ();
+use DupMerge::DataStore::DataStoreDBBackend;
+
+use File::Temp();
 
 sub new {
     my $class= shift;
-    my $sTempDir= shift;
+    my $hParams= shift;
     
     my $self= $class->SUPER::new();
-
-    eval {
-        $self->{temp_dir}= File::Temp::tempdir(DIR => $sTempDir, CLEANUP => 1);
-        $self->{dbfn}= "$self->{temp_dir}/inode_size.db";
-        $self->{dbh} = DBI->connect("dbi:SQLite2:dbname=$self->{dbfn}", "", "")
-            || $DBI::errstr;
-        $self->{dbh}->do("CREATE TABLE size (size INTEGER, key TEXT, inode INTEGER)");
-        $self->{dbh}->do("CREATE TABLE inodes (inode INTEGER, key TEXT, filename TEXT)");
-    };
-    die "Could not create database!\n$@" if $@;
-    
-    bless $self, $class;
-}
-
-sub destroy {
-    my $self= shift;
-    
-    if ($self->{dbh}) {
-        $self->{dbh}->disconnect();
-        delete $self->{dbh};
-        unlink $self->{dbfn};
-        delete $self->{dbfn};
+    if ($hParams->{work_dir}) {
+        $self->{work_dir_name}= $hParams->{work_dir};
+        $self->{db_dir}= File::Temp::tempdir(DIR => $hParams->{work_dir}, CLEANUP => 1);
     }
-    return $self->SUPER::destroy();
+    else {
+        $self->{work_dir_name}= $self->{db_dir}= "/tmp";
+    }
+
+    $self->{db}= DupMerge::DataStore::DataStoreDBBackend->new(
+        "$self->{db_dir}/inode_size.db",
+        $hParams->{db_engine},
+    );
+
+    bless $self, $class;
 }
 
 sub addInodeFile {
@@ -48,10 +40,7 @@ sub addInodeFile {
     
     $self->SUPER::addInodeFile($iInode, $sKey, $sName);
     
-    $self->{db_sth_inodefile}=
-        $self->{dbh}->prepare("INSERT INTO inodes (inode, key, filename) VALUES (?, ?, ?)") unless $self->{db_sth_inodefile};
-    
-    $self->{db_sth_inodefile}->execute($iInode, $sKey, $sName);
+    return $self->{db}->addInodeFile($iInode, $sKey, $sName);
 }
 
 sub addInodeSize {
@@ -60,24 +49,20 @@ sub addInodeSize {
     my $sKey= shift;
     my $iInode= shift;
     
-    $self->{db_sth_inodesize}=
-        $self->{dbh}->prepare("INSERT INTO size (size, key, inode) VALUES (?, ?, ?)") unless $self->{db_sth_inodesize};
-    
-    $self->{db_sth_inodesize}->execute($iSize, $sKey, $iInode);
+    return $self->{db}->addInodeSize($iSize, $sKey, $iInode);
 }
 
 sub getDescSortedSizes {
     my $self= shift;
     
-    return $self->{dbh}->selectcol_arrayref("SELECT DISTINCT size FROM size ORDER BY size DESC");
+    return $self->{db}->getDescSortedSizes();
 }
 
 sub getKeysBySize {
     my $self= shift;
     my $iSize= shift;
     
-    return $self->{dbh}->selectcol_arrayref("SELECT DISTINCT key FROM size WHERE size = ?",
-        undef, $iSize);
+    return $self->{db}->getKeysBySize($iSize);
 }
 
 sub getInodesBySizeKey {
@@ -85,43 +70,72 @@ sub getInodesBySizeKey {
     my $iSize= shift;
     my $sKey= shift;
     
-    return $self->{dbh}->selectcol_arrayref("SELECT inode FROM size WHERE size = ? AND key = ?",
-        undef, $iSize, $sKey);
+    return $self->{db}->getInodesBySizeKey($iSize, $sKey);
 }
 
 sub getFilesByInode {
     my $self= shift;
     my $iInode= shift;
     
-    return $self->{dbh}->selectcol_arrayref("SELECT filename FROM inodes WHERE inode = ?",
-        undef, $iInode);
+    return $self->{db}->getFilesByInode($iInode);
 }
 
 sub getKeyByInode {
     my $self= shift;
     my $iInode= shift;
     
-    my @result= $self->{dbh}->selectrow_array("SELECT key FROM inodes WHERE inode = ?",
-        undef, $iInode);
-    return $result[0] if @result;
-    return undef;
+    return $self->{db}->getKeyByInode($iInode);
+}
+
+sub getDigestByInode {
+    my $self= shift;
+    my $iInode= shift;
+    
+    return $self->{db}->getDigestByInode($iInode);
+}
+
+sub setInodesDigest {
+    my $self= shift;
+    my $iInode= shift;
+    my $sDigest= shift;
+    
+    return $self->{db}->setInodesDigest($iInode, $sDigest);
+}
+
+sub removeInode {
+    my $self= shift;
+    my $iInode= shift;
+    my $sDigest= shift;
+    
+    return $self->{db}->removeInode($iInode);
 }
 
 sub beginWork {
     my $self= shift;
     
-    $self->{dbh}->begin_work();
+    return $self->{db}->beginWork();
 }
 
 sub endWork {
     my $self= shift;
     
-    $self->{dbh}->commit();
+    $self->{db}->endWork();
+
+    $self->{db}->unlink();
+
+    return undef;
+}
+
+sub beginInsert {
+    my $self= shift;
     
-    # creating indices after inserting all data
-    $self->{dbh}->do("CREATE INDEX size_size ON size (size)");
-    $self->{dbh}->do("CREATE INDEX size_size_key ON size (size, key)");
-    $self->{dbh}->do("CREATE INDEX inodes_inode ON inodes (inode)");
+    return $self->{db}->beginInsert();
+}
+
+sub endInsert {
+    my $self= shift;
+
+    return $self->{db}->endInsert();    
 }
 
 1;

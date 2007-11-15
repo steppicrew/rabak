@@ -2,6 +2,10 @@
 
 package DupMerge::DupMerge;
 
+#TODO: change key for persistant inode_size db
+#TODO: remove database files if directory scan is incomplete
+
+
 use strict;
 use Getopt::Std;
 use File::Find;
@@ -22,7 +26,6 @@ sub new {
         opts => $hOptions,
         
         device => undef,
-        cache_dbh => undef,
         ds => undef,
         stats => {},
     };
@@ -30,42 +33,51 @@ sub new {
     bless $self, $class;
 }
 
-sub setOptions {
-    my $self= shift;
-    my $hOptions= shift;
-    $self->{opts}= $hOptions || {};
-}
-
 sub init {
     my $self= shift;
     
-    if ($self->{opts}{digest_db_file}) {
-        my $cache_dbfile= $self->{opts}{digest_db_file};
-        $self->infoMsg("Using file '$cache_dbfile' for digest caching.");
-        eval {
-            $self->{cache_dbh} = DBI->connect("dbi:SQLite2:dbname=$cache_dbfile", "", "");
-            if ($self->{cache_dbh}) {
-                unless (-f $cache_dbfile && -s _) {
-                    $self->{cache_dbh}->do("CREATE TABLE digest (inode INTEGER PRIMARY KEY, key TEXT, digest TEXT)");
-                    $self->{cache_dbh}->do("CREATE INDEX digest_inode ON digest (inode)");
-                }
-            }
-        };
-        if ($@) {
-            warn $@;
-            $self->{cache_dbh}= undef;
-        }
+    my %validDbEngines= (
+        sqlite2 => "SQLite2",
+        sqlite3 => "SQLite",
+    );
+    unless ($validDbEngines{$self->{opts}{db_engine} || ''}) {
+        $self->warnMsg("Invalid database engine '$self->{opts}{db_engine}'.") if $self->{opts}{db_engine};
+        $self->{opts}{db_engine}= "sqlite3";
     }
-    if ($self->{opts}{temp_dir}) {
-        $self->infoMsg("Using '$self->{opts}{temp_dir}' as temporary directory.");
-        $self->{ds}= DupMerge::DataStore->Factory(type => 'db', temp_dir => $self->{opts}{temp_dir});
+    
+    # decide what DataStore type will be used
+    if ($self->{opts}{multi_db_prefix}) {
+        $self->{opts}{work_dir}= "/tmp" unless $self->{opts}{work_dir};
+        $self->infoMsg("Using '$self->{opts}{work_dir}' as working directory.");
+        $self->infoMsg("Using '$self->{opts}{multi_db_prefix}' as prefix for multi db.");
+        $self->{ds}= DupMerge::DataStore->Factory(
+            type => 'multidb',
+            work_dir => $self->{opts}{work_dir},
+            db_prefix => $self->{opts}{multi_db_prefix},
+            db_engine => $self->{opts}{db_engine}
+        );
+    }
+    elsif ($self->{opts}{work_dir}) {
+        $self->infoMsg("Using '$self->{opts}{work_dir}' as working directory.");
+        $self->{ds}= DupMerge::DataStore->Factory(
+            type => 'db',
+            work_dir => $self->{opts}{work_dir},
+            db_engine => $self->{opts}{db_engine}
+        );
     }
     else {
         $self->infoMsg("Storing all databases in RAM.");
         $self->{ds}= DupMerge::DataStore->Factory(type => 'hash');
     }
+    
     $self->infoMsg("Skipping zero sized files.") if $self->{opts}{skip_zero};
 
+}
+
+sub setOptions {
+    my $self= shift;
+    my $hOptions= shift;
+    $self->{opts}= $hOptions || {};
 }
 
 sub infoMsg {
@@ -117,10 +129,9 @@ sub processFiles {
     }
     return if $self->{opts}{min_size} && $size <  $self->{opts}{min_size};
     return if $self->{opts}{max_size} && $size >= $self->{opts}{max_size};
-    $self->{stats}{total_files}++;
+    $self->{stats}{total_new_files}++;
     # process every inode only once
     unless ($self->{ds}->inodeExists($inode)) { 
-        $self->{stats}{total_inodes}++;
         # build key
         my $sKey= "";
         $sKey.= "_${mode}" unless $self->{opts}{ignore_perms};
@@ -160,82 +171,80 @@ sub getDigest {
     my $iInode= shift;
     
     my $sFileName= $self->{ds}->getFilesByInode($iInode)->[0];
-    my $sDigest= undef;
-    if ($self->{cache_dbh}) {
-        eval {
-            my $result= $self->{cache_dbh}->selectrow_hashref("SELECT * FROM digest WHERE inode = ?", undef, $iInode);
-            if ($result) {
-                if ($result->{"key"} eq $self->{ds}->getKeyByInode($iInode)) {
-                    # use cached digest if inode is the same as last time
-                    $sDigest= $result->{"digest"};
-                    $self->{stats}{digest_cachehit}++;
-                }
-                else {
-                    $self->removeFromCache($iInode);
-                }
-            }
-        };
-    }
+    my $sDigest= $self->{ds}->getDigestByInode($iInode);
     
     my $bCached= defined $sDigest;
-    $sDigest= $self->calcDigest($sFileName) unless $bCached;
+    if ($bCached) {
+        $self->{stats}{digest_cachehit}++;
+    }
+    else {
+        $sDigest= $self->calcDigest($sFileName);
+    }
+
     return (
         digest => $sDigest,
         cached => $bCached,
     ) if wantarray;
+
     return $sDigest;
 }
 
 # write digest to cache db
-sub setDigest {
+sub setInodesDigest {
     my $self= shift;
     my $iInode= shift;
     my $sDigest= shift;
     
-    return unless $self->{cache_dbh};
-    
-    eval {
-        $self->{cache_dbh}->do("INSERT INTO digest (inode, key, digest) VALUES (?, ?, ?)",
-            undef, $iInode, $self->{ds}->getKeyByInode($iInode), $sDigest) unless $self->{opts}{dryrun};
-        $self->{stats}{digest_cacheadd}++;
-    };
+    $self->{ds}->setInodesDigest($iInode, $sDigest);
+    $self->{stats}{digest_cacheadd}++;
 }
 
 # remove digest from cache db
-sub removeFromCache {
+sub removeInode {
     my $self= shift;
     my $iInode= shift;
     
-    return unless $self->{cache_dbh};
-    eval {
-        # delete old inode entry
-        $self->{cache_dbh}->do("DELETE FROM digest WHERE inode = ?", undef, $iInode) unless $self->{opts}{dryrun};
-        $self->{stats}{digest_cacheremove}++;
-    };
+    $self->{ds}->removeInode($iInode);
+    $self->{stats}{digest_cacheremove}++;
 }
 
-sub run {
+sub pass1 {
     my $self= shift;
-    my $aDirs= shift || $self->{dirs};
-    my $hOptions= shift;
-    
-    $self->setOptions($hOptions) if $hOptions;
-    $self->init();
+    my $aDirs= shift;
 
     $self->infoMsgS("Preparing information store...");
     $self->{ds}->beginWork();
-    $self->infoMsgS("done", "Collecting file information...");
+    $self->{ds}->beginInsert();
+    $self->infoMsg("done", "Collecting file information...");
 
-    find({
-        wanted => sub {$self->processFiles();},
-        no_chdir => 1,
-    }, @$aDirs);
-
+    for my $sDir (@$aDirs) {
+        $self->infoMsgS("\tProcessing directory '$sDir'...");
+        if ($self->{ds}->newDirectory($sDir)) {
+            find({
+                wanted => sub {$self->processFiles();},
+                no_chdir => 1,
+            }, $sDir);
+        }
+        else {
+            $self->{stats}{total_cached_files}+= $self->{ds}->getCurrentFileCount();
+            $self->{ds}->registerInodes(@{$self->{ds}->getCurrentInodes()});
+        }
+        $self->{ds}->finishDirectory();
+        $self->infoMsg("done");
+    }
+    $self->{stats}{total_inodes}= $self->{ds}->getInodeCount();
     $self->infoMsgS("done", "Finishing information store...");
-    $self->{ds}->endWork();
-    $self->infoMsg("done", "Searching for duplicates...");
+    $self->{ds}->endInsert();
+    $self->infoMsg("done");
+}
+
+sub pass2 {
+    my $self= shift;
+    
+    $self->infoMsg("Searching for duplicates...");
 
     # traverse files starting with largest
+#print Dumper($self->{ds}->getDescSortedSizes());
     for my $iSize (@{$self->{ds}->getDescSortedSizes()}) {
         $self->infoMsgS("\rProcessing file size $iSize..." . " "x10);
     #   handle files grouped by permissions etc. separately
@@ -279,13 +288,14 @@ sub run {
                 for my $hInode (@{$digests{$sDigest}}) {
                     my $iInode= $hInode->{inode};
                     if ($iInode == $iMaxInode) {
-                        $self->setDigest($iInode, $sDigest) unless $hInode->{cached};
+                        $self->setInodesDigest($iInode, $sDigest) unless $hInode->{cached};
                         next;
                     }
                     $self->{stats}{linked_size}+= -s $sLinkFile;
                     for my $sFile (@{$self->{ds}->getFilesByInode($iInode)}) {
                         $self->verbMsg("\rln -f '$sLinkFile' '$sFile'");
                         unless ($self->{opts}{dryrun}) {
+                            # TODO: correct inode-file db
                             if (unlink $sFile) {
                                 link $sLinkFile, $sFile;
                                 $self->{stats}{linked_files}++;
@@ -298,18 +308,21 @@ sub run {
                             $self->{stats}{linked_files}++;
                         }
                     }
-                    $self->removeFromCache($iInode) if $hInode->{cached};
+                    $self->removeInode($iInode) if $hInode->{cached};
                 }
             }
         }
     }
+    $self->infoMsg("\r...done" . " "x20);
+}
 
-    $self->{ds}= $self->{ds}->destroy();
+sub printStat {
+    my $self= shift;
     
 #   print out some statistics
-    $self->infoMsg("\r...done" . " "x20);
     my @sData= (
-        {name => "total_files",        text => "Total files processed"},
+        {name => "total_new_files",    text => "Total new files processed"},
+        {name => "total_cached_files", text => "Total cached files processed"},
         {name => "total_inodes",       text => "Total unique files"},
         {name => "zerosized",          text => "Zero sized Files"},
         {name => "total_size",         text => "Total file size in bytes"},
@@ -329,6 +342,21 @@ sub run {
         while ($number=~ s/(\d)(\d\d\d(\,\d\d\d)*)$/$1,$2/) {};
         $self->infoMsg("    " . substr("$data->{text}:" . "."x30, 0, 32) . $number);
     }
+
+    $self->{ds}= $self->{ds}->endWork();
+}
+
+sub run {
+    my $self= shift;
+    my $aDirs= shift || $self->{dirs};
+    my $hOptions= shift;
+    
+    $self->setOptions($hOptions) if $hOptions;
+    $self->init();
+
+    $self->pass1($aDirs);
+    $self->pass2();
+    $self->printStat();
 }
 
 1;
