@@ -3,6 +3,8 @@ package DupMerge::DataStore::DataStoreDBBackend;
 use warnings;
 use strict;
 
+use DBI;
+
 sub new {
     my $class= shift;
     my $sFileName= shift;
@@ -54,116 +56,6 @@ sub getHandle {
     return $self->{dbh};
 }
 
-sub addInodeFile {
-    my $self= shift;
-    my $iInode= shift;
-    my $sKey= shift;
-    my $sName= shift;
-    
-    $self->{db_sth}{insert}{inodefile}=
-        $self->getHandle()->prepare("INSERT INTO files_inode (inode, key, filename) VALUES (?, ?, ?)") unless $self->{db_sth}{insert}{inodefile};
-    
-    $self->{db_sth}{insert}{inodefile}->execute($iInode, $sKey, $sName);
-}
-
-sub addInodeSize {
-    my $self= shift;
-    my $iSize= shift;
-    my $sKey= shift;
-    my $iInode= shift;
-    
-    $self->{db_sth}{insert}{inodesize}=
-        $self->getHandle()->prepare("INSERT INTO inodes (size, key, inode) VALUES (?, ?, ?)") unless $self->{db_sth}{insert}{inodesize};
-    
-    $self->{db_sth}{insert}{inodesize}->execute($iSize, $sKey, $iInode);
-}
-
-sub getDescSortedSizes {
-    my $self= shift;
-    
-    return $self->getHandle()->selectcol_arrayref("SELECT DISTINCT size FROM inodes ORDER BY size DESC");
-}
-
-sub getKeysBySize {
-    my $self= shift;
-    my $iSize= shift;
-    
-    return $self->getHandle()->selectcol_arrayref("SELECT DISTINCT key FROM inodes WHERE size = ?",
-        undef, $iSize);
-}
-
-sub getInodesBySizeKey {
-    my $self= shift;
-    my $iSize= shift;
-    my $sKey= shift;
-    
-    return $self->getHandle()->selectcol_arrayref("SELECT inode FROM inodes WHERE size = ? AND key = ?",
-        undef, $iSize, $sKey);
-}
-
-sub getFilesByInode {
-    my $self= shift;
-    my $iInode= shift;
-    
-    return $self->getHandle()->selectcol_arrayref("SELECT filename FROM files_inode WHERE inode = ?",
-        undef, $iInode);
-}
-
-sub getKeyByInode {
-    my $self= shift;
-    my $iInode= shift;
-    
-    my @result= $self->getHandle()->selectrow_array("SELECT key FROM files_inode WHERE inode = ?",
-        undef, $iInode);
-    return $result[0] if @result;
-    return undef;
-}
-
-sub getFileCount {
-    my $self= shift;
-    
-    my @result= $self->getHandle()->selectrow_array("SELECT COUNT(filename) FROM files_inode");
-    return $result[0] if @result;
-    return undef;
-}
-
-sub getInodes {
-    my $self= shift;
-    
-    return $self->getHandle()->selectcol_arrayref("SELECT inode FROM inodes");
-}
-
-sub getDigestByInode {
-    my $self= shift;
-    my $iInode= shift;
-    
-    my @result= $self->getHandle()->selectrow_array("SELECT digest FROM inodes WHERE inode = ?",
-        undef, $iInode);
-    return $result[0] if @result;
-    return undef;
-}
-
-sub setInodesDigest {
-    my $self= shift;
-    my $iInode= shift;
-    my $sDigest= shift;
-    
-    $self->{db_sth}{insert}{inodedigest}=
-        $self->getHandle()->prepare("UPDATE inodes SET digest = ? WHERE inode = ?") unless $self->{db_sth}{insert}{inodedigest};
-    
-    $self->{db_sth}{insert}{inodedigest}->execute($sDigest, $iInode);
-}
-
-sub removeInode {
-    my $self= shift;
-    my $iInode= shift;
-    
-    $self->{db_sth}{insert}{removeinode}=
-        $self->getHandle()->prepare("DELETE FROM inodes WHERE inode = ?") unless $self->{db_sth}{insert}{removeinode};
-    
-    $self->{db_sth}{insert}{removeinode}->execute($iInode);
-}
-
 sub createHandle {
     my $self= shift;
     my $dbfn= shift;
@@ -192,6 +84,225 @@ sub createHandle {
     return $dbh;
 }
 
+sub prepareQuery {
+    my $self= shift;
+    my $sQueryMode= shift;
+    my $sQuery= shift;
+    
+    $self->{db_sth}{$sQueryMode}{$sQuery}=
+        $self->getHandle()->prepare($sQuery) unless $self->{db_sth}{$sQueryMode}{$sQuery};
+    
+    return $self->{db_sth}{$sQueryMode}{$sQuery};
+}
+
+sub execQuery {
+    my $self= shift;
+    my $sQueryMode= shift;
+    my $sQuery= shift;
+    my @sValues= @_;
+    
+    return $self->prepareQuery($sQueryMode, $sQuery)->execute(@sValues);
+}
+
+sub execInsert {
+    my $self= shift;
+    my $sQuery= shift;
+    my @sValues= @_;
+    return $self->execQuery("insert", $sQuery, @sValues);
+}
+
+sub execUpdate {
+    my $self= shift;
+    my $sQuery= shift;
+    my @sValues= @_;
+    return $self->execQuery("update", $sQuery, @sValues);
+}
+
+sub execDelete {
+    my $self= shift;
+    my $sQuery= shift;
+    my @sValues= @_;
+    return $self->execQuery("delete", $sQuery, @sValues);
+}
+
+sub execSelectCol {
+    my $self= shift;
+    my $sQuery= shift;
+    my @sValues= @_;
+
+    return $self->getHandle()->selectcol_arrayref(
+        $self->prepareQuery("select", $sQuery),
+        undef, @sValues,
+    );
+}
+
+sub execSelectOne {
+    my $self= shift;
+    my $sQuery= shift;
+    my @sValues= @_;
+
+    my $result= $self->getHandle()->selectrow_arrayref(
+        $self->prepareQuery("select", $sQuery),
+        undef, @sValues,
+    );
+    return undef unless defined $result;
+    return $result->[0] if scalar @$result;
+    return undef;
+}
+
+sub finishStatements {
+    my $self= shift;
+    my @sModes= @_ || keys %{$self->{db_sth}};
+
+    for my $sMode (@sModes) {
+        next unless $self->{db_sth}{$sMode};
+        for my $sName (keys %{$self->{db_sth}{$sMode}}) {
+            $self->{db_sth}{$sMode}{$sName}->finish();
+            delete $self->{db_sth}{$sMode}{$sName};
+        }
+        delete $self->{db_sth}{$sMode};
+    }
+}
+
+sub addInodeFile {
+    my $self= shift;
+    my $iInode= shift;
+    my $sKey= shift;
+    my $sName= shift;
+    
+    return $self->execInsert(
+        "INSERT INTO files_inode (inode, key, filename) VALUES (?, ?, ?)",
+        $iInode, $sKey, $sName,
+    );
+}
+
+sub updateInodeFile {
+    my $self= shift;
+    my $iInode= shift;
+    my $sName= shift;
+
+    return $self->execUpdate(
+        "UPDATE files_inode SET inode = ? WHERE filename = ?",
+        $iInode, $sName,
+    );
+}
+
+sub addInodeSize {
+    my $self= shift;
+    my $iSize= shift;
+    my $sKey= shift;
+    my $iInode= shift;
+    
+    return $self->execInsert(
+        "INSERT OR REPLACE INTO inodes (size, key, inode) VALUES (?, ?, ?)",
+        $iSize, $sKey, $iInode,
+    );
+}
+
+sub getDescSortedSizes {
+    my $self= shift;
+    
+    return $self->execSelectCol("SELECT DISTINCT size FROM inodes ORDER BY size DESC");
+}
+
+sub getKeysBySize {
+    my $self= shift;
+    my $iSize= shift;
+    
+    return $self->execSelectCol(
+        "SELECT DISTINCT key FROM inodes WHERE size = ?",
+        $iSize,
+    );
+}
+
+sub getInodesBySizeKey {
+    my $self= shift;
+    my $iSize= shift;
+    my $sKey= shift;
+    
+    return $self->execSelectCol(
+        "SELECT inode FROM inodes WHERE size = ? AND key = ?",
+        $iSize, $sKey,
+    );
+}
+
+sub getFilesByInode {
+    my $self= shift;
+    my $iInode= shift;
+    
+    return $self->execSelectCol(
+        "SELECT filename FROM files_inode WHERE inode = ?",
+        $iInode,
+    );
+}
+
+sub getKeyByInode {
+    my $self= shift;
+    my $iInode= shift;
+    
+    return $self->execSelectOne(
+        "SELECT key FROM files_inode WHERE inode = ?",
+        $iInode,
+    );
+}
+
+sub getFileCount {
+    my $self= shift;
+    
+    return $self->execSelectOne(
+        "SELECT COUNT(filename) FROM files_inode",
+    );
+}
+
+sub getInodes {
+    my $self= shift;
+    
+    return $self->execSelectCol(
+        "SELECT inode FROM inodes",
+    );
+}
+
+sub getDigestByInode {
+    my $self= shift;
+    my $iInode= shift;
+    
+    return $self->execSelectOne(
+        "SELECT digest FROM inodes WHERE inode = ?",
+        $iInode,
+    );
+}
+
+sub setInodesDigest {
+    my $self= shift;
+    my $iInode= shift;
+    my $sDigest= shift;
+    
+    return $self->execUpdate(
+        "UPDATE inodes SET digest = ? WHERE inode = ?",
+        $sDigest, $iInode,
+    );
+}
+
+sub removeInode {
+    my $self= shift;
+    my $iInode= shift;
+    
+    return $self->execDelete(
+        "DELETE FROM inodes WHERE inode = ?",
+        $iInode,
+    );
+}
+
+sub removeFile {
+    my $self= shift;
+    my $sFileName= shift;
+    
+    return $self->execDelete(
+        "DELETE FROM files_inode WHERE filename = ?",
+        $sFileName,
+    );
+}
+
 sub beginWork {
     my $self= shift;
 
@@ -201,21 +312,22 @@ sub beginWork {
 
 sub endWork {
     my $self= shift;
+    my $buildIndex= shift;
     
     if ($self->{dbh}) {
-        $self->endInsert();
+        $self->endInsert($buildIndex);
     
         # free statement handles
-        for my $sth_mode (keys %{$self->{db_sth}}) {
-            for my $sth_name (keys %{$self->{db_sth}{$sth_mode}}) {
-                delete $self->{db_sth}{$sth_mode}{$sth_name};
-            }
-            delete $self->{db_sth}{$sth_mode};
-        }
+        $self->finishStatements();
         
         $self->getHandle()->disconnect();
     }
     return undef;
+}
+
+sub terminate {
+    my $self= shift;
+    $self->endWork(0);
 }
 
 sub beginInsert {
@@ -229,20 +341,18 @@ sub beginInsert {
 
 sub endInsert {
     my $self= shift;
+    my $buildIndex= shift;
+    $buildIndex= 1 unless defined $buildIndex;
     
     return unless $self->{_insert_mode} && $self->{dbh};
     
     $self->getHandle()->commit();
     
-    # free insert statement handles
-    if ($self->{db_sth}{insert}) {
-        for my $sth_name (keys %{$self->{db_sth}{insert}}) {
-            delete $self->{db_sth}{insert}{$sth_name};
-        }
-    }
+    # free statement handles
+    $self->finishStatements();
 
     # creating indices after inserting all data
-    if ($self->{is_new}) {
+    if ($buildIndex && $self->{is_new}) {
         $self->getHandle()->do("CREATE INDEX inodes_size ON inodes (size)");
         $self->getHandle()->do("CREATE INDEX inodes_size_key ON inodes (size, key)");
         $self->getHandle()->do("CREATE INDEX files_inode_inode ON files_inode (inode)");
@@ -253,6 +363,8 @@ sub endInsert {
 
 sub unlink {
     my $self= shift;
+    
+    $self->endWork(0);
     
     my $sFileName= $self->getFileName();
     unlink $sFileName if $sFileName && -f $sFileName;

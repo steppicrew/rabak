@@ -53,6 +53,7 @@ sub finishDirectory {
     
     $self->{current_db}->endInsert();
     $self->SUPER::finishDirectory();
+    $self->{current_db}= undef;
 }
 
 sub addInodeFile {
@@ -65,9 +66,23 @@ sub addInodeFile {
 
     # remove directory from file name
     my $qsDirectory= quotemeta $self->{current_db}->getData("directory");
-    $sName=~ s/^$qsDirectory\/?//;
+    $sName=~ s/^$qsDirectory\/*//;
     
     return $self->{current_db}->addInodeFile($iInode, $sKey, $sName);
+}
+
+sub updateInodeFile {
+    my $self= shift;
+    my $iInode= shift;
+    my $sName= shift;
+    
+    $self->SUPER::updateInodeFile($iInode, $sName);
+    
+    for my $db (@{$self->{dbs}}) {
+        my $qsDirectory= quotemeta $db->getData("directory");
+
+        $db->updateInodeFile($iInode, $1) if $sName=~ /^$qsDirectory\/*(.*)$/;
+    }
 }
 
 sub addInodeSize {
@@ -148,13 +163,19 @@ sub getFilesByInode {
     my $self= shift;
     my $iInode= shift;
     
-    my @inodes= ();
+    my @files= ();
     for my $db (@{$self->{dbs}}) {
         my $sDirectory= $db->getData("directory");
-        # TODO: check if file exists
-        push @inodes, map("$sDirectory/$_", @{$db->getFilesByInode($iInode)});
+        for my $sFile (@{$db->getFilesByInode($iInode)}) {
+            if (-f "$sDirectory/$sFile") {
+                push @files, "$sDirectory/$sFile";
+            }
+            else {
+                $db->removeFile($sFile);
+            }
+        }
     }
-    return \@inodes;
+    return \@files;
 }
 
 sub getKeyByInode {
@@ -226,12 +247,21 @@ sub beginWork {
 sub endWork {
     my $self= shift;
     
+    # delete current db (may be incomplete)
+    $self->{current_db}->unlink() if $self->{current_db};
+
     my $db= undef;
     while ($db= shift @{$self->{dbs}}) {
         $db->endWork();
     }
-    $self->{inode_db}->endWork();
+    
+    $self->{inode_db}->endWork() if $self->{inode_db};
     return undef;
+}
+
+sub terminate {
+    my $self= shift;
+    $self->endWork();
 }
 
 1;

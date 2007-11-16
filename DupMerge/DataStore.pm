@@ -83,6 +83,8 @@ sub addInodeFile {
     $self->registerInodes($iInode);
 }
 
+sub updateInodeFile {}
+
 sub getDirectory {
     my $self= shift;
     return $self->{current_dir};
@@ -132,5 +134,6 @@ sub beginWork {};
 sub endWork {};
 sub beginInsert {};
 sub endInsert {};
+sub terminate{};
 
 1;

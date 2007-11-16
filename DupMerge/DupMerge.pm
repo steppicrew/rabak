@@ -3,16 +3,13 @@
 package DupMerge::DupMerge;
 
 #TODO: change key for persistant inode_size db
-#TODO: remove database files if directory scan is incomplete
 
 
 use strict;
-use Getopt::Std;
 use File::Find;
 use Data::Dumper;
 use Fcntl ':mode';
 use Digest::SHA1;
-use DBI;
 
 use DupMerge::DataStore;
 
@@ -199,18 +196,24 @@ sub setInodesDigest {
     $self->{stats}{digest_cacheadd}++;
 }
 
-# remove digest from cache db
-sub removeInode {
+sub terminate {
     my $self= shift;
-    my $iInode= shift;
-    
-    $self->{ds}->removeInode($iInode);
-    $self->{stats}{digest_cacheremove}++;
+    $self->{ds}->terminate();
+    exit 1;
 }
 
 sub pass1 {
     my $self= shift;
     my $aDirs= shift;
+
+    # trap signals for cleaning up
+    my %oldSig= ();
+    my @signals= ("INT", "TERM", "QUIT", "KILL");
+    my $sigHandler= sub { $self->terminate(); };
+    for my $sSig (@signals) {
+        $oldSig{$sSig}= $SIG{$sSig};
+        $SIG{$sSig}= $sigHandler;
+    }
 
     $self->infoMsgS("Preparing information store...");
     $self->{ds}->beginWork();
@@ -236,6 +239,11 @@ sub pass1 {
     $self->infoMsgS("done", "Finishing information store...");
     $self->{ds}->endInsert();
     $self->infoMsg("done");
+
+    # restore signal handler
+    for my $sSig (@signals) {
+        $SIG{$sSig}= $oldSig{$sSig};
+    }
 }
 
 sub pass2 {
@@ -275,9 +283,16 @@ sub pass2 {
                 my $iMaxLinks= 0;
                 my $iMaxInode= undef;
                 my $sLinkFile= undef;
+                my %FilesByInode= ();
                 for my $hInode (@{$digests{$sDigest}}) {
                     my $iInode= $hInode->{inode};
                     my $aFiles= $self->{ds}->getFilesByInode($iInode);
+                    unless (scalar @$aFiles) {
+                        $self->{ds}->removeInode($iInode);
+                        next;
+                    }
+                    # remember file list for next loop
+                    $FilesByInode{$iInode}= $aFiles;
                     if (scalar @$aFiles > $iMaxLinks) {
                         $iMaxLinks= scalar @$aFiles;
                         $iMaxInode= $iInode;
@@ -287,18 +302,19 @@ sub pass2 {
             #   link all inodes with the most linked one
                 for my $hInode (@{$digests{$sDigest}}) {
                     my $iInode= $hInode->{inode};
+                    next unless $FilesByInode{$iInode};
                     if ($iInode == $iMaxInode) {
                         $self->setInodesDigest($iInode, $sDigest) unless $hInode->{cached};
                         next;
                     }
                     $self->{stats}{linked_size}+= -s $sLinkFile;
-                    for my $sFile (@{$self->{ds}->getFilesByInode($iInode)}) {
+                    for my $sFile (@{$FilesByInode{$iInode}}) {
                         $self->verbMsg("\rln -f '$sLinkFile' '$sFile'");
                         unless ($self->{opts}{dryrun}) {
-                            # TODO: correct inode-file db
                             if (unlink $sFile) {
                                 link $sLinkFile, $sFile;
                                 $self->{stats}{linked_files}++;
+                                $self->{ds}->updateInodeFile($iMaxInode, $sFile);
                             }
                             else {
                                 $self->{stats}{linked_files_failed}++;
@@ -308,7 +324,7 @@ sub pass2 {
                             $self->{stats}{linked_files}++;
                         }
                     }
-                    $self->removeInode($iInode) if $hInode->{cached};
+                    $self->{ds}->removeInode($iInode) unless $self->{opts}{dryrun};
                 }
             }
         }
@@ -333,7 +349,6 @@ sub printStat {
         {name => "files_unreadable",   text => "Unreadable files"},
         {name => "digest_cachehit",    text => "Digest cache hits"},
         {name => "digest_cacheadd",    text => "New digest cache entries"},
-        {name => "digest_cacheremove", text => "Removed digest cache entries"},
     );
     $self->infoMsg("Statistics:");
     for my $data (@sData) {

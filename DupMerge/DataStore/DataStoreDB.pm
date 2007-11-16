@@ -43,6 +43,16 @@ sub addInodeFile {
     return $self->{db}->addInodeFile($iInode, $sKey, $sName);
 }
 
+sub updateInodeFile {
+    my $self= shift;
+    my $iInode= shift;
+    my $sName= shift;
+    
+    $self->SUPER::updateInodeFile($iInode, $sName);
+    
+    return $self->{db}->updateInodeFile($iInode, $sName);
+}
+
 sub addInodeSize {
     my $self= shift;
     my $iSize= shift;
