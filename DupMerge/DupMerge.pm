@@ -10,6 +10,7 @@ use File::Find;
 use Data::Dumper;
 use Fcntl ':mode';
 use Digest::SHA1;
+use Cwd;
 
 use DupMerge::DataStore;
 
@@ -128,16 +129,9 @@ sub processFiles {
     return if $self->{opts}{max_size} && $size >= $self->{opts}{max_size};
     $self->{stats}{total_new_files}++;
     # process every inode only once
-    unless ($self->{ds}->inodeExists($inode)) { 
-        # build key
-        my $sKey= "";
-        $sKey.= "_${mode}" unless $self->{opts}{ignore_perms};
-        $sKey.= "_${uid}_${gid}" unless $self->{opts}{ignore_owner};
-        $sKey.= "_${mtime}" unless $self->{opts}{ignore_time};
-        $self->{ds}->addInodeSize($size, $sKey, $inode);
-    }
+    $self->{ds}->addInode($inode, $size, $mode, "${uid}_${gid}", $mtime) unless $self->{ds}->inodeExists($inode);
     # store file names for each inode
-    $self->{ds}->addInodeFile($inode, "${size}_${mode}_${uid}_${gid}_${mtime}", $sFileName);
+    $self->{ds}->addInodeFile($inode, $sFileName);
 }
 
 # calculate digest from file
@@ -167,7 +161,9 @@ sub getDigest {
     my $self= shift;
     my $iInode= shift;
     
-    my $sFileName= $self->{ds}->getFilesByInode($iInode)->[0];
+    my $aFileNames= $self->{ds}->getFilesByInode($iInode);
+    return {} unless scalar @$aFileNames;
+    my $sFileName= $aFileNames->[0];
     my $sDigest= $self->{ds}->getDigestByInode($iInode);
     
     my $bCached= defined $sDigest;
@@ -217,10 +213,22 @@ sub pass1 {
 
     $self->infoMsgS("Preparing information store...");
     $self->{ds}->beginWork();
+    $self->{ds}->registerInodes($self->{ds}->getInodes());
     $self->{ds}->beginInsert();
     $self->infoMsg("done", "Collecting file information...");
 
+    my %hDirsDone= ();
     for my $sDir (@$aDirs) {
+        $sDir= Cwd::abs_path($sDir);
+        unless (-d $sDir) {
+            $self->warnMsg("'$sDir' is not a directory. Skipping.");
+            next;
+        }
+        if (exists $hDirsDone{$sDir}) {
+            $self->warnMsg("Directory '$sDir' has already been scanned. Skipping.");
+            next;
+        }
+        $hDirsDone{$sDir}= undef;
         $self->infoMsgS("\tProcessing directory '$sDir'...");
         if ($self->{ds}->newDirectory($sDir)) {
             find({
@@ -230,7 +238,6 @@ sub pass1 {
         }
         else {
             $self->{stats}{total_cached_files}+= $self->{ds}->getCurrentFileCount();
-            $self->{ds}->registerInodes(@{$self->{ds}->getCurrentInodes()});
         }
         $self->{ds}->finishDirectory();
         $self->infoMsg("done");
@@ -250,14 +257,19 @@ sub pass2 {
     my $self= shift;
     
     $self->infoMsg("Searching for duplicates...");
+    
+    # build array of relevant properties
+    my $aQueryKey= [];
+    push @$aQueryKey, "mode" unless $self->{opts}{ignore_perms};
+    push @$aQueryKey, "owner" unless $self->{opts}{ignore_owner};
+    push @$aQueryKey, "mtime" unless $self->{opts}{ignore_time};
 
     # traverse files starting with largest
-#print Dumper($self->{ds}->getDescSortedSizes());
     for my $iSize (@{$self->{ds}->getDescSortedSizes()}) {
         $self->infoMsgS("\rProcessing file size $iSize..." . " "x10);
     #   handle files grouped by permissions etc. separately
-        for my $sKey (@{$self->{ds}->getKeysBySize($iSize)}) {
-            my $aInodes= $self->{ds}->getInodesBySizeKey($iSize, $sKey);
+        for my $hKey (@{$self->{ds}->getKeysBySize($iSize, $aQueryKey)}) {
+            my $aInodes= $self->{ds}->getInodesBySizeKey($iSize, $hKey);
             unless (scalar @$aInodes > 1) {
                 $self->{stats}{total_size}+= $iSize;
                 next;

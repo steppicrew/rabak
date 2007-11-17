@@ -35,12 +35,11 @@ sub new {
 sub addInodeFile {
     my $self= shift;
     my $iInode= shift;
-    my $sKey= shift;
     my $sName= shift;
     
-    $self->SUPER::addInodeFile($iInode, $sKey, $sName);
+    $self->SUPER::addInodeFile($iInode, $sName);
     
-    return $self->{db}->addInodeFile($iInode, $sKey, $sName);
+    return $self->{db}->addInodeFile($iInode, $sName);
 }
 
 sub updateInodeFile {
@@ -53,13 +52,15 @@ sub updateInodeFile {
     return $self->{db}->updateInodeFile($iInode, $sName);
 }
 
-sub addInodeSize {
+sub addInode {
     my $self= shift;
-    my $iSize= shift;
-    my $sKey= shift;
     my $iInode= shift;
+    my $iSize= shift;
+    my $iMode= shift;
+    my $sOwner= shift;
+    my $iMtime= shift;
     
-    return $self->{db}->addInodeSize($iSize, $sKey, $iInode);
+    return $self->{db}->addInode($iInode, $iSize, $iMode, $sOwner, $iMtime);
 }
 
 sub getDescSortedSizes {
@@ -71,16 +72,17 @@ sub getDescSortedSizes {
 sub getKeysBySize {
     my $self= shift;
     my $iSize= shift;
+    my $aKeys= shift;
     
-    return $self->{db}->getKeysBySize($iSize);
+    return $self->{db}->getKeysBySize($iSize, $aKeys);
 }
 
 sub getInodesBySizeKey {
     my $self= shift;
     my $iSize= shift;
-    my $sKey= shift;
+    my $hKeys= shift;
     
-    return $self->{db}->getInodesBySizeKey($iSize, $sKey);
+    return $self->{db}->getInodesBySizeKey($iSize, $hKeys);
 }
 
 sub getFilesByInode {
@@ -90,11 +92,11 @@ sub getFilesByInode {
     return $self->{db}->getFilesByInode($iInode);
 }
 
-sub getKeyByInode {
+sub getFileKeyByInode {
     my $self= shift;
     my $iInode= shift;
     
-    return $self->{db}->getKeyByInode($iInode);
+    return $self->{db}->getFileKeyByInode($iInode);
 }
 
 sub getDigestByInode {

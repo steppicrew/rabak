@@ -59,16 +59,15 @@ sub finishDirectory {
 sub addInodeFile {
     my $self= shift;
     my $iInode= shift;
-    my $sKey= shift;
     my $sName= shift;
     
-    $self->SUPER::addInodeFile($iInode, $sKey, $sName);
+    $self->SUPER::addInodeFile($iInode, $sName);
 
     # remove directory from file name
     my $qsDirectory= quotemeta $self->{current_db}->getData("directory");
     $sName=~ s/^$qsDirectory\/*//;
     
-    return $self->{current_db}->addInodeFile($iInode, $sKey, $sName);
+    return $self->{current_db}->addInodeFile($iInode, $sName);
 }
 
 sub updateInodeFile {
@@ -85,13 +84,15 @@ sub updateInodeFile {
     }
 }
 
-sub addInodeSize {
+sub addInode {
     my $self= shift;
-    my $iSize= shift;
-    my $sKey= shift;
     my $iInode= shift;
+    my $iSize= shift;
+    my $iMode= shift;
+    my $sOwner= shift;
+    my $iMtime= shift;
     
-    return $self->{inode_db}->addInodeSize($iSize, $sKey, $iInode);
+    return $self->{inode_db}->addInode($iInode, $iSize, $iMode, $sOwner, $iMtime);
 }
 
 sub getDescSortedSizes {
@@ -131,32 +132,17 @@ sub getDescSortedSizes {
 sub getKeysBySize {
     my $self= shift;
     my $iSize= shift;
+    my $aKeys= shift;
     
-    return $self->{inode_db}->getKeysBySize($iSize);
-# to be removed
-    my %keys= ();
-    for my $db (@{$self->{dbs}}) {
-        my $aNewKeys= $db->getKeysBySize($iSize);
-        map { $keys{$_}= 1; } @$aNewKeys;
-    }
-    
-    return [ keys %keys ];
+    return $self->{inode_db}->getKeysBySize($iSize, $aKeys);
 }
 
 sub getInodesBySizeKey {
     my $self= shift;
     my $iSize= shift;
-    my $sKey= shift;
+    my $hKeys= shift;
 
-    return $self->{inode_db}->getInodesBySizeKey($iSize, $sKey);
-# to be removed
-    my %inodes= ();
-    for my $db (@{$self->{dbs}}) {
-        my $aNewInodes= $db->getInodesBySizeKey($iSize, $sKey);
-        map { $inodes{$_}= 1; } @$aNewInodes;
-    }
-    
-    return [ keys %inodes ];
+    return $self->{inode_db}->getInodesBySizeKey($iSize, $hKeys);
 }
 
 sub getFilesByInode {
@@ -168,9 +154,16 @@ sub getFilesByInode {
         my $sDirectory= $db->getData("directory");
         for my $sFile (@{$db->getFilesByInode($iInode)}) {
             if (-f "$sDirectory/$sFile") {
-                push @files, "$sDirectory/$sFile";
+                # check if inode is connected to this file
+                if ((lstat("$sDirectory/$sFile"))[1] == $iInode) {
+                    push @files, "$sDirectory/$sFile";
+                }
+                else {
+                    warn "File '$sDirectory/$sFile' has changed inode!";
+                }
             }
             else {
+                warn "File '$sDirectory/$sFile' disappeared!";
                 $db->removeFile($sFile);
             }
         }
@@ -178,12 +171,12 @@ sub getFilesByInode {
     return \@files;
 }
 
-sub getKeyByInode {
+sub getFileKeyByInode {
     my $self= shift;
     my $iInode= shift;
     
     for my $db (@{$self->{dbs}}) {
-        my $result= $db->getKeyByInode($iInode);
+        my $result= $db->getFileKeyByInode($iInode);
         return $result if defined $result;
     }
     return undef;
@@ -196,11 +189,11 @@ sub getCurrentFileCount {
     return $self->{current_db}->getFileCount();
 }
 
-sub getCurrentInodes {
+sub getInodes {
     my $self= shift;
     
-    return [] unless $self->{current_db};
-    return $self->{current_db}->getInodes();
+    return [] unless $self->{inode_db};
+    return $self->{inode_db}->getInodes();
 }
 
 sub getDigestByInode {

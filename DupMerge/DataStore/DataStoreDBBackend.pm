@@ -4,6 +4,7 @@ use warnings;
 use strict;
 
 use DBI;
+use Data::Dumper;
 
 sub new {
     my $class= shift;
@@ -20,6 +21,7 @@ sub new {
         _data=> $hData,
         
         db_sth=> {},
+#        debug=> 1,
     };
 
     bless $self, $class;
@@ -76,8 +78,8 @@ sub createHandle {
         $dbh = DBI->connect("dbi:$sDbEngine:dbname=$dbfn", "", "")
             || die $DBI::errstr;
         if ($self->{is_new}) {
-            $dbh->do("CREATE TABLE inodes (size INTEGER, key TEXT, inode INTEGER PRIMARY KEY, digest TEXT)");
-            $dbh->do("CREATE TABLE files_inode (inode INTEGER, key TEXT, filename TEXT PRIMARY KEY)");
+            $dbh->do("CREATE TABLE inodes (inode INTEGER PRIMARY KEY, size INTEGER, mode INTEGER, owner TEXT, mtime INTEGER, digest TEXT)");
+            $dbh->do("CREATE TABLE files_inode (inode INTEGER, filename TEXT PRIMARY KEY)");
         }
     };
     die "Could not create database!\n$@" if $@;
@@ -95,12 +97,21 @@ sub prepareQuery {
     return $self->{db_sth}{$sQueryMode}{$sQuery};
 }
 
+sub debugQuery {
+    my $self= shift;
+    my $sQuery= shift;
+    my @sValues= @_;
+
+    print "executing '$sQuery' with values (" . join(", ", @sValues) . ") [$self->{dbfn}]\n";
+}
+
 sub execQuery {
     my $self= shift;
     my $sQueryMode= shift;
     my $sQuery= shift;
     my @sValues= @_;
-    
+
+    $self->debugQuery($sQuery, @sValues) if $self->{debug};    
     return $self->prepareQuery($sQueryMode, $sQuery)->execute(@sValues);
 }
 
@@ -130,10 +141,26 @@ sub execSelectCol {
     my $sQuery= shift;
     my @sValues= @_;
 
+    $self->debugQuery($sQuery, @sValues) if $self->{debug};    
+    
     return $self->getHandle()->selectcol_arrayref(
         $self->prepareQuery("select", $sQuery),
         undef, @sValues,
     );
+}
+
+sub execSelectRows {
+    my $self= shift;
+    my $sQuery= shift;
+    my @sValues= @_;
+
+    $self->debugQuery($sQuery, @sValues) if $self->{debug};    
+    
+    return $self->getHandle()->selectall_arrayref(
+        $self->prepareQuery("select", $sQuery),
+        { Slice => {} }, @sValues,
+    );
+    
 }
 
 sub execSelectOne {
@@ -141,6 +168,8 @@ sub execSelectOne {
     my $sQuery= shift;
     my @sValues= @_;
 
+    $self->debugQuery($sQuery, @sValues) if $self->{debug};    
+    
     my $result= $self->getHandle()->selectrow_arrayref(
         $self->prepareQuery("select", $sQuery),
         undef, @sValues,
@@ -167,12 +196,11 @@ sub finishStatements {
 sub addInodeFile {
     my $self= shift;
     my $iInode= shift;
-    my $sKey= shift;
     my $sName= shift;
     
     return $self->execInsert(
-        "INSERT INTO files_inode (inode, key, filename) VALUES (?, ?, ?)",
-        $iInode, $sKey, $sName,
+        "INSERT INTO files_inode (inode, filename) VALUES (?, ?)",
+        $iInode, $sName,
     );
 }
 
@@ -187,15 +215,17 @@ sub updateInodeFile {
     );
 }
 
-sub addInodeSize {
+sub addInode {
     my $self= shift;
-    my $iSize= shift;
-    my $sKey= shift;
     my $iInode= shift;
+    my $iSize= shift;
+    my $iMode= shift;
+    my $sOwner= shift;
+    my $iMtime= shift;
     
     return $self->execInsert(
-        "INSERT OR REPLACE INTO inodes (size, key, inode) VALUES (?, ?, ?)",
-        $iSize, $sKey, $iInode,
+        "INSERT OR REPLACE INTO inodes (inode, size, mode, owner, mtime) VALUES (?, ?, ?, ?, ?)",
+        $iInode, $iSize, $iMode, $sOwner, $iMtime,
     );
 }
 
@@ -208,9 +238,12 @@ sub getDescSortedSizes {
 sub getKeysBySize {
     my $self= shift;
     my $iSize= shift;
+    my $aKeys= shift;
     
-    return $self->execSelectCol(
-        "SELECT DISTINCT key FROM inodes WHERE size = ?",
+    $aKeys= ['size'] unless scalar @$aKeys;
+    my $sQueryKey= join ", ", @$aKeys;
+    return $self->execSelectRows(
+        "SELECT DISTINCT $sQueryKey FROM inodes WHERE size = ?",
         $iSize,
     );
 }
@@ -218,11 +251,18 @@ sub getKeysBySize {
 sub getInodesBySizeKey {
     my $self= shift;
     my $iSize= shift;
-    my $sKey= shift;
+    my $hKeys= shift;
     
+    my $sQueryKey= "";
+    my @KeyValues= ();
+    for my $sKey (sort keys %$hKeys) {
+        $sQueryKey.= " AND $sKey = ?";
+        push @KeyValues, $hKeys->{$sKey};
+    }
+
     return $self->execSelectCol(
-        "SELECT inode FROM inodes WHERE size = ? AND key = ?",
-        $iSize, $sKey,
+        "SELECT inode FROM inodes WHERE size = ? $sQueryKey",
+        $iSize, @KeyValues,
     );
 }
 
@@ -236,7 +276,7 @@ sub getFilesByInode {
     );
 }
 
-sub getKeyByInode {
+sub getFileKeyByInode {
     my $self= shift;
     my $iInode= shift;
     
@@ -354,7 +394,7 @@ sub endInsert {
     # creating indices after inserting all data
     if ($buildIndex && $self->{is_new}) {
         $self->getHandle()->do("CREATE INDEX inodes_size ON inodes (size)");
-        $self->getHandle()->do("CREATE INDEX inodes_size_key ON inodes (size, key)");
+        $self->getHandle()->do("CREATE INDEX inodes_size_key ON inodes (size, mode, owner, mtime)");
         $self->getHandle()->do("CREATE INDEX files_inode_inode ON files_inode (inode)");
     }
   

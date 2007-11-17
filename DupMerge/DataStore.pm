@@ -61,9 +61,9 @@ sub inodeExists {
 
 sub registerInodes {
     my $self= shift;
-    my @iInodes= @_;
+    my $aInodes= shift;
     
-    for my $iInode (@iInodes) {
+    for my $iInode (@$aInodes) {
         $self->{inodes}{$iInode}= undef;
     }
 }
@@ -77,10 +77,9 @@ sub getInodeCount {
 sub addInodeFile {
     my $self= shift;
     my $iInode= shift;
-    my $sKey= shift;
     my $sName= shift;
     
-    $self->registerInodes($iInode);
+    $self->registerInodes([$iInode]);
 }
 
 sub updateInodeFile {}
@@ -119,15 +118,20 @@ sub setInodesDigest {
     return undef;
 }
 
+sub getInodes {
+    my $self= shift;
+    
+    return [];
+}
+
 # has to be overwritten
-sub addInodeSize { die "Sould have been overriden"; }
+sub addInode { die "Sould have been overriden"; }
 sub getDescSortedSizes { die "Sould have been overriden"; }
 sub getKeysBySize { die "Sould have been overriden"; }
 sub getInodesBySizeKey { die "Sould have been overriden"; }
 sub getInodeFiles { die "Sould have been overriden"; }
-sub getKeyByInode { die "Sould have been overriden"; }
+sub getFileKeyByInode { die "Sould have been overriden"; }
 sub getCurrentFileCount { die "Sould have been overriden"; }
-sub getCurrentInodes { die "Sould have been overriden"; }
 
 # may be overwritten
 sub beginWork {};
