@@ -171,6 +171,30 @@ sub getFilesByInode {
     return \@files;
 }
 
+sub getOneFileByInode {
+    my $self= shift;
+    my $iInode= shift;
+    
+    for my $db (@{$self->{dbs}}) {
+        my $sDirectory= $db->getData("directory");
+        for my $sFile (@{$db->getFilesByInode($iInode)}) {
+            if (-f "$sDirectory/$sFile") {
+                # check if inode is connected to this file
+                if ((lstat("$sDirectory/$sFile"))[1] == $iInode) {
+                    return "$sDirectory/$sFile";
+                }
+                else {
+                    warn "File '$sDirectory/$sFile' has changed inode!";
+                }
+            }
+            else {
+                warn "File '$sDirectory/$sFile' disappeared!";
+                $db->removeFile($sFile);
+            }
+        }
+    }
+}
+
 sub getFileKeyByInode {
     my $self= shift;
     my $iInode= shift;

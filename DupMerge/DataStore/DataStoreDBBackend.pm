@@ -119,6 +119,7 @@ sub execInsert {
     my $self= shift;
     my $sQuery= shift;
     my @sValues= @_;
+    $self->beginInsert();
     return $self->execQuery("insert", $sQuery, @sValues);
 }
 
@@ -126,6 +127,7 @@ sub execUpdate {
     my $self= shift;
     my $sQuery= shift;
     my @sValues= @_;
+    $self->beginInsert();
     return $self->execQuery("update", $sQuery, @sValues);
 }
 
@@ -133,6 +135,7 @@ sub execDelete {
     my $self= shift;
     my $sQuery= shift;
     my @sValues= @_;
+    $self->beginInsert();
     return $self->execQuery("delete", $sQuery, @sValues);
 }
 
@@ -396,6 +399,7 @@ sub endInsert {
         $self->getHandle()->do("CREATE INDEX inodes_size ON inodes (size)");
         $self->getHandle()->do("CREATE INDEX inodes_size_key ON inodes (size, mode, owner, mtime)");
         $self->getHandle()->do("CREATE INDEX files_inode_inode ON files_inode (inode)");
+        $self->{is_new}= undef;
     }
   
     $self->{_insert_mode}= undef;

@@ -161,9 +161,6 @@ sub getDigest {
     my $self= shift;
     my $iInode= shift;
     
-    my $aFileNames= $self->{ds}->getFilesByInode($iInode);
-    return {} unless scalar @$aFileNames;
-    my $sFileName= $aFileNames->[0];
     my $sDigest= $self->{ds}->getDigestByInode($iInode);
     
     my $bCached= defined $sDigest;
@@ -171,6 +168,8 @@ sub getDigest {
         $self->{stats}{digest_cachehit}++;
     }
     else {
+        my $sFileName= $self->{ds}->getOneFileByInode($iInode);
+        return {} unless $sFileName;
         $sDigest= $self->calcDigest($sFileName);
     }
 

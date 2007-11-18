@@ -124,6 +124,15 @@ sub getInodes {
     return [];
 }
 
+sub getOneFileByInode {
+    my $self= shift;
+    my $iInode= shift;
+    
+    my $aFiles= $self->getFilesByInode($iInode);
+    return undef unless scalar @$aFiles;
+    return $aFiles->[0];
+}
+
 # has to be overwritten
 sub addInode { die "Sould have been overriden"; }
 sub getDescSortedSizes { die "Sould have been overriden"; }
