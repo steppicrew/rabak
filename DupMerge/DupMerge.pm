@@ -26,6 +26,8 @@ sub new {
         device => undef,
         ds => undef,
         stats => {},
+        
+        old_signals=> undef,
     };
     
     bless $self, $class;
@@ -121,12 +123,6 @@ sub processFiles {
         die "Specify option -d to skip directories on other devices" unless $self->{opts}{ignore_devspans};
         return;
     }
-    unless ($size || $self->{opts}{skip_zero}) {
-        $self->{stats}{zerosized}++;
-        return;
-    }
-    return if $self->{opts}{min_size} && $size <  $self->{opts}{min_size};
-    return if $self->{opts}{max_size} && $size >= $self->{opts}{max_size};
     $self->{stats}{total_new_files}++;
     # process every inode only once
     $self->{ds}->addInode($inode, $size, $mode, "${uid}_${gid}", $mtime) unless $self->{ds}->inodeExists($inode);
@@ -197,23 +193,38 @@ sub terminate {
     exit 1;
 }
 
-sub pass1 {
+sub setTraps {
     my $self= shift;
-    my $aDirs= shift;
-
+    return if $self->{old_signals};
     # trap signals for cleaning up
-    my %oldSig= ();
+    $self->{old_signals}= {};
     my @signals= ("INT", "TERM", "QUIT", "KILL");
     my $sigHandler= sub { $self->terminate(); };
     for my $sSig (@signals) {
-        $oldSig{$sSig}= $SIG{$sSig};
+        $self->{old_signals}{$sSig}= $SIG{$sSig};
         $SIG{$sSig}= $sigHandler;
     }
+}
+
+sub restoreTraps {
+    my $self= shift;
+    return unless $self->{old_signals};
+    # restore signal handler
+    for my $sSig (keys %{$self->{old_signals}}) {
+        $SIG{$sSig}= $self->{old_signals}{$sSig};
+    }
+    $self->{old_signals}= undef;
+}
+
+sub pass1 {
+    my $self= shift;
+    my $aDirs= shift;
+    
+    $self->setTraps();
 
     $self->infoMsgS("Preparing information store...");
     $self->{ds}->beginWork();
     $self->{ds}->registerInodes($self->{ds}->getInodes());
-    $self->{ds}->beginInsert();
     $self->infoMsg("done", "Collecting file information...");
 
     my %hDirsDone= ();
@@ -237,24 +248,24 @@ sub pass1 {
         }
         else {
             $self->{stats}{total_cached_files}+= $self->{ds}->getCurrentFileCount();
+            $self->infoMsgS("(cached) ");
         }
         $self->{ds}->finishDirectory();
         $self->infoMsg("done");
     }
     $self->{stats}{total_inodes}= $self->{ds}->getInodeCount();
     $self->infoMsgS("done", "Finishing information store...");
-    $self->{ds}->endInsert();
+    $self->{ds}->commitTransaction();
     $self->infoMsg("done");
 
-    # restore signal handler
-    for my $sSig (@signals) {
-        $SIG{$sSig}= $oldSig{$sSig};
-    }
+    $self->restoreTraps();
 }
 
 sub pass2 {
     my $self= shift;
     
+    $self->setTraps();
+
     $self->infoMsg("Searching for duplicates...");
     
     # build array of relevant properties
@@ -263,11 +274,21 @@ sub pass2 {
     push @$aQueryKey, "owner" unless $self->{opts}{ignore_owner};
     push @$aQueryKey, "mtime" unless $self->{opts}{ignore_time};
 
+    $self->{ds}->beginCached();
+
     # traverse files starting with largest
-    for my $iSize (@{$self->{ds}->getDescSortedSizes()}) {
+    my $iSize= undef;
+    my $aSizes= $self->{ds}->getDescSortedSizes();
+    while ($iSize= shift @$aSizes) {
+        next unless $iSize || $self->{opts}{skip_zero};
+        next if $self->{opts}{min_size} && $iSize <  $self->{opts}{min_size};
+        next if $self->{opts}{max_size} && $iSize >= $self->{opts}{max_size};
+
         $self->infoMsgS("\rProcessing file size $iSize..." . " "x10);
     #   handle files grouped by permissions etc. separately
-        for my $hKey (@{$self->{ds}->getKeysBySize($iSize, $aQueryKey)}) {
+        my $hKey= undef;
+        my $aKeys= $self->{ds}->getKeysBySize($iSize, $aQueryKey);
+        while ($hKey= shift @$aKeys) {
             my $aInodes= $self->{ds}->getInodesBySizeKey($iSize, $hKey);
             unless (scalar @$aInodes > 1) {
                 $self->{stats}{total_size}+= $iSize;
@@ -340,7 +361,14 @@ sub pass2 {
             }
         }
     }
-    $self->infoMsg("\r...done" . " "x20);
+    $self->infoMsgS("\r...done" . " "x20, "Finishing information store...");
+
+    $self->{ds}->endCached();
+    $self->{ds}->endWork();
+
+    $self->infoMsg("done");
+
+    $self->restoreTraps();
 }
 
 sub printStat {
@@ -368,8 +396,6 @@ sub printStat {
         while ($number=~ s/(\d)(\d\d\d(\,\d\d\d)*)$/$1,$2/) {};
         $self->infoMsg("    " . substr("$data->{text}:" . "."x30, 0, 32) . $number);
     }
-
-    $self->{ds}= $self->{ds}->endWork();
 }
 
 sub run {

@@ -138,16 +138,10 @@ sub endWork {
     return undef;
 }
 
-sub beginInsert {
-    my $self= shift;
-    
-    return $self->{db}->beginInsert();
-}
-
-sub endInsert {
+sub commitTransaction {
     my $self= shift;
 
-    return $self->{db}->endInsert();    
+    return $self->{db}->commitTransaction();    
 }
 
 1;

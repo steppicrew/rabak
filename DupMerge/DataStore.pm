@@ -63,7 +63,8 @@ sub registerInodes {
     my $self= shift;
     my $aInodes= shift;
     
-    for my $iInode (@$aInodes) {
+    my $iInode= undef;
+    while ($iInode= shift @$aInodes) {
         $self->{inodes}{$iInode}= undef;
     }
 }
@@ -145,8 +146,7 @@ sub getCurrentFileCount { die "Sould have been overriden"; }
 # may be overwritten
 sub beginWork {};
 sub endWork {};
-sub beginInsert {};
-sub endInsert {};
+sub commitTransaction {};
 sub terminate{};
 
 1;

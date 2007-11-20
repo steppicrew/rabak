@@ -39,9 +39,7 @@ sub newDirectory {
         $sFileName, $self->{db_engine}, {directory=> $sDirectory}
     );
     push @{$self->{dbs}}, $self->{current_db};
-    
-    $self->{current_db}->beginInsert() if $bDbIsNew;
-    
+
     # return true if db did not exist, false otherwise
     return $bDbIsNew;
 }
@@ -51,9 +49,9 @@ sub finishDirectory {
     
     return unless $self->{current_db};
     
-    $self->{current_db}->endInsert();
-    $self->SUPER::finishDirectory();
+    $self->{current_db}->commitTransaction();
     $self->{current_db}= undef;
+    $self->SUPER::finishDirectory();
 }
 
 sub addInodeFile {
@@ -99,34 +97,6 @@ sub getDescSortedSizes {
     my $self= shift;
     
     return $self->{inode_db}->getDescSortedSizes();
-# to be removed
-    my @sizes= ();
-    for my $db (@{$self->{dbs}}) {
-        my $aNewSizes= $db->getDescSortedSizes();
-        my $idx= 0;
-        my $iSize= shift @$aNewSizes;
-        while (defined $iSize && $idx < scalar @sizes) {
-            if ($sizes[$idx] < $iSize) {
-                splice @sizes, $idx, 0, $iSize;
-                $iSize= shift @$aNewSizes;
-            }
-            elsif ($sizes[$idx] == $iSize) {
-                $iSize= shift @$aNewSizes;
-            }
-            $idx++;
-        }
-        push @sizes, $iSize if defined $iSize;
-        push @sizes, @$aNewSizes if scalar @$aNewSizes;
-    }
-
-    return \@sizes;
-# alternative:
-    my %sizes= ();
-    for my $db ($self->{dbs}) {
-        my $aNewSizes= $db->getDescSortedSizes();
-        map { $sizes{$_}= 1; } @$aNewSizes;
-    }
-    return [ sort { $b <=> $a } keys(%sizes) ];
 }
 
 sub getKeysBySize {
@@ -152,14 +122,24 @@ sub getFilesByInode {
     my @files= ();
     for my $db (@{$self->{dbs}}) {
         my $sDirectory= $db->getData("directory");
-        for my $sFile (@{$db->getFilesByInode($iInode)}) {
+        my $sFile= undef;
+        my $aFiles= $db->getFilesByInode($iInode);
+        while ($sFile= shift @$aFiles) {
             if (-f "$sDirectory/$sFile") {
                 # check if inode is connected to this file
-                if ((lstat("$sDirectory/$sFile"))[1] == $iInode) {
+                my $iCurInode= (lstat("$sDirectory/$sFile"))[1];
+                if ($iCurInode == $iInode) {
                     push @files, "$sDirectory/$sFile";
                 }
                 else {
                     warn "File '$sDirectory/$sFile' has changed inode!";
+                    # TODO: insert new inode if not existant
+                    if ($self->inodeExists($iCurInode)) {
+                        $db->updateInodeFile($iCurInode, $sFile);
+                    }
+                    else {
+                        $db->removeFile($sFile);
+                    }
                 }
             }
             else {
@@ -180,11 +160,19 @@ sub getOneFileByInode {
         for my $sFile (@{$db->getFilesByInode($iInode)}) {
             if (-f "$sDirectory/$sFile") {
                 # check if inode is connected to this file
-                if ((lstat("$sDirectory/$sFile"))[1] == $iInode) {
+                my $iCurInode= (lstat("$sDirectory/$sFile"))[1];
+                if ($iCurInode == $iInode) {
                     return "$sDirectory/$sFile";
                 }
                 else {
                     warn "File '$sDirectory/$sFile' has changed inode!";
+                    # TODO: insert new inode if not existant
+                    if ($self->inodeExists($iCurInode)) {
+                        $db->updateInodeFile($iCurInode, $sFile);
+                    }
+                    else {
+                        $db->removeFile($sFile);
+                    }
                 }
             }
             else {
@@ -243,16 +231,29 @@ sub removeInode {
     return $self->{inode_db}->removeInode($iInode);
 }
 
-sub beginInsert {
+sub commitTransaction {
     my $self= shift;
-    
-    return $self->{inode_db}->beginInsert();
+
+    return $self->{inode_db}->commitTransaction();    
 }
 
-sub endInsert {
+sub beginCached {
+    my $self= shift;
+    
+    for my $db (@{$self->{dbs}}) {
+        $db->beginCached();
+    }
+    return $self->{inode_db}->beginCached() if $self->{inode_db};
+}
+
+sub endCached {
     my $self= shift;
 
-    return $self->{inode_db}->endInsert();    
+    for my $db (@{$self->{dbs}}) {
+        $db->endCached();
+    }
+    
+    return $self->{inode_db}->endCached() if $self->{inode_db};    
 }
 
 sub beginWork {
@@ -264,15 +265,17 @@ sub beginWork {
 sub endWork {
     my $self= shift;
     
-    # delete current db (may be incomplete)
-    $self->{current_db}->unlink() if $self->{current_db};
-
     my $db= undef;
     while ($db= shift @{$self->{dbs}}) {
         $db->endWork();
     }
     
+    # delete current db (may be incomplete)
+    $self->{current_db}->unlink() if $self->{current_db} && $self->{current_db}->wasChanged();
+    $self->{current_db}= undef;
+
     $self->{inode_db}->endWork() if $self->{inode_db};
+    $self->{inode_db}= undef;
     return undef;
 }
 

@@ -22,6 +22,12 @@ sub new {
         
         db_sth=> {},
 #        debug=> 1,
+
+        _transaction_mode=> undef,
+        _changed=> 0,
+        
+        cached_queries=> {},
+        _cache_count=> 0,
     };
 
     bless $self, $class;
@@ -46,6 +52,11 @@ sub getFileName {
     my $self= shift;
     
     return $self->{dbfn};
+}
+
+sub wasChanged {
+    my $self= shift;
+    return $self->{_changed};
 }
 
 sub getHandle {
@@ -115,28 +126,49 @@ sub execQuery {
     return $self->prepareQuery($sQueryMode, $sQuery)->execute(@sValues);
 }
 
-sub execInsert {
+sub execChangeQuery {
     my $self= shift;
+    my $sQueryMode= shift;
     my $sQuery= shift;
     my @sValues= @_;
-    $self->beginInsert();
-    return $self->execQuery("insert", $sQuery, @sValues);
+
+    if ($self->{cached_queries}) {
+        $self->flushCache() if $self->{_cache_count} > 100;
+        $self->{cached_queries}{$sQueryMode}{$sQuery}= [] unless $self->{cached_queries}{$sQueryMode}{$sQuery};
+        push @{$self->{cached_queries}{$sQueryMode}{$sQuery}}, [@sValues];
+        $self->{_cache_count}++;
+    }
+    else {
+        $self->beginTransaction();
+        return $self->execQuery($sQueryMode, $sQuery, @sValues);
+    }
+}
+
+sub flushCache {
+    my $self= shift;
+
+    return unless $self->{cached_queries} && $self->{_cache_count};
+
+    $self->beginTransaction();
+    for my $sQueryMode (keys %{$self->{cached_queries}}) {
+        for my $sQuery (keys %{$self->{cached_queries}{$sQueryMode}}) {
+            my $aValues= undef;
+            while ($aValues= shift @{$self->{cached_queries}{$sQueryMode}{$sQuery}}) {
+                $self->execQuery($sQueryMode, $sQuery, @$aValues);
+            }
+        }
+    }
+    $self->{_cache_count}= 0;
+
+#    $self->commitTransaction();
 }
 
 sub execUpdate {
     my $self= shift;
     my $sQuery= shift;
     my @sValues= @_;
-    $self->beginInsert();
-    return $self->execQuery("update", $sQuery, @sValues);
-}
 
-sub execDelete {
-    my $self= shift;
-    my $sQuery= shift;
-    my @sValues= @_;
-    $self->beginInsert();
-    return $self->execQuery("delete", $sQuery, @sValues);
+    return $self->execChangeQuery("update", $sQuery, @sValues);
 }
 
 sub execSelectCol {
@@ -186,14 +218,17 @@ sub finishStatements {
     my $self= shift;
     my @sModes= @_ || keys %{$self->{db_sth}};
 
+#print Dumper($self->{db_sth});
+
     for my $sMode (@sModes) {
-        next unless $self->{db_sth}{$sMode};
+        next unless defined $self->{db_sth}{$sMode};
         for my $sName (keys %{$self->{db_sth}{$sMode}}) {
             $self->{db_sth}{$sMode}{$sName}->finish();
             delete $self->{db_sth}{$sMode}{$sName};
         }
         delete $self->{db_sth}{$sMode};
     }
+    
 }
 
 sub addInodeFile {
@@ -201,7 +236,7 @@ sub addInodeFile {
     my $iInode= shift;
     my $sName= shift;
     
-    return $self->execInsert(
+    return $self->execUpdate(
         "INSERT INTO files_inode (inode, filename) VALUES (?, ?)",
         $iInode, $sName,
     );
@@ -226,7 +261,7 @@ sub addInode {
     my $sOwner= shift;
     my $iMtime= shift;
     
-    return $self->execInsert(
+    return $self->execUpdate(
         "INSERT OR REPLACE INTO inodes (inode, size, mode, owner, mtime) VALUES (?, ?, ?, ?, ?)",
         $iInode, $iSize, $iMode, $sOwner, $iMtime,
     );
@@ -330,7 +365,7 @@ sub removeInode {
     my $self= shift;
     my $iInode= shift;
     
-    return $self->execDelete(
+    return $self->execUpdate(
         "DELETE FROM inodes WHERE inode = ?",
         $iInode,
     );
@@ -340,7 +375,7 @@ sub removeFile {
     my $self= shift;
     my $sFileName= shift;
     
-    return $self->execDelete(
+    return $self->execUpdate(
         "DELETE FROM files_inode WHERE filename = ?",
         $sFileName,
     );
@@ -358,12 +393,20 @@ sub endWork {
     my $buildIndex= shift;
     
     if ($self->{dbh}) {
-        $self->endInsert($buildIndex);
-    
-        # free statement handles
-        $self->finishStatements();
         
+        $self->endCached();
+        # finish statements before commit
+        $self->finishStatements();
+
+        $self->commitTransaction($buildIndex);
+    
+        for my $sth (@{$self->getHandle()->{ChildHandles}}) {
+            next unless defined $sth;
+            print "unresolved statement: '$sth->{Statement}' ($self->{dbfn})\n";
+        }
+
         $self->getHandle()->disconnect();
+        $self->{dbh}= undef;
     }
     return undef;
 }
@@ -373,26 +416,43 @@ sub terminate {
     $self->endWork(0);
 }
 
-sub beginInsert {
+sub beginCached {
     my $self= shift;
     
-    return if $self->{_insert_mode};
-    
-    $self->getHandle()->begin_work();
-    $self->{_insert_mode}= 1;
+    return if $self->{cached_queries};
+    $self->{cached_queries}= {};
 }
 
-sub endInsert {
+sub endCached {
+    my $self= shift;
+
+    $self->flushCache();
+    $self->{cached_queries}= undef;
+}
+
+sub beginTransaction {
+    my $self= shift;
+    
+    return if $self->{_transaction_mode};
+    
+    $self->getHandle()->begin_work();
+    $self->{_transaction_mode}= 1;
+    $self->{_changed}= 1;
+}
+
+sub commitTransaction {
     my $self= shift;
     my $buildIndex= shift;
     $buildIndex= 1 unless defined $buildIndex;
     
-    return unless $self->{_insert_mode} && $self->{dbh};
+    return unless $self->{_transaction_mode} && $self->{dbh};
+    
+    $self->endCached();
     
     $self->getHandle()->commit();
     
     # free statement handles
-    $self->finishStatements();
+    $self->finishStatements("update");
 
     # creating indices after inserting all data
     if ($buildIndex && $self->{is_new}) {
@@ -402,7 +462,7 @@ sub endInsert {
         $self->{is_new}= undef;
     }
   
-    $self->{_insert_mode}= undef;
+    $self->{_transaction_mode}= undef;
 }
 
 sub unlink {
