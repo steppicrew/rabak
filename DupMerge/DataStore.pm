@@ -147,6 +147,5 @@ sub getCurrentFileCount { die "Sould have been overriden"; }
 sub beginWork {};
 sub endWork {};
 sub commitTransaction {};
-sub terminate{};
 
 1;

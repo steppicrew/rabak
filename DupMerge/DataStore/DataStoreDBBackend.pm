@@ -160,7 +160,6 @@ sub flushCache {
     }
     $self->{_cache_count}= 0;
 
-#    $self->commitTransaction();
 }
 
 sub execUpdate {
@@ -411,11 +410,6 @@ sub endWork {
     return undef;
 }
 
-sub terminate {
-    my $self= shift;
-    $self->endWork(0);
-}
-
 sub beginCached {
     my $self= shift;
     
@@ -449,11 +443,11 @@ sub commitTransaction {
     
     $self->endCached();
     
-    $self->getHandle()->commit();
-    
     # free statement handles
     $self->finishStatements("update");
 
+    $self->getHandle()->commit();
+    
     # creating indices after inserting all data
     if ($buildIndex && $self->{is_new}) {
         $self->getHandle()->do("CREATE INDEX inodes_size ON inodes (size)");

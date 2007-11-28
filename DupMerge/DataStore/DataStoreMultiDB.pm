@@ -279,9 +279,4 @@ sub endWork {
     return undef;
 }
 
-sub terminate {
-    my $self= shift;
-    $self->endWork();
-}
-
 1;

@@ -28,6 +28,7 @@ sub new {
         stats => {},
         
         old_signals=> undef,
+        _terminate=> undef,
     };
     
     bless $self, $class;
@@ -110,8 +111,8 @@ sub warnMsg {
 sub processFiles {
     my $self= shift;
 
-    die "\$thisObject is not set - Internal error!" unless $self;
-
+    return if  $self->{_terminate};
+    
     my $sFileName= $_;
     my ($dev, $inode, $mode, $nlink, $uid, $gid, $rdev, $size,
         $atime, $mtime, $ctime, $bsize, $blocks)= lstat;
@@ -189,8 +190,11 @@ sub setInodesDigest {
 
 sub terminate {
     my $self= shift;
-    $self->{ds}->terminate();
-    exit 1;
+    
+    $self->warnMsg("\n**** Caught interrupt. Finishing information store...",
+        "Press [Ctrl-C] again to cancel (may result in db information loss).");
+    $self->restoreTraps();
+    $self->{_terminate}= 1;
 }
 
 sub setTraps {
@@ -229,6 +233,7 @@ sub pass1 {
 
     my %hDirsDone= ();
     for my $sDir (@$aDirs) {
+        last if  $self->{_terminate};
         $sDir= Cwd::abs_path($sDir);
         unless (-d $sDir) {
             $self->warnMsg("'$sDir' is not a directory. Skipping.");
@@ -280,6 +285,7 @@ sub pass2 {
     my $iSize= undef;
     my $aSizes= $self->{ds}->getDescSortedSizes();
     while ($iSize= shift @$aSizes) {
+        last if  $self->{_terminate};
         next unless $iSize || $self->{opts}{skip_zero};
         next if $self->{opts}{min_size} && $iSize <  $self->{opts}{min_size};
         next if $self->{opts}{max_size} && $iSize >= $self->{opts}{max_size};
@@ -289,6 +295,7 @@ sub pass2 {
         my $hKey= undef;
         my $aKeys= $self->{ds}->getKeysBySize($iSize, $aQueryKey);
         while ($hKey= shift @$aKeys) {
+            last if  $self->{_terminate};
             my $aInodes= $self->{ds}->getInodesBySizeKey($iSize, $hKey);
             unless (scalar @$aInodes > 1) {
                 $self->{stats}{total_size}+= $iSize;
@@ -297,6 +304,7 @@ sub pass2 {
             my %digests= ();
         #   sort inodes by md5 hash
             for my $iInode (@$aInodes) {
+                last if  $self->{_terminate};
                 $self->{stats}{total_size}+= $iSize;
                 my %digest= $self->getDigest($iInode);
                 my $sDigest= $digest{digest};
@@ -308,6 +316,7 @@ sub pass2 {
                 };
             }
             for my $sDigest (keys %digests) {
+                last if  $self->{_terminate};
             #   ignore digests with only one inode
                 next unless scalar @{$digests{$sDigest}} > 1;
     
@@ -317,6 +326,7 @@ sub pass2 {
                 my $sLinkFile= undef;
                 my %FilesByInode= ();
                 for my $hInode (@{$digests{$sDigest}}) {
+                    last if  $self->{_terminate};
                     my $iInode= $hInode->{inode};
                     my $aFiles= $self->{ds}->getFilesByInode($iInode);
                     unless (scalar @$aFiles) {
@@ -333,6 +343,7 @@ sub pass2 {
                 }
             #   link all inodes with the most linked one
                 for my $hInode (@{$digests{$sDigest}}) {
+                    last if  $self->{_terminate};
                     my $iInode= $hInode->{inode};
                     next unless $FilesByInode{$iInode};
                     if ($iInode == $iMaxInode) {
@@ -341,6 +352,7 @@ sub pass2 {
                     }
                     $self->{stats}{linked_size}+= -s $sLinkFile;
                     for my $sFile (@{$FilesByInode{$iInode}}) {
+                        last if  $self->{_terminate};
                         $self->verbMsg("\rln -f '$sLinkFile' '$sFile'");
                         unless ($self->{opts}{dryrun}) {
                             if (unlink $sFile) {
@@ -406,8 +418,8 @@ sub run {
     $self->setOptions($hOptions) if $hOptions;
     $self->init();
 
-    $self->pass1($aDirs);
-    $self->pass2();
+    $self->pass1($aDirs) unless $self->{_terminate};
+    $self->pass2() unless $self->{_terminate};
     $self->printStat();
 }
 
