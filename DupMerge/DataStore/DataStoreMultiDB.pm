@@ -15,14 +15,15 @@ sub new {
     my $hParams= shift;
     
     my $self= $class->SUPER::new();
-    $self->{dbfn_prefix}= $hParams->{db_prefix};
+    $self->{dbfn_postfix}= $hParams->{db_postfix};
     $self->{db_engine}= $hParams->{db_engine};
+    $self->{temp_dir}= $hParams->{temp_dir};
 
     $self->{dbs}= []; # array of db hashes
     $self->{current_db}= undef;
-    my $sInodeFileName= "$hParams->{work_dir}/inodes.db";
+    my $sInodeFileName= "$hParams->{base_dir}/inodes.db";
     $self->{inode_db}= DupMerge::DataStore::DataStoreDBBackend->new(
-        $sInodeFileName, $self->{db_engine}
+        $sInodeFileName, $self->{db_engine}, $self->{temp_dir}
     );
 
     bless $self, $class;
@@ -33,10 +34,12 @@ sub newDirectory {
     my $sDirectory= shift;
     
     $self->SUPER::newDirectory($sDirectory);
-    my $sFileName= "$sDirectory/$self->{dbfn_prefix}file_inodes.db";
+    my $sFileName= $sDirectory;
+    $sFileName =~ s/\/+$//;
+    $sFileName.= $self->{dbfn_postfix};
     my $bDbIsNew= ! -f $sFileName;
     $self->{current_db}= DupMerge::DataStore::DataStoreDBBackend->new(
-        $sFileName, $self->{db_engine}, {directory=> $sDirectory}
+        $sFileName, $self->{db_engine}, $self->{temp_dir}, {directory=> $sDirectory}
     );
     push @{$self->{dbs}}, $self->{current_db};
 

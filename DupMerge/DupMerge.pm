@@ -47,28 +47,19 @@ sub init {
     }
     
     # decide what DataStore type will be used
-    if ($self->{opts}{multi_db_prefix}) {
-        $self->{opts}{work_dir}= "/tmp" unless $self->{opts}{work_dir};
-        $self->infoMsg("Using '$self->{opts}{work_dir}' as working directory.");
-        $self->infoMsg("Using '$self->{opts}{multi_db_prefix}' as prefix for multi db.");
+    # currently the only supported type is multidb
+    if (1) { 
+        $self->{opts}{base_dir}= "." unless $self->{opts}{base_dir};
+        $self->{opts}{multi_db_postfix}= ".file_inode.db" unless $self->{opts}{multi_db_postfix};
+        $self->infoMsg("Using '$self->{opts}{base_dir}' as working directory.");
+        $self->infoMsg("Using '$self->{opts}{multi_db_postfix}' as postfix for multi db.");
         $self->{ds}= DupMerge::DataStore->Factory(
             type => 'multidb',
-            work_dir => $self->{opts}{work_dir},
-            db_prefix => $self->{opts}{multi_db_prefix},
+            base_dir => $self->{opts}{base_dir},
+            temp_dir => $self->{opts}{temp_dir},
+            db_postfix => $self->{opts}{multi_db_postfix},
             db_engine => $self->{opts}{db_engine}
         );
-    }
-    elsif ($self->{opts}{work_dir}) {
-        $self->infoMsg("Using '$self->{opts}{work_dir}' as working directory.");
-        $self->{ds}= DupMerge::DataStore->Factory(
-            type => 'db',
-            work_dir => $self->{opts}{work_dir},
-            db_engine => $self->{opts}{db_engine}
-        );
-    }
-    else {
-        $self->infoMsg("Storing all databases in RAM.");
-        $self->{ds}= DupMerge::DataStore->Factory(type => 'hash');
     }
     
     $self->infoMsg("Skipping zero sized files.") if $self->{opts}{skip_zero};
@@ -167,15 +158,15 @@ sub getDigest {
     else {
         my $sFileName= $self->{ds}->getOneFileByInode($iInode);
         return {} unless $sFileName;
+        
+        $self->verbMsg("Calculating digest for '$sFileName'");
         $sDigest= $self->calcDigest($sFileName);
     }
 
     return (
         digest => $sDigest,
         cached => $bCached,
-    ) if wantarray;
-
-    return $sDigest;
+    );
 }
 
 # write digest to cache db
@@ -252,7 +243,7 @@ sub pass1 {
             }, $sDir);
         }
         else {
-            $self->{stats}{total_cached_files}+= $self->{ds}->getCurrentFileCount();
+##            $self->{stats}{total_cached_files}+= $self->{ds}->getCurrentFileCount();
             $self->infoMsgS("(cached) ");
         }
         $self->{ds}->finishDirectory();
@@ -291,24 +282,29 @@ sub pass2 {
         next if $self->{opts}{max_size} && $iSize >= $self->{opts}{max_size};
 
         $self->infoMsgS("\rProcessing file size $iSize..." . " "x10);
-    #   handle files grouped by permissions etc. separately
+
+        # handle files grouped by permissions etc. separately
         my $hKey= undef;
         my $aKeys= $self->{ds}->getKeysBySize($iSize, $aQueryKey);
         while ($hKey= shift @$aKeys) {
             last if  $self->{_terminate};
+
             my $aInodes= $self->{ds}->getInodesBySizeKey($iSize, $hKey);
             unless (scalar @$aInodes > 1) {
                 $self->{stats}{total_size}+= $iSize;
                 next;
             }
             my %digests= ();
-        #   sort inodes by md5 hash
+
+            # sort inodes by md5 hash
             for my $iInode (@$aInodes) {
                 last if  $self->{_terminate};
+
                 $self->{stats}{total_size}+= $iSize;
                 my %digest= $self->getDigest($iInode);
                 my $sDigest= $digest{digest};
                 next unless defined $sDigest;
+
                 $digests{$sDigest}= [] unless exists $digests{$sDigest};
                 push @{$digests{$sDigest}}, {
                     inode => $iInode,
@@ -317,22 +313,30 @@ sub pass2 {
             }
             for my $sDigest (keys %digests) {
                 last if  $self->{_terminate};
-            #   ignore digests with only one inode
-                next unless scalar @{$digests{$sDigest}} > 1;
+
+                # ignore digests with only one inode
+                if (scalar @{$digests{$sDigest}} == 1) {
+                    $self->setInodesDigest($digests{$sDigest}[0]{inode}, $sDigest) unless $digests{$sDigest}[0]{cached};
+                    next;
+                }
     
-            #   find inode with most hard links
+                # find inode with most hard links
                 my $iMaxLinks= 0;
                 my $iMaxInode= undef;
                 my $sLinkFile= undef;
                 my %FilesByInode= ();
                 for my $hInode (@{$digests{$sDigest}}) {
                     last if  $self->{_terminate};
+
                     my $iInode= $hInode->{inode};
                     my $aFiles= $self->{ds}->getFilesByInode($iInode);
                     unless (scalar @$aFiles) {
-                        $self->{ds}->removeInode($iInode);
+
+                        # Rausgenommen, falls nicht alle Verzeichnisse zum Vergleich angegeben werden
+                        # $self->{ds}->removeInode($iInode);
                         next;
                     }
+
                     # remember file list for next loop
                     $FilesByInode{$iInode}= $aFiles;
                     if (scalar @$aFiles > $iMaxLinks) {
@@ -341,34 +345,55 @@ sub pass2 {
                         $sLinkFile= $aFiles->[0];
                     }
                 }
-            #   link all inodes with the most linked one
+
+                # link all inodes with the most linked one
                 for my $hInode (@{$digests{$sDigest}}) {
                     last if  $self->{_terminate};
+
                     my $iInode= $hInode->{inode};
                     next unless $FilesByInode{$iInode};
+
                     if ($iInode == $iMaxInode) {
                         $self->setInodesDigest($iInode, $sDigest) unless $hInode->{cached};
                         next;
                     }
                     $self->{stats}{linked_size}+= -s $sLinkFile;
+                    my $bLinkError= 0;
                     for my $sFile (@{$FilesByInode{$iInode}}) {
                         last if  $self->{_terminate};
+
                         $self->verbMsg("\rln -f '$sLinkFile' '$sFile'");
-                        unless ($self->{opts}{dryrun}) {
-                            if (unlink $sFile) {
-                                link $sLinkFile, $sFile;
-                                $self->{stats}{linked_files}++;
-                                $self->{ds}->updateInodeFile($iMaxInode, $sFile);
-                            }
-                            else {
-                                $self->{stats}{linked_files_failed}++;
-                            }
-                        }
-                        else {
+                        if ($self->{opts}{dryrun}) {
                             $self->{stats}{linked_files}++;
+                            next;
                         }
+                        
+                        # find temporary file name
+                        my $iTmpNum= "";
+                        my $sTmpFile;
+                        while (-e ($sTmpFile= "$sFile.tmp$iTmpNum")) {$iTmpNum++;}
+                        
+                        # try to make sure no data is lost
+                        unless (link $sFile, $sTmpFile
+                                    and unlink $sFile
+                                    and link $sLinkFile, $sFile
+                                    and unlink $sTmpFile) {
+                            # if anything goes wrong, restore original file
+                            if (-e $sTmpFile) {
+                                unlink $sFile if -e $sFile;
+                                rename $sTmpFile, $sFile;
+                            }
+                            $self->{stats}{linked_files_failed}++;
+                            $self->warnMsg("\rFailed to link file '$sLinkFile' -> '$sFile'");
+                            $bLinkError= 1;
+                            next;
+                        }
+                        
+                        $self->{stats}{linked_files}++;
+                        $self->{ds}->updateInodeFile($iMaxInode, $sFile);
                     }
-                    $self->{ds}->removeInode($iInode) unless $self->{opts}{dryrun};
+                    # TODO: should inode be removed if not all directories are checked??
+                    $self->{ds}->removeInode($iInode) unless $self->{opts}{dryrun} || $bLinkError;
                 }
             }
         }

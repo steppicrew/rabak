@@ -18,9 +18,7 @@ sub Factory {
     my %params= @_;
     
     my %classNames= (
-        "db" => "DataStoreDB",
         "multidb" => "DataStoreMultiDB",
-        "hash" => "DataStoreHash",
     );
     my $sType= $params{type};
     my $sClassName= $classNames{$sType};

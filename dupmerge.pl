@@ -9,13 +9,14 @@ use DupMerge::DupMerge;
 $Getopt::Std::STANDARD_HELP_VERSION= 1;
 my %opts= ();
 
-getopts("hdpotvnzi:x:w:qb:m:", \%opts) or die HELP_MESSAGE();
+getopts("hdpotvnzi:x:w:qb:m:a:", \%opts) or die HELP_MESSAGE();
 
 my @sDirectories= @ARGV;
 my $dm= DupMerge::DupMerge->new();
 
 $dm->run(\@sDirectories, {
-    work_dir        => $opts{w},
+    temp_dir        => $opts{w},
+    base_dir        => $opts{a},
     skip_zero       => $opts{z},
     quiet           => $opts{q},
     verbose         => $opts{v},
@@ -27,7 +28,7 @@ $dm->run(\@sDirectories, {
     ignore_time     => $opts{t},
     dryrun          => $opts{n},
     db_engine       => $opts{b},
-    multi_db_prefix => $opts{m},
+    multi_db_postfix=> $opts{m},
     
     cb_infoS        => sub {print join "\n", @_; STDOUT->flush();}
 });
@@ -51,10 +52,12 @@ options: -h   Show this help message
          -n   Dry run (don't change anything)
          -b <db engine>
               database engine. possible values: sqlite2, sqlite3 (default)
-         -w <work dir>
-              Working directory for data collection (use ram if not specified)
-         -m <multi db prefix>
-              Enables db for each directory. Specifies prefix for db name
+         -w <temp dir>
+              Working directory for temporary data collection (default: '/tmp')
+         -a <base dir>
+              directory for inodes.db (default: current dir)
+         -m <multi db postfix>
+              Enables db for each directory. Specifies postfix for db name
 ";
 }
 

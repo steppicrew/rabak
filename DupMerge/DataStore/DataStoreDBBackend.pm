@@ -5,15 +5,31 @@ use strict;
 
 use DBI;
 use Data::Dumper;
+use File::Temp;
+use File::Copy;
 
 sub new {
     my $class= shift;
     my $sFileName= shift;
     my $sDbEngine= shift || 'sqlite3';
+    my $sTempDir= shift;
     my $hData= shift || {};
+    
+    my $sRealFileName= $sFileName;
+    if ($sTempDir) {
+        (undef, $sRealFileName)= File::Temp::tempfile('XXXXXX',
+            SUFFIX => ".db",
+            DIR => $sTempDir,
+            UNLINK => 1,
+        );
+        if (-e $sFileName) {
+            copy($sFileName, $sRealFileName) or $sRealFileName= $sFileName;
+        }
+    }
     
     my $self= {
         dbfn=> $sFileName,
+        real_dbfn=> $sRealFileName,
         dbh=> undef,
         db_engine=> $sDbEngine,
         is_new=> undef,
@@ -21,7 +37,7 @@ sub new {
         _data=> $hData,
         
         db_sth=> {},
-#        debug=> 1,
+##        debug=> 1,
 
         _transaction_mode=> undef,
         _changed=> 0,
@@ -54,6 +70,12 @@ sub getFileName {
     return $self->{dbfn};
 }
 
+sub getRealFileName {
+    my $self= shift;
+    
+    return $self->{real_dbfn};
+}
+
 sub wasChanged {
     my $self= shift;
     return $self->{_changed};
@@ -63,7 +85,7 @@ sub getHandle {
     my $self= shift;
     
     unless ($self->{dbh}) {
-        my $sFileName= $self->getFileName();
+        my $sFileName= $self->getRealFileName();
         $self->{dbh}= $self->createHandle($sFileName),
     }
     return $self->{dbh};
@@ -83,7 +105,7 @@ sub createHandle {
     }
     my $sDbEngine= $validDbEngines{$self->{db_engine}};
 
-    $self->{is_new}= ! -f $dbfn;
+    $self->{is_new}= ! -f $dbfn || -z $dbfn;
     my $dbh= undef;
     eval {
         $dbh = DBI->connect("dbi:$sDbEngine:dbname=$dbfn", "", "")
@@ -406,6 +428,10 @@ sub endWork {
 
         $self->getHandle()->disconnect();
         $self->{dbh}= undef;
+        my ($sFileName, $sRealFileName)= ($self->getFileName(), $self->getRealFileName());
+        unless ($sFileName eq $sRealFileName) {
+            copy($sRealFileName, $sFileName) or print "Could not update database file '$sFileName'\n";
+        }
     }
     return undef;
 }
@@ -439,9 +465,9 @@ sub commitTransaction {
     my $buildIndex= shift;
     $buildIndex= 1 unless defined $buildIndex;
     
-    return unless $self->{_transaction_mode} && $self->{dbh};
-    
     $self->endCached();
+    
+    return unless $self->{_transaction_mode} && $self->{dbh};
     
     # free statement handles
     $self->finishStatements("update");
