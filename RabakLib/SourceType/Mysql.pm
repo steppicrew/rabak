@@ -65,7 +65,7 @@ sub get_probe_cmd {
     my $self= shift;
     my $sDb= shift;
 
-    my $sProbeCmd= "mysqldump --no-data " . $self->_get_log_credentials() . "--result-file=\"/dev/null\" \"$sDb\"";
+    my $sProbeCmd= "mysqldump --no-data " . $self->_get_log_credentials() . " --result-file=\"/dev/null\" \"$sDb\"";
     return $self->_replace_password($sProbeCmd, "Running probe");
 }
 

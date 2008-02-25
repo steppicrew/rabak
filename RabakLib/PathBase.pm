@@ -14,6 +14,9 @@ use vars qw(@ISA);
 use Data::Dumper;
 use File::Spec ();
 use File::Temp ();
+#require RabakLib::TiedStdHandle;
+#use IPC::Open3;
+#use IO::Select;
 
 =head1 DESCRIPTION
 
@@ -36,8 +39,6 @@ sub new {
         exit => 0,
         error => '',
     };
-    $self->{IO}= undef;
-
     $self->{TEMPFILES}= [];
 
     bless $self, $class;
@@ -47,13 +48,6 @@ sub new {
 # delete all non deleted temp files on exit (important for remote sessions)
 sub DESTROY {
     my $self= shift;
-
-    # on destroy tempdirs may be already deleted, so pipe stdout/stderr to /dev/null
-    $self->{IO}= {
-        dir => undef,
-        stdout => "/dev/null",
-        stderr => "/dev/null",
-    };
 
     for my $sTempFile (@{$self->{TEMPFILES}}) {
         $self->rmtree($sTempFile);
@@ -151,7 +145,7 @@ Result: (stdout, stderr, exit code)
 sub run_cmd {
     my $self= shift;
     my $cmd= shift;
-    my $bPiped= shift || 0;
+    my $hHandles= shift || {};
 
     $self= $self->new() unless ref $self;
 
@@ -159,34 +153,79 @@ sub run_cmd {
         "$cmd\n" .
         "************** COMMAND END ****************\n" if $self->{DEBUG};
 
-    return $self->is_remote() ? $self->_run_ssh_cmd($cmd, undef, $bPiped) : $self->_run_local_cmd($cmd, $bPiped);
+    return $self->is_remote() ? $self->_run_ssh_cmd($cmd, undef, $hHandles) : $self->_run_local_cmd($cmd, $hHandles);
 }
 
 sub _run_local_cmd {
     my $self= shift;
     my $cmd= shift;
-    my $bPiped= shift || 0;
+    my $hHandles= shift || {};
 
     $self= $self->new() unless ref $self;
 
-    unless ($self->{IO}) {
-        my $sTempDir= $self->local_tempdir;
-        $self->{IO}= {
-            dir => $sTempDir,
-            stdout => "$sTempDir/stdout",
-            stderr => "$sTempDir/stderr",
-        };
-    }
-
-    system("( $cmd ) > '$self->{IO}{stdout}' 2> '$self->{IO}{stderr}'");
-
-    my $iExit= $?;
     $self->{LAST_RESULT}= {
         stdout => '',
         stderr => '',
-        exit => $iExit >> 8,
+        exit => -1,
         error => '',
     };
+
+    $hHandles->{STDOUT}= sub {
+        $self->{LAST_RESULT}{stdout}.= join '', @_;
+    } unless $hHandles->{STDOUT};
+    $hHandles->{STDERR}= sub {
+        $self->{LAST_RESULT}{stderr}.= join '', @_;
+    } unless $hHandles->{STDERR};
+    
+    my $iExit;
+    if (1) {
+        my $hStdOut;
+        my $pid= open $hStdOut, "-|";
+        $SIG{PIPE}= sub{die "'$cmd' pipe broke"};
+        
+        if ($pid) {
+            while (<$hStdOut>) {
+                $hHandles->{STDOUT}->($_);
+            }
+            close $hStdOut;
+            $iExit= $?;
+        }
+        else {
+            exec($cmd) || die "cannot execute '$cmd': $!";
+        }
+    }
+    else {
+        my ($hPipeOutRead, $hPipeOutWrite);
+        my ($hPipeErrRead, $hPipeErrWrite);
+        local *PipeOutWrite;
+        local *PipeErrWrite;
+        my $hStdIn;
+        $SIG{PIPE}= sub{die "'$cmd' pipe broke"};
+        
+        my $pid= open3($hStdIn, \*PipeOutWrite, \*PipeErrWrite, "echo 'zuppi'");
+
+        my $select= new IO::Select();
+        $select->add(\*PipeOutWrite);
+        $select->add(\*PipeErrWrite);
+
+        while (<PipeOutWrite>) {
+            $hHandles->{STDOUT}->($_);
+        }
+
+        my @hIOs;
+        while (@hIOs= $select->can_read()) {
+            foreach my $hIO (@hIOs) {
+                if ($hIO == \*PipeOutWrite) {
+                    $hHandles->{STDOUT}->(<*PipeOutWrite>);
+                }
+            }
+        }
+        waitpid $pid, 0;
+        
+        $iExit= $?;
+    }
+    
+    $self->{LAST_RESULT}{exit}= $iExit >> 8;
 
     if ($iExit == -1) {
         $self->{LAST_RESULT}{error}= "failed to execute: $!";
@@ -196,22 +235,8 @@ sub _run_local_cmd {
             ($iExit & 127), ($iExit & 128) ? "with" : "without";
     }
 
-    if ($bPiped) {
-        $self->{LAST_RESULT}{stdout}= $self->{IO}{stdout};
-        $self->{LAST_RESULT}{stderr}= $self->{IO}{stderr};
-    }
-    else {
-        my $fh;
-        if (-s $self->{IO}{stderr} && open ($fh, $self->{IO}{stderr})) {
-            $self->{LAST_RESULT}{stderr}= join '', (<$fh>);
-            CORE::close $fh;
-        }
-        if (-s $self->{IO}{stdout} && open ($fh, $self->{IO}{stdout})) {
-            $self->{LAST_RESULT}{stdout}= join '', (<$fh>);
-            CORE::close $fh;
-        }
-        $self->_set_error($self->{LAST_RESULT}{stderr});
-    }
+    $self->_set_error($self->{LAST_RESULT}{stderr});
+
     return (
         $self->{LAST_RESULT}{stdout},
         $self->{LAST_RESULT}{stderr},
@@ -252,7 +277,7 @@ sub _run_ssh_cmd {
     my $self= shift;
     my $sCmd= shift;
     my $sStdIn= shift;
-    my $bPiped= shift || 0;
+    my $hHandles= shift || {};
 
     my $sRunCmd= '';
 
@@ -272,7 +297,7 @@ sub _run_ssh_cmd {
     $sRunCmd.= $self->build_ssh_cmd($sCmd);
     print "SSH: stdin [$sStdIn]\n######################\n" if $self->{DEBUG} && defined $sStdIn;
     print "SSH: running [$sRunCmd]\n" if $self->{DEBUG};
-    return $self->_run_local_cmd($sRunCmd, $bPiped);
+    return $self->_run_local_cmd($sRunCmd, $hHandles);
 }
 
 # evaluates perl script remote or locally
@@ -336,9 +361,7 @@ sub _sshperl {
     my $self= shift;
     my $sPerlScript= shift;
 
-    # replace "'" chars for shell execution
-#    $sPerlScript=~ s/\'/\'\\\'\'/g;
-    $self->_run_ssh_cmd("perl", "$sPerlScript");
+    $self->_run_ssh_cmd("perl", $sPerlScript);
     $self->_set_error($self->{LAST_RESULT}{stderr});
     print "ERR: " . $self->{LAST_RESULT}{stderr} . "\n" if $self->{DEBUG} && $self->{LAST_RESULT}{stderr};
     return $self->{LAST_RESULT}{exit} ? '' : $self->{LAST_RESULT}{stdout};

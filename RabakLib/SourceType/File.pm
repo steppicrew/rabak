@@ -204,6 +204,8 @@ sub _parseFilter {
     my $sBaseDir= shift;
     my $hMacroStack= shift || {};
     
+    return () unless defined $sBaseDir;
+    
     $sBaseDir=~ s/\/?$/\//;
     my $sqBaseDir= quotemeta $sBaseDir;
 
@@ -432,23 +434,29 @@ sub run {
     logger->info("Running: $sRsyncCmd");
 
     # run rsync command
-    my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= $oRsyncPath->run_cmd($sRsyncCmd);
+    my $sStdOutStat= 0;
+    my %Handles= (
+        STDOUT => sub {
+            for my $sLine (@_) {
+                chomp $sLine;
+                next if $sLine =~ /^([^\/]+\/)+$/;
+                if ($sLine =~ /^Number of .*\:\s+\d+$/) {
+                    logger->log('*** Rsync Statistics: ***') unless $sStdOutStat;
+                    $sStdOutStat= 1;
+                }
+                if ($sStdOutStat) {
+                    logger->log($sLine)
+                }
+                else {
+                    logger->debug($sLine)
+                }
+            } 
+        },
+        STDERR => sub {logger->error(@_)},
+    );
+    my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= $oRsyncPath->run_cmd($sRsyncCmd, \%Handles);
     logger->error($sError) if $sError;
     logger->warn("rsync exited with result ".  $iRsyncExit) if $iRsyncExit;
-
-    my @sRsyncError= split(/\n/, $sRsyncErr || '');
-    logger->error(@sRsyncError) if @sRsyncError;
-
-    my @sRsyncStat= ();
-    for (split(/\n/, $sRsyncOut || '')) {
-        push @sRsyncStat, $_ unless /^([^\/]+\/)+$/;
-    }
-
-    my @sRsyncFiles= ();
-    push @sRsyncFiles, shift @sRsyncStat while ((scalar @sRsyncStat) && $sRsyncStat[0] !~ /^Number of .*\:\s+\d+$/);
-
-    logger->debug(@sRsyncFiles);
-    logger->log('*** Rsync Statistics: ***', @sRsyncStat);
 
     # return success for partial transfer errors (errors were logged already above)
     return 0 if $iRsyncExit == 23 || $iRsyncExit == 24;

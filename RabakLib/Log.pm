@@ -47,6 +47,8 @@ BEGIN {
         SWITCH_PRETEND => 0,
         SWITCH_LOGGING => 0,
     };
+    
+
     bless $oLog, "RabakLib::Log";
 }
 
