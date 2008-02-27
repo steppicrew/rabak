@@ -14,9 +14,8 @@ use vars qw(@ISA);
 use Data::Dumper;
 use File::Spec ();
 use File::Temp ();
-#require RabakLib::TiedStdHandle;
-#use IPC::Open3;
-#use IO::Select;
+use IPC::Open3;
+use IO::Select;
 
 =head1 DESCRIPTION
 
@@ -125,10 +124,11 @@ sub getPath {
 sub savecmd {
     my $self= shift;
     my $cmd= shift;
+    my $hHandles= shift || {};
 
     $self= $self->new() unless ref $self;
 
-    $self->run_cmd($cmd);
+    $self->run_cmd($cmd, $hHandles);
     $self->_set_error($self->{LAST_RESULT}{stderr});
     $?= $self->{LAST_RESULT}{exit} || 0; # set standard exit variable
     return $self->{LAST_RESULT}{stdout} || '';
@@ -152,6 +152,9 @@ sub run_cmd {
     print "************* COMMAND START ***************\n" .
         "$cmd\n" .
         "************** COMMAND END ****************\n" if $self->{DEBUG};
+    print "************* STDIN START ***************\n" .
+        "$hHandles->{STDIN}\n" .
+        "************** STDIN END ****************\n" if $self->{DEBUG} && $hHandles->{STDIN};
 
     return $self->is_remote() ? $self->_run_ssh_cmd($cmd, undef, $hHandles) : $self->_run_local_cmd($cmd, $hHandles);
 }
@@ -176,54 +179,48 @@ sub _run_local_cmd {
     $hHandles->{STDERR}= sub {
         $self->{LAST_RESULT}{stderr}.= join '', @_;
     } unless $hHandles->{STDERR};
+    if ($hHandles->{STDIN}) {
+        # if stdin is a scalar print its value once
+        if (ref($hHandles->{STDIN}) ne "CODE") {
+            my @aStdOut= ($hHandles->{STDIN});
+            $hHandles->{STDIN}= sub {
+                return shift @aStdOut;
+            };
+        }
+    }
     
-    my $iExit;
-    if (1) {
-        my $hStdOut;
-        my $pid= open $hStdOut, "-|";
-        $SIG{PIPE}= sub{die "'$cmd' pipe broke"};
+    local *TempStdOut;
+    local *TempStdErr;
+    local *TempStdIn;
+    $SIG{PIPE}= sub{die "'$cmd' pipe broke"};
         
-        if ($pid) {
-            while (<$hStdOut>) {
-                $hHandles->{STDOUT}->($_);
-            }
-            close $hStdOut;
-            $iExit= $?;
-        }
-        else {
-            exec($cmd) || die "cannot execute '$cmd': $!";
+    my $pid= open3(*TempStdIn, *TempStdOut, *TempStdErr, $cmd);
+    
+    # print STDIN if defined
+    if (defined $hHandles->{STDIN}) {
+        my $sStdIn;
+        while (defined($sStdIn= $hHandles->{STDIN}->())) {
+            print TempStdIn $sStdIn;
         }
     }
-    else {
-        my ($hPipeOutRead, $hPipeOutWrite);
-        my ($hPipeErrRead, $hPipeErrWrite);
-        local *PipeOutWrite;
-        local *PipeErrWrite;
-        my $hStdIn;
-        $SIG{PIPE}= sub{die "'$cmd' pipe broke"};
-        
-        my $pid= open3($hStdIn, \*PipeOutWrite, \*PipeErrWrite, "echo 'zuppi'");
+    close TempStdIn; 
 
-        my $select= new IO::Select();
-        $select->add(\*PipeOutWrite);
-        $select->add(\*PipeErrWrite);
-
-        while (<PipeOutWrite>) {
-            $hHandles->{STDOUT}->($_);
-        }
-
-        my @hIOs;
-        while (@hIOs= $select->can_read()) {
-            foreach my $hIO (@hIOs) {
-                if ($hIO == \*PipeOutWrite) {
-                    $hHandles->{STDOUT}->(<*PipeOutWrite>);
-                }
+    my $selOut= new IO::Select(*TempStdOut, *TempStdErr);
+    my @hIOs;
+    while (@hIOs= $selOut->can_read()) {
+        foreach my $hIO (@hIOs) {
+            if (fileno($hIO) == fileno(TempStdOut)) {
+                $hHandles->{STDOUT}->(<TempStdOut>);
             }
+            elsif (fileno($hIO) == fileno(TempStdErr)) {
+                $hHandles->{STDERR}->(<TempStdErr>);
+            }
+            $selOut->remove($hIO) if eof $hIO;
         }
-        waitpid $pid, 0;
-        
-        $iExit= $?;
     }
+    waitpid $pid, 0;
+    
+    my $iExit= $?;
     
     $self->{LAST_RESULT}{exit}= $iExit >> 8;
 
@@ -282,19 +279,11 @@ sub _run_ssh_cmd {
     my $sRunCmd= '';
 
     if (defined $sStdIn) {
-        my $fh;
-        if ($self->{STDIN}) {
-            open $fh, ">$self->{STDIN}" or die "could not open file '$self->{STDIN}' for STDIN";
-        }
-        else {
-            ($fh, $self->{STDIN}) = $self->local_tempfile;
-        }
-        print $fh $sStdIn if defined $sStdIn;
-        close $fh;
-        $sRunCmd.= "cat '$self->{STDIN}' | ";
+        die "More than one STDIN defined!" if defined $hHandles->{STDIN};
+        $hHandles->{STDIN}= $sStdIn;
     }
 
-    $sRunCmd.= $self->build_ssh_cmd($sCmd);
+    $sRunCmd= $self->build_ssh_cmd($sCmd);
     print "SSH: stdin [$sStdIn]\n######################\n" if $self->{DEBUG} && defined $sStdIn;
     print "SSH: running [$sRunCmd]\n" if $self->{DEBUG};
     return $self->_run_local_cmd($sRunCmd, $hHandles);
@@ -460,8 +449,14 @@ sub getLocalFile {
     my $sFile= $self->getPath(shift);
 
     return $sFile unless $self->is_remote();
+    
     my ($fh, $sTmpName) = $self->local_tempfile;
-    print $fh $self->savecmd("cat '$sFile'");
+    my $hHandles= {
+        STDOUT => sub {
+            print $fh @_;
+        },
+    };
+    $self->savecmd("cat '$sFile'", $hHandles);
     CORE::close $fh;
     return $sTmpName;
 }
@@ -491,13 +486,17 @@ sub copyLocalFileToRemote {
     my $fh;
     if (CORE::open $fh, $sLocFile) {
         my $sPipe= $bAppend ? ">>" : ">";
-        my $sData;
-        my ($stdout, $stderr, $exit);
-        while (my $iRead= read $fh, $sData, $iBufferSize) {
-            ($stdout, $stderr, $exit) = $self->_run_ssh_cmd("cat - $sPipe \"$sRemFile\"", $sData);
-            last if $stderr || $exit;
-            $sPipe= ">>";
-        }
+        
+        my $hHandles= {
+            STDIN => sub {
+                my $sData;
+                return $sData if read $fh, $sData, $iBufferSize;
+                return undef;
+            }
+        };
+
+        my ($stdout, $stderr, $exit) = $self->_run_ssh_cmd("cat - $sPipe \"$sRemFile\"", undef, $hHandles);
+
         $self->_set_error($stderr);
         CORE::close $fh;
         return $stderr ? 0 : 1;

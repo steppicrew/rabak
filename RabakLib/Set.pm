@@ -518,7 +518,7 @@ sub backup {
             $oTargetPath->symlink($sLogFile, "current-log.$sBakSet");
         }
     }
-    logger->log("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_switch('logging');
+    logger->info("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_switch('logging');
     $self->logPretending();
 
     # now try backing up every source 
@@ -597,7 +597,7 @@ sub _backup_setup {
 
     logger->info("Backup $sBakDay exists, using subset.") if $sSubSet;
     logger->info("Backup start at " . strftime("%F %X", localtime) . ": $sBakSource, $sBakDay$sSubSet, " . $self->get_value("title"));
-    logger->log("Source: " . $oSource->getFullPath);
+    logger->info("Source: " . $oSource->getFullPath);
 
     $self->{_BAK_DIR_LIST}= \@sBakDir;
     $self->{_BAK_DAY}= $sBakDay;
@@ -626,7 +626,7 @@ sub _backup_run {
     logger->set_prefix();
 
     if (!$iErrorCode) {
-        logger->log("Done!");
+        logger->info("Done!");
     }
     else {
         logger->error("Backup failed: " . $oSource->get_last_error);

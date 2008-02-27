@@ -77,11 +77,12 @@ sub init {
 # -----------------------------------------------------------------------------
 
 sub LOG_DEBUG_LEVEL   { 5 }
-sub LOG_DEFAULT_LEVEL { 4 }
+sub LOG_VERBOSE_LEVEL { 4 }
 sub LOG_INFO_LEVEL    { 3 }
 sub LOG_WARN_LEVEL    { 2 }
 sub LOG_ERROR_LEVEL   { 1 }
 
+sub LOG_DEFAULT_LEVEL { LOG_VERBOSE_LEVEL() }
 
 sub _timestr {
     return strftime("%Y-%m-%d %H:%M:%S", localtime);
@@ -199,6 +200,14 @@ sub debug {
     $self->log($self->debug(@_));
 }
 
+sub verbose {
+    my $self= shift;
+    my @sMessage= @_;
+
+    return [ LOG_VERBOSE_LEVEL, @sMessage ] if wantarray;
+    $self->log($self->verbose(@_));
+}
+
 sub info {
     my $self= shift;
     my @sMessage= @_;
@@ -261,6 +270,9 @@ sub _levelLog {
     }
     elsif ($iLevel == LOG_INFO_LEVEL) {
         $sMsgPref= "INFO:    ";
+    }
+    elsif ($iLevel == LOG_VERBOSE_LEVEL) {
+        $sMsgPref= "VERBOSE: ";
     }
     elsif ($iLevel == LOG_DEBUG_LEVEL) {
         $sMsgPref= "DEBUG:   ";

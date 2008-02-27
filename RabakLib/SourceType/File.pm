@@ -439,16 +439,17 @@ sub run {
         STDOUT => sub {
             for my $sLine (@_) {
                 chomp $sLine;
+                # skip directory lines
                 next if $sLine =~ /^([^\/]+\/)+$/;
                 if ($sLine =~ /^Number of .*\:\s+\d+$/) {
-                    logger->log('*** Rsync Statistics: ***') unless $sStdOutStat;
+                    logger->info('*** Rsync Statistics: ***') unless $sStdOutStat;
                     $sStdOutStat= 1;
                 }
                 if ($sStdOutStat) {
-                    logger->log($sLine)
+                    logger->info($sLine);
                 }
                 else {
-                    logger->debug($sLine)
+                    logger->verbose($sLine);
                 }
             } 
         },
