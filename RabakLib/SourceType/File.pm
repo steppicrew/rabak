@@ -437,7 +437,7 @@ sub run {
     my $sStdOutStat= 0;
     my %Handles= (
         STDOUT => sub {
-            for my $sLine (@_) {
+            for my $sLine (split(/\n/, join("", @_))) {
                 chomp $sLine;
                 # skip directory lines
                 next if $sLine =~ /^([^\/]+\/)+$/;

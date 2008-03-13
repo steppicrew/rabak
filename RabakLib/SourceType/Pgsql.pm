@@ -29,7 +29,7 @@ sub get_probe_cmd {
     my $sDb= shift;
 
     my $sProbeCmd= "pg_dump --schema-only --username=\"" . $self->_get_user() . "\" --file=\"/dev/null\" \"$sDb\"";
-    logger->log("Running probe: $sProbeCmd");
+    logger->info("Running probe: $sProbeCmd");
     return $sProbeCmd;
 }
 
@@ -38,7 +38,7 @@ sub get_dump_cmd {
     my $sDb= shift;
 
     my $sDumpCmd= "pg_dump --clean --username=\"" . $self->_get_user() . "\" \"$sDb\"";
-    logger->log("Running dump: $sDumpCmd");
+    logger->info("Running dump: $sDumpCmd");
     return $sDumpCmd;
 }
 

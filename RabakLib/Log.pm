@@ -46,6 +46,7 @@ BEGIN {
 
         SWITCH_PRETEND => 0,
         SWITCH_LOGGING => 0,
+        SWITCH_VERBOSITY => 0,
     };
     
 
@@ -67,6 +68,7 @@ sub init {
 
     $oLog->{SWITCH_PRETEND}= $hConf->get_switch('pretend');
     $oLog->{SWITCH_LOGGING}= $hConf->get_switch('logging');
+    $oLog->{SWITCH_VERBOSITY}= $hConf->get_switch('verbose');
 
     # $hConf->set_log($self);
     # bless $self, $class;
@@ -292,7 +294,7 @@ sub _levelLog {
         chomp $sMessage;
         $sMessage= '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
         # print message to stdout
-        print "$self->{STDOUT_PREFIX}$sMsgPref$sMessage\n" if $iLevel <= $self->{SWITCH_LOGGING};
+        print "$self->{STDOUT_PREFIX}$sMsgPref$sMessage\n" if $iLevel <= $self->{SWITCH_VERBOSITY};
 
         next unless $self->{SWITCH_LOGGING} && !$self->{SWITCH_PRETEND};
 
@@ -300,7 +302,7 @@ sub _levelLog {
         $sMessage= _timestr() . "\t$sMsgPref$sMessage\n";
 
         $self->{UNFLUSHED_MESSAGES} .= $sMessage;
-        $self->{MESSAGES} .= $sMessage if $iLevel <= $self->{SWITCH_LOGGING};
+        $self->{MESSAGES} .= $sMessage if $iLevel <= $self->{SWITCH_VERBOSITY};
     }
     $self->_flush();
 }

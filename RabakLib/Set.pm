@@ -288,7 +288,7 @@ sub logPretending {
     my $self= shift;
     return unless $self->get_switch('pretend');
 
-    logger->log("", "**** Only pretending, no changes are made! ****", "");
+    logger->info("", "**** Only pretending, no changes are made! ****", "");
 }
 
 sub _mail {

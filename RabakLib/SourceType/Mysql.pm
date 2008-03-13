@@ -50,7 +50,7 @@ sub _replace_password {
     my $sCommand= shift || $self->_get_log_credentials();
     my $sLog= shift;
     
-    logger->log("$sLog: $sCommand") if $sLog;
+    logger->info("$sLog: $sCommand") if $sLog;
     my $sPassword= $self->_get_passwd();
     $sCommand=~ s/\{\{PASSWORD\}\}/$sPassword/ if defined $sPassword;
     return $sCommand;

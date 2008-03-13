@@ -14,8 +14,7 @@ use vars qw(@ISA);
 use Data::Dumper;
 use File::Spec ();
 use File::Temp ();
-use IPC::Open3;
-use IO::Select;
+use IPC::Run qw(start pump finish);
 
 =head1 DESCRIPTION
 
@@ -161,7 +160,7 @@ sub run_cmd {
 
 sub _run_local_cmd {
     my $self= shift;
-    my $cmd= shift;
+    my $aCmd= shift;
     my $hHandles= shift || {};
 
     $self= $self->new() unless ref $self;
@@ -188,49 +187,23 @@ sub _run_local_cmd {
             };
         }
     }
-    
-    local *TempStdOut;
-    local *TempStdErr;
-    local *TempStdIn;
-    $SIG{PIPE}= sub{die "'$cmd' pipe broke"};
-        
-    my $pid= open3(*TempStdIn, *TempStdOut, *TempStdErr, $cmd);
-    
-    # print STDIN if defined
-    if (defined $hHandles->{STDIN}) {
-        my $sStdIn;
-        while (defined($sStdIn= $hHandles->{STDIN}->())) {
-            print TempStdIn $sStdIn;
-        }
-    }
-    close TempStdIn; 
 
-    my $selOut= new IO::Select(*TempStdOut, *TempStdErr);
-    my @hIOs;
-    while (@hIOs= $selOut->can_read()) {
-        foreach my $hIO (@hIOs) {
-            if (fileno($hIO) == fileno(TempStdOut)) {
-                $hHandles->{STDOUT}->(<TempStdOut>);
-            }
-            elsif (fileno($hIO) == fileno(TempStdErr)) {
-                $hHandles->{STDERR}->(<TempStdErr>);
-            }
-            $selOut->remove($hIO) if eof $hIO;
-        }
+    my ($CmdIn, $CmdOut, $CmdErr)= ("", "", "");
+    # start $aCmd in shell context if its a scalar
+    # ($sCmd should be an array reference to avoid shell,
+    #   but then we had to handle redirects and pipes properly)
+    $aCmd= [qw( sh -c ), $aCmd] unless ref $aCmd;
+    my $h= start($aCmd, \$CmdIn, \$CmdOut, \$CmdErr);
+    while ($h->pumpable()) {
+        # fill input buffer if its empty
+        $CmdIn.= $hHandles->{STDIN}->() if $hHandles->{STDIN} && length($CmdIn) > 0;
+        $h->pump();
+        $hHandles->{STDOUT}->($CmdOut), $CmdOut= "" if length $CmdOut;
+        $hHandles->{STDERR}->($CmdErr), $CmdErr= "" if length $CmdErr;
     }
-    waitpid $pid, 0;
     
-    my $iExit= $?;
-    
-    $self->{LAST_RESULT}{exit}= $iExit >> 8;
-
-    if ($iExit == -1) {
-        $self->{LAST_RESULT}{error}= "failed to execute: $!";
-    }
-    elsif ($iExit & 127) {
-        $self->{LAST_RESULT}{error}= sprintf "cmd died with signal %d, %s coredump",
-            ($iExit & 127), ($iExit & 128) ? "with" : "without";
-    }
+    $h->finish();
+    $self->{LAST_RESULT}{exit}=  $h->result;
 
     $self->_set_error($self->{LAST_RESULT}{stderr});
 
