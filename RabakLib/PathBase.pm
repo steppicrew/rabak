@@ -155,7 +155,8 @@ sub run_cmd {
         "$hHandles->{STDIN}\n" .
         "************** STDIN END ****************\n" if $self->{DEBUG} && $hHandles->{STDIN};
 
-    return $self->is_remote() ? $self->_run_ssh_cmd($cmd, undef, $hHandles) : $self->_run_local_cmd($cmd, $hHandles);
+    return $self->_run_ssh_cmd($cmd, undef, $hHandles) if $self->is_remote();
+    return $self->_run_local_cmd($cmd, $hHandles);
 }
 
 sub _run_local_cmd {
@@ -172,38 +173,31 @@ sub _run_local_cmd {
         error => '',
     };
 
+    # prepare standard i/o handles
+    $hHandles->{STDIN}= sub {undef} unless $hHandles->{STDIN};
     $hHandles->{STDOUT}= sub {
         $self->{LAST_RESULT}{stdout}.= join '', @_;
     } unless $hHandles->{STDOUT};
     $hHandles->{STDERR}= sub {
         $self->{LAST_RESULT}{stderr}.= join '', @_;
     } unless $hHandles->{STDERR};
-    if ($hHandles->{STDIN}) {
-        # if stdin is a scalar print its value once
-        if (ref($hHandles->{STDIN}) ne "CODE") {
-            my @aStdOut= ($hHandles->{STDIN});
-            $hHandles->{STDIN}= sub {
-                return shift @aStdOut;
-            };
-        }
+
+    # if stdin is a scalar print its value once
+    if (ref($hHandles->{STDIN}) ne "CODE") {
+        my @aStdOut= ($hHandles->{STDIN});
+        $hHandles->{STDIN}= sub {shift @aStdOut};
     }
 
-    my ($CmdIn, $CmdOut, $CmdErr)= (undef, undef, undef);
     # start $aCmd in shell context if its a scalar
     # ($sCmd should be an array reference to avoid shell,
     #   but then we had to handle redirects and pipes properly)
     $aCmd= [qw( sh -c ), $aCmd] unless ref $aCmd;
 
-    my $h= start($aCmd, \$CmdIn, \$CmdOut, \$CmdErr);
+    my $h= start($aCmd, $hHandles->{STDIN},
+        $hHandles->{STDOUT}, $hHandles->{STDERR});
 
-    while ($h->pumpable()) {
-        # fill input buffer if its empty
-        $CmdIn = $hHandles->{STDIN}->() if $hHandles->{STDIN} && (!defined $CmdIn || length($CmdIn) == 0);
-        $h->pump();
-        $hHandles->{STDOUT}->($CmdOut), $CmdOut= "" if length $CmdOut;
-        $hHandles->{STDERR}->($CmdErr), $CmdErr= "" if length $CmdErr;
-    }
-    
+    $h->pump() while $h->pumpable();
+
     $h->finish();
     $self->{LAST_RESULT}{exit}=  $h->result;
 

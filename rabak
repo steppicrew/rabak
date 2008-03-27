@@ -24,7 +24,7 @@ use RabakLib::Set;
 use RabakLib::Admin;
 use RabakLib::Log;
 
-our $VERSION= "0.6rc8";
+our $VERSION= "0.6rc9";
 our $DEBUG= 0;
 
 $Getopt::Std::STANDARD_HELP_VERSION= 1;

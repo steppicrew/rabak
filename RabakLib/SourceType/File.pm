@@ -433,7 +433,7 @@ sub run {
 
     logger->info("Running: $sRsyncCmd");
 
-    # run rsync command
+    # prepare handles for stdout/stderr
     my $sStdOutStat= 0;
     my %Handles= (
         STDOUT => sub {
@@ -455,6 +455,7 @@ sub run {
         },
         STDERR => sub {logger->error(@_)},
     );
+    # run rsync command
     my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= $oRsyncPath->run_cmd($sRsyncCmd, \%Handles);
     logger->error($sError) if $sError;
     logger->warn("rsync exited with result ".  $iRsyncExit) if $iRsyncExit;

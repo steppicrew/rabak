@@ -661,12 +661,11 @@ sub _backup_run {
         $iDfAvail >>= 10            if $sStUnit eq 'M';
         $iDfAvail <<= 10            if $sStUnit eq 'B';
         if ($iStValue > $iDfAvail) {
-            $self->_mail_warning('disc space too low',
-                (
-                    "The free space on your target \"" . $oTargetPath->getFullPath . "\" has dropped",
-                    "below $iStValue$sStUnit to $iDfAvail$sStUnit."
-                )
-            );
+            $iDfAvail= int($iDfAvail * 100) / 100;
+            my @sMsg= ("The free space on your target \"" . $oTargetPath->getFullPath . "\" has dropped",
+                    "below $iStValue$sStUnit to $iDfAvail$sStUnit.");
+            $self->_mail_warning('disc space too low', @sMsg);
+            logger->warn(join " ", @sMsg);
         }
     }
 
