@@ -537,7 +537,7 @@ sub backup {
             }
             $self->_backup_cleanup($oSource);
         };
-        logger->log(logger->error("An error occured during backup: '$@'")) if $@;
+        logger->error("An error occured during backup: '$@'") if $@;
     }
 
     # stop logging
@@ -546,6 +546,12 @@ sub backup {
     $iResult= scalar(@oSources) - $iSuccessCount;
 
 cleanup:
+    my $aDf = $oTargetPath->checkDf();
+    if (defined $aDf) {
+        logger->warn(join " ", @$aDf);
+        $self->_mail_warning("disc space too low", @$aDf);
+    }
+
     # unmount all target mounts
     $oTargetPath->unmountAll;
 
@@ -645,28 +651,6 @@ sub _backup_run {
         $oTargetPath->remove_old($oSource->get_value("keep"), @sKeepDirs) unless $iErrorCode;    # only remove old if backup was done
         $oTargetPath->unlink("current.$sBakSetSource");
         $oTargetPath->symlink("$sTarget", "current.$sBakSetSource");
-    }
-
-    # check for disc space
-    # TODO: Transfer to Path::Target
-    my $sSpaceThreshold= $oTargetPath->get_value('discfree_threshold') || '';
-    if ($sSpaceThreshold) {
-        my $iStValue= $sSpaceThreshold =~ /\b([\d\.]+)/ ? $1 : 0;
-        my $sStUnit= 'K';
-        $sStUnit = uc($1) if $sSpaceThreshold =~ /$iStValue\s*([gmkb\%])/i;
-        my $sDfResult = (split /\n/, $oTargetPath->df('', "-k"))[1];
-        my ($iDfSize, $iDfAvail) = ($1, $2) if $sDfResult =~ /^\S+\s+(\d+)\s+\d+\s+(\d+)\s+/;
-        $iDfAvail /= $iDfSize / 100 if $sStUnit eq '%';
-        $iDfAvail >>= 20            if $sStUnit eq 'G';
-        $iDfAvail >>= 10            if $sStUnit eq 'M';
-        $iDfAvail <<= 10            if $sStUnit eq 'B';
-        if ($iStValue > $iDfAvail) {
-            $iDfAvail= int($iDfAvail * 100) / 100;
-            my @sMsg= ("The free space on your target \"" . $oTargetPath->getFullPath . "\" has dropped",
-                    "below $iStValue$sStUnit to $iDfAvail$sStUnit.");
-            $self->_mail_warning('disc space too low', @sMsg);
-            logger->warn(join " ", @sMsg);
-        }
     }
 
     return $iErrorCode;
