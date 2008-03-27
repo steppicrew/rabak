@@ -294,7 +294,7 @@ sub show {
     $self->SUPER::show($hConfShowCache);
     
     my $hMacroStack= {};
-    
+
     my @sFilter= $self->_get_filter($hMacroStack);
     print "# Referenced filters:\n" if scalar @sFilter;
     for my $sMacroName (sort keys %$hMacroStack) {

@@ -188,15 +188,17 @@ sub _run_local_cmd {
         }
     }
 
-    my ($CmdIn, $CmdOut, $CmdErr)= ("", "", "");
+    my ($CmdIn, $CmdOut, $CmdErr)= (undef, undef, undef);
     # start $aCmd in shell context if its a scalar
     # ($sCmd should be an array reference to avoid shell,
     #   but then we had to handle redirects and pipes properly)
     $aCmd= [qw( sh -c ), $aCmd] unless ref $aCmd;
+
     my $h= start($aCmd, \$CmdIn, \$CmdOut, \$CmdErr);
+
     while ($h->pumpable()) {
         # fill input buffer if its empty
-        $CmdIn.= $hHandles->{STDIN}->() if $hHandles->{STDIN} && length($CmdIn) > 0;
+        $CmdIn = $hHandles->{STDIN}->() if $hHandles->{STDIN} && (!defined $CmdIn || length($CmdIn) == 0);
         $h->pump();
         $hHandles->{STDOUT}->($CmdOut), $CmdOut= "" if length $CmdOut;
         $hHandles->{STDERR}->($CmdErr), $CmdErr= "" if length $CmdErr;
@@ -289,6 +291,7 @@ sub _saveperl {
         $sPerlVars
         $sPerlScript
         $sPerlDump
+        __END__
     ";
 
     if ($self->{DEBUG}) {
@@ -441,8 +444,6 @@ sub copyLocalFileToRemote {
     my $sRemFile= $self->getPath(shift);
     my $bAppend= shift || 0;
 
-    my $iBufferSize= 10240;
-
     $self->_set_error();
 
     unless ($self->is_remote()) {
@@ -459,7 +460,8 @@ sub copyLocalFileToRemote {
     my $fh;
     if (CORE::open $fh, $sLocFile) {
         my $sPipe= $bAppend ? ">>" : ">";
-        
+        my $iBufferSize= 10240;
+
         my $hHandles= {
             STDIN => sub {
                 my $sData;

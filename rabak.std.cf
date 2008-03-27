@@ -38,10 +38,7 @@ exclude_std_linux =
     /proc/
     /sys/
     /usr/portage/
-    /mnt/backup/
-    /mnt/cdrom/
-    /mnt/floppy/
-    /mnt/netlogon/
+    /mnt/
     /usr/src/
     /var/amavis/
     /var/cache/edb/
@@ -57,25 +54,17 @@ exclude_std_linux =
     /var/spool/postfix/
     /var/log/
     /var/run/
+    /var/tmp/
     .ccache/
 
 # Root directory of Windows system (may be overwritten in rabak.cf)
 
-win_root_dir = /cygdrive/c
+win_root_dir = /cygdrive/*
 
 # Standard excludes for Windows systems
 
-exclude_std_win =
-    Thumbs.db
+exclude_sys_win =
     RECYCLER/
-    GoogleEarthCache/
-    Temporary\ Internet\ Files/
-    Application\ Data/Sun/Java/Deployment/cache/
-    Anwendungsdaten/Sun/Java/Deployment/cache/
-    Application\ Data/Adobe/FileBrowser/
-    Anwendungsdaten/Adobe/FileBrowser/
-    Lokale\ Einstellungen/Temp/
-    Local\ Settings/Temp/
     &win_root_dir/(
 	    /pagefile.sys
 	    /SIS\ Common\ Store/
@@ -84,6 +73,21 @@ exclude_std_win =
 	    /WSUS/
 	    /WUTemp/
 	)
+
+exclude_profile_win =
+    Thumbs.db
+    GoogleEarthCache/
+    Temporary\ Internet\ Files/
+    Application\ Data/Sun/Java/Deployment/cache/
+    Anwendungsdaten/Sun/Java/Deployment/cache/
+    Application\ Data/Adobe/FileBrowser/
+    Anwendungsdaten/Adobe/FileBrowser/
+    Lokale\ Einstellungen/Temp/
+    Local\ Settings/Temp/
+
+exclude_std_win =
+    &exclude_sys_win
+    &exclude_profile_win
 
 # Standard excludes for all systems
 
@@ -95,10 +99,10 @@ exclude_std_common =
     *.lock
 
 exclude_std =
-    $target_base/
-    $exclude_std_linux
-    $exclude_std_win
-    $exclude_std_common
+    &target_base
+    &exclude_std_linux
+    &exclude_std_win
+    &exclude_std_common
 
 # Default exclude. You probably want to override this in your cf file.
 exclude =

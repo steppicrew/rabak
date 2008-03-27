@@ -71,6 +71,7 @@ sub show {
     $self->SUPER::show($hConfShowCache);
     
     print "\n# Referenced mounts:" if scalar @oMounts;
+
     for my $oMount (@oMounts) {
         print "\n";
         $oMount->show($hConfShowCache);

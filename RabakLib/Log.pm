@@ -260,6 +260,8 @@ sub _levelLog {
     my $self= shift;
     my $iLevel= shift;
     my @sMessage= @_;
+    
+    return unless join"", @sMessage;
 
     my $sMsgPref;
     if ($iLevel == LOG_ERROR_LEVEL) {
