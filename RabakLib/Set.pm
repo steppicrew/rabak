@@ -540,9 +540,6 @@ sub backup {
         logger->error("An error occured during backup: '$@'") if $@;
     }
 
-    # stop logging
-    logger->close();
-    
     $iResult= scalar(@oSources) - $iSuccessCount;
 
 cleanup:
@@ -562,6 +559,9 @@ cleanup:
 
     # send admin mail
     $self->_mail_log($sSubject);
+    
+    # stop logging
+    logger->close();
     
     # return number of failed backups or error code (negative)
     return $iResult;
