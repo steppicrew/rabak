@@ -137,7 +137,8 @@ sub checkMount {
     
     return 0 unless $sMountDevice;
 
-    $sMountDevice= $self->abs_path($sMountDevice);
+    # if abs_path fails try original mount device (eg. samba shares)
+    $sMountDevice= $self->abs_path($sMountDevice) || $sMountDevice;
 
     my $sqMountDevice= quotemeta $sMountDevice;
 

@@ -65,12 +65,13 @@ win_root_dir = /cygdrive/*
 exclude_sys_win =
     RECYCLER/
     &win_root_dir/(
-	    /pagefile.sys
-	    /SIS\ Common\ Store/
-	    /dfs/
-	    /System\ Volume\ Information/
-	    /WSUS/
-	    /WUTemp/
+	    pagefile.sys
+	    Frs-Staging/
+	    SIS\ Common\ Store/
+	    dfs/
+	    System\ Volume\ Information/
+	    WSUS/
+	    WUTemp/
 	)
 
 exclude_profile_win =
