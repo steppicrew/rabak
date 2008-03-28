@@ -81,17 +81,16 @@ sub checkMount {
 sub checkDf {
     my $self= shift;
 
-    my $sSpaceThreshold= $self->get_value('discfree_threshold') || '';
+    my $sSpaceThreshold= $self->get_value('discfree_threshold');
     return undef unless $sSpaceThreshold;
 
     my $iStValue= $sSpaceThreshold =~ /\b([\d\.]+)/ ? $1 : 0;
     my $sStUnit= 'K';
     $sStUnit = uc($1) if $sSpaceThreshold =~ /$iStValue\s*([gmkb\%])/i;
-    my $sDfResult = $self->df('', "-k");
-    chomp $sDfResult;
-    
-    unless ($sDfResult =~ /^\S+\s+(\d+)\s+\d+\s+(\d+)\s+/) {
-        logger->error("Could not get free disc space!");
+    my $sDfResult = $self->df(undef, "-k");
+
+    unless ($sDfResult =~ /^\S+\s+(\d+)\s+\d+\s+(\d+)\s+/m) {
+        logger->error("Could not get free disc space!", $sDfResult);
         return undef;
     }
     my ($iDfSize, $iDfAvail) = ($1, $2);

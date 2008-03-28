@@ -47,9 +47,16 @@ sub new {
 sub DESTROY {
     my $self= shift;
 
+    $self->cleanupTempfiles();
+}
+
+sub cleanupTempfiles {
+    my $self= shift;
+
     for my $sTempFile (@{$self->{TEMPFILES}}) {
         $self->rmtree($sTempFile);
     }
+    $self->{TEMPFILES}= [];
 }
 
 sub local_tempfile {
@@ -159,11 +166,39 @@ sub run_cmd {
     return $self->_run_local_cmd($cmd, $hHandles);
 }
 
+# creates function for output line buffering (for stdout/err handling)
+sub _outbufSplitFact {
+    my $self= shift;
+    my $f= shift; # function to call with lines array
+    
+    my $sBuffer = "";
+    
+    return sub {
+        # flush buffer if there was no argument
+        unless (@_) {
+            return unless length $sBuffer;
+            my $sBuffer2= $sBuffer;
+            $sBuffer = "";
+            return $f->($sBuffer2);
+        }
+        $sBuffer.= join "", @_;
+        # return array of lines up to last '\n'
+        return $f->(split(/\n/, $1)) if $sBuffer =~ s/^(.*)\n([^\n]*)$/$2/s;
+    };
+}
+
+# run command locally
+# $aCmd: Command to be run (array reference or scalar)
+# $hHandles->{STDIN}: func ref to get stdin or scalar to be fed (optional)
+# $hHandles->{STDOUT}: func ref to handle stdout, gets array of lines if line buffered (optional)
+# $hHandles->{STDERR}: func ref to handle stderr, gets array of lines if line buffered (optional)
+# $hHandles->{STDOUT_UNBUFFERED}: if false, stdout will be handled line buffered
+# $hHandles->{STDERR_UNBUFFERED}: if false, stderr will be handled line buffered
 sub _run_local_cmd {
     my $self= shift;
     my $aCmd= shift;
     my $hHandles= shift || {};
-
+    
     $self= $self->new() unless ref $self;
 
     $self->{LAST_RESULT}= {
@@ -173,32 +208,40 @@ sub _run_local_cmd {
         error => '',
     };
 
-    # prepare standard i/o handles
-    $hHandles->{STDIN}= sub {undef} unless $hHandles->{STDIN};
-    $hHandles->{STDOUT}= sub {
-        $self->{LAST_RESULT}{stdout}.= join '', @_;
-    } unless $hHandles->{STDOUT};
-    $hHandles->{STDERR}= sub {
-        $self->{LAST_RESULT}{stderr}.= join '', @_;
-    } unless $hHandles->{STDERR};
+    my ($fStdIn, $fStdOut, $fStdErr);
 
+    # prepare standard i/o handles
+    $fStdIn= $hHandles->{STDIN}   || sub {undef};
+    $fStdOut= $hHandles->{STDOUT} ||
+        sub {$self->{LAST_RESULT}{stdout}.= join("\n", @_) . "\n";};
+    $fStdErr= $hHandles->{STDERR} ||
+        sub {$self->{LAST_RESULT}{stderr}.= join("\n", @_) . "\n";};
+    
     # if stdin is a scalar print its value once
-    if (ref($hHandles->{STDIN}) ne "CODE") {
-        my @aStdOut= ($hHandles->{STDIN});
-        $hHandles->{STDIN}= sub {shift @aStdOut};
+    if (ref($fStdIn) ne "CODE") {
+        my @aStdIn= ($fStdIn);
+        $fStdIn= sub {shift @aStdIn};
     }
+
+    # out/err function will be line buffered (unless *_UNBUFFERED)
+    $fStdOut = $self->_outbufSplitFact($fStdOut) unless $hHandles->{STDOUT_UNBUFFERED}; 
+    $fStdErr = $self->_outbufSplitFact($fStdErr) unless $hHandles->{STDERR_UNBUFFERED};
 
     # start $aCmd in shell context if its a scalar
     # ($sCmd should be an array reference to avoid shell,
     #   but then we had to handle redirects and pipes properly)
     $aCmd= [qw( sh -c ), $aCmd] unless ref $aCmd;
 
-    my $h= start($aCmd, $hHandles->{STDIN},
-        $hHandles->{STDOUT}, $hHandles->{STDERR});
+    my $h= start($aCmd, $fStdIn, $fStdOut, $fStdErr);
 
     $h->pump() while $h->pumpable();
 
     $h->finish();
+    
+    # flush out/err handles for buffered handling
+    $fStdOut->() unless $hHandles->{STDOUT_UNBUFFERED};
+    $fStdErr->() unless $hHandles->{STDERR_UNBUFFERED};
+    
     $self->{LAST_RESULT}{exit}=  $h->result;
 
     $self->_set_error($self->{LAST_RESULT}{stderr});

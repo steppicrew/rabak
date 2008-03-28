@@ -43,7 +43,7 @@ sub _expand {
     $sEntry=~ s/(?<!\\)\(\s*/\( /g;
     $sEntry=~ s/(?<!\\)\s*\)/ \)/g;
 
-    my @sEntries= split /(?<!\\)[\s\,]+/, $sEntry;
+    my @sEntries= split /(?<!\\)[\s\,]+/, $sEntry; #?
 
     my $hEntries= {
         TYPE => 'list',
@@ -186,10 +186,8 @@ sub _flatten_mixed_filter {
                     next;
                 }
                 # put +/- at beginning
-# print "[$sPrefix] + [$sSuffix]";
                 my ($sNewPrefix, $sNewSuffix)= ($sPrefix, $sSuffix);
                 $sNewPrefix= "$1$sPrefix" if $sNewSuffix=~ s/^([\-\+]+)//;
-# print " => [$sNewPrefix$sNewSuffix]\n";
                 push @$aNewTails, "$sNewPrefix$sNewSuffix";
             }
         }
@@ -373,12 +371,28 @@ sub run {
     $sFlags .= " -i" if $self->{DEBUG};
     $sFlags .= " --dry-run" if $bPretend;
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
+    
+    # $oSshPeer contains ssh parameters for rsync (seen from executing location)
+    # - is TargetPath if target is remote (rsync will be run on SourcePath)
+    # - is SourcePath if target is local and source is remote (rsync will be run locally)
+    # $oRsyncPath contains path rsync is running from
+    # - is TargetPath if target is local and source is remote
+    # - is SourcePath otherwise
     my $oSshPeer;
+    my $oRsyncPath = $self;
+    my $sSrcDirPref = "";
+    my $sDstDirPref = "";
     if ($oTargetPath->is_remote()) {
-        $oSshPeer= $oTargetPath;
+        # unless target and source on same host/user/port
+        unless ($oTargetPath->getUserHostPort() eq $self->getUserHostPort()) {
+            $oSshPeer = $oTargetPath;
+            $sDstDirPref= $oTargetPath->getUserHost(":");
+        }
     }
     elsif ($self->is_remote()) {
         $oSshPeer= $self;
+        $sSrcDirPref= $self->getUserHost(":");
+        $oRsyncPath = $oTargetPath;
     }
     if ($oSshPeer) {
         my $sPort= $oSshPeer->get_value("port") || 22;
@@ -415,50 +429,48 @@ sub run {
     # make sure path ends with "/"
     $sSrcDir=~ s/\/?$/\//;
 
-    my $sDestDir= $oTargetPath->getPath($sFullTarget);
-    # run rsync command on source by default
+    my $sDstDir= $oTargetPath->getPath($sFullTarget);
 
-    my $oRsyncPath= $self;
-    if ($oTargetPath->is_remote()) {
-        $sDestDir= $oTargetPath->get_value("host") . ":$sDestDir";
-        $sDestDir= $oTargetPath->get_value("user") . "\@$sDestDir" if $oTargetPath->get_value("user");
-    }
-    elsif ($self->is_remote()) {
-        $sSrcDir= $self->get_value("host") . ":$sSrcDir";
-        $sSrcDir= $self->get_value("user") . "\@$sSrcDir" if $self->get_value("user");
-        $oRsyncPath= $oTargetPath;
-    }
+    my $sRsyncCmd= "rsync $sFlags \"$sSrcDirPref$sSrcDir\" \"$sDstDirPref$sDstDir\"";
 
-    my $sRsyncCmd= "rsync $sFlags \"$sSrcDir\" \"$sDestDir\"";
-
-    logger->info("Running: $sRsyncCmd");
+    logger->info("Running" .
+        ($oRsyncPath->is_remote() ?
+            " on '" . $oRsyncPath->getUserHostPort() . "'" :
+            "") .
+        ": $sRsyncCmd");
 
     # prepare handles for stdout/stderr
     my $sStdOutStat= 0;
     my %Handles= (
         STDOUT => sub {
-            for my $sLine (split(/\n/, join("", @_))) {
+            for my $sLine (@_) {
                 chomp $sLine;
                 # skip directory lines
                 next if $sLine =~ /^([^\/]+\/)+$/;
+                # detect some warnings
+                if ($sLine =~ /^file has vanished\: \".*\"$/) {
+                    logger->warn($sLine);
+                    next;
+                }
                 if ($sLine =~ /^Number of .*\:\s+\d+$/) {
                     logger->info('*** Rsync Statistics: ***') unless $sStdOutStat;
                     $sStdOutStat= 1;
                 }
                 if ($sStdOutStat) {
                     logger->info($sLine);
+                    next;
                 }
-                else {
-                    logger->verbose($sLine);
-                }
+                logger->verbose($sLine);
             } 
         },
         STDERR => sub {logger->error(@_)},
     );
+
     # run rsync command
     my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= $oRsyncPath->run_cmd($sRsyncCmd, \%Handles);
+
     logger->error($sError) if $sError;
-    logger->warn("rsync exited with result ".  $iRsyncExit) if $iRsyncExit;
+    logger->warn("rsync exited with result $iRsyncExit") if $iRsyncExit;
 
     # return success for partial transfer errors (errors were logged already above)
     return 0 if $iRsyncExit == 23 || $iRsyncExit == 24;

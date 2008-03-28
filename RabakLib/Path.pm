@@ -47,15 +47,31 @@ sub getFullPath {
     my $self= shift;
     my $sPath= $self->getPath(shift);
 
-    if ($self->is_remote()) {
-        my $sUser= $self->get_value("user");
-        my $sHost= $self->get_value("host");
-        my $iPort= $self->get_value("port", 22);
-        $sPath = "$iPort:$sPath" if $iPort != 22;
-        $sPath = "$sHost:$sPath";
-        $sPath = "$sUser\@$sPath" if $sUser;
-    }
-    return $sPath;
+    return $self->getUserHostPort(":") . "$sPath"
+}
+
+sub getUserHost {
+    my $self= shift;
+    my $sSeparator= shift || '';
+
+    return "" unless $self->is_remote();
+
+    my $sUser= $self->get_value("user");
+    return ($sUser ? "$sUser\@" : "") .
+        $self->get_value("host") .
+        $sSeparator;
+}
+
+sub getUserHostPort {
+    my $self= shift;
+    my $sSeparator= shift || '';
+
+    return "" unless $self->is_remote();
+
+    my $iPort= $self->get_value("port", 22);
+    return $self->getUserHost() .
+        ($iPort == 22 ? "" : ":$iPort") .
+        $sSeparator;
 }
 
 sub sort_show_key_order {

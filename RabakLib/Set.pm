@@ -538,11 +538,13 @@ sub backup {
             $self->_backup_cleanup($oSource);
         };
         logger->error("An error occured during backup: '$@'") if $@;
+        $oSource->cleanupTempfiles();
     }
 
     $iResult= scalar(@oSources) - $iSuccessCount;
 
 cleanup:
+    $oTargetPath->cleanupTempfiles();
     my $aDf = $oTargetPath->checkDf();
     if (defined $aDf) {
         logger->warn(join " ", @$aDf);
