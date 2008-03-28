@@ -213,17 +213,17 @@ sub _run_local_cmd {
     # prepare standard i/o handles
     $fStdIn= $hHandles->{STDIN}   || sub {undef};
     $fStdOut= $hHandles->{STDOUT} ||
-        sub {$self->{LAST_RESULT}{stdout}.= join("\n", @_) . "\n";};
+        sub {$self->{LAST_RESULT}{stdout}.= join "\n", @_, ""};
     $fStdErr= $hHandles->{STDERR} ||
-        sub {$self->{LAST_RESULT}{stderr}.= join("\n", @_) . "\n";};
+        sub {$self->{LAST_RESULT}{stderr}.= join "\n", @_, ""};
     
-    # if stdin is a scalar print its value once
-    if (ref($fStdIn) ne "CODE") {
+    # if stdin is a scalar create a function returning its value once
+    unless (ref $fStdIn) {
         my @aStdIn= ($fStdIn);
         $fStdIn= sub {shift @aStdIn};
     }
 
-    # out/err function will be line buffered (unless *_UNBUFFERED)
+    # stdout/err functions will be line buffered
     $fStdOut = $self->_outbufSplitFact($fStdOut) unless $hHandles->{STDOUT_UNBUFFERED}; 
     $fStdErr = $self->_outbufSplitFact($fStdErr) unless $hHandles->{STDERR_UNBUFFERED};
 
@@ -238,7 +238,7 @@ sub _run_local_cmd {
 
     $h->finish();
     
-    # flush out/err handles for buffered handling
+    # flush stdout/err handles if line buffered
     $fStdOut->() unless $hHandles->{STDOUT_UNBUFFERED};
     $fStdErr->() unless $hHandles->{STDERR_UNBUFFERED};
     
@@ -250,7 +250,7 @@ sub _run_local_cmd {
         $self->{LAST_RESULT}{stdout},
         $self->{LAST_RESULT}{stderr},
         $self->{LAST_RESULT}{exit},
-        $self->{LAST_RESULT}{error}
+        $self->{LAST_RESULT}{error},
     );
 }
 

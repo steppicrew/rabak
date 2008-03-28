@@ -6,6 +6,7 @@ use warnings;
 use strict;
 use vars qw(@ISA);
 
+use RabakLib::Path::Source;
 use RabakLib::SourceType::DBBase;
 use RabakLib::Log;
 
