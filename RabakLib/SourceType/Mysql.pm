@@ -33,8 +33,8 @@ sub _get_log_credentials {
     my $self= shift;
     
     my $sPassword= $self->_get_passwd();
-    my $sResult= "--user=\"" . $self->_get_user() . "\"";
-    $sResult.= " --password=\"{{PASSWORD}}\"" if defined $sPassword;
+    my $sResult= "--user=" . $self->shell_quote($self->_get_user());
+    $sResult.= " --password='{{PASSWORD}}'" if defined $sPassword;
     return $sResult;
 }
 
@@ -64,17 +64,17 @@ sub get_show_cmd {
 
 sub get_probe_cmd {
     my $self= shift;
-    my $sDb= shift;
+    my $sDb= $self->shell_quote(shift);
 
-    my $sProbeCmd= "mysqldump --no-data " . $self->_get_log_credentials() . " --result-file=\"/dev/null\" \"$sDb\"";
+    my $sProbeCmd= "mysqldump --no-data " . $self->_get_log_credentials() . " --result-file='/dev/null' $sDb";
     return $self->_replace_password($sProbeCmd, "Running probe");
 }
 
 sub get_dump_cmd {
     my $self= shift;
-    my $sDb= shift;
+    my $sDb= $self->shell_quote(shift);
 
-    my $sDumpCmd= "mysqldump --all --extended-insert --add-drop-table --allow-keywords --quick " . $self->_get_log_credentials() . " --databases \"$sDb\"";
+    my $sDumpCmd= "mysqldump --all --extended-insert --add-drop-table --allow-keywords --quick " . $self->_get_log_credentials() . " --databases $sDb";
     return $self->_replace_password($sDumpCmd, "Running dump");
 }
 

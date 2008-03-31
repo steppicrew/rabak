@@ -89,8 +89,8 @@ sub mount {
 
     # parameters for mount command
     my $spMountOpts= "";
-    $spMountOpts.=  "-t \"$sMountType\" " if $sMountType;
-    $spMountOpts.=  "-o\"$sMountOpts\" " if $sMountOpts;
+    $spMountOpts.=  "-t " . $oPath->shell_quote($sMountType) . " " if $sMountType;
+    $spMountOpts.=  "-o" . $oPath->shell_quote($sMountOpts) . " " if $sMountOpts;
 
     my %checkResult;
 
@@ -147,7 +147,7 @@ sub mount {
         }
 
         # ...and mount
-        $oPath->mount("$spMountOpts\"$sMountDevice\" \"$sMountDir\"");
+        $oPath->mount("$spMountOpts" . $oPath->shell_quote($sMountDevice) . " " . $oPath->shell_quote($sMountDir));
         if ($?) { # mount failed
             my $sMountResult= $oPath->get_error;
             chomp $sMountResult;
@@ -208,17 +208,18 @@ sub unmount {
     
     return unless $sMountDir;
 
-    $self->{PATH_OBJECT}->umount("\"$sMountDir\"");
+    my $oPath = $self->{PATH_OBJECT};
+    $oPath->umount($oPath->shell_quote($sMountDir));
     if ($?) {
-        my $sResult= $self->{PATH_OBJECT}->get_error;
+        my $sResult= $oPath->get_error;
         chomp $sResult;
         $sResult =~ s/\r?\n/ - /g;
         push @$arMessages, RabakLib::Log->logger->warn("Unmounting \"$sMountDir\" failed: $sResult!");
         push @$arMessages, RabakLib::Log->logger->info("Trying lazy unmount.");
 
-        $self->{PATH_OBJECT}->umount("-l \"$sMountDir\"");
+        $oPath->umount("-l " . $oPath->shell_quote($sMountDir));
         if ($?) {
-            my $sResult= $self->{PATH_OBJECT}->get_error;
+            my $sResult= $oPath->get_error;
             chomp $sResult;
             $sResult =~ s/\r?\n/ - /g;
     

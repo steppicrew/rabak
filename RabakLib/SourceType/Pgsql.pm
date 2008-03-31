@@ -22,23 +22,23 @@ sub _get_user {
 sub get_show_cmd {
     my $self= shift;
 
-    return "psql --no-psqlrc --quiet --tuples-only --list --username \"" . $self->_get_user() . "\" postgres";
+    return "psql --no-psqlrc --quiet --tuples-only --list --username " . $self->shell_quote($self->_get_user()) . " postgres";
 }
 
 sub get_probe_cmd {
     my $self= shift;
-    my $sDb= shift;
+    my $sDb= $self->shell_quote(shift);
 
-    my $sProbeCmd= "pg_dump --schema-only --username=\"" . $self->_get_user() . "\" --file=\"/dev/null\" \"$sDb\"";
+    my $sProbeCmd= "pg_dump --schema-only --username=" . $self->shell_quote($self->_get_user()) . " --file='/dev/null' $sDb";
     logger->info("Running probe: $sProbeCmd");
     return $sProbeCmd;
 }
 
 sub get_dump_cmd {
     my $self= shift;
-    my $sDb= shift;
+    my $sDb= $self->shell_quote(shift);
 
-    my $sDumpCmd= "pg_dump --clean --username=\"" . $self->_get_user() . "\" \"$sDb\"";
+    my $sDumpCmd= "pg_dump --clean --username=" . $self->shell_quote($self->_get_user()) . " $sDb";
     logger->info("Running dump: $sDumpCmd");
     return $sDumpCmd;
 }

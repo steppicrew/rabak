@@ -278,8 +278,18 @@ sub build_ssh_cmd {
     $sHost.= $self->get_value("host");
     push @sSshCmd, $sHost;
     push @sSshCmd, $sCmd;
-    s/\'/\'\\\'\'/g for (@sSshCmd);
-    return "'" . join("' '", @sSshCmd) . "'";
+    $_= $self->shell_quote($_) for (@sSshCmd);
+    return join(" ", @sSshCmd);
+}
+
+# quote "'" cahr for shell execution
+sub shell_quote {
+    my $self= shift;
+    my $sVal= shift;
+    my $bDontQuote= shift;
+    $sVal =~ s/\'/\'\\\'\'/g;
+    return "'$sVal'" unless $bDontQuote;
+    return $sVal;
 }
 
 sub _run_ssh_cmd {
@@ -320,7 +330,7 @@ sub _saveperl {
     my $sPerlDump= "";
     if ($sOutVar) {
         $sPerlDump= "print " if $self->is_remote();
-        $sPerlDump.= "Data::Dumper->Dump([\\$sOutVar], [\"OUT_VAR\"]);";
+        $sPerlDump.= "Data::Dumper->Dump([\\$sOutVar], ['OUT_VAR']);";
     }
     # build modified perl script
     $sPerlScript= "
@@ -507,7 +517,7 @@ sub copyLocalFileToRemote {
             }
         };
 
-        my ($stdout, $stderr, $exit) = $self->_run_ssh_cmd("cat - $sPipe \"$sRemFile\"", undef, $hHandles);
+        my ($stdout, $stderr, $exit) = $self->_run_ssh_cmd("cat - $sPipe " . $self->shell_quote($sRemFile), undef, $hHandles);
 
         $self->_set_error($stderr);
         CORE::close $fh;
@@ -648,8 +658,7 @@ sub echo {
 
     for (@sLines) {
         chomp;
-        s/\'/\'\\\'\'/;
-        $self->savecmd("echo '$_' >> '$sFile'");
+        $self->savecmd("echo " .  $self->shell_quote($_) . " >> '$sFile'");
     }
 }
 

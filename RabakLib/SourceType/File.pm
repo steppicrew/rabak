@@ -325,6 +325,33 @@ sub valid_source_dir {
     return $self->getPath;
 }
 
+sub _run_rsync {
+    my $self = shift;
+    my $oRsyncPath = shift || $self;
+    my $sSrc = shift or die "_run_rsync: No source specified";
+    my $sDst = shift or die "_run_rsync: No target specified";
+    my $sFlags = shift || '';
+    my $hHandles = shift || {};
+    
+    $sSrc =  $self->shell_quote($sSrc);
+    $sDst =  $self->shell_quote($sDst);
+    my $sRsyncCmd= "rsync $sFlags $sSrc $sDst";
+
+    logger->info("Running" .
+        ($oRsyncPath->is_remote() ?
+            " on '" . $oRsyncPath->getUserHostPort() . "'" :
+            "") .
+        ": $sRsyncCmd");
+
+    # run rsync command
+    my (undef, undef, $iExit, $sError)= $oRsyncPath->run_cmd($sRsyncCmd, $hHandles);
+
+    logger->error($sError) if $sError;
+    logger->warn("rsync exited with result $iExit") if $iExit;
+
+    return $iExit;    
+}
+
 sub run {
     my $self= shift;
     my $oTargetPath= shift;
@@ -363,7 +390,7 @@ sub run {
 
     my $sFlags= "-a"
         . " --hard-links"
-        . " --filter=\". $sRulesFile\""
+        . " --filter='. " . $self->shell_quote($sRulesFile, 'dont quote') . "'"
         . " --stats"
         . " --verbose"
     ;
@@ -410,7 +437,7 @@ sub run {
         }
 
         my $sSshCmd= "ssh -p $sPort";
-        map { $sSshCmd.= " -i \"$_\"" if $_; } @sIdentityFiles if @sIdentityFiles;
+        map { $sSshCmd.= " -i " . $self->shell_quote($_) if $_; } @sIdentityFiles if @sIdentityFiles;
         if ($oSshPeer->get_value("protocol")) {
             $sSshCmd.= " -1" if $oSshPeer->get_value("protocol") eq "1";
             $sSshCmd.= " -2" if $oSshPeer->get_value("protocol") eq "2";
@@ -422,7 +449,8 @@ sub run {
     my $iScanBakDirs= $self->get_value('scan_bak_dirs', 4);
 
     splice @sBakDir, $iScanBakDirs if $#sBakDir >= $iScanBakDirs;
-    map { $sFlags .= " --link-dest=\"$_\""; } @sBakDir;
+    my $sLinkFlags = "";
+    map { $sLinkFlags .= " --link-dest=" . $self->shell_quote($_); } @sBakDir;
 
     my $sSrcDir = $self->getPath;
 
@@ -431,16 +459,10 @@ sub run {
 
     my $sDstDir= $oTargetPath->getPath($sFullTarget);
 
-    my $sRsyncCmd= "rsync $sFlags \"$sSrcDirPref$sSrcDir\" \"$sDstDirPref$sDstDir\"";
-
-    logger->info("Running" .
-        ($oRsyncPath->is_remote() ?
-            " on '" . $oRsyncPath->getUserHostPort() . "'" :
-            "") .
-        ": $sRsyncCmd");
-
     # prepare handles for stdout/stderr
     my $sStdOutStat= 0;
+    my @sLinkErrors= ();
+    my $qDstDir= quotemeta $sDstDir;
     my %Handles= (
         STDOUT => sub {
             for my $sLine (@_) {
@@ -463,14 +485,47 @@ sub run {
                 logger->verbose($sLine);
             } 
         },
-        STDERR => sub {logger->error(@_)},
+        STDERR => sub {
+            for my $sLine (@_) {
+                chomp $sLine;
+                if ($sLine =~ /^rsync\: link \"$qDstDir\/(.+)\" \=\> .+ failed\: Too many links/) {
+                    push @sLinkErrors, $1;
+                    next;
+                }
+                logger->error(@_);
+            }
+        },
     );
 
-    # run rsync command
-    my ($sRsyncOut, $sRsyncErr, $iRsyncExit, $sError)= $oRsyncPath->run_cmd($sRsyncCmd, \%Handles);
+    # run rsync cmd
+    my $iRsyncExit = $self->_run_rsync($oRsyncPath, $sSrcDirPref.$sSrcDir, $sDstDirPref.$sDstDir, $sFlags.$sLinkFlags, \%Handles);
 
-    logger->error($sError) if $sError;
-    logger->warn("rsync exited with result $iRsyncExit") if $iRsyncExit;
+    if (scalar @sLinkErrors) {
+        logger->info("The following files could not be hard linked, trying again without --hard-links flag:", @sLinkErrors);
+        logger->info("Fixing hard link errors...");
+        # Write failed link files to temp file:
+        my ($fhwFiles, $sFilesFile)= $self->local_tempfile();
+        print $fhwFiles join("\n", @sLinkErrors), "\n";
+        close $fhwFiles;
+
+        # copy files file to source if rsync is run remotely
+        if ($oRsyncPath->is_remote()) {
+            my $sRemFilesFile= $oRsyncPath->tempfile;
+            $oRsyncPath->copyLocalFileToRemote($sFilesFile, $sRemFilesFile);
+            $sFilesFile = $sRemFilesFile;
+        }
+        # reset StdOut flag for STDOUT handler
+        $sStdOutStat= 0;
+        # simple error handling only
+        $Handles{STDERR} = sub {logger->error(@_)};
+
+        # run rsync cmd (drop exit code - has been logged anyway)
+        $self->_run_rsync($oRsyncPath, $sSrcDirPref.$sSrcDir, $sDstDirPref.$sDstDir,
+            "$sFlags --files-from=" . $self->shell_quote($sFilesFile),
+            \%Handles);
+
+        logger->info("...done fixing hard link errors.");
+    }
 
     # return success for partial transfer errors (errors were logged already above)
     return 0 if $iRsyncExit == 23 || $iRsyncExit == 24;

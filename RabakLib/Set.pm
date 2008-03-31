@@ -551,6 +551,9 @@ cleanup:
         $self->_mail_warning("disc space too low", @$aDf);
     }
 
+    # stop logging
+    logger->close();
+    
     # unmount all target mounts
     $oTargetPath->unmountAll;
 
@@ -561,9 +564,6 @@ cleanup:
 
     # send admin mail
     $self->_mail_log($sSubject);
-    
-    # stop logging
-    logger->close();
     
     # return number of failed backups or error code (negative)
     return $iResult;
