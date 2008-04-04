@@ -18,7 +18,10 @@ sub Factory {
     
     my $sPath= $oOrigConf->get_value("path");
     if ($sPath && $sPath=~ s/^(\w+)\:\/\///) {
-        $oOrigConf->set_value("type", $1);
+        my $sType= $1;
+        my $sPrefType= $oOrigConf->get_value("type");
+        logger->warn("Type in source path ($sType) and differs from specified type ($sPrefType).") if $sPrefType && $sType ne $sPrefType;
+        $oOrigConf->set_value("type", $sType);
         $oOrigConf->set_value("path", $sPath);
     }
     my $sType= $oOrigConf->get_value("type");
@@ -37,7 +40,7 @@ sub Factory {
     };
     if ($@) {
         if ($@ =~ /^Can\'t locate/) {
-            logger->error("Backup type \"" . $sType . "\" is not defined: $@");
+            logger->error("Backup type \"$sType\" is not defined: $@");
         }
         else {
             logger->error("An error occured: $@");

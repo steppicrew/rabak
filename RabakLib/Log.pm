@@ -41,6 +41,8 @@ BEGIN {
         
         ERRORCOUNT => 0,
         WARNCOUNT => 0,
+        
+        INDENT => 0,            # identing for message grouping
 
         TARGET => undef,
 
@@ -85,6 +87,15 @@ sub LOG_WARN_LEVEL    { 2 }
 sub LOG_ERROR_LEVEL   { 1 }
 
 sub LOG_DEFAULT_LEVEL { LOG_VERBOSE_LEVEL() }
+
+sub incIndent {
+    my $self= shift;
+    $self->{INDENT}++;
+}
+sub decIndent {
+    my $self= shift;
+    $self->{INDENT}-- if $self->{INDENT};
+}
 
 sub _timestr {
     return strftime("%Y-%m-%d %H:%M:%S", localtime);
@@ -290,11 +301,14 @@ sub _levelLog {
         if (ref $sMessage eq "ARRAY") { # call recursive for nested arrays
             my $iMyLevel = shift @{ $sMessage };
             $iMyLevel= $iLevel if $iMyLevel > $iLevel; # use highest log level TODO: does that make sense?
+            $self->incIndent();
             $self->_levelLog($iMyLevel, @{ $sMessage });
+            $self->decIndent();
             next;
         }
         chomp $sMessage;
-        $sMessage= '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
+        $sMessage = "  " x $self->{INDENT} . $sMessage;
+        $sMessage = '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
         # print message to stdout
         print "$self->{STDOUT_PREFIX}$sMsgPref$sMessage\n" if $iLevel <= $self->{SWITCH_VERBOSITY};
 

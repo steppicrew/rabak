@@ -33,7 +33,7 @@ Format very similar to postfix config files:
 
 sub new {
     my $class= shift;
-    my $sFile= shift;
+    my @sFiles= @_; # if multiple files are specified, the first existing is used
     my $self= {
         FILE => undef,
         # CONF => {},
@@ -41,6 +41,14 @@ sub new {
         CONF => RabakLib::Conf->new('*'),
     };
     bless $self, $class;
+    
+    my $sFile;
+    while (scalar @sFiles) {
+        $sFile = shift @sFiles;
+        next unless defined $sFile;
+        last if -f $sFile;
+        $sFile = undef;
+    }
     $self->read_file($sFile) if $sFile;
     return $self;
 }

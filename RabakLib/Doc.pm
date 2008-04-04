@@ -245,7 +245,7 @@ If you want to mount backup devices, you can define a "L<Target Object|Target Ob
   mytarget.path= /mnt/backup/rabak/
   mytarget.mount= $mount1
   ...
-  full.target= mytarget
+  full.target= &mytarget
 
 This would mount the device specified in I<$mount1> to back up your data.
 

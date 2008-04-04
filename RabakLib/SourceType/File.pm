@@ -342,14 +342,19 @@ sub _run_rsync {
             " on '" . $oRsyncPath->getUserHostPort() . "'" :
             "") .
         ": $sRsyncCmd");
+    logger->incIndent();
 
     # run rsync command
     my (undef, undef, $iExit, $sError)= $oRsyncPath->run_cmd($sRsyncCmd, $hHandles);
 
+    logger->decIndent();
     logger->error($sError) if $sError;
-    logger->warn("rsync exited with result $iExit") if $iExit;
-
-    return $iExit;    
+    if ($iExit) {
+        logger->warn("rsync exited with result $iExit");
+        return $iExit;
+    }
+    logger->info("rsync finished successfully");
+    return 0;    
 }
 
 sub run {
@@ -388,14 +393,14 @@ sub run {
 
     # print `cat $sRulesFile`;
 
-    my $sFlags= "-a"
+    my $sFlags= "--archive"
         . " --hard-links"
         . " --filter='. " . $self->shell_quote($sRulesFile, 'dont quote') . "'"
         . " --stats"
         . " --verbose"
     ;
 
-    $sFlags .= " -i" if $self->{DEBUG};
+    $sFlags .= " --itemize-changes" if $self->{DEBUG};
     $sFlags .= " --dry-run" if $bPretend;
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
     
@@ -442,7 +447,7 @@ sub run {
             $sSshCmd.= " -1" if $oSshPeer->get_value("protocol") eq "1";
             $sSshCmd.= " -2" if $oSshPeer->get_value("protocol") eq "2";
         }
-        $sFlags .= " -e '$sSshCmd' --timeout='$sTimeout'";
+        $sFlags .= " --rsh='$sSshCmd' --timeout='$sTimeout'";
         $sFlags .= " --bwlimit='$sBandwidth'" if $sBandwidth;
     }
 
@@ -490,6 +495,7 @@ sub run {
                 chomp $sLine;
                 if ($sLine =~ /^rsync\: link \"$qDstDir\/(.+)\" \=\> .+ failed\: Too many links/) {
                     push @sLinkErrors, $1;
+                    logger->verbose($sLine);
                     next;
                 }
                 logger->error(@_);
@@ -501,8 +507,12 @@ sub run {
     my $iRsyncExit = $self->_run_rsync($oRsyncPath, $sSrcDirPref.$sSrcDir, $sDstDirPref.$sDstDir, $sFlags.$sLinkFlags, \%Handles);
 
     if (scalar @sLinkErrors) {
-        logger->info("The following files could not be hard linked, trying again without --hard-links flag:", @sLinkErrors);
+        logger->info("The following files could not be hard linked, trying again without --hard-links flag:");
+        logger->incIndent();
+        logger->info(@sLinkErrors);
+        logger->decIndent();
         logger->info("Fixing hard link errors...");
+        logger->incIndent();
         # Write failed link files to temp file:
         my ($fhwFiles, $sFilesFile)= $self->local_tempfile();
         print $fhwFiles join("\n", @sLinkErrors), "\n";
@@ -524,6 +534,7 @@ sub run {
             "$sFlags --files-from=" . $self->shell_quote($sFilesFile),
             \%Handles);
 
+        logger->decIndent();
         logger->info("...done fixing hard link errors.");
     }
 

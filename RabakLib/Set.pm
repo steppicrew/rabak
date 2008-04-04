@@ -94,17 +94,15 @@ sub show {
 
     $self->SUPER::show($hConfShowCache);
 
-    my $sType= $self->get_value("type");
-
-    print "\n" . "#" x 80 . "\n";
-    print "# Target \"$oTarget->{NAME}\": ". $oTarget->getFullPath() . "\n";
-    print "#" x 80 . "\n";
+    print "\n#", "=" x 79, "\n";
+    print "# Target \"$oTarget->{NAME}\": ", $oTarget->getFullPath(), "\n";
+    print "#", "=" x 79, "\n";
     $oTarget->show($hConfShowCache);
 
     for my $oSource (@oSources) {
-        print "#" x 80 . "\n";
-        print "# Source \"$oSource->{NAME}\": ". $oSource->getFullPath() . "\n";
-        print "#" x 80 . "\n";
+        print "#", "=" x 79, "\n";
+        print "# Source \"$oSource->{NAME}\": ", $oSource->getFullPath(), "\n";
+        print "#", "=" x 79, "\n";
         $oSource->show($hConfShowCache);
         print "\n";
     }
@@ -461,6 +459,7 @@ sub backup {
     
     logger->info("Rabak Version " . $self->get_switch("version"). " on \"" . $self->get_switch("hostname") . "\" as user \"" . getpwuid($>) . "\"");
     logger->info("Command line: " . $self->get_switch("commandline"));
+    logger->info("Configuration read from: '" . $self->get_switch("configfile") . "'");
 
     my @oSources= $self->get_sourcePaths();
 
@@ -619,8 +618,6 @@ sub _backup_run {
     my $self= shift;
     my $oSource= shift;
 
-    my $sBakType= $self->get_value("type");
-
     my @sBakDir= @{ $self->{_BAK_DIR_LIST} };
     my $oTargetPath= $self->get_targetPath;
     my $sBakSetSource= $self->get_value("name");
@@ -628,7 +625,7 @@ sub _backup_run {
     my $sTarget= $self->{_TARGET};
 
     my $iErrorCode= 0;
-    logger->set_prefix($sBakType);
+    logger->set_prefix($oSource->get_value("type"));
     $iErrorCode= $oSource->run($oTargetPath, $self->get_value("full_target"),
         $self->get_value("unique_target"), $self->get_switch('pretend'), @sBakDir);
     logger->set_prefix();

@@ -24,28 +24,28 @@ use RabakLib::Set;
 use RabakLib::Admin;
 use RabakLib::Log;
 
-our $VERSION= "0.6rc11";
-our $DEBUG= 0;
+my $VERSION= "0.6rc11";
+my $DEBUG= 0;
 
 $Getopt::Std::STANDARD_HELP_VERSION= 1;
 
-our $oConfFile;
-our $oConf;
+my $oConfFile;
+my $oConf;
 # our $iErrorCode= 0;
 
-our $opt_q;
-our $opt_v;
-our $opt_l;
-our $opt_p;
-our $opt_c;
-our $opt_h;
-our $opt_i;
+my $opt_q;
+my $opt_v;
+my $opt_l;
+my $opt_p;
+my $opt_c;
+my $opt_h;
+my $opt_i;
 
 getopts("hi:lc:pqv") or die HELP_MESSAGE();
 
-our $sCommandLine= "'" . join("' '", $0, @ARGV) . "'";
+my $sCommandLine= "'" . join("' '", $0, @ARGV) . "'";
 
-our $sCmd= shift @ARGV || '';
+my $sCmd= shift @ARGV || '';
 
 if ($opt_h) {
     help($sCmd);
@@ -155,7 +155,13 @@ sub cmd_test1 {
 # }
 
 sub _conf_read {
-    $oConfFile= RabakLib::ConfFile->new($opt_c ? $opt_c : 'rabak.cf');
+    $oConfFile= RabakLib::ConfFile->new($opt_c,
+        "rabak.cf",
+        "$ENV{HOME}/.rabak/rabak.cf",
+        "/etc/rabak/rabak.cf",
+        "/etc/rabak.cf",
+        "/usr/local/rabak/rabak.cf",
+    );
     $oConf= $oConfFile->conf();
     # overwrite values with comand line switches
     my $sHostname= `hostname -f`;
@@ -167,6 +173,7 @@ sub _conf_read {
         'switch.version' => $VERSION,
         'switch.hostname' => $sHostname,
         'switch.commandline' => $sCommandLine,
+        'switch.configfile' => $oConfFile->filename(),
     });
     return $oConfFile;
 }

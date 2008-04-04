@@ -26,17 +26,22 @@ sub CloneConf {
     my $new= $class->SUPER::CloneConf($oOrigConf);
 
     my $sPath= $new->get_value("path");
-    if ($sPath && $sPath=~ s/^(\w+\:\/\/)?(\S+\@)?([\-0-9a-z\.]+)(\:\d+)?\://i) {
-        $sPath= "$1$sPath" if $1;
+    
+    if ($sPath) {
+        # remove leading "file://" etc.
+        warn("Internel error: '$1' should already been removed. Please file a bug report with config included!") if $sPath=~ s/^(\w+\:\/\/)//;
+        # extract hostname, user and port
+        if ($sPath=~ s/^(\S+?\@)?([\-0-9a-z\.]+)(\:\d+)?\://i) {
+            my $sUser= $1 || '';
+            my $sHost= $2;
+            my $iPort= $3 || 0;
+            $sUser=~ s/\@$//;
+            $iPort=~ s/^\://;
+            $new->set_value("host", $sHost);
+            $new->set_value("user", $sUser) if $sUser;
+            $new->set_value("port", $iPort) if $iPort;
+        }
         $new->set_value("path", $sPath);
-        my $sUser= $2 || '';
-        my $sHost= $3;
-        my $iPort= $4 || 0;
-        $sUser=~ s/\@$//;
-        $iPort=~ s/^\://;
-        $new->set_value("host", $sHost);
-        $new->set_value("user", $sUser) if $sUser;
-        $new->set_value("port", $iPort) if $iPort;
     }
 
     # print Data::Dumper->Dump([$self->{VALUES}]); die;
