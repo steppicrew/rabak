@@ -31,171 +31,8 @@ sub _get_filter {
     return $self->_parseFilter($sFilter, $self->valid_source_dir(), $hMacroStack);
 }
 
-sub _expand {
-    my $self= shift;
-    my $sEntry= shift;
-    my $hMacroStack= shift || {};
-
-    # remove spaces between +/- and path
-    $sEntry=~ s/(?<!\\)([\-\+])\s+/$1/g;
-    # enclose all macros with parantheses
-    $sEntry=~ s/(?<!\\)(\&[\.\w]+)/\($1\)/g;
-    $sEntry=~ s/(?<!\\)\(\s*/\( /g;
-    $sEntry=~ s/(?<!\\)\s*\)/ \)/g;
-
-    my @sEntries= split /(?<!\\)[\s\,]+/, $sEntry; #?
-
-    my $hEntries= {
-        TYPE => 'list',
-        DATA => [],
-    };
-    my @arStack= ();
-    for $sEntry (@sEntries) {
-# print "Original: [$sEntry]\n";
-        my $bClose= $sEntry=~ s/^\)//;
-        my $bOpen= $sEntry=~ s/(?<!\\)\($//;
-
-        # ')token'
-        if ($bClose) {
-            die "Closing bracket without opening!" unless scalar @arStack;
-            $hEntries= pop @arStack;
-        }
-        # ' token('
-        if ($bOpen && !$bClose) {
-            my $hMixed= {
-                TYPE => 'mixed',
-                DATA => [],
-            };
-            push @{$hEntries->{DATA}}, $hMixed;
-            push @arStack, $hEntries;
-            $hEntries= $hMixed;
-        }
-        if ($sEntry =~ /^\&/) {
-            my $hMacro= $self->_expandMacro($sEntry, $hMacroStack);
-            if ($hMacro->{ERROR}) {
-                push @{$hEntries->{DATA}}, "# ERROR: $hMacro->{ERROR}";
-            }
-            else {
-                die "Internal Error (List expected)" unless $hMacro->{DATA}{TYPE} eq 'list';
-                push @{$hEntries->{DATA}}, "# Expanding '$hMacro->{MACRO}'";
-                push @{$hEntries->{DATA}}, @{$hMacro->{DATA}{DATA}};
-                push @{$hEntries->{DATA}}, "# End Of '$hMacro->{MACRO}'";
-            }
-        }
-        else {
-            push @{$hEntries->{DATA}}, $sEntry if $sEntry ne '';
-        }
-        # 'token('
-        if ($bOpen) {
-            my $sNewList= { TYPE => 'list', DATA => [], };
-            push @{$hEntries->{DATA}}, $sNewList;
-            push @arStack, $hEntries;
-            $hEntries= $sNewList;
-        }
-        elsif ($hEntries->{TYPE} eq 'mixed') {
-            $hEntries= pop @arStack;
-            print "Internal Error(2) (List Expected)" unless $hEntries->{TYPE} eq 'list';
-        }
-    }
-    die "Opening bracket without closing!" if scalar @arStack;
-# print Dumper($hEntries);
-    return $hEntries;
-}
-
-sub _expandMacro {
-    my $self= shift;
-    my $sMacroName= shift;
-    my $hMacroStack= shift || {};
-
-    my %sResult= ();
-
-# print "Expanding $sMacroName\n";
-
-    $sMacroName=~ s/^\&//;
-    my ($sMacro, $oMacroParent)= $self->get_property($sMacroName); 
-    $sMacroName= $oMacroParent->get_full_name($sMacroName);
-    if ($hMacroStack->{$sMacroName}) {
-        $sResult{ERROR}= "Recursion detected ('$sMacroName'). Ignored";
-    }
-    else {
-        if (! defined $sMacro || ref $sMacro) {
-            $sResult{ERROR}= "'$sMacroName' does not exist or is an object. Ignored.";
-        }
-        else {
-            my $sMacro= $self->remove_backslashes_part1($sMacro);
-            # build full macro name
-            $sResult{MACRO}= $sMacroName;
-            $hMacroStack->{$sMacroName}= 1;
-            $sResult{DATA}= $self->_expand($sMacro, $hMacroStack);
-            $hMacroStack->{$sMacroName} = 0;
-        }
-    }
-    logger->error("Filter expansion: $sResult{ERROR}") if $sResult{ERROR};
-#    return $sResult{DATA};
-# print "Done $sMacroName\n";
-    return \%sResult;
-}
-
-# flattens a list of filters like "/foo /foo/bar /bar"
-sub _flatten_filter {
-    my $self= shift;
-    my $aFilter= shift;
-
-    die "Internal Error: Filter List expected" unless $aFilter->{TYPE} eq 'list';
-    my @sResult= ();
-    for my $sEntry (@{$aFilter->{DATA}}) {
-        if (ref $sEntry) {
-            push @sResult, @{$self->_flatten_mixed_filter($sEntry)};
-        }
-        else {
-            push @sResult, $sEntry;
-        }
-    }
-    return \@sResult;
-}
-
-# flattens a combination of filters like "/foo/(bar1 bar2)/"
-sub _flatten_mixed_filter {
-    my $self= shift;
-    my $aFilter= shift;
-
-    die "Internal Error: Mixed Filter expected" unless $aFilter->{TYPE} eq 'mixed';
-    my @sResult= ();
-    for my $sEntry (@{$aFilter->{DATA}}) {
-        if (ref $sEntry) {
-            push @sResult, $self->_flatten_filter($sEntry);
-        }
-        else {
-            push @sResult, [$sEntry];
-        }
-    }
-    return \@sResult unless scalar @sResult;
-    my $aTails= pop @sResult;
-    while (my $aEntry= pop @sResult) {
-        my $aNewTails= [];
-        for my $sPrefix (@$aEntry) {
-            # do not combine comments
-            if ($sPrefix=~ /^\#/) {
-                push @$aNewTails, $sPrefix;
-                next;
-            }
-            for my $sSuffix (@$aTails) {
-                # do not combine comments
-                if ($sSuffix=~ /^\#/) {
-                    push @$aNewTails, $sSuffix;
-                    next;
-                }
-                # put +/- at beginning
-                my ($sNewPrefix, $sNewSuffix)= ($sPrefix, $sSuffix);
-                $sNewPrefix= "$1$sPrefix" if $sNewSuffix=~ s/^([\-\+]+)//;
-                push @$aNewTails, "$sNewPrefix$sNewSuffix";
-            }
-        }
-        $aTails = $aNewTails;
-    }
-    return $aTails;
-}
-
+# parse filter string in $sFilter
+# returns array with rsync's include/exclude rules
 sub _parseFilter {
     my $self= shift;
     my $sFilter= shift;
@@ -278,6 +115,184 @@ sub _parseFilter {
     }
 
     return @sResult;
+}
+
+# internal filter structure:
+#   filter types:
+#       "list": simple array of filter entries (strings or "mixed" filter)
+#       "mixed": list of filter "list"s to be combined
+
+# expands filter string in $sEntry
+# return hashref of type 'list'
+sub _expand {
+    my $self= shift;
+    my $sEntry= shift;
+    my $hMacroStack= shift || {};
+
+    # remove spaces between +/- and path
+    $sEntry=~ s/(?<!\\)([\-\+])\s+/$1/g;
+    # enclose all macros with parantheses
+    $sEntry=~ s/(?<!\\)(\&[\.\w]+)/\($1\)/g;
+    # add space after '('
+    $sEntry=~ s/(?<!\\)\(\s*/\( /g;
+    # add space before ')'
+    $sEntry=~ s/(?<!\\)\s*\)/ \)/g;
+
+    my @sEntries= split /(?<!\\)[\s\,]+/, $sEntry; #?
+
+    my $hEntries= {
+        TYPE => 'list',
+        DATA => [],
+    };
+    my @arStack= ();
+    for $sEntry (@sEntries) {
+# print "Original: [$sEntry]\n";
+        my $bClose= $sEntry=~ s/^\)//;
+        my $bOpen= $sEntry=~ s/(?<!\\)\($//;
+
+        # ')token'
+        if ($bClose) {
+            die "Closing bracket without opening!" unless scalar @arStack;
+            $hEntries= pop @arStack;
+        }
+        # ' token('
+        if ($bOpen && !$bClose) {
+            my $hMixed= {
+                TYPE => 'mixed',
+                DATA => [],
+            };
+            push @{$hEntries->{DATA}}, $hMixed;
+            push @arStack, $hEntries;
+            $hEntries= $hMixed;
+        }
+        if ($sEntry =~ /^\&/) {
+            my $hMacro= $self->_expandMacro($sEntry, $hMacroStack);
+            if ($hMacro->{ERROR}) {
+                push @{$hEntries->{DATA}}, "# ERROR: $hMacro->{ERROR}";
+            }
+            else {
+                die "Internal Error (List expected)" unless $hMacro->{DATA}{TYPE} eq 'list';
+                push @{$hEntries->{DATA}}, "# Expanding '$hMacro->{MACRO}'";
+                push @{$hEntries->{DATA}}, @{$hMacro->{DATA}{DATA}};
+                push @{$hEntries->{DATA}}, "# End Of '$hMacro->{MACRO}'";
+            }
+        }
+        else {
+            push @{$hEntries->{DATA}}, $sEntry if $sEntry ne '';
+        }
+        # 'token('
+        if ($bOpen) {
+            my $sNewList= { TYPE => 'list', DATA => [], };
+            push @{$hEntries->{DATA}}, $sNewList;
+            push @arStack, $hEntries;
+            $hEntries= $sNewList;
+        }
+        elsif ($hEntries->{TYPE} eq 'mixed') {
+            $hEntries= pop @arStack;
+            print "Internal Error(2) (List Expected)" unless $hEntries->{TYPE} eq 'list';
+        }
+    }
+    die "Opening bracket without closing!" if scalar @arStack;
+# print Dumper($hEntries);
+    return $hEntries;
+}
+
+# expand macro given in $sMacroName
+# returns hashref with expanded macro
+sub _expandMacro {
+    my $self= shift;
+    my $sMacroName= shift;
+    my $hMacroStack= shift || {};
+
+    my %sResult= ();
+
+# print "Expanding $sMacroName\n";
+
+    $sMacroName=~ s/^\&//;
+    my ($sMacro, $oMacroParent)= $self->get_property($sMacroName); 
+    $sMacroName= $oMacroParent->get_full_name($sMacroName);
+    if ($hMacroStack->{$sMacroName}) {
+        $sResult{ERROR}= "Recursion detected ('$sMacroName'). Ignored";
+    }
+    else {
+        if (! defined $sMacro || ref $sMacro) {
+            $sResult{ERROR}= "'$sMacroName' does not exist or is an object. Ignored.";
+        }
+        else {
+            my $sMacro= $self->remove_backslashes_part1($sMacro);
+            # build full macro name
+            $sResult{MACRO}= $sMacroName;
+            $hMacroStack->{$sMacroName}= 1;
+            $sResult{DATA}= $self->_expand($sMacro, $hMacroStack);
+            $hMacroStack->{$sMacroName} = 0;
+        }
+    }
+    logger->error("Filter expansion: $sResult{ERROR}") if $sResult{ERROR};
+#    return $sResult{DATA};
+# print "Done $sMacroName\n";
+    return \%sResult;
+}
+
+# flattens a list of filters like "/foo /foo/bar /bar"
+sub _flatten_filter {
+    my $self= shift;
+    my $hFilter= shift;
+
+    die "Internal Error: Filter List expected" unless $hFilter->{TYPE} eq 'list';
+    my @sResult= ();
+    for my $sEntry (@{$hFilter->{DATA}}) {
+        if (ref $sEntry) {
+            push @sResult, @{$self->_flatten_mixed_filter($sEntry)};
+        }
+        else {
+            push @sResult, $sEntry;
+        }
+    }
+    return \@sResult;
+}
+
+# flattens a combination of filters like "/foo/(bar1 bar2)/"
+sub _flatten_mixed_filter {
+    my $self= shift;
+    my $hFilter= shift;
+
+    die "Internal Error: Mixed Filter expected" unless $hFilter->{TYPE} eq 'mixed';
+    my @aResult= ();
+    for my $sEntry (@{$hFilter->{DATA}}) {
+        if (ref $sEntry) {
+            push @aResult, $self->_flatten_filter($sEntry);
+        }
+        else {
+            push @aResult, [$sEntry];
+        }
+    }
+    return \@aResult unless scalar @aResult;
+    # take last array of @sResult as first result @sTail
+    # combine every entry of the last array of @sResult with every entry of result's array @sTail
+    my $aTails= pop @aResult;
+    while (my $aEntry= pop @aResult) {
+        my $aNewTails= [];
+        for my $sPrefix (@$aEntry) {
+            # do not combine comments
+            if ($sPrefix=~ /^\#/) {
+                push @$aNewTails, $sPrefix;
+                next;
+            }
+            for my $sSuffix (@$aTails) {
+                # do not combine comments
+                if ($sSuffix=~ /^\#/) {
+                    push @$aNewTails, $sSuffix;
+                    next;
+                }
+                # put +/- at beginning
+                my ($sNewPrefix, $sNewSuffix)= ($sPrefix, $sSuffix);
+                $sNewPrefix= "$1$sPrefix" if $sNewSuffix=~ s/^([\-\+]+)//;
+                push @$aNewTails, "$sNewPrefix$sNewSuffix";
+            }
+        }
+        $aTails = $aNewTails;
+    }
+    return $aTails;
 }
 
 sub sort_show_key_order {
