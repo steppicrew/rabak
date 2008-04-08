@@ -33,10 +33,11 @@ Format very similar to postfix config files:
 
 sub new {
     my $class= shift;
-    my @sFiles= @_; # if multiple files are specified, the first existing is used
+    # if multiple files are specified, the first existing is used
+    my @sFiles= @_;
     my $self= {
         FILE => undef,
-        # CONF => {},
+        SEARCHPATHS => [map {/(.*)\/[^\/]+$/; $1} grep defined, @sFiles],
         ERROR => undef,
         CONF => RabakLib::Conf->new('*'),
     };
@@ -129,9 +130,9 @@ sub print_all {
 
 sub _error {
     my $self= shift;
-    my ($sMsg, $iLine, $sLine)= @_;
+    my ($sMsg, $sFile, $iLine, $sLine)= @_;
 
-    my $sError= "file \"" . $self->{FILE} . "\"";
+    my $sError= "file \"$sFile\"";
     $sError .= ", line $iLine" if $iLine;
     $sError .= ": $sMsg.";
     $sError .= " ($sLine)" if $sLine;
@@ -141,30 +142,28 @@ sub _error {
 
 sub read_file {
     my $self= shift;
-    my $sFile= shift;
+    # use absolute paths only (needed for includes)
+    my $sFile= Cwd::abs_path(shift);
 
     $self->{CONF}= RabakLib::Conf->new('*');
     # $self->{CONF}= RabakLib::Conf->new($sFile);
     $self->{ERROR}= undef;
+    $self->{FILE}= $sFile;
     $self->_read_file($sFile);
 }
 
 sub _read_file {
     my $self= shift;
-    # use absolute paths only (needed for includes)
-    my $sFile= Cwd::abs_path(shift);
+    my $sFile= shift;
+    my $sOpener= shift;
     my $iIncludeLine= shift || 0;
 
     my $fin;
 
-    my $sOpener= $self->{FILE};
-
-    $self->{FILE}= $sFile;
-
     unless (open ($fin, $sFile)) {
         my $sMsg= "Can't open config file \"$sFile\"";
         $sMsg .= ", included in \"$sOpener\", line $iIncludeLine" if $sOpener;
-        $self->_error($sMsg);
+        $self->_error($sMsg, $sFile);
     }
 
     my $sName= '';
@@ -188,25 +187,32 @@ sub _read_file {
 
         if ($sLine =~ /^INCLUDE\s+(.+)/) {
             my $sInclude= $1;
-            my $sInclude2= $sInclude;
 
-            $sInclude2= "$1/$sInclude2" if !-f $sInclude2 && $sFile =~ /(.*)\/(.+?)$/;
-
-            # TODO: $sInclude2= "/etc/rabak/$sInclude" if !-f $sInclude2;
-
-            $self->_read_file($sInclude2, $iLine);
-            $self->{FILE}= $sFile;
+            unless ($sInclude =~ /^\//) {
+                # include file is realtive
+                my @sIncDirs= ();
+                # look in dir of current file
+                push @sIncDirs, $1 if $sFile =~ /(.*)\/[^\/]+$/;
+                # ... or in search paths
+                push @sIncDirs, @{$self->{SEARCHPATHS}};
+                # filter for existing files
+                my @sIncFiles= grep {-f} map {"$_/$sInclude"} @sIncDirs;
+                # take the first existing file (if any)
+                $sInclude= $sIncFiles[0] if scalar @sIncFiles;
+            }
+            # try reading file or raise error
+            $self->_read_file($sInclude, $sFile, $iLine);
             next;
         }
 
         my $sValue;
         if ($bIndent) {
-            $self->_error("Unexpected value", $iLine, $sLine) unless $sName;
+            $self->_error("Unexpected value", $sFile, $iLine, $sLine) unless $sName;
 
             $sValue= $sLine;
         }
         else {
-            $self->_error("Syntax error", $iLine, $sLine) unless $sLine =~ /^($sIdent)\s*=\s*(.*?)$/i;
+            $self->_error("Syntax error", $sFile, $iLine, $sLine) unless $sLine =~ /^($sIdent)\s*=\s*(.*?)$/i;
 
             $sName= lc $1;
             $sValue= $3;
@@ -222,7 +228,7 @@ sub _read_file {
             if (defined $hConf->{VALUES}{$sKey} && !ref $hConf->{VALUES}{$sKey}) {
                 $self->_expand();
                 if (!ref $hConf->{VALUES}{$sKey}) {
-                    $self->_error("Variable \"" . substr($sErrKey, 1) . "\" is not a structure", $iLine, $sLine);
+                    $self->_error("Variable \"" . substr($sErrKey, 1) . "\" is not a structure", $sFile, $iLine, $sLine);
                 }
             }
             $hConf->{VALUES}{$sKey}= RabakLib::Conf->new($sKey, $hConf) unless $hConf->{VALUES}{$sKey};
@@ -232,7 +238,7 @@ sub _read_file {
 
         $sErrKey .= ".$sKey";
         if (ref $hConf->{VALUES}{$sKey}) {
-            $self->_error("Can't assign string, variable \"" . substr($sErrKey, 1) . "\" is a structure", $iLine, $sLine);
+            $self->_error("Can't assign string, variable \"" . substr($sErrKey, 1) . "\" is a structure", $sFile, $iLine, $sLine);
         }
 
         # In case of a multiline, we need a newline at the end of each line
