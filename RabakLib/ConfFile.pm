@@ -42,13 +42,16 @@ sub new {
     };
     bless $self, $class;
     
-    my $sFile;
-    while (scalar @sFiles) {
-        $sFile = shift @sFiles;
-        next unless defined $sFile;
-        last if -f $sFile;
-        $sFile = undef;
+    # find first existing file
+    my $sFile= (grep {defined && -f} @sFiles)[0];
+
+    if (!defined $sFile && scalar @sFiles) {
+        print "Error: No configuration found in '",
+            join("', '", grep(defined, @sFiles)),
+            "'!\n";
+        return $self;
     }
+
     $self->read_file($sFile) if $sFile;
     return $self;
 }
@@ -81,6 +84,8 @@ Prints a list of available backup sets.
 
 sub print_set_list {
     my $self= shift;
+    
+    return unless defined $self->filename();
 
     print "Available backup sets in \"" . $self->filename() . "\":\n";
     my $bFound= 0;
@@ -146,7 +151,8 @@ sub read_file {
 
 sub _read_file {
     my $self= shift;
-    my $sFile= shift;
+    # use absolute paths only (needed for includes)
+    my $sFile= Cwd::abs_path(shift);
     my $iIncludeLine= shift || 0;
 
     my $fin;
@@ -325,7 +331,5 @@ sub _line_expand {
     $self->{DID_EXPAND}= 1;
     return $hConf->{VALUES}{$sKey};
 }
-
-=back
 
 1;

@@ -20,7 +20,7 @@ sub Factory {
     if ($sPath && $sPath=~ s/^(\w+)\:\/\///) {
         my $sType= $1;
         my $sPrefType= $oOrigConf->get_value("type");
-        logger->warn("Type in source path ($sType) and differs from specified type ($sPrefType).") if $sPrefType && $sType ne $sPrefType;
+        logger->warn("Type in source path ($sType) differs from specified type ($sPrefType).") if $sPrefType && $sType ne $sPrefType;
         $oOrigConf->set_value("type", $sType);
         $oOrigConf->set_value("path", $sPath);
     }
@@ -33,7 +33,8 @@ sub Factory {
 
     my $new;
     eval {
-        require "$Bin/RabakLib/SourceType/$sType.pm";
+#        require "$Bin/RabakLib/SourceType/$sType.pm";
+        require "RabakLib/SourceType/$sType.pm";
         my $sClass= "RabakLib::SourceType::$sType";
         $new= $sClass->CloneConf($oOrigConf);
         1;
