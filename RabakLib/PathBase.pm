@@ -62,16 +62,18 @@ sub cleanupTempfiles {
 sub local_tempfile {
     my $self= shift;
 
-    $self= $self->new() unless ref $self;
+#    $self= $self->new() unless ref $self;
     my $sDir= File::Spec->tmpdir;
-    $sDir = $self->get_value("tempdir");
+#    $sDir = $self->get_value("tempdir");
+
     return @_= File::Temp->tempfile("rabak-XXXXXX", UNLINK => 1, DIR => $sDir);
 }
 
 sub local_tempdir {
     my $self= shift;
     
-    my $sDir= $self->get_value("tempdir");
+    my $sDir= File::Spec->tmpdir;
+#    my $sDir= $self->get_value("tempdir");
     my $sDirName= File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 1, DIR => $sDir);
 
     return $sDirName;
@@ -688,7 +690,7 @@ sub tempfile {
 
     $self= $self->new() unless ref $self;
     my $sDir= File::Spec->tmpdir;
-    $sDir = $self->get_value("tempdir");
+#    $sDir = $self->get_value("tempdir");
     my $sFileName= ${$self->_saveperl('
             # tempfile
             use File::Temp;
@@ -706,7 +708,7 @@ sub tempdir {
 
     $self= $self->new() unless ref $self;
     my $sDir= File::Spec->tmpdir;
-    $sDir= $self->get_value("tempdir");
+#    $sDir= $self->get_value("tempdir");
     my $sDirName= ${$self->_saveperl('
             # tempdir
             use File::Temp;

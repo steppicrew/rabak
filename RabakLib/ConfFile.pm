@@ -168,6 +168,7 @@ sub _read_file {
 
     my $sName= '';
     my $iLine= 0;
+    my $sPrefix= undef;
     while (my $sLine= <$fin>) {
         $iLine++;
         next if $sLine =~ /^#/;
@@ -184,6 +185,9 @@ sub _read_file {
         next if $sLine eq '';
 
         last if $sLine =~ /^END\s*$/;
+        
+        $sPrefix= undef, next if $sLine =~ /^\[\s*\]$/;
+        $sPrefix= $1, next if $sLine =~ /^\[\s*($sIdent)\s*\]$/;
 
         if ($sLine =~ /^INCLUDE\s+(.+)/) {
             my $sInclude= $1;
@@ -215,6 +219,7 @@ sub _read_file {
             $self->_error("Syntax error", $sFile, $iLine, $sLine) unless $sLine =~ /^($sIdent)\s*=\s*(.*?)$/i;
 
             $sName= lc $1;
+            $sName= "$sPrefix.$sName" if defined $sPrefix;
             $sValue= $3;
         }
 

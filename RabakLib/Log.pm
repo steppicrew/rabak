@@ -32,10 +32,18 @@ BEGIN {
     $oLog = {
         PREFIX => '',
         CATEGORY => '',
-        MESSAGES => '',
+
+        # vars for handling target logging
+        LOG_MESSAGES => '',
         LOG_FH => undef,
-        FILE_NAME => '',
-        REAL_FILE_NAME => '',   # real file name (tempfile for remote log files)
+        LOG_FILE_NAME => '',
+        REAL_LOG_FILE_NAME => '',   # real file name (tempfile for remote log files)
+
+        # vars for handling local logging (i.e. mail)
+        MESSAGES => '',
+        MSG_FH => undef,
+        MSG_FILE_NAME => '',
+
         IS_NEW => 0,
         STDOUT_PREFIX => '',    # prefix for stdout prints (may be "# " for comments)
         
@@ -51,6 +59,8 @@ BEGIN {
         SWITCH_VERBOSITY => 0,
     };
     
+    ($oLog->{MSG_FH}, $oLog->{MSG_FILE_NAME}) =
+        RabakLib::PathBase->local_tempfile();
 
     bless $oLog, "RabakLib::Log";
 }
@@ -87,7 +97,7 @@ sub LOG_INFO_LEVEL    { 3 }
 sub LOG_WARN_LEVEL    { 2 }
 sub LOG_ERROR_LEVEL   { 1 }
 
-sub LOG_DEFAULT_LEVEL { LOG_VERBOSE_LEVEL() }
+sub LOG_DEFAULT_LEVEL { LOG_INFO_LEVEL() }
 
 sub incIndent {
     my $self= shift;
@@ -109,25 +119,41 @@ sub _timestr {
 sub _flush {
     my $self= shift;
 
-    return unless $self->{TARGET} && $self->{UNFLUSHED_MESSAGES};
+    # flush messages to mail log file
+    unless (defined $self->{MSG_FH}) {
+        # reopen file if file was closed (get_message_file)
+        if ($self->{MSG_FILE_NAME}) {
+            $self->{MSG_FH}= undef unless CORE::open ($self->{MSG_FH}, ">>$self->{MSG_FILE_NAME}");
+        }
+    }
+    my $fh= $self->{MSG_FH};
+    if (defined $fh) {
+        print $fh $self->{MESSAGES};
+        $self->{MESSAGES}= '';
+    }
+    
+    # flush messages to log file
+    return unless $self->{TARGET} && $self->{LOG_MESSAGES};
 
-    my $fh= $self->{LOG_FH};
-    print $fh $self->{UNFLUSHED_MESSAGES} if $self->{LOG_FH};
-
-    $self->{UNFLUSHED_MESSAGES}= '';
+    $fh= $self->{LOG_FH};
+    if (defined $fh) {
+        print $fh $self->{LOG_MESSAGES};
+        $self->{LOG_MESSAGES}= '';
+    }
 }
 
 sub clear {
     my $self= shift;
 
-    $self->{UNFLUSHED_MESSAGES}= '';
+    $self->{LOG_MESSAGES}= '';
     $self->{MESSAGES}= '';
 }
 
-sub get_messages {
+sub get_messages_file {
     my $self= shift;
 
-    return $self->{MESSAGES};
+    CORE::close($self->{MSG_FH}) if defined $self->{MSG_FH};
+    return $self->{MSG_FILE_NAME};
 }
 
 sub open {
@@ -139,11 +165,11 @@ sub open {
 
     $self->{TARGET}= $oTarget;
 
-    $self->{FILE_NAME}= $self->{REAL_FILE_NAME}= $sFileName;
+    $self->{LOG_FILE_NAME}= $self->{REAL_LOG_FILE_NAME}= $sFileName;
     my $bIsNew= !$oTarget->isFile($sFileName);
 
     if ($oTarget->is_remote()) {
-        ($self->{LOG_FH}, $self->{REAL_FILE_NAME})= $oTarget->local_tempfile;
+        ($self->{LOG_FH}, $self->{REAL_LOG_FILE_NAME})= $oTarget->local_tempfile;
     }
     else {
         unless (CORE::open ($self->{LOG_FH}, ">>$sFileName")) {
@@ -165,7 +191,7 @@ sub close {
     CORE::close $self->{LOG_FH} if $self->{LOG_FH};
     $self->{LOG_FH}= undef;
     if ($self->{TARGET}->is_remote()) {
-        logger->error($self->{TARGET}->get_error()) unless ($self->{TARGET}->copyLocalFileToRemote($self->{REAL_FILE_NAME}, $self->{FILE_NAME}, 1));
+        logger->error($self->{TARGET}->get_error()) unless ($self->{TARGET}->copyLocalFileToRemote($self->{REAL_LOG_FILE_NAME}, $self->{LOG_FILE_NAME}, 1));
     }
     $self->{TARGET}= undef;
 }
@@ -173,7 +199,7 @@ sub close {
 sub get_filename() {
     my $self= shift;
 
-    return $self->{TARGET} ? $self->{FILE_NAME} : undef;
+    return $self->{TARGET} ? $self->{LOG_FILE_NAME} : undef;
 }
 
 sub get_errorCount {
@@ -313,12 +339,12 @@ sub _levelLog {
         # print message to stdout
         print "$self->{STDOUT_PREFIX}$sMsgPref$sMessage\n" unless $self->{SWITCH_QUIET} || $iLevel > $self->{SWITCH_VERBOSITY};
 
-        next unless $self->{SWITCH_LOGGING} && !$self->{SWITCH_PRETEND};
+        next if $self->{SWITCH_PRETEND};
 
         $sMessage= $self->{CATEGORY} . "\t$sMessage" if $self->{CATEGORY};
         $sMessage= _timestr() . "\t$sMsgPref$sMessage\n";
 
-        $self->{UNFLUSHED_MESSAGES} .= $sMessage;
+        $self->{LOG_MESSAGES} .= $sMessage if $self->{SWITCH_LOGGING} && $iLevel <= LOG_VERBOSE_LEVEL;
         $self->{MESSAGES} .= $sMessage if $iLevel <= $self->{SWITCH_VERBOSITY};
     }
     $self->_flush();

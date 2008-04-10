@@ -291,7 +291,7 @@ sub logPretending {
 
 sub _mail {
     my $self= shift;
-    my ($sSubject, @aBody) = @_;
+    my ($sSubject, $fBody) = @_;
     
     my $sMailAddress= $self->get_value('email'); 
 
@@ -301,7 +301,14 @@ sub _mail {
     my $oMail = new Mail::Send Subject => $sSubject, To => $sMailAddress;
     # $msg->cc('user@host');
     my $fh = $oMail->open;
-    print $fh join("\n", @aBody);
+    my $sLine;
+    my $fChompNL= sub {
+        my $sLine= $fBody->();
+        return undef unless defined $sLine;
+        chomp $sLine;
+        return "$sLine\n";
+    };
+    print $fh $sLine while defined ($sLine = $fChompNL->());
     $fh->close;
 
     return 1;
@@ -322,14 +329,26 @@ sub _mail_log {
     $sSubject.= " ($sErrWarn)" if $sErrWarn;
     
     $sSubject= "RABAK '" . $self->get_value("name") . "': $sSubject";
-    return $self->_mail($sSubject, logger->get_messages());
+
+    my $sFileName= logger->get_messages_file();
+    my $fh;
+    open $fh, "<$sFileName" or $fh= undef;
+    my $fBody = sub {<$fh>};
+    unless (defined $fh) {
+        my @sBody= ("Error openening file '$sFileName'");
+        $fBody = sub {shift @sBody};
+    }
+
+    my $result = $self->_mail($sSubject, $fBody);
+    close $fh if defined $fh;
+    return $result;
 }
 
 sub _mail_warning {
     my $self= shift;
-    my ($sSubject, @aBody) = @_;
+    my ($sSubject, @sBody) = @_;
 
-    return $self->_mail("RABAK WARNING: $sSubject", @aBody);
+    return $self->_mail("RABAK WARNING: $sSubject", sub {shift @sBody});
 }
 
 # -----------------------------------------------------------------------------

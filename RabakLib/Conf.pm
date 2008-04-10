@@ -280,12 +280,16 @@ sub show {
     my $sKey= $self->get_full_name();
 
     return if $sKey=~ /\*\d+$/; # don't show anonymous objects
-    
+
+    my $bKeyInvalid= 1;    
+
     for ($self->sort_show_keys(keys %{ $self->{VALUES} })) {
         next if $_ =~ /^\./;
         if (ref($self->{VALUES}{$_})) {
             # print Dumper($self->{VALUES}{$_}); die;
+            print "\n";
             $self->{VALUES}{$_}->show($hConfShowCache);
+            $bKeyInvalid= 1;
             next;
         }
         my $sValue= $self->get_value($_) || '';
@@ -295,9 +299,16 @@ sub show {
         # s/^\*.//;
         # print "$_ = $sValue\n";
 
-        print "$sKey.$_ = $sValue\n" unless defined $hConfShowCache->{"$sKey.$_"};
+        unless (defined $hConfShowCache->{"$sKey.$_"}) {
+            print "[$sKey]\n" if $bKeyInvalid;
+            $bKeyInvalid= 0;
+
+#            print "$sKey.$_ = $sValue\n";
+            print "$_ = $sValue\n";
+        }
         $hConfShowCache->{"$sKey.$_"}= 1;
     }
+    print "[]\n" unless $bKeyInvalid;
 }
 
 sub get_full_name {
