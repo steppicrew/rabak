@@ -9,14 +9,15 @@
 #       GLOBAL SWITCHES
 # =======================================================================================
 
-switch.logging = 1
+[switch]
+logging = 1
 
 # switch.verbose: verbosity level
 #    1: print errors only
 #    2: print errors and warnings only
 #    3: print additional output (rsync: stats, mount results)
 #    4: print additional output (rsync: files)
-switch.verbose = 3
+verbose = 3
 
 # switch.dev_conf_file: file that have to exist in root dir on any target device (istarget is set in mount section)
 #    default: rabak.dev.cf
@@ -24,7 +25,8 @@ switch.verbose = 3
 #    options:
 #        targetvalues= targetgroup.targetvalue ...
 #    device is valid for this backup if file exists, target group/value is found (optional)
-switch.dev_conf_file = rabak.dev.cf
+dev_conf_file = rabak.dev.cf
+[]
 
 # =======================================================================================
 #       GLOBAL VARIABLES

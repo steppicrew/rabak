@@ -131,17 +131,51 @@ That works fine.
 
 =head2 Configuration
 
-The configuration file syntax is based on postfix' configuration syntax.
 It's important to make it read- and writable only to the user who calls the script.
 Parts of the configuration may be fed to system calls, which run with the user's rights.
+
+The configuration file syntax is based on postfix' configuration syntax.
+
+You can define variables and objects, containing variables or other objects
+separated by C<.> (see section L<CONFIG FILE REFERENCE>).
+
+Example:
+
+    value = some value
+    object1.prop = some other value
+    object1.prop2 = another value
+    object1.subobject.prop1 = subobject's value
+    object2.something_other = object2's value
+
+This would set C<value> to C<some value>, create an object C<object1> with
+porperties C<prop>, C<prop2> and object C<subobject> and a 2nd object
+C<object2>.
+
+Properties of objects can be grouped in ini file style:
+
+Example from above in ini style:
+
+  []
+  value = some value
+  [object1]
+  prop = some other value
+  prop2 = another value
+  subobject.prop1 = subobject's value
+  []
+  object2.something_other = object2's value
+
+The line C<[]> resets the object's prefix to nothing.
+Identifiers in C<[...]> are simply prepended to following identifiers, so
+you can have multiple ini sections with the same name.
 
 You define I<backup sets>, each must have a title, one or more sources and a target.
 As a default, B<rabak> looks for F<rabak.cf> as its configuration file, which may look like this:
 
-  mybackup.title = My home directory
-  mybackup.source = /home/me
-  mybackup.target = /mnt/sda1/rabak
-  mybackup.switch.logging = 1
+  [mybackup]
+  title = My home directory
+  source = /home/me
+  target = /mnt/sda1/rabak
+  switch.logging = 1
 
 To check the configuration:
 
@@ -159,17 +193,20 @@ To make the actual backup, drop the C<-p> switch:
 
 You can have multiple backup sets in your configuration file and use variables:
 
+  []
   my_target = /mnt/sda1/rabak
 
-  myhome.title = My home directory
-  myhome.source = /home/me
-  myhome.target = $my_target
-  myhome.switch.logging = 1
+  [myhome]
+  title = My home directory
+  source = /home/me
+  target = $my_target
+  switch.logging = 1
 
-  full.title = Full server backup
-  full.source = /
-  full.target = $my_target
-  full.switch.logging = 1
+  [full]
+  title = Full server backup
+  source = /
+  target = $my_target
+  switch.logging = 1
 
 Setting C<switch.logging> overrides the command line option C<-l>.
 Possible C<switch>es are C<pretend> and C<logging>.
@@ -177,18 +214,20 @@ C<$my_target> is replaced by C</mnt/sda1/rabak>.
 
 Now lets add a mount point:
 
-  full.mount.device= /dev/sda1
-  full.mount.directory= /mnt/sda1
-  full.mount.unmount= 1
+  [full]
+  mount.device= /dev/sda1
+  mount.directory= /mnt/sda1
+  mount.unmount= 1
 
 This tells B<rabak> to mount F</dev/sda1> before starting backing up C<full>, and
-to unmount it when done.
+to unmount it when done (true by default, set it to "0" to suppress unmounting).
 
 You may specify a list of devices to try more than one device and use the first successfully
 mounted one.
 That's useful for usb-devices as backup targets when you don't know the exact device name.
 
-  full.mount.device= /dev/sd?1 /dev/hd[cd]1
+  [full]
+  mount.device= /dev/sd?1 /dev/hd[cd]1
 
 This tells B<rabak> to mount the first available (and mountable) device of
 F</dev/sda1>, F</dev/sdb1>..., F</dev/hdc1>, and F</dev/hdd1>
@@ -198,23 +237,27 @@ will be mounted (see section L<Target Groups>).
 
 You can specify file system type and additional mount options with
 
-  samba.mount.device= //sambaserver/share
-  samba.mount.directory= /mnt/samba
-  samba.mount.type= cifs
-  samba.mount.opts= "username=$smb_user,password=$smb_passwd,ro"
+  [samba.mount]
+  device= //sambaserver/share
+  directory= /mnt/samba
+  type= cifs
+  opts= "username=$smb_user,password=$smb_passwd,ro"
 
 Probably you want to use the same mount point for several backup sets.
 So you can use a variable to define it.
 Replace the last addition by this code:
 
-  mount1.device= /dev/sda1
-  mount1.directory= /mnt/sda1
-  mount1.unmount= 1
+  [mount1]
+  device= /dev/sda1
+  directory= /mnt/sda1
+  unmount= 1
+  []
   ..
   full.mount = &mount1
 
 To exclude files from being backed up, add this:
 
+  []
   full.exclude = /dev
         /proc
         tmp/
@@ -223,6 +266,7 @@ To exclude files from being backed up, add this:
 See L<filter> and L<rsync/EXCLUDE PATTERN RULES> for details.
 You can use variables to define exclude sets and glue them together:
 
+  []
   exclude_common =
         /dev
         /proc
@@ -239,11 +283,15 @@ Additional rsync options (like "-acl") can be specified with
 
 If you want to mount backup devices, you can define a "L<Target Object|Target Objects>".
 
-  mount1.device= /dev/sd?1
-  mount1.directory= /mnt/backup
+  [mount1]
+  device= /dev/sd?1
+  directory= /mnt/backup
+  []
   ...
-  mytarget.path= /mnt/backup/rabak/
-  mytarget.mount= $mount1
+  [mytarget]
+  path= /mnt/backup/rabak/
+  mount= $mount1
+  []
   ...
   full.target= &mytarget
 
@@ -277,7 +325,7 @@ On one backup device your device config file contains the following line:
 
   targetvalues= byweekday.Mon byweekday.Wed byweekday.Fri
 
-and another devices config file contains:
+and another device's config file contains:
 
   targetvalues= byweekday.Tue byweekday.Thu byweekday.Sat
 
@@ -299,8 +347,9 @@ To back up your data to or from remote hosts, you simply have to specify a host 
 an optional user name in your L<Source|Source Objects>/L<Target Object|Target Objects> (for full syntax see
 L</"CONFIG FILE REFERENCE"> and L</"Path Objects">):
 
-  mytarget.host= rabak.localdomain
-  mytarget.user= rabak
+  [mytarget]
+  host= rabak.localdomain
+  user= rabak
 
 B<rabak> will connect to the remote machine via ssh and mount any needed device there,
 before backing up your data.
@@ -316,7 +365,8 @@ For remote to remote backups make sure that both hosts can connect each other as
 Configure a notification mail when the free space on the target
 device drops below a given value:
 
-  mytarget.discfree_threshold = 10%
+  [mytarget]
+  discfree_threshold = 10%
 
 The check is performed after completing the backup job and a mail to B<rabak> admin
 is sent, if free space is below 10%.
@@ -331,7 +381,7 @@ Lines beginning with C<#> are treated as comments.
 Lines beginning with whitespaces are treated as continuation of the previous line.
 
 You can define variables and objects. Variables are simple strings, objects
-contain other objects and/or values.
+contain other objects and/or variables.
 object's properties are addressed with points (C<.>).
 
 Example:
@@ -343,6 +393,16 @@ Example:
   bakset1.type= file 
   bakset1.mount.path= /mnt/backup 
 
+You may group settings for the same object in ini file sytle:
+  [bakset1]
+  title= My Bakset Title
+  name= My Bakset Name
+  type= file 
+  mount.path= /mnt/backup 
+
+This defines the same C<bakset1> object as above. With C<[]> you can reset
+to the root namespace.
+
 Referring to other values or objects is done by prefix C<$> or C<&>.
 References prefixed by C<$> are replaced literally during the parsing process
 of the config file. Therefore the referenced object/value has to be defined
@@ -352,8 +412,7 @@ Example:
   filter= $exclude
   exclude= -/var/
 
-would be expanded to:
-  filter= -/tmp/
+would expand C<filter> to C<-/tmp/>.
 
 References prefixed by C<&> are handled at runtime.
 Example:
@@ -361,8 +420,7 @@ Example:
   filter= &exclude
   exclude= -/var/
 
-would be expanded to:
-  filter= -/var/
+would expand C<filter> to C<-/var/>.
 
 Generally C<&> has to be used where references to multiple objects are required
 (like L<mount> and L<source>) or where values should be handled in a special way
@@ -371,7 +429,7 @@ Generally C<&> has to be used where references to multiple objects are required
 For details on object expansion see L<mount>, L<source>, L<target> and L<filter>.
 
 Currently the following object types are known:
-L<Bak Set Objects|Backup Set Values>, L<Mount Objects>, L<Source Objects>,
+L<Bak Set Objects>, L<Mount Objects>, L<Source Objects>,
 and L<Target Objects>
 
 =head2 Global Values
@@ -699,14 +757,6 @@ TODO: Explain the following features:
 =item *
 
 email = rabakadmin
-
-=item *
-
-full.include = /something
-
-=item *
-
-make a separate section for filter rules
 
 =item *
 
