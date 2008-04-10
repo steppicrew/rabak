@@ -7,7 +7,7 @@ use strict;
 
 use vars qw(@ISA);
 
-use FindBin qw($Bin);
+# use FindBin qw($Bin);
 
 use File::Temp();
 
@@ -25,7 +25,7 @@ sub Factory {
     my $new;
     die "No valid DataStore type specified! - Internal error" unless $sClassName;
     eval {
-        require "$Bin/DupMerge/DataStore/$sClassName.pm";
+        require "DupMerge/DataStore/$sClassName.pm";
         my $sClass= "DupMerge::DataStore::$sClassName";
         $new= $sClass->new(\%params);
         1;

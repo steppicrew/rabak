@@ -6,7 +6,6 @@ use warnings;
 use strict;
 
 use RabakLib::Log;
-use FindBin qw($Bin);
 
 use vars qw(@ISA);
 
@@ -33,7 +32,6 @@ sub Factory {
 
     my $new;
     eval {
-#        require "$Bin/RabakLib/SourceType/$sType.pm";
         require "RabakLib/SourceType/$sType.pm";
         my $sClass= "RabakLib::SourceType::$sType";
         $new= $sClass->CloneConf($oOrigConf);

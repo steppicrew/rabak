@@ -15,9 +15,6 @@ umask 0077; # make sure all tempfiles are readable only by us
 use Cwd;
 use Data::Dumper;
 use Getopt::Std;
-use FindBin qw($Bin);
-
-use lib $Bin;
 
 use RabakLib::ConfFile;
 use RabakLib::Set;
@@ -33,21 +30,15 @@ my $oConfFile;
 my $oConf;
 # our $iErrorCode= 0;
 
-our $opt_q;
-our $opt_v;
-our $opt_l;
-our $opt_p;
-our $opt_c;
-our $opt_h;
-our $opt_i;
+my %sOpts= ();
 
 my $sCommandLine= "'" . join("' '", $0, @ARGV) . "'";
 
-getopts("hi:lc:pqv") or die HELP_MESSAGE();
+getopts("hi:lc:pqv", \%sOpts) or die HELP_MESSAGE();
 
 my $sCmd= shift @ARGV || '';
 
-if ($opt_h) {
+if ($sOpts{h}) {
     help($sCmd);
     exit 1;
 }
@@ -108,7 +99,6 @@ sub cmd_rmfile {
 # -----------------------------------------------------------------------------
 
 sub cmd_doc {
-    chdir $Bin;
     print `perldoc RabakLib::Doc`;
     _exit(0);
 }
@@ -162,16 +152,17 @@ sub _conf_read {
         "/usr/local/rabak/rabak.cf",
         "./rabak.cf",
     );
-    @sConfFiles= ($opt_c) if defined $opt_c;
+    @sConfFiles= ($sOpts{c}) if defined $sOpts{c};
     $oConfFile= RabakLib::ConfFile->new(@sConfFiles);
     $oConf= $oConfFile->conf();
     # overwrite values with comand line switches
     my $sHostname= `hostname -f`;
     chomp $sHostname;
     $oConf->set_values({
-        'switch.pretend' => $opt_p,
-        'switch.logging' => defined $opt_v ? LOG_DEBUG_LEVEL : ($opt_q ? 0 : LOG_DEFAULT_LEVEL ),
-        'switch.targetvalue' => $opt_i,
+        'switch.pretend' => $sOpts{p},
+        'switch.logging' => defined $sOpts{v} ? LOG_DEBUG_LEVEL : LOG_DEFAULT_LEVEL,
+        'switch.quiet' => $sOpts{q},
+        'switch.targetvalue' => $sOpts{i},
         'switch.version' => $VERSION,
         'switch.hostname' => $sHostname,
         'switch.commandline' => $sCommandLine,
@@ -267,6 +258,11 @@ Possible switches:
 
 sub HELP_MESSAGE {
     help();
+    return "Gave up";
+}
+
+sub VERSION_MESSAGE {
+    print "This is rabak version $VERSION\n";
     return "Gave up";
 }
 

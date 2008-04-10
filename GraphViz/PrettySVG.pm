@@ -28,8 +28,8 @@ GraphViz::PrettySVG - Spice up SVGs coming out of graphviz's dot
 
 =head1 SYNOPSIS
 
-use FindBin qw($Bin);
-use lib $Bin;
+#use FindBin qw($Bin);
+#use lib $Bin;
 use GraphViz::PrettySVG;
 
 my $oPrettySvg= new GraphViz::PrettySVG(

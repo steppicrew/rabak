@@ -71,6 +71,7 @@ sub init {
     $oLog->{SWITCH_PRETEND}= $hConf->get_switch('pretend');
     $oLog->{SWITCH_LOGGING}= $hConf->get_switch('logging');
     $oLog->{SWITCH_VERBOSITY}= $hConf->get_switch('verbose');
+    $oLog->{SWITCH_QUIET}= $hConf->get_switch('quiet');
 
     # $hConf->set_log($self);
     # bless $self, $class;
@@ -310,7 +311,7 @@ sub _levelLog {
         $sMessage = "  " x $self->{INDENT} . $sMessage;
         $sMessage = '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
         # print message to stdout
-        print "$self->{STDOUT_PREFIX}$sMsgPref$sMessage\n" if $iLevel <= $self->{SWITCH_VERBOSITY};
+        print "$self->{STDOUT_PREFIX}$sMsgPref$sMessage\n" unless $self->{SWITCH_QUIET} || $iLevel > $self->{SWITCH_VERBOSITY};
 
         next unless $self->{SWITCH_LOGGING} && !$self->{SWITCH_PRETEND};
 
