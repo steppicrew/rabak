@@ -89,6 +89,7 @@ sub joinValue {
     return join " ", @sValues;
 }
 
+# gets array ref of preparsed value, separated by whitespaces
 sub get_prep_value {
     my $self= shift;
     my $sName= shift;
@@ -101,6 +102,7 @@ sub get_prep_value {
     );
 }
 
+# gets value as written in config
 sub get_raw_value {
     my $self= shift;
     my $sName= shift;
@@ -282,6 +284,7 @@ sub set_value {
 # expand macro given in $sMacroName
 # returns hashref with expanded macro
 # calls $fExpand->() for expanding macro's content
+# calls $fPrePars-() for preparsing macros content
 sub expandMacro {
     my $self= shift;
     my $sMacroName= shift;
