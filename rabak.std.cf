@@ -34,7 +34,8 @@ dev_conf_file = rabak.dev.cf
 
 # Standard excludes for Linux systems
 
-exclude_std_linux =
+[default]
+exclude_linux =
     /dev/
     /proc/
     /sys/
@@ -87,30 +88,24 @@ exclude_profile_win =
     Lokale\ Einstellungen/Temp/
     Local\ Settings/Temp/
 
-exclude_std_win =
+exclude_win =
     &exclude_sys_win
     &exclude_profile_win
 
 # Standard excludes for all systems
 
-exclude_std_common =
+exclude_common =
     tmp/
     Trash/
     *.bak
     *~
     *.lock
 
-exclude_std =
-    &target_base
-    &exclude_std_linux
-    &exclude_std_win
-    &exclude_std_common
-
-# Default exclude. You probably want to override this in your cf file.
 exclude =
-
-# Default include: Include everything.
-include =
+    &target_base
+    &exclude_linux
+    &exclude_win
+    &exclude_common
 
 # Default filter: Exclude everything from 'exclude'-Variable, include everything
 # from 'include'-Variable. Note that &exclude means that the expansion of the
@@ -119,5 +114,24 @@ include =
 filter=
     - &exclude
     + &include
+
+[]
+
+# redefine standard objects for backward compatibility
+exclude_std_linux = &default.exclude_std_linux
+win_root_dir = &default.win_root_dir
+exclude_sys_win = &default.exclude_sys_win
+exclude_profile_win = &default.exclude_profile_win
+exclude_std_win = &default.exclude_win
+exclude_std_common = &default.exclude_common
+exclude_std = &default.exclude
+filter= &default.filter
+
+
+# Default exclude. You probably want to override this in your cf file.
+exclude =
+
+# Default include: Include everything.
+include =
 
 # EOF
