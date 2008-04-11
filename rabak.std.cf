@@ -60,7 +60,7 @@ exclude_std_linux =
 
 # Root directory of Windows system (may be overwritten in rabak.cf)
 
-win_root_dir = /cygdrive/*
+win_root_dir = /(cygdrive cygwin)/*
 
 # Standard excludes for Windows systems
 

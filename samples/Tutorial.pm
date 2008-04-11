@@ -2,7 +2,7 @@
 
 package Rabaklib::Doc::Tutorial;
 
-# This module is actually a script that generates all sample files in "/samples".
+# This module is actually a script that generates all sample files in "./samples".
 
 # It's POD file also can be used to generate a combined Tutorial:
 # perldoc RabakLib::Doc::Tutorial;
@@ -148,8 +148,8 @@ To read the whole tutorial in one file, type 'rabak tutorial'.)
 =head1 SAMPLE1: Quick start! A Minimal Configuration
 
   sample.title = Sample1
-  sample.source = sample-source
-  sample.target = sample-target
+  sample.source = samples/source
+  sample.target = samples/target
 
 
 =head2 Explanation
@@ -158,11 +158,11 @@ Running
   ../rabak -c rabak.sample1.cf conf
 will produce following output:
 
-  Available backup sets in "rabak.sample1.cf":
-    sample - Sample1, backs up "sample-source" to "sample-target"
+  Available backup sets in "samples/rabak.sample1.cf":
+    sample - Sample1, backs up "samples/source" to "samples/target"
 
 b<Rabak> sees one backup set named 'sample', which will backup all files
-from the directory 'sample-source' into the directory 'sample-target'.
+from the directory 'samples/source' into the directory 'samples/target'.
 
 Try this by running
   ../rabak -c rabak.sample1.cf backup sample
@@ -172,16 +172,16 @@ This will result in something like following output:
   INFO:    Backing up source '&source'
   INFO:    Backup start at 2007-07-30 18:01:30: sample, 2007-07-30, Sample1
   INFO:    Running: rsync -a --hard-links --filter=". /tmp/fSmfte1Dwk" --stats --verbose
-                        "(some path)/samples/sample-source/" "(some path)/samples/sample-target/2007-07.sample/2007-07-30"
+                        "(some path)/samples/source/" "(some path)/samples/target/2007-07.sample/2007-07-30"
 
-You'll find your backup in 'samples/sample-target/2007-07.sample/2007-07-30'.
+You'll find your backup in 'samples/target/2007-07.sample/2007-07-30'.
 
 
 =head1 SAMPLE1: Excluding specific files
 
   sample.title = Sample1
-  sample.source = sample-source
-  sample.target = sample-target
+  sample.source = samples/source
+  sample.target = samples/target
   sample.exclude = *.bak *.~
 
 TBD!
@@ -189,7 +189,7 @@ TBD!
 
 =head1 SAMPLE1: Multiple Backup Sets; Variables Basics
 
-  target_path= sample-target
+  target_path= samples/target
 
   exclude_files=
         *.bak
@@ -198,17 +198,17 @@ TBD!
   exclude= $exclude_files /tmp
 
   sample_full.title = Full Backup
-  sample_full.source = sample-source
+  sample_full.source = samples/source
   sample_full.target = $target_path
   sample_full.exclude = $exclude
 
   sample_home.title = Backup Home Directory
-  sample_home.source = sample-source/home/user1
+  sample_home.source = samples/source/home/user1
   sample_home.target = $target_path
   sample_home.exclude = $exclude
 
 Variables are defined in a simple 'key=value' manner.
-Here, 'target_path' is assigned the value 'sample-target'.
+Here, 'target_path' is assigned the value 'samples/target'.
 
 The 'exclude_files' value has a multi-line assignment.
 An expression may be extended across multiple lines by indenting them.
@@ -222,7 +222,7 @@ TBD!
 
 =head1 SAMPLE1: Simple Mount Points
 
-  target_base = sample-target
+  target_base = samples/target
 
   mount1.device = /dev/sda1
   mount1.directory = $target_base
@@ -235,15 +235,15 @@ TBD!
   # Backup set "Sample1 A"
 
   sample1_a.title = Sample1 A
-  sample1_a.source.path = sample-source
-  sample1_a.target.path = sample-target
+  sample1_a.source.path = samples/source
+  sample1_a.target.path = samples/target
   sample1_a.target.mount = &mount1
 
   # Backup set "Sample1 B"
 
   sample1_b.title = Sample1 B
-  sample1_b.source.path = sample-source
-  sample1_b.target.path = sample-target
+  sample1_b.source.path = samples/source
+  sample1_b.target.path = samples/target
   sample1_b.target.mount = &mount1 &mount2
 
 TBD!
@@ -251,7 +251,7 @@ TBD!
 
 =head1 SAMPLE1: Include Files; Target Groups
 
-  target_base = sample-target
+  target_base = samples/target
 
   INCLUDE ../rabak.std.cf
 
@@ -260,8 +260,8 @@ TBD!
   mount1.unmount = 1
 
   sample.title = Sample1
-  sample.source.path = sample-source
-  sample.target.path = sample-target
+  sample.source.path = samples/source
+  sample.target.path = samples/target
   sample.target.mount = &mount1
   sample.target.group = day-of-week
   sample.exclude = *.bak *.~
@@ -272,7 +272,7 @@ TBD!
 =head1 SAMPLE1: Backing up databases
 
   switch.pretend = 1
-  sample_target = sample-target
+  sample_target = samples/target
 
   # Some external device
 
@@ -327,10 +327,10 @@ TBD!
   mount_smb_server.opts= "username=$smb_user,password=$smb_password,ro"
   mount_smb_server.unmount= 1
 
-  sample_target.path = sample-target
+  sample_target.path = samples/target
 
   sample.title = Gesamtsystem
-  sample.source.path = sample-source
+  sample.source.path = samples/source
   sample.target = &sample_target
   sample.mount = &mount_smb_server
 
@@ -350,7 +350,7 @@ Once you have a working key authentification, you can specify the same variables
 For example, you can specify mount points, and rabak will do the right thing.
 
   # Setup local source
-  sample_local_source.path = sample-source
+  sample_local_source.path = samples/source
 
   # Setup remote target
   sample_remote_target.path = $target_dir

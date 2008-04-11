@@ -14,7 +14,7 @@ switch.logging = 1
 #####################################
 
 switch.pretend = 1
-sample_target = sample-target
+sample_target = samples/target
 
 # Some external device
 

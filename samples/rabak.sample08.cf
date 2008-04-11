@@ -30,10 +30,10 @@ mount_smb_server.directory= $smb_dir
 mount_smb_server.opts= "username=$smb_user,password=$smb_password,ro"
 mount_smb_server.unmount= 1
 
-sample_target.path = sample-target
+sample_target.path = samples/target
 
 sample.title = Gesamtsystem
-sample.source.path = sample-source
+sample.source.path = samples/source
 sample.target = &sample_target
 sample.mount = &mount_smb_server
 # 

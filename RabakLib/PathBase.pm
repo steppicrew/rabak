@@ -47,7 +47,8 @@ sub new {
 sub DESTROY {
     my $self= shift;
 
-    $self->cleanupTempfiles();
+# TODO: cleanup may create new object -> raises warning
+#    $self->cleanupTempfiles();
 }
 
 sub cleanupTempfiles {
@@ -260,8 +261,8 @@ sub build_ssh_cmd {
     my $self= shift;
     my $sCmd= shift;
 
-    die "Ssh.pm: No command specified!" unless defined $sCmd;
-    die "Ssh.pm: No host specified!" unless defined $self->get_value("host");
+    die "PathBase.pm: No command specified!" unless defined $sCmd;
+    die "PathBase.pm: No host specified!" unless defined $self->get_value("host");
 
     my @sSshCmd= ('ssh');
 
@@ -288,9 +289,9 @@ sub build_ssh_cmd {
 sub shell_quote {
     my $self= shift;
     my $sVal= shift;
-    my $bDontQuote= shift;
+    my $bDontEnclose= shift;
     $sVal =~ s/\'/\'\\\'\'/g;
-    return "'$sVal'" unless $bDontQuote;
+    return "'$sVal'" unless $bDontEnclose;
     return $sVal;
 }
 
@@ -310,6 +311,9 @@ sub _run_ssh_cmd {
     $sRunCmd= $self->build_ssh_cmd($sCmd);
     print "SSH: stdin [$sStdIn]\n######################\n" if $self->{DEBUG} && defined $sStdIn;
     print "SSH: running [$sRunCmd]\n" if $self->{DEBUG};
+
+    print "WARNING: Trying to access remote host \"" . $self->get_value("host") . "\"!\n" if $self->get_switch("warn_on_remote_access");
+
     return $self->_run_local_cmd($sRunCmd, $hHandles);
 }
 

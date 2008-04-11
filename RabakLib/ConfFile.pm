@@ -37,7 +37,7 @@ sub new {
     my @sFiles= @_;
     my $self= {
         FILE => undef,
-        SEARCHPATHS => [map {/(.*)\/[^\/]+$/; $1} grep defined, @sFiles],
+        SEARCHPATHS => [map {/(.*)\/[^\/]+$/ ? $1 : '.'} grep { defined } @sFiles],
         ERROR => undef,
         CONF => RabakLib::Conf->new('*'),
     };
@@ -142,9 +142,9 @@ sub _error {
 
 sub read_file {
     my $self= shift;
+
     # use absolute paths only (needed for includes)
     my $sFile= Cwd::abs_path(shift);
-
     $self->{CONF}= RabakLib::Conf->new('*');
     # $self->{CONF}= RabakLib::Conf->new($sFile);
     $self->{ERROR}= undef;
@@ -193,14 +193,19 @@ sub _read_file {
             my $sInclude= $1;
 
             unless ($sInclude =~ /^\//) {
-                # include file is realtive
+
+                # include file is relative
                 my @sIncDirs= ();
+
                 # look in dir of current file
                 push @sIncDirs, $1 if $sFile =~ /(.*)\/[^\/]+$/;
+
                 # ... or in search paths
                 push @sIncDirs, @{$self->{SEARCHPATHS}};
+
                 # filter for existing files
                 my @sIncFiles= grep {-f} map {"$_/$sInclude"} @sIncDirs;
+
                 # take the first existing file (if any)
                 $sInclude= $sIncFiles[0] if scalar @sIncFiles;
             }
@@ -260,7 +265,7 @@ sub _read_file {
     }
 
     $self->_expand();
-    $self->_error($self->{ERROR}) if $self->{ERROR};
+    $self->_error($self->{ERROR}, $sFile) if $self->{ERROR};
 
     return $self->{CONF};
 }
@@ -307,7 +312,7 @@ sub _line_expand {
     my $bWantStructure= shift;
 
     if ($sName0 eq $sName) {
-        $self->_error("Recursion occured while expanding \"$sName\"");
+        $self->_error("Recursion occured while expanding \"$sName\"", "<Unknown>");
     }
     my @aKeys= split(/\./, $sName);
     my $sKey= shift @aKeys;
@@ -337,7 +342,7 @@ sub _line_expand {
         }
     }
     if ('$'.$sName eq $hConf->{VALUES}{$sKey}) {
-        $self->_error("Recursion occured while expanding \"$sName\"");
+        $self->_error("Recursion occured while expanding \"$sName\"", "<Unknown>");
     }
     $self->{DID_EXPAND}= 1;
     return $hConf->{VALUES}{$sKey};

@@ -21,14 +21,13 @@ use RabakLib::Set;
 use RabakLib::Admin;
 use RabakLib::Log;
 
-my $VERSION= "0.6rc12";
+my $VERSION= "1.0rc1";
 my $DEBUG= 0;
 
 $Getopt::Std::STANDARD_HELP_VERSION= 1;
 
 my $oConfFile;
 my $oConf;
-# our $iErrorCode= 0;
 
 my %sOpts= ();
 
@@ -50,7 +49,7 @@ cmd_doc()    if $sCmd eq 'doc';
 # Work in progress:
 cmd_rmfile() if $sCmd eq 'rmfile';
 cmd_admin()  if $sCmd eq 'admin';
-cmd_test1()  if $sCmd eq 'test1';
+cmd_dot()    if $sCmd eq 'dot';
 
 usage(); # dies when done
 
@@ -81,6 +80,7 @@ sub cmd_conf {
         exit 0;
     }
     my $hBakSet= _cmd_setup($sBakSet, 1);
+    $oConf->set_value("switch.warn_on_remote_access", 1);
     $hBakSet->show();
     exit 0;
 }
@@ -115,15 +115,18 @@ sub cmd_admin {
 }
 
 # -----------------------------------------------------------------------------
-#  COMMAND: TEST1
+#  COMMAND: DOT
 # -----------------------------------------------------------------------------
 
-sub cmd_test1 {
+sub cmd_dot {
+    my $sBakSet= shift @ARGV || '';
+    unless ($sBakSet) {
+    	print "# Please specify a Backup Set!\n";
+        exit 0;
+    }
     my $hBakSet= _cmd_setup(shift @ARGV);
-
-    print $hBakSet->toDot(); die;
-
-    print Dumper($hBakSet); die;
+    print $hBakSet->toDot();
+    # print Dumper($hBakSet); die;
     _exit(0);
 }
 

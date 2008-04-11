@@ -1,3 +1,39 @@
+
+rabak-0.6rc12
+- look for config file in different places
+- Log.pm: supports indenting for better readability
+- File.pm: rsyncs "too many links" error fixed (files will be copied without hard-links option)
+- _run_local_cmd() has line buffered stdout/err handling
+- PathBase: better implementation of IPC::Run
+- PathBase: changed _run_local_cmd behavior - uses IPC::Run to log messages in real time
+
+DupMerge:
+- removed data stores 'hash' and 'single db' (were broken anyway)
+- safer file linking
+- db files can be temporarily copied to a local file system for speed optimization
+- fixed cache management
+- directory dbs are not longe inside the directory (to preserve dirs modification time)
+- changed parameters for dupmerge.pl
+- better owner/time/mode handling for distributed dbs
+- prevent duplicate directory scanning
+- fixes for distributed dbs
+- added signal handling
+- added support for distributed databases, changed object hirarchy
+- Mysql.pm: some changes for empty passwords
+- Conf.pm: empty defaults for get_raw_value() implemented and patches in remove_backslash_part2()
+
+rabak-0.6rc7
+- started implementation of a test framework
+- added lazy umount in case of failing umount
+- better mount handling and test for per mounted devices
+- added methods to search properties in upper or root conf level ("." or "/")
+- new handling of switches (either "/switch.logging" or effective "logging" in current conf)
+- Conf.pm replaces CommonBase
+- logger does logging
+- First version of dot file generation (graphviz)
+- source type has to be specified with "type://" followed by optional "user@host:"
+- rsync errors 23 and 24 are interpereted as "success" as well
+
 rabak-0.6rc6
 - Refactored logging
 - Refactored config handling

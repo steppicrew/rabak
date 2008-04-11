@@ -1,5 +1,10 @@
 #!/usr/bin/perl
 
+# Merge duplicate files
+
+# This is work in progress. It should work fine but it lacks proper
+# integration with rabak. Coming soon...
+
 use strict;
 use Getopt::Std;
 use Data::Dumper;

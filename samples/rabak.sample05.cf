@@ -13,7 +13,7 @@ switch.logging = 1
 #  Sample 05: Include Files; Target Groups  #
 #############################################
 
-target_base = sample-target
+target_base = samples/target
 
 INCLUDE ../rabak.std.cf
 
@@ -22,8 +22,8 @@ mount1.directory = $target_base
 mount1.unmount = 1
 
 sample.title = Sample05
-sample.source.path = sample-source
-sample.target.path = sample-target
+sample.source.path = samples/source
+sample.target.path = samples/target
 sample.target.mount = &mount1
 sample.target.group = day-of-week
 sample.exclude = *.bak *.~

@@ -369,6 +369,7 @@ sub get_targetPath {
             $oConf->set_value("path", $sPath);
         }
         $self->{_TARGET_OBJECT}= RabakLib::Path::Target->CloneConf($oConf);
+        ## $self->{_TARGET_OBJECT}->set_value("switch.warn_on_remote_access", );
     }
     return $self->{_TARGET_OBJECT};
 }

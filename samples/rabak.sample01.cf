@@ -14,8 +14,8 @@ switch.logging = 1
 #####################################################
 
 sample.title = Sample01
-sample.source = sample-source
-sample.target = sample-target
+sample.source = samples/source
+sample.target = samples/target
 
 
 #
@@ -26,11 +26,11 @@ sample.target = sample-target
 ../rabak -c rabak.sample01.cf conf
 # will produce following output:
 
-Available backup sets in "rabak.sample01.cf":
-  sample - Sample01, backs up "sample-source" to "sample-target"
+Available backup sets in "samples/rabak.sample01.cf":
+  sample - Sample01, backs up "samples/source" to "samples/target"
 
 # b<Rabak> sees one backup set named 'sample', which will backup all files
-# from the directory 'sample-source' into the directory 'sample-target'.
+# from the directory 'samples/source' into the directory 'samples/target'.
 
 # Try this by running
 ../rabak -c rabak.sample01.cf backup sample
@@ -40,9 +40,9 @@ INFO:    Rabak Version 0.6rc4
 INFO:    Backing up source '&source'
 INFO:    Backup start at 2007-07-30 18:01:30: sample, 2007-07-30, Sample01
 INFO:    Running: rsync -a --hard-links --filter=". /tmp/fSmfte1Dwk" --stats --verbose
-                    "(some path)/samples/sample-source/" "(some path)/samples/sample-target/2007-07.sample/2007-07-30"
+                    "(some path)/samples/samples/source/" "(some path)/samples/samples/target/2007-07.sample/2007-07-30"
 
-# You'll find your backup in 'samples/sample-target/2007-07.sample/2007-07-30'.
+# You'll find your backup in 'samples/samples/target/2007-07.sample/2007-07-30'.
 # 
 #
 # Further information

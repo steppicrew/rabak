@@ -205,48 +205,94 @@ sub set_value {
     $self->{VALUES}{$sName}= $sValue;
 }
 
-# returns array of properties contents, resolving referenced objects
-# array contains refrences to RabakLib::Conf or scalars
+# expand macro given in $sMacroName
+# returns hashref with expanded macro
+# calls $fExpand->() for expanding macro's content
+sub expandMacro {
+    my $self= shift;
+    my $sMacroName= shift;
+    my $hMacroStack= shift || {};
+    my $oScope= shift || $self;
+    my $fExpand= shift || sub {$_[0]}; # return macro's content by default
+
+    my %sResult= ();
+
+# print "Scope: ", $oScope->get_full_name(), "\n";
+# print "Expanding $sMacroName\n";
+
+    $sMacroName=~ s/^\&//;
+    my ($sMacro, $oMacroParent)= $oScope->get_property($sMacroName); 
+    unless ($oMacroParent) {
+        return {ERROR => "Unknown Macro '$sMacroName'"};
+    }
+    $sMacroName= $oMacroParent->get_full_name($sMacroName);
+
+    if ($hMacroStack->{$sMacroName}) {
+        $sResult{ERROR}= "Recursion detected ('$sMacroName').";
+    }
+    else {
+        if (!defined $sMacro) {
+            $sResult{ERROR}= "'$sMacroName' does not exist.";
+        }
+        else {
+            $sResult{MACRO}= $sMacroName;
+            if (ref $sMacro) {
+                $sResult{DATA}= [$sMacro];
+                $sResult{ERROR}= "'$sMacroName' is an object.";
+            }
+            else {
+                my $sMacro= $self->remove_backslashes_part1($sMacro);
+                # build full macro name
+                $hMacroStack->{$sMacroName}= 1;
+# print "Macro: $sMacro\n";
+                $sResult{DATA}= $fExpand->($sMacro, $hMacroStack, $oMacroParent);
+                $hMacroStack->{$sMacroName} = 0;
+            }
+        }
+    }
+#    return $sResult{DATA};
+# print "Done $sMacroName\n";
+    return \%sResult;
+}
+
 sub resolveObjects {
     my $self= shift;
     my $sProperty= shift;
     my $hStack= shift || {};
-
-    my @oResult= ();
-
-    my ($Value, $oOwningConf)= $self->get_property($sProperty);
-    $sProperty=~ s/^.*\.//;
-
-    return () unless $oOwningConf;
-
-    if ($hStack->{"$oOwningConf.$sProperty"}) {
-        logger->error("Recursive reference to '$sProperty'.");
-        return @oResult; 
-    }
-    $hStack->{"$oOwningConf.$sProperty"}= 1;
     
-    if (defined $Value) {
-        if (ref $Value) {
-            push @oResult, $Value;
-        }
-        else {
-            my $sValue= $self->remove_backslashes_part1($Value);
-            my @sValues= split /(?<!\\)\s+/, $sValue;
-            for $sValue (@sValues) {
-                if ($sValue=~ s/^\&//) {
-                    push @oResult, $oOwningConf->resolveObjects($self->remove_backslashes_part2($sValue), $hStack) if $oOwningConf;
+    my ($Value, $oOwningConf)= $self->get_property($sProperty);
+    return map {$self->remove_backslashes_part2($_)} @{$self->_resolveObjects("&$sProperty", $hStack, $self)};
+}
+sub _resolveObjects {
+    my $self= shift;
+    my $sValue= shift;
+    my $hStack= shift || {};
+    my $oScope= shift || $self;
+
+# print "resolveObjects2a: $sValue\n";
+    my @oResult= ();
+    
+    my @sValues= split /(?<!\\)\s+/, $sValue; # ? for correct syntax highlighting
+    for $sValue (@sValues) {
+        if ($sValue=~ s/^\&//) {
+# print "expanding macro: '$sValue'\n";
+# print "scope: ", $self->get_full_name() , "\n";
+            my $hResult = $self->expandMacro($sValue, $hStack, $oScope, sub{$self->_resolveObjects(@_)});
+            if ($hResult->{DATA}) {
+# print "got ", Dumper($hResult->{DATA}), "\n";
+                if (ref $hResult->{DATA}) {
+                    push @oResult, @{$hResult->{DATA}};
                 }
                 else {
-                    push @oResult, $self->remove_backslashes_part2($sValue);
+                    push @oResult, $hResult->{DATA};
                 }
             }
         }
+        else {
+            push @oResult, $sValue;
+        }
     }
-    else {
-        logger->error("Object '$sProperty' could not be loaded. Skipped.");
-    }
-    delete $hStack->{"$oOwningConf.$sProperty"};
-    return @oResult;
+    return \@oResult;
 }
 
 sub sort_show_key_order {

@@ -768,15 +768,17 @@ explain bug in rsync-2.6.8 (--dry-run raises errors in combination with --link-d
 
 !!Currently not implemented!!
 
-!!TODO: Doc!!
+=head1 BUGS AND LIMITATIONS
 
-Remove all occurencies of a file or directory from the backup media.
+Not many. Can't make coffee.
 
-Examples:
+=head1 AUTHOR
 
-  DEPRICATED: rabak -p rmfile /var/cache/*
-  DEPRICATED: rabak rmfile /var/cache/* /tmp
+Written by Stephan Hantigk <steppi@steppicrew.de> and Dietrich Raisin <info1@raisin.de>!
 
-=head1 RESTRICTIONS
+LICENSE
 
-Can't make coffee.
+Copyrights 2007-2008 by Stephan Hantigk & Dietrich Raisin. For other contributors see CHANGELOG.
+
+This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+See http://www.perl.com/perl/misc/Artistic.html

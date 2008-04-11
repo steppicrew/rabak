@@ -21,7 +21,7 @@ switch.logging = 1
 # For example, you can specify mount points, and rabak will do the right thing.
 
 # Setup local source
-sample_local_source.path = sample-source
+sample_local_source.path = samples/source
 
 # Setup remote target
 sample_remote_target.path = $target_dir

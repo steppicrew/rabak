@@ -14,8 +14,8 @@ switch.logging = 1
 #########################################
 
 sample.title = Sample02
-sample.source = sample-source
-sample.target = sample-target
+sample.source = samples/source
+sample.target = samples/target
 sample.exclude = *.bak *.~
 
 # TBD!

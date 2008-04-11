@@ -90,15 +90,9 @@ the RabakLib/Type directory.
 
 Have fun!
 Dietrich Raisin <info1@raisin.de>
-Stephan Hantigk
+Stephan Hantigk <steppi@steppicrew.de>
 
+License
+=======
 
-Appendix: faster-dupemerge
-==========================
-Copyright (C) 2003-2006 Zygo Blaxell <zblaxell@feedme.hungrycats.org>
-
-faster-dupemerge, a brilliant tool to replace duplicate files
-by hardlinks, is bundled with this rabak package.
-
-It may be redistributed under the terms of the GPL2.
-Copyright (C) 2003-2006 Zygo Blaxell <zblaxell@feedme.hungrycats.org>
+See the LICENSE file.

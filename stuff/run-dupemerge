@@ -1,2 +1,1 @@
-# perl full-dupemerge --access /cygwin/f
-perl full-dupemerge --sort -T /data/tmp -- --access /mnt/external
+perl faster-dupemerge --sort -T /data/tmp -- --access /mnt/external

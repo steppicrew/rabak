@@ -13,7 +13,7 @@ switch.logging = 1
 #  Sample 04: Simple Mount Points  #
 ####################################
 
-target_base = sample-target
+target_base = samples/target
 
 mount1.device = /dev/sda1
 mount1.directory = $target_base
@@ -26,15 +26,15 @@ mount2.unmount = 1
 # Backup set "Sample04 A"
 
 sample04_a.title = Sample04 A
-sample04_a.source.path = sample-source
-sample04_a.target.path = sample-target
+sample04_a.source.path = samples/source
+sample04_a.target.path = samples/target
 sample04_a.target.mount = &mount1
 
 # Backup set "Sample04 B"
 
 sample04_b.title = Sample04 B
-sample04_b.source.path = sample-source
-sample04_b.target.path = sample-target
+sample04_b.source.path = samples/source
+sample04_b.target.path = samples/target
 sample04_b.target.mount = &mount1 &mount2
 
 # TBD!

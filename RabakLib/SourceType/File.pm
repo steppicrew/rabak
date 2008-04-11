@@ -128,6 +128,7 @@ sub _expand {
     my $self= shift;
     my $sEntry= shift;
     my $hMacroStack= shift || {};
+    my $oScope= shift || $self;
 
     # remove spaces between +/- and path
     $sEntry=~ s/(?<!\\)([\-\+])\s+/$1/g;
@@ -166,9 +167,10 @@ sub _expand {
             $hEntries= $hMixed;
         }
         if ($sEntry =~ /^\&/) {
-            my $hMacro= $self->_expandMacro($sEntry, $hMacroStack);
+            my $hMacro= $self->expandMacro($sEntry, $hMacroStack, $oScope, sub {$self->_expand(@_);});
             if ($hMacro->{ERROR}) {
-                push @{$hEntries->{DATA}}, "# ERROR: $hMacro->{ERROR}";
+                logger->error("Filter expansion: $hMacro->{ERROR}");
+                push @{$hEntries->{DATA}}, "# ERROR: $hMacro->{ERROR} Ignored.";
             }
             else {
                 die "Internal Error (List expected)" unless $hMacro->{DATA}{TYPE} eq 'list';
@@ -195,42 +197,6 @@ sub _expand {
     die "Opening bracket without closing!" if scalar @arStack;
 # print Dumper($hEntries);
     return $hEntries;
-}
-
-# expand macro given in $sMacroName
-# returns hashref with expanded macro
-sub _expandMacro {
-    my $self= shift;
-    my $sMacroName= shift;
-    my $hMacroStack= shift || {};
-
-    my %sResult= ();
-
-# print "Expanding $sMacroName\n";
-
-    $sMacroName=~ s/^\&//;
-    my ($sMacro, $oMacroParent)= $self->get_property($sMacroName); 
-    $sMacroName= $oMacroParent->get_full_name($sMacroName);
-    if ($hMacroStack->{$sMacroName}) {
-        $sResult{ERROR}= "Recursion detected ('$sMacroName'). Ignored";
-    }
-    else {
-        if (! defined $sMacro || ref $sMacro) {
-            $sResult{ERROR}= "'$sMacroName' does not exist or is an object. Ignored.";
-        }
-        else {
-            my $sMacro= $self->remove_backslashes_part1($sMacro);
-            # build full macro name
-            $sResult{MACRO}= $sMacroName;
-            $hMacroStack->{$sMacroName}= 1;
-            $sResult{DATA}= $self->_expand($sMacro, $hMacroStack);
-            $hMacroStack->{$sMacroName} = 0;
-        }
-    }
-    logger->error("Filter expansion: $sResult{ERROR}") if $sResult{ERROR};
-#    return $sResult{DATA};
-# print "Done $sMacroName\n";
-    return \%sResult;
 }
 
 # flattens a list of filters like "/foo /foo/bar /bar"
