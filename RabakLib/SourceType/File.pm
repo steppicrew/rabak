@@ -83,7 +83,7 @@ sub _parseFilter {
 
         if ($sEntry=~ /^\// && $sEntry!~ s/^$sqBaseDir/\//) {
             logger->debug("'$sEntry' is not contained in source path '$sBaseDir'.");
-            push @sResult, "# WARNING!! '$sEntry' is not contained in source path '$sBaseDir'. Ignored.";
+            push @sResult, "# Notice: '$sEntry' is not contained in source path '$sBaseDir'. Ignored.";
             next;
         }
         # for includes add all parent directories
@@ -286,7 +286,7 @@ sub show {
     return unless $self->get_switch("logging") >= LOG_DEBUG_LEVEL;
 
     my $sBaseDir= $self->valid_source_dir();
-    print "# Expanded rsync filter (relative to '$sBaseDir'):\n#\t" . join("\n#\t", @sFilter) . "\n";
+    print "\n\n# Expanded rsync filter (relative to '$sBaseDir'):\n#\t" . join("\n#\t", @sFilter) . "\n";
 }
 
 sub valid_source_dir {

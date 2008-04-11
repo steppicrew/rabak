@@ -80,11 +80,10 @@ sub init {
 
     $oLog->{SWITCH_PRETEND}= $hConf->get_switch('pretend');
     $oLog->{SWITCH_LOGGING}= $hConf->get_switch('logging');
-    $oLog->{SWITCH_VERBOSITY}= $hConf->get_switch('verbose');
+    $oLog->{SWITCH_VERBOSITY}= $hConf->get_switch('verbose') || $oLog->LOG_DEFAULT_LEVEL;
+    $oLog->{SWITCH_VERBOSITY}= $oLog->LOG_DEFAULT_LEVEL unless defined $oLog->{SWITCH_VERBOSITY};
     $oLog->{SWITCH_QUIET}= $hConf->get_switch('quiet');
 
-    # $hConf->set_log($self);
-    # bless $self, $class;
 }
 
 # -----------------------------------------------------------------------------

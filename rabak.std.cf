@@ -61,7 +61,7 @@ exclude_linux =
 
 # Root directory of Windows system (may be overwritten in rabak.cf)
 
-win_root_dir = /(cygdrive cygwin)/*
+win_root_dir = /(cygdrive, cygwin)/*
 
 # Standard excludes for Windows systems
 
@@ -81,12 +81,13 @@ exclude_profile_win =
     Thumbs.db
     GoogleEarthCache/
     Temporary\ Internet\ Files/
-    Application\ Data/Sun/Java/Deployment/cache/
-    Anwendungsdaten/Sun/Java/Deployment/cache/
-    Application\ Data/Adobe/FileBrowser/
-    Anwendungsdaten/Adobe/FileBrowser/
-    Lokale\ Einstellungen/Temp/
-    Local\ Settings/Temp/
+    (Application\ Data, Anwendungsdaten)/(
+        Sun/Java/Deployment/cache/
+        Adobe/FileBrowser/
+    )
+    (Lokale\ Einstellungen, Local\ Settings)/(
+        Temp/
+    )
 
 exclude_win =
     &exclude_sys_win
@@ -123,7 +124,7 @@ win_root_dir = &default.win_root_dir
 exclude_sys_win = &default.exclude_sys_win
 exclude_profile_win = &default.exclude_profile_win
 exclude_std_win = &default.exclude_win
-exclude_std_common = &default.exclude_common
+exclude_common = &default.exclude_common
 exclude_std = &default.exclude
 filter= &default.filter
 
