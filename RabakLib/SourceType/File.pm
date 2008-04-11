@@ -25,8 +25,10 @@ sub _get_filter {
     }
     else {
         $sFilter="";
-        $sFilter.= " -(" . $self->remove_backslashes_part1($self->get_raw_value('exclude')) . ")" if $self->get_raw_value('exclude');
-        $sFilter.= " +(" . $self->remove_backslashes_part1($self->get_raw_value('include')) . ")" if $self->get_raw_value('include');
+        my $aExclude= $self->get_prep_value('exclude');
+        my $aInclude= $self->get_prep_value('include');
+        $sFilter.= " -(" . $self->joinValue($aExclude) . ")" if $aExclude;
+        $sFilter.= " +(" . $self->joinValue($aInclude) . ")" if $aInclude;
     }
     return $self->_parseFilter($sFilter, $self->valid_source_dir(), $hMacroStack);
 }
@@ -44,7 +46,7 @@ sub _parseFilter {
     $sBaseDir=~ s/\/?$/\//;
     my $sqBaseDir= quotemeta $sBaseDir;
 
-    $sFilter= $self->_expand($sFilter, $hMacroStack);
+    $sFilter= $self->_expand([$sFilter], $hMacroStack);
 # print Dumper($sFilter);
     my @sFilter= @{$self->_flatten_filter($sFilter)};
 
@@ -126,27 +128,30 @@ sub _parseFilter {
 # return hashref of type 'list'
 sub _expand {
     my $self= shift;
-    my $sEntry= shift;
+    my $aEntries= shift;
     my $hMacroStack= shift || {};
     my $oScope= shift || $self;
+    
+    my $fPreParse= sub {
+        my $sEntry= shift;
+        # remove spaces between +/- and path
+        $sEntry=~ s/(?<!\\)([\-\+])\s+/$1/g;
+        # enclose all macros with parantheses
+        $sEntry=~ s/(?<!\\)(\&[\.\w]+)/\($1\)/g;
+        # add space after '('
+        $sEntry=~ s/(?<!\\)\(\s*/\( /g;
+        # add space before ')'
+        $sEntry=~ s/(?<!\\)\s*\)/ \)/g;
+        $sEntry;
+    };
 
-    # remove spaces between +/- and path
-    $sEntry=~ s/(?<!\\)([\-\+])\s+/$1/g;
-    # enclose all macros with parantheses
-    $sEntry=~ s/(?<!\\)(\&[\.\w]+)/\($1\)/g;
-    # add space after '('
-    $sEntry=~ s/(?<!\\)\(\s*/\( /g;
-    # add space before ')'
-    $sEntry=~ s/(?<!\\)\s*\)/ \)/g;
-
-    my @sEntries= split /(?<!\\)[\s\,]+/, $sEntry; #?
 
     my $hEntries= {
         TYPE => 'list',
         DATA => [],
     };
     my @arStack= ();
-    for $sEntry (@sEntries) {
+    for my$sEntry (@$aEntries) {
 # print "Original: [$sEntry]\n";
         my $bClose= $sEntry=~ s/^\)//;
         my $bOpen= $sEntry=~ s/(?<!\\)\($//;
@@ -167,7 +172,7 @@ sub _expand {
             $hEntries= $hMixed;
         }
         if ($sEntry =~ /^\&/) {
-            my $hMacro= $self->expandMacro($sEntry, $hMacroStack, $oScope, sub {$self->_expand(@_);});
+            my $hMacro= $self->expandMacro($sEntry, $hMacroStack, $oScope, sub {$self->_expand(@_);}, $fPreParse);
             if ($hMacro->{ERROR}) {
                 logger->error("Filter expansion: $hMacro->{ERROR}");
                 push @{$hEntries->{DATA}}, "# ERROR: $hMacro->{ERROR} Ignored.";
@@ -277,7 +282,7 @@ sub show {
     my @sFilter= $self->_get_filter($hMacroStack);
     print "# Referenced filters:\n" if scalar @sFilter;
     for my $sMacroName (sort keys %$hMacroStack) {
-        my $sMacro= $self->get_raw_value("/$sMacroName");
+        my $sMacro= $self->get_raw_value("/$sMacroName", undef, "\n");
         $sMacro=~ s/\n/\n\t/g;
         print "$sMacroName = $sMacro\n" unless defined $hConfShowCache->{$sMacroName};
         $hConfShowCache->{$sMacroName}= 1;

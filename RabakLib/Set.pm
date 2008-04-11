@@ -107,6 +107,11 @@ sub show {
         print "\n";
     }
 #    print "$@\n" if $@;
+    my @sReferences= grep {! defined $hConfShowCache->{$_}} keys %{$hConfShowCache->{"..references"}};
+    print "# Misc references:\n" if scalar @sReferences;
+    for my $sRef (@sReferences) {
+        print "$sRef = ", $self->get_raw_value("/$sRef"), "\n";
+    }
     print "\n";
 }
 

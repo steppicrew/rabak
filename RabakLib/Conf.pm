@@ -48,13 +48,66 @@ sub get_validation_message {
     return undef;
 }
 
+sub splitValue {
+    my $self = shift;
+    my $sValue= shift;
+    
+    return undef unless defined $sValue;
+    
+    my @Result = split /(?<!\\)\s+/, $sValue; # ? for correct syntax highlighting
+    return \@Result;
+}
+
+sub joinValue {
+    my $self = shift;
+    my $aValue= shift;
+    my $bEscaped= shift;
+    
+    return undef unless defined $aValue;
+    
+    my $bError;
+    my @sValues = map {
+        if (ref eq "ARRAY") {
+            my $sJoined= $self->joinValue($_, $bEscaped);
+            $bError = 1 unless defined $sJoined;
+            $sJoined;
+        }
+        elsif (ref) {
+            $bError= 1;
+        }
+        else {
+            if ($bEscaped) {
+                $self->undo_remove_backslashes_part1($_);
+            }
+            else {
+                $self->remove_backslashes_part2($_);
+            }
+        }
+    } @$aValue;
+    return undef if $bError;
+    return undef unless scalar @sValues;
+    return join " ", @sValues;
+}
+
+sub get_prep_value {
+    my $self= shift;
+    my $sName= shift;
+    my $sDefault= shift;
+    
+    return $self->splitValue(
+        $self->remove_backslashes_part1(
+            $self->get_raw_value($sName, $sDefault)
+        )
+    );
+}
+
 sub get_raw_value {
     my $self= shift;
     my $sName= shift;
     my $sDefault= shift;
     
     my $sValue= $self->get_property($sName);
-
+    
     unless (defined $sValue) {
         return $self->{NAME} if lc($sName) eq 'name';      
         return $sDefault;
@@ -81,6 +134,17 @@ sub remove_backslashes_part1 {
     return $sValue;
 }
 
+sub undo_remove_backslashes_part1 {
+    my $self= shift;
+    my $sValue= shift;
+
+    return $sValue unless $sValue;
+
+    $sValue =~ s/\\\~/\\\\/g;
+    $sValue =~ s/\.\~/\~/g;
+    return $sValue;
+}
+
 sub remove_backslashes_part2 {
     my $self= shift;
     my $sValue= shift;
@@ -93,9 +157,7 @@ sub remove_backslashes_part2 {
     # remove all backslashes not followed by "~"
     $sValue =~ s/\\(?!\~)//g;
     # undo changes made in part1
-    $sValue =~ s/\\\~/\\/g;
-    $sValue =~ s/\.\~/\~/g;
-    return $sValue;
+    return $self->undo_remove_backslashes_part1($sValue);
 }
 
 sub remove_backslashes {
@@ -107,10 +169,22 @@ sub remove_backslashes {
 
 sub get_value {
     my $self= shift;
-    return $self->remove_backslashes($self->get_raw_value(@_));
+    my $sName= shift;
+    my $sDefault= shift;
+    my $hRefStack= shift;
+    
+    my @sValues= $self->resolveObjects($sName, $hRefStack);
+    my $sValue= $self->joinValue(\@sValues);
+    unless (defined $sValue) {
+        return $self->joinValue($self->get_prep_value('name') )if lc($sName) eq 'name';      
+        return $sDefault;
+    }
+    return $sDefault if ref $sValue;
+    return $sDefault if $sValue eq '*default*';
+    return $sValue;
 }
 
-# TODO: Which is correct: get_property? get_value? get_raw_value? $oCOnf->{VALUES}?
+# TODO: Which is correct: get_property? get_value? get_prep_value? $oCOnf->{VALUES}?
 sub get_value_required_message {
     my $self= shift;
     my $sField= shift;
@@ -213,7 +287,8 @@ sub expandMacro {
     my $sMacroName= shift;
     my $hMacroStack= shift || {};
     my $oScope= shift || $self;
-    my $fExpand= shift || sub {$_[0]}; # return macro's content by default
+    my $fExpand= shift || sub {$self->_resolveObjects(@_)}; # try to expand macro as deep as possible by default
+    my $fPreParse= shift || sub {shift}; # no preparsing by default
 
     my %sResult= ();
 
@@ -221,11 +296,11 @@ sub expandMacro {
 # print "Expanding $sMacroName\n";
 
     $sMacroName=~ s/^\&//;
-    my ($sMacro, $oMacroParent)= $oScope->get_property($sMacroName); 
-    unless ($oMacroParent) {
+    my ($sMacro, $oMacroScope)= $oScope->get_property($sMacroName); 
+    unless ($oMacroScope) {
         return {ERROR => "Unknown Macro '$sMacroName'"};
     }
-    $sMacroName= $oMacroParent->get_full_name($sMacroName);
+    $sMacroName= $oMacroScope->get_full_name($sMacroName);
 
     if ($hMacroStack->{$sMacroName}) {
         $sResult{ERROR}= "Recursion detected ('$sMacroName').";
@@ -241,11 +316,15 @@ sub expandMacro {
                 $sResult{ERROR}= "'$sMacroName' is an object.";
             }
             else {
-                my $sMacro= $self->remove_backslashes_part1($sMacro);
+                my $aMacro= $self->splitValue(
+                    $fPreParse->(
+                        $self->remove_backslashes_part1($sMacro)
+                    )
+                );
                 # build full macro name
                 $hMacroStack->{$sMacroName}= 1;
 # print "Macro: $sMacro\n";
-                $sResult{DATA}= $fExpand->($sMacro, $hMacroStack, $oMacroParent);
+                $sResult{DATA}= $fExpand->($aMacro, $hMacroStack, $oMacroScope);
                 $hMacroStack->{$sMacroName} = 0;
             }
         }
@@ -260,20 +339,18 @@ sub resolveObjects {
     my $sProperty= shift;
     my $hStack= shift || {};
     
-    my ($Value, $oOwningConf)= $self->get_property($sProperty);
-    return map {$self->remove_backslashes_part2($_)} @{$self->_resolveObjects("&$sProperty", $hStack, $self)};
+    return map {$self->remove_backslashes_part2($_)} @{$self->_resolveObjects(["&$sProperty"], $hStack, $self)};
 }
 sub _resolveObjects {
     my $self= shift;
-    my $sValue= shift;
+    my $aValue= shift;
     my $hStack= shift || {};
     my $oScope= shift || $self;
 
 # print "resolveObjects2a: $sValue\n";
     my @oResult= ();
     
-    my @sValues= split /(?<!\\)\s+/, $sValue; # ? for correct syntax highlighting
-    for $sValue (@sValues) {
+    for my $sValue (@$aValue) {
         if ($sValue=~ s/^\&//) {
 # print "expanding macro: '$sValue'\n";
 # print "scope: ", $self->get_full_name() , "\n";
@@ -329,6 +406,7 @@ sub show {
 
     my $bKeyInvalid= 1;    
 
+    $hConfShowCache->{"..references"}= {} unless $hConfShowCache->{"..references"};
     for ($self->sort_show_keys(keys %{ $self->{VALUES} })) {
         next if $_ =~ /^\./;
         if (ref($self->{VALUES}{$_})) {
@@ -338,7 +416,10 @@ sub show {
             $bKeyInvalid= 1;
             next;
         }
-        my $sValue= $self->get_value($_) || '';
+        # to get all references (objects will not change $hReferences and should be handled later)
+        $self->get_value($_, undef, $hConfShowCache->{"..references"});
+        # get the original config entry
+        my $sValue= $self->get_raw_value($_) || '';
         $sValue =~ s/\n/\n\t/g;
 
         # $_= "$sKey.$_";
@@ -348,12 +429,12 @@ sub show {
         unless (defined $hConfShowCache->{"$sKey.$_"}) {
             print "[$sKey]\n" if $bKeyInvalid;
             $bKeyInvalid= 0;
-
-#            print "$sKey.$_ = $sValue\n";
             print "$_ = $sValue\n";
         }
         $hConfShowCache->{"$sKey.$_"}= 1;
     }
+#    my @sReferences= grep {! defined $hConfShowCache->{$_}} keys %$hReferences;
+#    print "# References: '&/", join("', '&/", @sReferences), "'\n" if @sReferences;
     print "[]\n" unless $bKeyInvalid;
 }
 
