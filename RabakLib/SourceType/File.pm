@@ -25,19 +25,23 @@ sub _get_filter {
     }
     else {
         $sFilter="";
-        my $aExclude= $self->get_prep_value('exclude');
-        my $aInclude= $self->get_prep_value('include');
-        $sFilter.= " -(" . $self->joinValue($aExclude) . ")" if $aExclude;
-        $sFilter.= " +(" . $self->joinValue($aInclude) . ")" if $aInclude;
+        $sFilter.= " -(&exclude)" if defined $self->get_prep_value('exclude');
+        $sFilter.= " +(&include)" if defined $self->get_prep_value('include');
     }
-    return $self->_parseFilter($sFilter, $self->valid_source_dir(), $hMacroStack);
+    # prepare $sFilter for parsing
+    my $aFilter = $self->splitValue(
+                    $self->_macroPreParse(
+                        $self->remove_backslashes_part1($sFilter)
+                    )
+                );
+    return $self->_parseFilter($aFilter, $self->valid_source_dir(), $hMacroStack);
 }
 
 # parse filter string in $sFilter
 # returns array with rsync's include/exclude rules
 sub _parseFilter {
     my $self= shift;
-    my $sFilter= shift;
+    my $aFilter= shift;
     my $sBaseDir= shift;
     my $hMacroStack= shift || {};
     
@@ -46,7 +50,7 @@ sub _parseFilter {
     $sBaseDir=~ s/\/?$/\//;
     my $sqBaseDir= quotemeta $sBaseDir;
 
-    $sFilter= $self->_expand([$sFilter], $hMacroStack);
+    my $sFilter= $self->_expand($aFilter, $hMacroStack);
 # print Dumper($sFilter);
     my @sFilter= @{$self->_flatten_filter($sFilter)};
 
@@ -119,6 +123,20 @@ sub _parseFilter {
     return @sResult;
 }
 
+sub _macroPreParse {
+    my $self= shift;
+    my $sEntry= shift;
+    # remove spaces between +/- and path
+    $sEntry=~ s/(?<!\\)([\-\+])\s+/$1/g;
+    # enclose all macros with parantheses
+    $sEntry=~ s/(?<!\\)(\&[\.\w]+)/\($1\)/g;
+    # add space after '('
+    $sEntry=~ s/(?<!\\)\(\s*/\( /g;
+    # add space before ')'
+    $sEntry=~ s/(?<!\\)\s*\)/ \)/g;
+    $sEntry;
+}
+
 # internal filter structure:
 #   filter types:
 #       "list": simple array of filter entries (strings or "mixed" filter)
@@ -131,20 +149,8 @@ sub _expand {
     my $aEntries= shift;
     my $hMacroStack= shift || {};
     my $oScope= shift || $self;
-    
-    my $fPreParse= sub {
-        my $sEntry= shift;
-        # remove spaces between +/- and path
-        $sEntry=~ s/(?<!\\)([\-\+])\s+/$1/g;
-        # enclose all macros with parantheses
-        $sEntry=~ s/(?<!\\)(\&[\.\w]+)/\($1\)/g;
-        # add space after '('
-        $sEntry=~ s/(?<!\\)\(\s*/\( /g;
-        # add space before ')'
-        $sEntry=~ s/(?<!\\)\s*\)/ \)/g;
-        $sEntry;
-    };
 
+#print "expanding: [".join("n", @$aEntries)."]\n";
 
     my $hEntries= {
         TYPE => 'list',
@@ -172,7 +178,8 @@ sub _expand {
             $hEntries= $hMixed;
         }
         if ($sEntry =~ /^\&/) {
-            my $hMacro= $self->expandMacro($sEntry, $hMacroStack, $oScope, sub {$self->_expand(@_);}, $fPreParse);
+            my $hMacro= $self->expandMacro($sEntry, $hMacroStack, $oScope,
+                sub {$self->_expand(@_);}, sub{$self->_macroPreParse(@_)});
             if ($hMacro->{ERROR}) {
                 logger->error("Filter expansion: $hMacro->{ERROR}");
                 push @{$hEntries->{DATA}}, "# ERROR: $hMacro->{ERROR} Ignored.";
@@ -280,13 +287,22 @@ sub show {
     my $hMacroStack= {};
 
     my @sFilter= $self->_get_filter($hMacroStack);
-    print "# Referenced filters:\n" if scalar @sFilter;
+    my $sFirstLine= "# Referenced filters:\n";
+    my $sLastScope= "";
     for my $sMacroName (sort keys %$hMacroStack) {
+        next if defined $hConfShowCache->{$sMacroName};
+
+        print $sFirstLine;
+        $sFirstLine= '';
         my $sMacro= $self->get_raw_value("/$sMacroName", undef, "\n");
         $sMacro=~ s/\n/\n\t/g;
-        print "$sMacroName = $sMacro\n" unless defined $hConfShowCache->{$sMacroName};
+        my $sScope= $sMacroName =~ s/(.+)\.// ? $1 : '';
+        print "[$sScope]\n" unless $sScope eq $sLastScope;
+        $sLastScope= $sScope;
+        print "$sMacroName = $sMacro\n" ;
         $hConfShowCache->{$sMacroName}= 1;
     }
+    print "[]\n" unless $sLastScope eq '';
     
     return unless $self->get_switch("logging") >= LOG_DEBUG_LEVEL;
 
@@ -380,6 +396,7 @@ sub run {
     # print `cat $sRulesFile`;
 
     my $sFlags= "--archive"
+        . " --sparse"
         . " --hard-links"
         . " --filter='. " . $self->shell_quote($sRulesFile, 'dont quote') . "'"
         . " --stats"

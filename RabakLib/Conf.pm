@@ -178,7 +178,7 @@ sub get_value {
     my @sValues= $self->resolveObjects($sName, $hRefStack);
     my $sValue= $self->joinValue(\@sValues);
     unless (defined $sValue) {
-        return $self->joinValue($self->get_prep_value('name') )if lc($sName) eq 'name';      
+        return $self->{NAME} if lc($sName) eq 'name';      
         return $sDefault;
     }
     return $sDefault if ref $sValue;
@@ -344,33 +344,35 @@ sub resolveObjects {
     
     return map {$self->remove_backslashes_part2($_)} @{$self->_resolveObjects(["&$sProperty"], $hStack, $self)};
 }
+
 sub _resolveObjects {
     my $self= shift;
     my $aValue= shift;
     my $hStack= shift || {};
     my $oScope= shift || $self;
 
-# print "resolveObjects2a: $sValue\n";
     my @oResult= ();
     
     for my $sValue (@$aValue) {
-        if ($sValue=~ s/^\&//) {
+        # simple scalars are copied to @oResult
+        unless ($sValue=~ s/^\&//) {
+            push @oResult, $sValue;
+            next;
+        }
+        # macros are expanded and result added to @oResult
 # print "expanding macro: '$sValue'\n";
 # print "scope: ", $self->get_full_name() , "\n";
-            my $hResult = $self->expandMacro($sValue, $hStack, $oScope, sub{$self->_resolveObjects(@_)});
-            if ($hResult->{DATA}) {
+        my $hResult = $self->expandMacro($sValue, $hStack, $oScope, sub{$self->_resolveObjects(@_)});
+        unless (defined $hResult->{DATA}) {
+            # logger->error($hResult->{ERROR}) if $hResult->{ERROR};
+            next;
+        }
 # print "got ", Dumper($hResult->{DATA}), "\n";
-                if (ref $hResult->{DATA}) {
-                    push @oResult, @{$hResult->{DATA}};
-                }
-                else {
-                    push @oResult, $hResult->{DATA};
-                }
-            }
+        unless (ref $hResult->{DATA} eq "ARRAY") {
+            logger->error("Internal error: expandMacro() should return an array reference! ($hResult->{DATA})");
+            return [];
         }
-        else {
-            push @oResult, $sValue;
-        }
+        push @oResult, @{$hResult->{DATA}};
     }
     return \@oResult;
 }
