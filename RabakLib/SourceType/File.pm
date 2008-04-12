@@ -25,12 +25,12 @@ sub _get_filter {
     }
     else {
         $sFilter="";
-        $sFilter.= " -(&exclude)" if defined $self->get_prep_value('exclude');
-        $sFilter.= " +(&include)" if defined $self->get_prep_value('include');
+        $sFilter.= " -&exclude" if defined $self->get_prep_value('exclude');
+        $sFilter.= " +&include" if defined $self->get_prep_value('include');
     }
     # prepare $sFilter for parsing
     my $aFilter = $self->splitValue(
-                    $self->_macroPreParse(
+                    $self->_valuePreParse(
                         $self->remove_backslashes_part1($sFilter)
                     )
                 );
@@ -123,7 +123,8 @@ sub _parseFilter {
     return @sResult;
 }
 
-sub _macroPreParse {
+# prepare value for correct splitting
+sub _valuePreParse {
     my $self= shift;
     my $sEntry= shift;
     # remove spaces between +/- and path
@@ -179,7 +180,8 @@ sub _expand {
         }
         if ($sEntry =~ /^\&/) {
             my $hMacro= $self->expandMacro($sEntry, $hMacroStack, $oScope,
-                sub {$self->_expand(@_);}, sub{$self->_macroPreParse(@_)});
+                sub {$self->_expand(@_)}, sub{$self->_valuePreParse(@_)}
+            );
             if ($hMacro->{ERROR}) {
                 logger->error("Filter expansion: $hMacro->{ERROR}");
                 push @{$hEntries->{DATA}}, "# ERROR: $hMacro->{ERROR} Ignored.";
@@ -302,7 +304,7 @@ sub show {
         print "$sMacroName = $sMacro\n" ;
         $hConfShowCache->{$sMacroName}= 1;
     }
-    print "[]\n" unless $sLastScope eq '';
+    print "[]\n" unless $sLastScope eq "";
     
     return unless $self->get_switch("logging") >= LOG_DEBUG_LEVEL;
 
