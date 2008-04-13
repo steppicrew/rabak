@@ -138,4 +138,17 @@ sub sort_show_key_order {
     ($self->SUPER::sort_show_key_order(), "group", "mount");
 }
 
+sub show {
+    my $self= shift;
+    my $hConfShowCache= shift || {};
+    
+    my @sResult= (
+        "#" . "=" x 79,
+        "# Target \"" . $self->getShowName() . "\": " . $self->getFullPath(),
+        "#" . "=" x 79
+    );
+    push @sResult, @{$self->SUPER::show($hConfShowCache)};
+    return \@sResult;
+}
+
 1;

@@ -91,12 +91,11 @@ sub show {
     my  @oMounts= $self->getMountObjects();
     my $aResult= $self->SUPER::show($hConfShowCache);
     
-    push @$aResult, "", "# Referenced mounts:" if scalar @oMounts;
-
+    my @sSubResult= ();
     for my $oMount (@oMounts) {
-        push @$aResult, @{$oMount->show($hConfShowCache)};
+        push @sSubResult, @{$oMount->show($hConfShowCache)};
     }
-    push @$aResult, "";
+    push @$aResult, "", "# Referenced mounts:", @sSubResult if scalar @sSubResult;
     return $aResult;
 }
 

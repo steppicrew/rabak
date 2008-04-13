@@ -59,8 +59,13 @@ sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
 
-    my $sName= $self->get_value("name");
-    return $self->SUPER::show($hConfShowCache);# unless $sName=~ /^\*/;
+    my @sResult= (
+        "#" . "=" x 79,
+        "# Source \"" . $self->getShowName() . "\": " . $self->getFullPath(),
+        "#" . "=" x 79,
+    );
+    push @sResult, @{$self->SUPER::show($hConfShowCache)};
+    return \@sResult;
 }
 
 sub getFullPath {

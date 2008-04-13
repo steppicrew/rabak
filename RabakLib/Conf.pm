@@ -170,9 +170,9 @@ sub get_value {
     my $self= shift;
     my $sName= shift;
     my $sDefault= shift;
-    my $hRefStack= shift;
+    my $aRefStack= shift;
     
-    my @sValues= $self->resolveObjects($sName, $hRefStack);
+    my @sValues= $self->resolveObjects($sName, $aRefStack);
     my $sValue= $self->joinValue(\@sValues);
     unless (defined $sValue) {
         return $self->{NAME} if lc($sName) eq 'name';      
@@ -286,7 +286,7 @@ sub set_value {
 sub expandMacro {
     my $self= shift;
     my $sMacroName= shift;
-    my $hMacroStack= shift || {};
+    my $aMacroStack= shift || [];
     my $oScope= shift || $self;
     my $fExpand= shift || sub {$self->_resolveObjects(@_)}; # try to expand macro as deep as possible by default
     my $fPreParse= shift || sub {shift}; # no preparsing by default
@@ -301,36 +301,31 @@ sub expandMacro {
     unless ($oMacroScope) {
         return {ERROR => "Unknown Macro '$sMacroName'"};
     }
+    # build full macro name
     $sMacroName= $oMacroScope->get_full_name($sMacroName);
 
-    if ($hMacroStack->{$sMacroName}) {
-        $sResult{ERROR}= "Recursion detected ('$sMacroName').";
+    $aMacroStack->[0] = "[]" unless scalar @$aMacroStack;
+    my $sMacroPath= $aMacroStack->[0];
+    my $sqMacroName= quotemeta "[$sMacroName]";
+
+    return {ERROR => "Recursion detected ('$sMacroName')."} if $sMacroPath=~ /$sqMacroName/;
+    return {ERROR => "'$sMacroName' does not exist."} unless defined $sMacro;
+    $sResult{MACRO}= $sMacroName;
+    if (ref $sMacro) {
+        return {
+            DATA => [$sMacro],
+            ERROR => "'$sMacroName' is an object.",
+        };
     }
-    else {
-        if (!defined $sMacro) {
-            $sResult{ERROR}= "'$sMacroName' does not exist.";
-        }
-        else {
-            $sResult{MACRO}= $sMacroName;
-            if (ref $sMacro) {
-                $sResult{DATA}= [$sMacro];
-                $sResult{ERROR}= "'$sMacroName' is an object.";
-            }
-            else {
-                my $aMacro= $self->splitValue(
-                    $fPreParse->(
-                        $self->remove_backslashes_part1($sMacro)
-                    )
-                );
-                # build full macro name
-                $hMacroStack->{$sMacroName}= 1;
+    my $aMacro= $self->splitValue(
+        $fPreParse->(
+            $self->remove_backslashes_part1($sMacro)
+        )
+    );
+    my $aNewMacroStack= ["${sMacroPath}[$sMacroName]"];
 # print "Macro: $sMacro\n";
-                $sResult{DATA}= $fExpand->($aMacro, $hMacroStack, $oMacroScope);
-                $hMacroStack->{$sMacroName} = 0;
-            }
-        }
-    }
-#    return $sResult{DATA};
+    $sResult{DATA}= $fExpand->($aMacro, $aNewMacroStack, $oMacroScope);
+    push @$aMacroStack, $aNewMacroStack;
 # print "Done $sMacroName\n";
     return \%sResult;
 }
@@ -338,15 +333,15 @@ sub expandMacro {
 sub resolveObjects {
     my $self= shift;
     my $sProperty= shift;
-    my $hStack= shift || {};
+    my $aStack= shift || [];
     
-    return map {$self->remove_backslashes_part2($_)} @{$self->_resolveObjects(["&$sProperty"], $hStack, $self)};
+    return map {$self->remove_backslashes_part2($_)} @{$self->_resolveObjects(["&$sProperty"], $aStack, $self)};
 }
 
 sub _resolveObjects {
     my $self= shift;
     my $aValue= shift;
-    my $hStack= shift || {};
+    my $aStack= shift || [];
     my $oScope= shift || $self;
 
     my @oResult= ();
@@ -360,7 +355,7 @@ sub _resolveObjects {
         # macros are expanded and result added to @oResult
 # print "expanding macro: '$sValue'\n";
 # print "scope: ", $self->get_full_name() , "\n";
-        my $hResult = $self->expandMacro($sValue, $hStack, $oScope, sub{$self->_resolveObjects(@_)});
+        my $hResult = $self->expandMacro($sValue, $aStack, $oScope, sub{$self->_resolveObjects(@_)});
         unless (defined $hResult->{DATA}) {
             # logger->error($hResult->{ERROR}) if $hResult->{ERROR};
             next;
@@ -399,6 +394,45 @@ sub sort_show_keys {
     return @sResult;
 }
 
+sub get_all_references {
+    my $self= shift;
+    my $aMacroStack= shift;
+    
+    my @aStack= @$aMacroStack;
+    return () unless scalar @aStack;
+    my $sMacroPath= shift @aStack;
+    return () unless $sMacroPath =~ /\[([^\[\]]*)\]$/;
+    my @sResult= ($1);
+
+    while (my $aSubStack= shift @aStack) {
+        push @sResult, $self->get_all_references($aSubStack);
+    }
+    return @sResult;
+}
+
+sub getShowName {
+    my $self= shift;
+    my $sName= $self->{NAME};
+    $sName=~ s/^\*(\d+)/anonymous \($1\)/;
+    return $sName;
+}
+
+sub showConfValue {
+    my $self= shift;
+    my $sKey= shift;
+    my $hConfShowCache= shift || {};
+
+    return () if defined $hConfShowCache->{"$sKey"};
+    $hConfShowCache->{"$sKey"}= 1;
+    # get the original config entry
+    my $sValue= $self->get_raw_value("/$sKey");
+    return () unless defined $sValue;
+
+    my @sResult= split /\n/, $sValue;
+    $sKey.= " = " . shift @sResult;
+    return ($sKey, map {"\t$_"} @sResult);
+}
+
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
@@ -411,37 +445,49 @@ sub show {
 
     my @sResult= ();
 
-    $hConfShowCache->{"..references"}= {} unless $hConfShowCache->{"..references"};
-    for ($self->sort_show_keys(keys %{ $self->{VALUES} })) {
-        next if $_ =~ /^\./;
-        if (ref($self->{VALUES}{$_})) {
+    $hConfShowCache->{'.'}= [] unless $hConfShowCache->{'.'};
+
+    for my $sSubKey ($self->sort_show_keys(keys %{ $self->{VALUES} })) {
+        next if $sSubKey =~ /^\./;
+        if (ref($self->{VALUES}{$sSubKey})) {
             # remember referenced objects for later showing
-            $hConfShowCache->{"..references"}{$self->{VALUES}{$_}->get_full_name()} = 1;
-            next;
-            # alternative: expand referenced object immediately
-            push @sResult, "[]", "";
-            push @sResult, @{$self->{VALUES}{$_}->show($hConfShowCache)};
-            $bKeyInvalid= 1;
+            $self->{VALUES}{$sSubKey}->show({'.' => $hConfShowCache->{'.'}});
             next;
         }
         # to get all references (objects will not change $hReferences and should be handled later)
-        $self->get_value($_, undef, $hConfShowCache->{"..references"});
-        # get the original config entry
-        my $sValue= $self->get_raw_value($_) || '';
-        $sValue =~ s/\n/\n\t/g;
-
-        # $_= "$sKey.$_";
-        # s/^\*.//;
-        # print "$_ = $sValue\n";
-
-        unless (defined $hConfShowCache->{"$sKey.$_"}) {
-            push @sResult, "[$sKey]" if $bKeyInvalid;
-            $bKeyInvalid= 0;
-            push @sResult, "$_ = $sValue";
-        }
-        $hConfShowCache->{"$sKey.$_"}= 1;
+        $self->get_value($sSubKey, undef,  $hConfShowCache->{'.'});
+        push @sResult, $self->showConfValue("$sKey.$sSubKey", $hConfShowCache);
     }
     push @sResult, "[]" unless $bKeyInvalid;
+    return \@sResult;
+}
+
+sub simplifyShow {
+    my $self= shift;
+    my $sOrig= shift;
+    my @sResult = ();
+    
+#return $sOrig;
+    my $sScope= "";
+    my $sOrigScope= "";
+    for my $sLine (@$sOrig) {
+        if ($sLine =~ /^[\#\s]/ || $sLine eq '') {
+            push @sResult, $sLine;
+            next;
+        }
+        if ($sLine =~ /^[(.*)]$/) {
+            $sOrigScope= $1;
+            next;
+        }
+        $sLine= "$sOrigScope.$sLine" unless $sOrigScope eq '';
+        my $sNewScope= $sLine =~ s/^([^\s\=]+)\.// ? $1 : "";
+        if ($sNewScope ne $sScope) {
+            $sScope= $sNewScope;
+            push @sResult, "[$sScope]";
+        }
+        push @sResult, $sLine;
+    }
+    push @sResult, "[]" unless $sScope eq '';
     return \@sResult;
 }
 

@@ -76,7 +76,7 @@ sub get_validation_message {
 
 sub sort_show_key_order {
     my $self= shift;
-    ("title", "source", "target", $self->SUPER::sort_show_key_order());
+    ("title", "target", "source", $self->SUPER::sort_show_key_order());
 }
 
 sub show {
@@ -96,34 +96,28 @@ sub show {
 
     push @$aResult, @{$self->SUPER::show($hConfShowCache)};
 
-    my $sTargetName= $oTarget->{NAME};
-    $sTargetName=~ s/^\*(\d+)/anonymous \($1\)/;
-    push @$aResult, "", "#" . "=" x 79;
-    push @$aResult, "# Target \"$sTargetName\": " . $oTarget->getFullPath();
-    push @$aResult, "#" . "=" x 79;
-    push @$aResult, @{$oTarget->show($hConfShowCache)};
+    push @$aResult, "", @{$oTarget->show($hConfShowCache)}, "";
 
     for my $oSource (@oSources) {
-        my $sSourceName= $oSource->{NAME};
-        $sSourceName=~ s/^\*(\d+)/anonymous \($1\)/;
-        push @$aResult, "#" . "=" x 79;
-        push @$aResult, "# Source \"$sSourceName\": " . $oSource->getFullPath();
-        push @$aResult, "#" . "=" x 79;
-        push @$aResult, @{$oSource->show($hConfShowCache)};
-        push @$aResult, "";
+        push @$aResult, @{$oSource->show($hConfShowCache)}, "";
     }
-#    print "$@\n" if $@;
-    # show all referenced objects not already shown and not anonymous
-    my @sReferences= grep {
-        !defined $hConfShowCache->{$_} && !/\.\*\d+$/
-    } keys %{$hConfShowCache->{"..references"}};
-    push @$aResult, "# Misc references:" if @sReferences;
-    for my $sRef (@sReferences) {
-        my $sValue= $self->get_raw_value("/$sRef");
-        push @$aResult, "$sRef = $sValue" if defined $sValue;
+    
+    # print all not already shown references
+    my @sSubResult= ();
+    while (1) {
+        # show all referenced objects not already shown and not anonymous
+        my @sReferences= grep {
+            !defined $hConfShowCache->{$_} && !/\.\*\d+$/
+        } $self->get_all_references($hConfShowCache->{'.'});
+        
+        last unless scalar @sReferences;
+        
+        push @sSubResult, $self->showConfValue($_, $hConfShowCache) while shift @sReferences;
     }
+    push @$aResult, "# Misc references:", @sSubResult if scalar @sSubResult;
     push @$aResult, "";
-    return $aResult;
+    
+    return $self->simplifyShow($aResult);
 }
 
 # =============================================================================

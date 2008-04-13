@@ -15,7 +15,7 @@ use RabakLib::Log;
 # hash table for detecting references and list of all used macros in filter expansion
 sub _get_filter {
     my $self= shift;
-    my $hMacroStack= shift || {};
+    my $aMacroStack= shift || [];
 
     my $sFilter= $self->get_raw_value('filter'); 
     my $aFilter= ["&filter"];
@@ -24,7 +24,7 @@ sub _get_filter {
         push @$aFilter, "-&exclude" if defined $self->get_raw_value('exclude');
         push @$aFilter, "+&include" if defined $self->get_raw_value('include');
     }
-    return $self->_parseFilter($aFilter, $self->valid_source_dir(), $hMacroStack);
+    return $self->_parseFilter($aFilter, $self->valid_source_dir(), $aMacroStack);
 }
 
 # parse filter string in $sFilter
@@ -33,14 +33,14 @@ sub _parseFilter {
     my $self= shift;
     my $aFilter= shift;
     my $sBaseDir= shift;
-    my $hMacroStack= shift || {};
+    my $aMacroStack= shift || [];
     
     return () unless defined $sBaseDir;
     
     $sBaseDir=~ s/\/?$/\//;
     my $sqBaseDir= quotemeta $sBaseDir;
 
-    my $sFilter= $self->_expand($aFilter, $hMacroStack);
+    my $sFilter= $self->_expand($aFilter, $aMacroStack);
 # print Dumper($sFilter);
     my @sFilter= @{$self->_flatten_filter($sFilter)};
 
@@ -138,7 +138,7 @@ sub _valuePreParse {
 sub _expand {
     my $self= shift;
     my $aEntries= shift;
-    my $hMacroStack= shift || {};
+    my $aMacroStack= shift || [];
     my $oScope= shift || $self;
 
 #print "expanding: [".join("n", @$aEntries)."]\n";
@@ -169,7 +169,7 @@ sub _expand {
             $hEntries= $hMixed;
         }
         if ($sEntry =~ /^\&/) {
-            my $hMacro= $self->expandMacro($sEntry, $hMacroStack, $oScope,
+            my $hMacro= $self->expandMacro($sEntry, $aMacroStack, $oScope,
                 sub {$self->_expand(@_)}, sub{$self->_valuePreParse(@_)}
             );
             if ($hMacro->{ERROR}) {
@@ -276,29 +276,24 @@ sub show {
     
     my $aResult = $self->SUPER::show($hConfShowCache);
     
-    my $hMacroStack= {};
+    my $aMacroStack= [];
 
-    my @sFilter= $self->_get_filter($hMacroStack);
+    my @sFilter= $self->_get_filter($aMacroStack);
     my $sLastScope= "";
     my @sSubResult= ();
-    for my $sMacroName (sort keys %$hMacroStack) {
-        next if defined $hConfShowCache->{$sMacroName};
-
-        my $sMacro= $self->get_raw_value("/$sMacroName", undef, "\n");
-        $sMacro=~ s/\n/\n\t/g;
-        my $sScope= $sMacroName =~ s/(.+)\.// ? $1 : '';
-        push @sSubResult, "[$sScope]" unless $sScope eq $sLastScope;
-        $sLastScope= $sScope;
-        push @sSubResult, "$sMacroName = $sMacro";
-        $hConfShowCache->{$sMacroName}= 1;
+    for my $sMacroName ($self->get_all_references($aMacroStack)) {
+        push @sSubResult, $self->showConfValue($sMacroName, $hConfShowCache);
     }
-    push @$aResult, "# Referenced filters:", @sSubResult if scalar @sSubResult;
+    push @$aResult, "", "# Referenced filters:", @sSubResult if scalar @sSubResult;
     push @$aResult, "[]" unless $sLastScope eq "";
+    
+    shift @$aMacroStack if scalar @$aMacroStack;
+    push @{$hConfShowCache->{'.'}}, @$aMacroStack;
     
     return $aResult unless $self->get_switch("logging") >= LOG_DEBUG_LEVEL;
 
     my $sBaseDir= $self->valid_source_dir();
-    push @$aResult, "", "", "# Expanded rsync filter (relative to '$sBaseDir'):", map {"#\t$_"} @sFilter;
+    push @$aResult, "", "# Expanded rsync filter (relative to '$sBaseDir'):", map {"#\t$_"} @sFilter;
     return $aResult;
 }
 
