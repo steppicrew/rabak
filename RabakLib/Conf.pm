@@ -54,21 +54,22 @@ sub splitValue {
     
     return undef unless defined $sValue;
     
-    my @Result = split /(?<!\\)\s+/, $sValue; # ? for correct syntax highlighting
+    my @Result = split /(?<!\\)\s+/, $sValue; # ?; # for correct syntax highlighting
     return \@Result;
 }
 
+# joins array of value parts with spaces
+# returns undef if there were an object or array is empty
 sub joinValue {
     my $self = shift;
     my $aValue= shift;
-    my $bEscaped= shift;
     
     return undef unless defined $aValue;
     
     my $bError;
     my @sValues = map {
         if (ref eq "ARRAY") {
-            my $sJoined= $self->joinValue($_, $bEscaped);
+            my $sJoined= $self->joinValue($_);
             $bError = 1 unless defined $sJoined;
             $sJoined;
         }
@@ -76,12 +77,7 @@ sub joinValue {
             $bError= 1;
         }
         else {
-            if ($bEscaped) {
-                $self->undo_remove_backslashes_part1($_);
-            }
-            else {
-                $self->remove_backslashes_part2($_);
-            }
+            $self->remove_backslashes_part2($_);
         }
     } @$aValue;
     return undef if $bError;
@@ -169,6 +165,7 @@ sub remove_backslashes {
     return $self->remove_backslashes_part2($self->remove_backslashes_part1($sValue));
 }
 
+# returns scalar value (references to other objects are already resolved, backslashes are cleaned)
 sub get_value {
     my $self= shift;
     my $sName= shift;
@@ -207,6 +204,7 @@ sub get_switch {
     return $self->get_value($sName, $sDefault);
 }
 
+# find property and return it as it is (scalar, object etc.)
 sub get_property {
     my $self= shift;
     my $sName= shift;

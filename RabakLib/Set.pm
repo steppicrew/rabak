@@ -383,10 +383,11 @@ sub get_targetPath {
 sub collect_bakdirs {
     my $self= shift;
     my $sqBakSet= quotemeta shift;
-    my $sqBakSource= shift;
+    my $sBakSource= shift;
     my $sSubSetBakDay= shift || 0;
 
-    if (defined $sqBakSource && $sqBakSource ne '') {
+    my $sqBakSource;
+    if (defined $sBakSource && $sBakSource ne '') {
         $sqBakSource= quotemeta ".$sqBakSource";
     }
     else {
@@ -616,11 +617,13 @@ sub _backup_setup {
     my ($sBakMonth, $sBakDay)= $self->_build_bakMonthDay;
     my $sBakSet= $self->get_value("name");
     my $sBakSource= $oSource->get_value("name") || '';
+    # patch source name for anonymous sources
+    $sBakSource =~ s/\*//g;
 
     ($sSubSet, @sBakDir)= $self->collect_bakdirs($sBakSet, $sBakSource, $sBakDay);
 
     my $sUniqueTarget= "$sBakDay$sSubSet";
-    $sUniqueTarget.= ".$sBakSource" if $sBakSource;
+    $sUniqueTarget.= ".$sBakSource" if $sBakSource ne '';
     $self->set_value("unique_target", $sUniqueTarget);
     my $sTarget= "$sBakMonth.$sBakSet/$sUniqueTarget";
     $self->set_value("full_target", $oTargetPath->getPath . "/$sTarget");
