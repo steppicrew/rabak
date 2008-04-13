@@ -85,34 +85,45 @@ sub show {
     
     logger->set_stdout_prefix("# ");
     
-    print "#" x 80 . "\n";
-    print "# Configuration for \"$self->{NAME}\"\n";
-    print "#" x 80 . "\n\n";
+    my $aResult= [];
+    
+    push @$aResult, "#" x 80;
+    push @$aResult, "# Configuration for \"$self->{NAME}\"";
+    push @$aResult, "#" x 80, "";
 
     my @oSources= $self->get_sourcePaths();
     my $oTarget= $self->get_targetPath();
 
-    $self->SUPER::show($hConfShowCache);
+    push @$aResult, @{$self->SUPER::show($hConfShowCache)};
 
-    print "\n#", "=" x 79, "\n";
-    print "# Target \"$oTarget->{NAME}\": ", $oTarget->getFullPath(), "\n";
-    print "#", "=" x 79, "\n";
-    $oTarget->show($hConfShowCache);
+    my $sTargetName= $oTarget->{NAME};
+    $sTargetName=~ s/^\*(\d+)/anonymous \($1\)/;
+    push @$aResult, "", "#" . "=" x 79;
+    push @$aResult, "# Target \"$sTargetName\": " . $oTarget->getFullPath();
+    push @$aResult, "#" . "=" x 79;
+    push @$aResult, @{$oTarget->show($hConfShowCache)};
 
     for my $oSource (@oSources) {
-        print "#", "=" x 79, "\n";
-        print "# Source \"$oSource->{NAME}\": ", $oSource->getFullPath(), "\n";
-        print "#", "=" x 79, "\n";
-        $oSource->show($hConfShowCache);
-        print "\n";
+        my $sSourceName= $oSource->{NAME};
+        $sSourceName=~ s/^\*(\d+)/anonymous \($1\)/;
+        push @$aResult, "#" . "=" x 79;
+        push @$aResult, "# Source \"$sSourceName\": " . $oSource->getFullPath();
+        push @$aResult, "#" . "=" x 79;
+        push @$aResult, @{$oSource->show($hConfShowCache)};
+        push @$aResult, "";
     }
 #    print "$@\n" if $@;
-    my @sReferences= grep {! defined $hConfShowCache->{$_}} keys %{$hConfShowCache->{"..references"}};
-    print "# Misc references:\n" if scalar @sReferences;
+    # show all referenced objects not already shown and not anonymous
+    my @sReferences= grep {
+        !defined $hConfShowCache->{$_} && !/\.\*\d+$/
+    } keys %{$hConfShowCache->{"..references"}};
+    push @$aResult, "# Misc references:" if @sReferences;
     for my $sRef (@sReferences) {
-        print "$sRef = ", $self->get_raw_value("/$sRef"), "\n";
+        my $sValue= $self->get_raw_value("/$sRef");
+        push @$aResult, "$sRef = $sValue" if defined $sValue;
     }
-    print "\n";
+    push @$aResult, "";
+    return $aResult;
 }
 
 # =============================================================================
@@ -388,7 +399,7 @@ sub collect_bakdirs {
 
     my $sqBakSource;
     if (defined $sBakSource && $sBakSource ne '') {
-        $sqBakSource= quotemeta ".$sqBakSource";
+        $sqBakSource= quotemeta ".$sBakSource";
     }
     else {
         # match nothing

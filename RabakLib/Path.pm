@@ -89,15 +89,15 @@ sub show {
     my $hConfShowCache= shift || {};
 
     my  @oMounts= $self->getMountObjects();
-    $self->SUPER::show($hConfShowCache);
+    my $aResult= $self->SUPER::show($hConfShowCache);
     
-    print "\n# Referenced mounts:" if scalar @oMounts;
+    push @$aResult, "", "# Referenced mounts:" if scalar @oMounts;
 
     for my $oMount (@oMounts) {
-        print "\n";
-        $oMount->show($hConfShowCache);
+        push @$aResult, @{$oMount->show($hConfShowCache)};
     }
-    print "\n";
+    push @$aResult, "";
+    return $aResult;
 }
 
 # get path works only with file object!

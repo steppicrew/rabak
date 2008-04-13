@@ -17,23 +17,13 @@ sub _get_filter {
     my $self= shift;
     my $hMacroStack= shift || {};
 
-    my ($sFilter, $oFilterParent)= $self->get_property('filter'); 
-    if (defined $sFilter && ! ref $sFilter) {
-        my $sFilterName= $oFilterParent->get_full_name('filter');
-        $hMacroStack->{$sFilterName}= 1;
-        $sFilter= $self->remove_backslashes_part1($sFilter);
+    my $sFilter= $self->get_raw_value('filter'); 
+    my $aFilter= ["&filter"];
+    unless (defined $sFilter) {
+        $aFilter= [];
+        push @$aFilter, "-&exclude" if defined $self->get_raw_value('exclude');
+        push @$aFilter, "+&include" if defined $self->get_raw_value('include');
     }
-    else {
-        $sFilter="";
-        $sFilter.= " -&exclude" if defined $self->get_prep_value('exclude');
-        $sFilter.= " +&include" if defined $self->get_prep_value('include');
-    }
-    # prepare $sFilter for parsing
-    my $aFilter = $self->splitValue(
-                    $self->_valuePreParse(
-                        $self->remove_backslashes_part1($sFilter)
-                    )
-                );
     return $self->_parseFilter($aFilter, $self->valid_source_dir(), $hMacroStack);
 }
 
@@ -284,32 +274,32 @@ sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
     
-    $self->SUPER::show($hConfShowCache);
+    my $aResult = $self->SUPER::show($hConfShowCache);
     
     my $hMacroStack= {};
 
     my @sFilter= $self->_get_filter($hMacroStack);
-    my $sFirstLine= "# Referenced filters:\n";
     my $sLastScope= "";
+    my @sSubResult= ();
     for my $sMacroName (sort keys %$hMacroStack) {
         next if defined $hConfShowCache->{$sMacroName};
 
-        print $sFirstLine;
-        $sFirstLine= '';
         my $sMacro= $self->get_raw_value("/$sMacroName", undef, "\n");
         $sMacro=~ s/\n/\n\t/g;
         my $sScope= $sMacroName =~ s/(.+)\.// ? $1 : '';
-        print "[$sScope]\n" unless $sScope eq $sLastScope;
+        push @sSubResult, "[$sScope]" unless $sScope eq $sLastScope;
         $sLastScope= $sScope;
-        print "$sMacroName = $sMacro\n" ;
+        push @sSubResult, "$sMacroName = $sMacro";
         $hConfShowCache->{$sMacroName}= 1;
     }
-    print "[]\n" unless $sLastScope eq "";
+    push @$aResult, "# Referenced filters:", @sSubResult if scalar @sSubResult;
+    push @$aResult, "[]" unless $sLastScope eq "";
     
-    return unless $self->get_switch("logging") >= LOG_DEBUG_LEVEL;
+    return $aResult unless $self->get_switch("logging") >= LOG_DEBUG_LEVEL;
 
     my $sBaseDir= $self->valid_source_dir();
-    print "\n\n# Expanded rsync filter (relative to '$sBaseDir'):\n#\t" . join("\n#\t", @sFilter) . "\n";
+    push @$aResult, "", "", "# Expanded rsync filter (relative to '$sBaseDir'):", map {"#\t$_"} @sFilter;
+    return $aResult;
 }
 
 sub valid_source_dir {

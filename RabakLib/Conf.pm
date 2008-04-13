@@ -402,20 +402,25 @@ sub sort_show_keys {
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
-
+    
     my $sKey= $self->get_full_name();
 
-    return if $sKey=~ /\*\d+$/; # don't show anonymous objects
+    return [] if $sKey=~ /\*\d+$/; # don't show anonymous objects
 
     my $bKeyInvalid= 1;    
+
+    my @sResult= ();
 
     $hConfShowCache->{"..references"}= {} unless $hConfShowCache->{"..references"};
     for ($self->sort_show_keys(keys %{ $self->{VALUES} })) {
         next if $_ =~ /^\./;
         if (ref($self->{VALUES}{$_})) {
-            # print Dumper($self->{VALUES}{$_}); die;
-            print "\n";
-            $self->{VALUES}{$_}->show($hConfShowCache);
+            # remember referenced objects for later showing
+            $hConfShowCache->{"..references"}{$self->{VALUES}{$_}->get_full_name()} = 1;
+            next;
+            # alternative: expand referenced object immediately
+            push @sResult, "[]", "";
+            push @sResult, @{$self->{VALUES}{$_}->show($hConfShowCache)};
             $bKeyInvalid= 1;
             next;
         }
@@ -430,15 +435,14 @@ sub show {
         # print "$_ = $sValue\n";
 
         unless (defined $hConfShowCache->{"$sKey.$_"}) {
-            print "[$sKey]\n" if $bKeyInvalid;
+            push @sResult, "[$sKey]" if $bKeyInvalid;
             $bKeyInvalid= 0;
-            print "$_ = $sValue\n";
+            push @sResult, "$_ = $sValue";
         }
         $hConfShowCache->{"$sKey.$_"}= 1;
     }
-#    my @sReferences= grep {! defined $hConfShowCache->{$_}} keys %$hReferences;
-#    print "# References: '&/", join("', '&/", @sReferences), "'\n" if @sReferences;
-    print "[]\n" unless $bKeyInvalid;
+    push @sResult, "[]" unless $bKeyInvalid;
+    return \@sResult;
 }
 
 sub get_full_name {

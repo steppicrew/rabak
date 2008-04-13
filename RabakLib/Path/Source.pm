@@ -60,7 +60,7 @@ sub show {
     my $hConfShowCache= shift || {};
 
     my $sName= $self->get_value("name");
-    $self->SUPER::show($hConfShowCache);# unless $sName=~ /^\*/;
+    return $self->SUPER::show($hConfShowCache);# unless $sName=~ /^\*/;
 }
 
 sub getFullPath {
