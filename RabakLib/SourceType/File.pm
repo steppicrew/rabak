@@ -40,7 +40,7 @@ sub _parseFilter {
     $sBaseDir=~ s/\/?$/\//;
     my $sqBaseDir= quotemeta $sBaseDir;
 
-    my $sFilter= $self->_expand($aFilter, $aMacroStack);
+    my $sFilter= $self->_expand($aFilter, $self, $aMacroStack);
 # print Dumper($sFilter);
     my @sFilter= @{$self->_flatten_filter($sFilter)};
 
@@ -113,21 +113,6 @@ sub _parseFilter {
     return @sResult;
 }
 
-# prepare value for correct splitting
-sub _valuePreParse {
-    my $self= shift;
-    my $sEntry= shift;
-    # remove spaces between +/- and path
-    $sEntry=~ s/(?<!\\)([\-\+])\s+/$1/g;
-    # enclose all macros with parantheses
-    $sEntry=~ s/(?<!\\)(\&[\.\w]+)/\($1\)/g;
-    # add space after '('
-    $sEntry=~ s/(?<!\\)\(\s*/\( /g;
-    # add space before ')'
-    $sEntry=~ s/(?<!\\)\s*\)/ \)/g;
-    $sEntry;
-}
-
 # internal filter structure:
 #   filter types:
 #       "list": simple array of filter entries (strings or "mixed" filter)
@@ -138,8 +123,8 @@ sub _valuePreParse {
 sub _expand {
     my $self= shift;
     my $aEntries= shift;
-    my $aMacroStack= shift || [];
     my $oScope= shift || $self;
+    my $aMacroStack= shift || [];
 
 #print "expanding: [".join("n", @$aEntries)."]\n";
 
@@ -169,8 +154,20 @@ sub _expand {
             $hEntries= $hMixed;
         }
         if ($sEntry =~ /^\&/) {
-            my $hMacro= $self->expandMacro($sEntry, $aMacroStack, $oScope,
-                sub {$self->_expand(@_)}, sub{$self->_valuePreParse(@_)}
+            my $hMacro= $self->expandMacro($sEntry, $oScope, $aMacroStack,
+                sub {$self->_expand(@_)}, # function to expand macro's content
+                sub{ # function to modify macro's text before splitting
+                    my $sEntry= shift;
+                    # remove spaces between +/- and path
+                    $sEntry=~ s/(?<!\\)([\-\+])\s+/$1/g;
+                    # enclose all macros with parantheses
+                    $sEntry=~ s/(?<!\\)(\&[\.\w]+)/\($1\)/g;
+                    # add space after '('
+                    $sEntry=~ s/(?<!\\)\(\s*/\( /g;
+                    # add space before ')'
+                    $sEntry=~ s/(?<!\\)\s*\)/ \)/g;
+                    return $sEntry;
+                },
             );
             if ($hMacro->{ERROR}) {
                 logger->error("Filter expansion: $hMacro->{ERROR}");

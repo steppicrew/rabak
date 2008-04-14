@@ -286,8 +286,8 @@ sub set_value {
 sub expandMacro {
     my $self= shift;
     my $sMacroName= shift;
-    my $aMacroStack= shift || [];
     my $oScope= shift || $self;
+    my $aMacroStack= shift || [];
     my $fExpand= shift || sub {$self->_resolveObjects(@_)}; # try to expand macro as deep as possible by default
     my $fPreParse= shift || sub {shift}; # no preparsing by default
 
@@ -324,7 +324,7 @@ sub expandMacro {
     );
     my $aNewMacroStack= ["${sMacroPath}[$sMacroName]"];
 # print "Macro: $sMacro\n";
-    $sResult{DATA}= $fExpand->($aMacro, $aNewMacroStack, $oMacroScope);
+    $sResult{DATA}= $fExpand->($aMacro, $oMacroScope, $aNewMacroStack);
     push @$aMacroStack, $aNewMacroStack;
 # print "Done $sMacroName\n";
     return \%sResult;
@@ -335,14 +335,14 @@ sub resolveObjects {
     my $sProperty= shift;
     my $aStack= shift || [];
     
-    return map {$self->remove_backslashes_part2($_)} @{$self->_resolveObjects(["&$sProperty"], $aStack, $self)};
+    return map {$self->remove_backslashes_part2($_)} @{$self->_resolveObjects(["&$sProperty"], $self, $aStack)};
 }
 
 sub _resolveObjects {
     my $self= shift;
     my $aValue= shift;
-    my $aStack= shift || [];
     my $oScope= shift || $self;
+    my $aStack= shift || [];
 
     my @oResult= ();
     
@@ -355,7 +355,7 @@ sub _resolveObjects {
         # macros are expanded and result added to @oResult
 # print "expanding macro: '$sValue'\n";
 # print "scope: ", $self->get_full_name() , "\n";
-        my $hResult = $self->expandMacro($sValue, $aStack, $oScope, sub{$self->_resolveObjects(@_)});
+        my $hResult = $self->expandMacro($sValue, $oScope, $aStack, sub{$self->_resolveObjects(@_)});
         unless (defined $hResult->{DATA}) {
             # logger->error($hResult->{ERROR}) if $hResult->{ERROR};
             next;
@@ -422,14 +422,14 @@ sub showConfValue {
     my $sKey= shift;
     my $hConfShowCache= shift || {};
 
-    return () if defined $hConfShowCache->{"$sKey"};
+    return () if defined $hConfShowCache->{$sKey};
     $hConfShowCache->{"$sKey"}= 1;
     # get the original config entry
     my $sValue= $self->get_raw_value("/$sKey");
     return () unless defined $sValue;
 
     my @sResult= split /\n/, $sValue;
-    $sKey.= " = " . shift @sResult;
+    $sKey.= " = " . (scalar @sResult ? shift @sResult : '');
     return ($sKey, map {"\t$_"} @sResult);
 }
 

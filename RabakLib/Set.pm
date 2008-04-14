@@ -112,7 +112,7 @@ sub show {
         
         last unless scalar @sReferences;
         
-        push @sSubResult, $self->showConfValue($_, $hConfShowCache) while shift @sReferences;
+        push @sSubResult, $self->showConfValue($_, $hConfShowCache) for (@sReferences);
     }
     push @$aResult, "# Misc references:", @sSubResult if scalar @sSubResult;
     push @$aResult, "";
