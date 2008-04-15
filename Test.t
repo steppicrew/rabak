@@ -11,7 +11,7 @@ use FindBin qw($Bin);
 BEGIN {`sh "$Bin/stuff/testdev-make" 2>/dev/null`;}
 END {`sh "$Bin/stuff/testdev-remove" 2>/dev/null`;}
 
-# $verbose= 1;
+$verbose= 1;
 
 runtests(
     "RabakLib/t/Conf.t",

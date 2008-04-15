@@ -1,7 +1,7 @@
 use strict;
 use Test;
 
-BEGIN { plan tests => 63 };
+BEGIN { plan tests => 67 };
 
 use RabakLib::Conf;
 use Data::Dumper;
@@ -23,6 +23,16 @@ ok $oRootConf->get_full_name(), '', 'Full name of RootConf';
 $oRootConf->set_value('test_key', 'test_value');
 ok $oRootConf->get_value('test_key'), 'test_value', 'Setting scalar value (RootConf)';
 ok $oRootConf->get_node('test_key'), undef, 'Getting scalar value as node (RootConf)';
+
+# checking various types of splitting
+$oRootConf->set_value('test_key', '1   2\  3\  \ 4');
+ok $oRootConf->get_value('test_key'), '1 2  3   4', 'test for separator and exscpaed characters (1)';
+$oRootConf->set_value('test_key', '1   2\ ,\, ,3\  \ 4');
+ok $oRootConf->get_value('test_key'), '1 2  , 3   4', 'test for separator and exscpaed characters (2)';
+$oRootConf->set_value('test_key', '&this_is_a_macro_reference');
+ok $oRootConf->get_value('test_key'), undef, 'test for separator and exscpaed characters (3)';
+$oRootConf->set_value('test_key', '\&this_is_a_macro_reference');
+ok $oRootConf->get_value('test_key'), '&this_is_a_macro_reference', 'test for separator and exscpaed characters (4)';
 
 # checking case insensivity
 $oRootConf->set_value('tesT_Key', 'root test value');
@@ -109,17 +119,19 @@ ok $oRootConf->get_switch('test_key'), 'test switch', 'Getting switch from RootC
 
 # test set_values and resolveObjects() with recursion check and wrong reference
 my $oSubConf2= RabakLib::Conf->new('subconf2', $oRootConf);
+$oSubConf2->set_value('key1', 'some value');
 $oRootConf->set_value('subconf2', $oSubConf2);
 $oSubConf11->set_values({
-    '/test_key' => '&subconf2 &subconf1 str\ ing',
+    '/test_key' => '&subconf2.key1 str\ ing',
     '.test_key' => 'sub1',
     '.reference' => '&/test_key &test_key &subconf11.test_key &/subconf11.test_key',
     'test_key' => 'sub11 &test_key',
 });
-ok $oRootConf->get_value('test_key'), '&subconf2 &subconf1 str ing', 'Setting multiple values (1)';
+
+ok $oRootConf->get_value('test_key'), 'some value str ing', 'Setting multiple values (1)';
 ok $oCloneSubConf1->get_value('test_key'), 'sub1', 'Setting multiple values (2)';
-ok $oCloneSubConf1->get_value('reference'), '&/test_key &test_key &subconf11.test_key &/subconf11.test_key', 'Setting multiple values (3)';
+ok $oCloneSubConf1->get_value('reference'), 'some value str ing sub1 sub11', 'Setting multiple values (3)';
 my @oResolvedObjects= $oSubConf11->resolveObjects('reference');
-my @oExpected= ($oSubConf2, $oCloneSubConf1, 'str ing', 'sub1', 'sub11');
+my @oExpected= ('some', 'value', 'str ing', 'sub1', 'sub11');
 ok join("][", @oResolvedObjects), join("][", @oExpected), 'Resolving Objects with recursion and nonexisting reference';
 

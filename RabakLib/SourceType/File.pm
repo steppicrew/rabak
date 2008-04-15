@@ -21,8 +21,8 @@ sub _get_filter {
     my $aFilter= ["&filter"];
     unless (defined $sFilter) {
         $aFilter= [];
-        push @$aFilter, "-&exclude" if defined $self->get_raw_value('exclude');
-        push @$aFilter, "+&include" if defined $self->get_raw_value('include');
+        push @$aFilter, "-(", "&exclude", ")" if defined $self->get_raw_value('exclude');
+        push @$aFilter, "+(", "&include", ")" if defined $self->get_raw_value('include');
     }
     return $self->_parseFilter($aFilter, $self->valid_source_dir(), $aMacroStack);
 }
@@ -133,7 +133,7 @@ sub _expand {
         DATA => [],
     };
     my @arStack= ();
-    for my$sEntry (@$aEntries) {
+    for my $sEntry (@$aEntries) {
 # print "Original: [$sEntry]\n";
         my $bClose= $sEntry=~ s/^\)//;
         my $bOpen= $sEntry=~ s/(?<!\\)\($//;
