@@ -119,12 +119,12 @@ filter=
 []
 
 # redefine standard objects for backward compatibility
-exclude_std_linux = &default.exclude_std_linux
+exclude_std_linux = &default.exclude_linux
 win_root_dir = &default.win_root_dir
 exclude_sys_win = &default.exclude_sys_win
 exclude_profile_win = &default.exclude_profile_win
 exclude_std_win = &default.exclude_win
-exclude_common = &default.exclude_common
+exclude_std_common = &default.exclude_common
 exclude_std = &default.exclude
 filter= &default.filter
 
