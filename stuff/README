@@ -1,5 +1,20 @@
 
-This directory contains useful and useless stuff.
+This directory contains (in order of usefulness):
 
-TODO:
-- Explain stuff
+sample-env-make
+    Build sample environments required by some samples from ../rabak.sample.cf
+
+sample-env-remove
+    Remove sample environment built by sample-env-make
+
+run-dupemerge
+    Example for calling faster-dupemerge
+
+makeDist.sh
+    Build distribution, mainly to prepare Gentoo ebuild file.
+
+moveout-single
+    Early solution for creating sparse archives from backup directories
+
+develop.txt
+    Developer's notes
