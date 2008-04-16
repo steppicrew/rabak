@@ -50,6 +50,14 @@ sub Factory {
     return $new;
 }
 
+sub getBaksetName {
+    my $self= shift;
+    my $sName= $self->get_value("name");
+    $sName= "" unless defined $sName;
+    $sName=~ s/^\*//;
+    return $sName;
+}
+
 sub sort_show_key_order {
     my $self= shift;
     ("type", $self->SUPER::sort_show_key_order(), "keep");
