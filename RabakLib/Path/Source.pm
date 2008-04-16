@@ -54,7 +54,7 @@ sub getBaksetName {
     my $self= shift;
     my $sName= $self->get_value("name");
     $sName= "" unless defined $sName;
-    $sName=~ s/^\*//;
+    $sName=~ s/^\*/source/;
     return $sName;
 }
 
