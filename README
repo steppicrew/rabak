@@ -14,7 +14,7 @@ flexible configuration files and supports backup to or from remote machines.
 It even supports remote to remote backup (think remote control).
 
 Rabak is very good for unattended safe remote backups, and has support
-for postgresql and mysql backups via database dumps.
+for postgresql and mysql backups via database dump streaming.
 
 It's simple to configure different, multiple sources for one backup set.
 There's support for file filters that hide the complexity of the rsync filters

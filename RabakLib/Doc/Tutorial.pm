@@ -235,14 +235,18 @@ TBD!
   mount2.unmount = 1
 
   # Backup set "Tutorial1 A"
+  # The [tutorial1_a] sets the scope to "tutorial1_a". All assignments are now inside this scope.
 
-  tutorial1_a.title = Tutorial1 A
-  tutorial1_a.source.path = tutorial/source
-  tutorial1_a.target.path = tutorial/target
-  tutorial1_a.target.mount = &mount1
+  [tutorial1_a]
+  title = Tutorial1 A
+  source.path = tutorial/source
+  target.path = tutorial/target
+  target.mount = &mount1
 
   # Backup set "Tutorial1 B"
+  # The [] clears the scope. Unlike "tutorial1_a" the scope must be written explicitly.
 
+  []
   tutorial1_b.title = Tutorial1 B
   tutorial1_b.source.path = tutorial/source
   tutorial1_b.target.path = tutorial/target
@@ -261,12 +265,13 @@ TBD!
   mount1.directory = $target_base
   mount1.unmount = 1
 
-  tutorial.title = Tutorial1
-  tutorial.source.path = tutorial/source
-  tutorial.target.path = tutorial/target
-  tutorial.target.mount = &mount1
-  tutorial.target.group = day-of-week
-  tutorial.exclude = *.bak *.~
+  [tutorial]
+  title = Tutorial1
+  source.path = tutorial/source
+  target.path = tutorial/target
+  target.mount = &mount1
+  target.group = day-of-week
+  exclude = *.bak *.~
 
 TBD!
 
@@ -283,24 +288,26 @@ TBD!
 
   # Postgresql Database
 
-  tutorial_pg.title = Databases of tutorial
-  tutorial_pg.source.path = pgsql://vbulletin,postnuke
-  tutorial_pg.source.user = *default*
-  tutorial_pg.source.password = secret
-  tutorial_pg.target = $tutorial_target
-  #tutorial_pg.target.path = $target_base/postgres
-  tutorial_pg.keep = 3
+  [tutorial_pg]
+  title = Databases of tutorial
+  source.path = pgsql://vbulletin,postnuke
+  source.user = *default*
+  source.password = secret
+  target = $tutorial_target
+  # target.path = $target_base/postgres
+  keep = 3
 
   # MySql Database
 
-  tutorial_mysql.title = Mysql-DBs
-  tutorial_mysql.source.path = mysql://*
-  tutorial_mysql.source.user = mysql_user
-  tutorial_mysql.source.password = secret
-  tutorial_mysql.source.mount = &mount_external
-  tutorial_mysql.target = $tutorial_target
-  #tutorial_mysql.target.path = $target_base/mysql
-  tutorial_mysql.keep = 3
+  [tutorial_mysql]
+  title = Mysql-DBs
+  source.path = mysql://*
+  source.user = mysql_user
+  source.password = secret
+  source.mount = &mount_external
+  target = $tutorial_target
+  # target.path = $target_base/mysql
+  keep = 3
 
 TBD!
 
@@ -352,24 +359,26 @@ Once you have a working key authentification, you can specify the same variables
 For example, you can specify mount points, and rabak will do the right thing.
 
   # Setup local source
-  tutorial_local_source.path = tutorial/source
+  [tutorial_local_source]
+  path = tutorial/source
 
-  # Setup remote target
-  tutorial_remote_target.path = tutorial/target
-  tutorial_remote_target.host = some.host.name
-  tutorial_remote_target.user = username.on.host
-  tutorial_remote_target.mount.device = /dev/dev.on.remote.host
-  tutorial_remote_target.mount.directory = /mnt/path/on.remote.host
-  tutorial_remote_target.mount.umount = 1
+  # Setup local target
+  [tutorial_local_target]
+  path = tutorial/target
+  host = some.host.name
+  user = username.on.host
+  mount.device = /dev/dev.on.remote.host
+  mount.directory = /mnt/path/on.remote.host
+  mount.umount = 1
 
-  # specify a LOCAL directory to temporarily store files for the remote system (eg. database dumps)
-  tutorial_remote_target.tempdir = /path/for/temporary/files/on.local.host
-  tutorial_remote_target.group = tutorial
-  tutorial_remote_target.discfree_threshold = 10%
+  [tutorial_remote_target]
+  group = tutorial
+  discfree_threshold = 10%
 
-  tutorial.title = From local to remote
-  tutorial.source = &tutorial_local_source
-  tutorial.target = &tutorial_remote_target
+  [tutorial]
+  title = From local to remote
+  source = &tutorial_local_source
+  target = &tutorial_remote_target
 
 
 =head1 TUTORIAL1: Backup from remote to remote
@@ -378,26 +387,30 @@ Remote to remote backup is essentially the same to local to remote.
 Just specify an user and a host for the source and the target object and you're done.
 
   # Setup local source
-  tutorial_remote_source.path = /home/
-  tutorial_remote_source.host = some.host.name
-  tutorial_remote_source.user = username.on.host
+  [tutorial_remote_source]
+  path = /home/
+  host = some.host.name
+  user = username.on.host
 
   # Setup remote target
-  tutorial_remote_target.path = /rabak
-  tutorial_remote_target.host = some.host.name
-  tutorial_remote_target.user = username.on.host
-  tutorial_remote_target.mount.device = /dev/dev.on.remote.host
-  tutorial_remote_target.mount.device = /mnt/path/on.remote.host
-  tutorial_remote_target.mount.umount = 1
+  [tutorial_remote_target]
+  path = /rabak
+  host = some.host.name
+  user = username.on.host
+  mount.device = /dev/dev.on.remote.host
+  mount.device = /mnt/path/on.remote.host
+  mount.umount = 1
 
   # specify a LOCAL directory to temporarily store files for the remote system (eg. database dumps)
-  tutorial_remote_target.tempdir = /path/for/temporary/files/on.local.host
-  tutorial_remote_target.group = tutorial
-  tutorial_remote_target.discfree_threshold = 10%
+  [tutorial_remote_target]
+  tempdir = /path/for/temporary/files/on.local.host
+  group = tutorial
+  discfree_threshold = 10%
 
-  tutorial.title = From remote to remote
-  tutorial.source = &tutorial_remote_source
-  tutorial.target = &tutorial_remote_target
+  [tutorial]
+  title = From remote to remote
+  source = &tutorial_remote_source
+  target = &tutorial_remote_target
 
 
 =head1 TUTORIAL1: Variables in depth
