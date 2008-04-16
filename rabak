@@ -81,7 +81,9 @@ sub cmd_conf {
     }
     my $hBakSet= _cmd_setup($sBakSet, 1);
     $oConf->set_value("switch.warn_on_remote_access", 1);
-    print join "\n", @{$hBakSet->show()}, "";
+    my @sConf= @{ $hBakSet->show() };
+    pop @sConf;  # remove last []. (See RabalLib::Conf:show)
+    print join "\n", @sConf, "";
     exit 0;
 }
 

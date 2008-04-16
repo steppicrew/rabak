@@ -1,0 +1,20 @@
+
+The tutorial files build on one another. If you don't understand a certain feature,
+please look at the previous example.
+
+
+=begin EXTRA
+
+
+rabak.tutorial01.cf: Quick start! A Minimal Configuration
+rabak.tutorial02.cf: Excluding specific files
+rabak.tutorial03.cf: Multiple Backup Sets; Variables Basics
+rabak.tutorial04.cf: Simple Mount Points
+rabak.tutorial05.cf: Include Files; Target Groups
+rabak.tutorial06.cf: Backing up databases
+rabak.tutorial07.cf: Multiple Sources per Backup Set
+rabak.tutorial08.cf: Unsing a Samba Mount Point as Source
+rabak.tutorial09.cf: Backup from remote to local
+rabak.tutorial10.cf: Backup from local to remote
+rabak.tutorial11.cf: Backup from remote to remote
+rabak.tutorial12.cf: Variables in depth
