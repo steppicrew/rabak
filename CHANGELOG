@@ -1,4 +1,10 @@
 
+rabak-1.0rc2
+- Cleaning up RabakLib by renaming and moving several files
+- Cleaning up Samples
+- Improved Macro expansion in config files
+- Switched to a new home and now using git
+
 rabak-0.6rc12
 - look for config file in different places
 - Log.pm: supports indenting for better readability

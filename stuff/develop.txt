@@ -15,3 +15,5 @@ push to server:
 revert to last HEAD version:
     git reset --hard HEAD
 
+git log of a certain file:
+    git log --follow <file>
