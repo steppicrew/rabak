@@ -364,16 +364,14 @@ For example, you can specify mount points, and rabak will do the right thing.
 
   # Setup local target
   [tutorial_local_target]
-  path = $target_dir
+  path = tutorial/target
   host = some.host.name
   user = username.on.host
   mount.device = /dev/dev.on.remote.host
-  mount.device = /mnt/path/on.remote.host
+  mount.directory = /mnt/path/on.remote.host
   mount.umount = 1
 
   [tutorial_remote_target]
-  # specify a LOCAL directory to temporarily store files for the remote system (eg. database dumps)
-  tempdir = /path/for/temporary/files/on.local.host
   group = tutorial
   discfree_threshold = 10%
 
