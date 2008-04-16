@@ -3,7 +3,7 @@ use Test;
 
 BEGIN { plan tests => 69 };
 
-use RabakLib::Path;
+use RabakLib::Path::Mountable;
 use Data::Dumper;
 use FindBin qw($Bin);
 
@@ -18,8 +18,8 @@ ok ref $oRootConf, 'RabakLib::Conf', 'Checking base config';
 my $oTargetConf= $oRootConf->get_node("testtarget");
 ok ref $oTargetConf, 'RabakLib::Conf', 'Checking target config';
 ok -d $oTargetConf->get_value("path"), 1, 'Path value is a directory';
-my $oPath= RabakLib::Path->CloneConf($oTargetConf);
-ok ref $oPath, 'RabakLib::Path', 'Creating Path from Conf';
+my $oPath= RabakLib::Path::Mountable->CloneConf($oTargetConf);
+ok ref $oPath, 'RabakLib::Path::Mountable', 'Creating Path from Conf';
 
 my $sOrigPath= $oPath->get_value("path");
 # check getPath()

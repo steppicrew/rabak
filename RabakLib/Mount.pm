@@ -39,7 +39,7 @@ sub is_mounted {
 sub MountDir2Device {
     my $self= shift;
     my $sMountDir= shift;
-    my $oPath= shift || RabakLib::Path->new(undef, undef);
+    my $oPath= shift || RabakLib::Path::Mountable->new(undef, undef);
     
     return undef unless defined $sMountDir;
     
@@ -53,7 +53,7 @@ sub MountDir2Device {
 sub MountDevice2Dir {
     my $self= shift;
     my $sMountDevice= shift;
-    my $oPath= shift || RabakLib::Path->new(undef, undef);
+    my $oPath= shift || RabakLib::Path::Mountable->new(undef, undef);
     
     return undef unless defined $sMountDevice;
     

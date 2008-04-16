@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package RabakLib::SourceType::DBBase;
+package RabakLib::Path::Source::DBBase;
 
 use warnings;
 use strict;

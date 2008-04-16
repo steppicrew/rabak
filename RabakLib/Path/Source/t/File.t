@@ -8,12 +8,12 @@ use RabakLib::Set;
 use Data::Dumper;
 use FindBin qw($Bin);
 
-print "# Testing 'RabakLib::SourceType::File'\n";
+print "# Testing 'RabakLib::Path::Source::File'\n";
 
 # TODO: test remote sources (dont know how to)
 
 # modify bin directory for including
-$Bin.= "/../../..";
+$Bin.= "/../../../..";
 
 my $oRootConf= require "$Bin/RabakLib/t/Common.t";
 ok ref $oRootConf, 'RabakLib::Conf', 'Checking base config';
@@ -28,7 +28,7 @@ my $oSourceConf= $oRootConf->get_node("testsource_file");
 ok ref $oSourceConf, 'RabakLib::Conf', 'Checking source config';
 ok -d $oSourceConf->get_value("path"), 1, 'Source path is a directory';
 my $oSource= RabakLib::Path::Source->Factory($oSourceConf);
-ok ref $oSource, 'RabakLib::SourceType::File', 'Creating file source from Conf';
+ok ref $oSource, 'RabakLib::Path::Source::File', 'Creating file source from Conf';
 
 ####################################################
 # test filter-routines

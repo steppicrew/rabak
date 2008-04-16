@@ -6,7 +6,7 @@ use warnings;
 use strict;
 
 use RabakLib::Log;
-use RabakLib::Path;
+use RabakLib::Path::Mountable;
 use RabakLib::Path::Source;
 use RabakLib::Path::Target;
 

@@ -109,19 +109,14 @@ Or keep every Monday backup and remove the others.
 
 =item *
 
-If your backup target is a mounted device, then set your target to a subdirectory and not
-to the root of the device.
-This way, if a mount fails, the writing of files fails too.
-So no files are written to your (unmounted) mount point.
-(!! Deprecated: L<Target Objects>)
+If your backup target is a mounted device, then you have to create a file named "rabak.dev.cf"
+in the root directory of that device. This prevents copying data to wrong devices.
+(L<Targets>)
 
 =item *
 
-Workstations can't be backed up directly.
-This is how to do it: Install a hard drive into the server and copy the workstation data on that.
-Then configure B<rabak> to backup this hard drive.
-That works fine.
-(!! Deprecated: L<Remote Targets and Sources>)
+To back up workstations you only have to install rsync and a ssh daemon on the workstatsion.
+(L<Remote Targets and Sources>)
 
 =back
 
