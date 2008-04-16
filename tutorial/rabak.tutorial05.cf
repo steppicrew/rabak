@@ -21,12 +21,13 @@ mount1.device = /dev/sda[1-4]
 mount1.directory = $target_base
 mount1.unmount = 1
 
-tutorial.title = Tutorial05
-tutorial.source.path = tutorial/source
-tutorial.target.path = tutorial/target
-tutorial.target.mount = &mount1
-tutorial.target.group = day-of-week
-tutorial.exclude = *.bak *.~
+[tutorial]
+title = Tutorial05
+source.path = tutorial/source
+target.path = tutorial/target
+target.mount = &mount1
+target.group = day-of-week
+exclude = *.bak *.~
 
 # TBD!
 # 

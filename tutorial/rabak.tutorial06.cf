@@ -23,24 +23,26 @@ mount_external.directory= /mnt/external
 
 # Postgresql Database
 
-tutorial_pg.title = Databases of tutorial
-tutorial_pg.source.path = pgsql://vbulletin,postnuke
-tutorial_pg.source.user = *default*
-tutorial_pg.source.password = secret
-tutorial_pg.target = $tutorial_target
-#tutorial_pg.target.path = $target_base/postgres
-tutorial_pg.keep = 3
+[tutorial_pg]
+title = Databases of tutorial
+source.path = pgsql://vbulletin,postnuke
+source.user = *default*
+source.password = secret
+target = $tutorial_target
+# target.path = $target_base/postgres
+keep = 3
 
 # MySql Database
 
-tutorial_mysql.title = Mysql-DBs
-tutorial_mysql.source.path = mysql://*
-tutorial_mysql.source.user = mysql_user
-tutorial_mysql.source.password = secret
-tutorial_mysql.source.mount = &mount_external
-tutorial_mysql.target = $tutorial_target
-#tutorial_mysql.target.path = $target_base/mysql
-tutorial_mysql.keep = 3
+[tutorial_mysql]
+title = Mysql-DBs
+source.path = mysql://*
+source.user = mysql_user
+source.password = secret
+source.mount = &mount_external
+target = $tutorial_target
+# target.path = $target_base/mysql
+keep = 3
 
 # TBD!
 # 

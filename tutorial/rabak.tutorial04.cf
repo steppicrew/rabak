@@ -24,14 +24,18 @@ mount2.directory = $target_base
 mount2.unmount = 1
 
 # Backup set "Tutorial04 A"
+# The [tutorial04_a] sets the scope to "tutorial04_a". All assignments are now inside this scope.
 
-tutorial04_a.title = Tutorial04 A
-tutorial04_a.source.path = tutorial/source
-tutorial04_a.target.path = tutorial/target
-tutorial04_a.target.mount = &mount1
+[tutorial04_a]
+title = Tutorial04 A
+source.path = tutorial/source
+target.path = tutorial/target
+target.mount = &mount1
 
 # Backup set "Tutorial04 B"
+# The [] clears the scope. Unlike "tutorial04_a" the scope must be written explicitly.
 
+[]
 tutorial04_b.title = Tutorial04 B
 tutorial04_b.source.path = tutorial/source
 tutorial04_b.target.path = tutorial/target
