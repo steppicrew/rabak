@@ -26,6 +26,8 @@ while (<DATA>) {
     $part{$part}[1] .= $_ if $part;
 }
 
+# print Dumper(\%part); die;
+
 my $toc= @{ $part{'INTRO'} }[1];
 
 sub expand_body {
@@ -42,7 +44,7 @@ sub expand_body {
 
         if ($no_code || $state == 2 || (!$indent && $line)) {
 
-            # $state= 2 if $state == 1;
+            $state= 2 if $state == 1;
 
             if (/^=head\d\s+(.*)/) {
                 $contents .= "#\n"
