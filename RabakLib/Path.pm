@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package RabakLib::PathBase;
+package RabakLib::Path;
 
 # wrapper class to exceute commands remotely or locally
 
@@ -727,7 +727,7 @@ sub rmtree {
     my $self= shift;
     my $sTree= $self->getPath(shift);
 
-    die "RabakLib::PathBase::rmtree called with dangerous parameter ($sTree)!" if $sTree eq '' || $sTree eq '/' || $sTree=~ /\*/;
+    die "RabakLib::Path::rmtree called with dangerous parameter ($sTree)!" if $sTree eq '' || $sTree eq '/' || $sTree=~ /\*/;
 
     $self= $self->new() unless ref $self;
     return $self->savecmd("if [ -e '$sTree' ]; then rm -rf '$sTree'; fi");

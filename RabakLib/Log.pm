@@ -7,8 +7,8 @@ use strict;
 
 use Data::Dumper;
 use RabakLib::Conf;
-use RabakLib::PathBase;
 use RabakLib::Path;
+use RabakLib::Path::Mountable;
 
 # use File::Spec ();
 use POSIX qw(strftime);
@@ -60,7 +60,7 @@ BEGIN {
     };
     
     ($oLog->{MSG_FH}, $oLog->{MSG_FILE_NAME}) =
-        RabakLib::PathBase->local_tempfile();
+        RabakLib::Path->local_tempfile();
 
     bless $oLog, "RabakLib::Log";
 }
@@ -158,7 +158,7 @@ sub get_messages_file {
 sub open {
     my $self= shift;
     my $sFileName= shift;
-    my $oTarget= shift || RabakLib::Path->new();
+    my $oTarget= shift || RabakLib::Path::Mountable->new();
 
     $self->close() if $self->{TARGET};
 

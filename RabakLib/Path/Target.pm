@@ -10,7 +10,7 @@ use RabakLib::ConfFile;
 
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Path);
+@ISA = qw(RabakLib::Path::Mountable);
 
 sub mountErrorIsFatal {
     my $self= shift;

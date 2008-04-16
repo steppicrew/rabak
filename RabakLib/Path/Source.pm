@@ -9,7 +9,7 @@ use RabakLib::Log;
 
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Path);
+@ISA = qw(RabakLib::Path::Mountable);
 
 sub Factory {
     my $class= shift;
@@ -32,8 +32,8 @@ sub Factory {
 
     my $new;
     eval {
-        require "RabakLib/SourceType/$sType.pm";
-        my $sClass= "RabakLib::SourceType::$sType";
+        require "RabakLib/Path/Source/$sType.pm";
+        my $sClass= "RabakLib::Path::Source::$sType";
         $new= $sClass->CloneConf($oOrigConf);
         1;
     };
