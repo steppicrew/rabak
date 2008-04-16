@@ -653,7 +653,8 @@ sub _backup_run {
     my @sBakDir= @{ $self->{_BAK_DIR_LIST} };
     my $oTargetPath= $self->get_targetPath;
     my $sBakSetSource= $self->get_value("name");
-    $sBakSetSource.= "-" . $oSource->get_value("name") if $oSource->get_value("name");
+    my $sSourceName= $oSource->getBaksetName();
+    $sBakSetSource.= "-$sSourceName" if $sSourceName;
     my $sTarget= $self->{_TARGET};
 
     my $iErrorCode= 0;
@@ -673,7 +674,7 @@ sub _backup_run {
     # for backward compatiblity use only dir with source name (not set name like for file linking) 
     my @sKeepDirs= ();
     my $sqBakSource='';
-    $sqBakSource= quotemeta("." . $oSource->getBaksetName()) if $oSource->getBaksetName();
+    $sqBakSource= quotemeta(".$sSourceName") if $sSourceName;
     for my $sBakDir (@sBakDir) {
         push @sKeepDirs, $sBakDir if $sBakDir=~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?$sqBakSource$/;
     }
