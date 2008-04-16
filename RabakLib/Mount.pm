@@ -101,7 +101,7 @@ sub mount {
     }
 
     # if no device were given, try mounting by mount point
-    push @sMountDevices, $self->MountDir2Device($sMountDir, $oPath) if $#sMountDevices < 0;
+    push @sMountDevices, $self->MountDir2Device($sMountDir, $oPath) unless scalar @sMountDevices;
 
     # array for collected mount messages (will be reseted if mount succeeds)
     my @sMountMessage = ();
@@ -188,7 +188,7 @@ sub mount {
     }
     push @$arMessage, @sMountMessage;
 
-    if ($sMountDir) {
+    if ($iResult && $sMountDir) {
         $self->{MOUNTPOINT}= $sMountDir;
         # We want to unmount in reverse order:
         unshift @{ $arUnmount }, $self if $self->get_value("unmount", 1);

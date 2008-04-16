@@ -20,6 +20,7 @@ sub mountErrorIsFatal {
 }
 
 # tests if device is mounted and is a valid rabak target
+# valid rabak target devices always have a "rabak.dev.cf" file in root
 # @param $sMountDevice
 #   device to check
 # @param $sMountDir
@@ -39,8 +40,7 @@ sub checkMount {
     
     return $sMountPath if $sMountPath=~ /^\d+$/;
 
-    my $sTargetValue= $self->get_value("group");
-    return $sMountPath unless defined $sTargetValue;
+    my $sTargetValue= $self->get_value("group", "");
     
     my $sqTargetValue= quotemeta $sTargetValue;
     if (defined $self->get_switch('targetvalue')) {
@@ -68,7 +68,7 @@ sub checkMount {
             }
         }
         else { # no target group specified -> if conf file is present, this is our target
-            push @$arMountMessages, logger->info("No target group specified");
+            push @$arMountMessages, logger->info("No target group specified but '$sDevConfFile' exists");
         }
     }
     else {
