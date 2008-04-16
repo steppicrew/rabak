@@ -6,10 +6,10 @@ vname="rabak-$ver"
 basedir="../../dist/$vname"
 srcdir=".."
 
-ROOT_FILES="CHANGELOG Licence.txt README TODO"
+ROOT_FILES="CHANGELOG LICENSE README TODO"
 BIN_FILES="rabak faster-dupemerge"
 ETC_FILES="rabak.sample.cf rabak.std.cf rabak.secret.cf"
-SHARE_FILES="samples stuff"
+SHARE_FILES="tutorial stuff"
 MODULES="RabakLib DupMerge"
 
 function copyFiles {
@@ -79,18 +79,18 @@ fi
 mkdir -p "$basedir"
 
 for module in $MODULES; do
-  copyModule $module "$basedir" "lib"
+  copyModule $module "$basedir" "."
 done
 
 copyFiles "" "$ROOT_FILES"
-copyFiles "bin" "$BIN_FILES"
+copyFiles "" "$BIN_FILES"
 for file in "$srcdir/"*.pl; do
-  cp -p "$file" "$basedir/bin/"
+  cp -p "$file" "$basedir/"
 done
 
-copyFiles "etc" "$ETC_FILES"
+copyFiles "" "$ETC_FILES"
 
-copyFiles "share" "$SHARE_FILES"
+copyFiles "" "$SHARE_FILES"
 
   cat - > "$basedir/Makefile.PL" << EOF
 use 5.008008;
