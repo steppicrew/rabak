@@ -87,21 +87,22 @@ sub show {
     
     my $aResult= [];
     
-    push @$aResult, "#" x 80;
-    push @$aResult, "# Configuration for \"$self->{NAME}\"";
-    push @$aResult, "#" x 80, "";
+    push @$aResult, "",
+        "#" x 80,
+        "# Configuration for \"$self->{NAME}\"",
+        "#" x 80;
 
     my @oSources= $self->get_sourcePaths();
     my $oTarget= $self->get_targetPath();
 
     push @$aResult, @{$self->SUPER::show($hConfShowCache)};
 
-    push @$aResult, "", @{$oTarget->show($hConfShowCache)}, "";
-
     for my $oSource (@oSources) {
-        push @$aResult, @{$oSource->show($hConfShowCache)}, "";
+        push @$aResult, @{$oSource->show($hConfShowCache)};
     }
     
+    push @$aResult, @{$oTarget->show($hConfShowCache)};
+
     # print all not already shown references
     my @sSubResult= ();
     while (1) {
@@ -114,8 +115,8 @@ sub show {
         
         push @sSubResult, $self->showConfValue($_, $hConfShowCache) for (@sReferences);
     }
-    push @$aResult, "# Misc references:", @sSubResult if scalar @sSubResult;
     push @$aResult, "";
+    push @$aResult, "# Misc references:", @sSubResult if scalar @sSubResult;
     
     return $self->simplifyShow($aResult);
 }
