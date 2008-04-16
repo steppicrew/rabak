@@ -3,9 +3,8 @@
 ver="$1"
 
 vname="rabak-$ver"
-basedir="dist/$vname"
-srcdir="rabak"
-srcdir="git/rabak"
+basedir="../../dist/$vname"
+srcdir=".."
 
 ROOT_FILES="CHANGELOG Licence.txt README TODO"
 BIN_FILES="rabak faster-dupemerge"
@@ -108,5 +107,5 @@ WriteMakefile(
 EOF
 manifestModule "$basedir" > "$basedir/MANIFEST"
 
-cd dist
+cd "$basedir/.."
 tar -czf "$vname.tgz" "$vname"
