@@ -21,7 +21,7 @@ __END__
 
 =head1 NAME
 
-rabak - A reliable rsync based backup system, simple to configure, simple to run, simple to restore data
+rabak - A reliable rsync based backup system, simple to configure, simple to run, simple to restore data with.
 
 =head1 SYNOPSIS
 
@@ -40,11 +40,7 @@ B<rabak> may be a simple, reliable and inexpensive solution for you.
 
 Most backup systems are based on the assumption that the space available on a backup media is smaller than
 the space of the data to be backed up.
-This is like is has been for a very long time and many people still are setting up backup systems
-based on this assumption.
-And they have to change the backup medias every day, hoping that the data can be restored when needed.
-
-How about using an external 500 GB hard drive as backup media?
+But, how about using an external 500 GB hard drive as backup media?
 The data that offices work with is often much less than 500 GB.
 And such a drive costs nothing compared with professional streamer hardware (plus media).
 
