@@ -12,7 +12,7 @@ use strict;
 
 use Data::Dumper;
 
-my $out_dir= ".";
+my $out_dir= "tutorial";
 
 our %part= ();
 my $part;
