@@ -3,14 +3,13 @@
 ver="$1"
 
 vname="rabak-$ver"
-basedir="dist/$vname"
-srcdir="rabak"
-srcdir="git/rabak"
+basedir="../../dist/$vname"
+srcdir=".."
 
 ROOT_FILES="CHANGELOG Licence.txt README TODO"
 BIN_FILES="rabak faster-dupemerge"
 ETC_FILES="rabak.sample.cf rabak.std.cf rabak.secret.cf"
-SHARE_FILES="samples stuff test-bak test-data"
+SHARE_FILES="samples stuff"
 MODULES="RabakLib DupMerge"
 
 function copyFiles {
@@ -108,5 +107,5 @@ WriteMakefile(
 EOF
 manifestModule "$basedir" > "$basedir/MANIFEST"
 
-cd dist
+cd "$basedir/.."
 tar -czf "$vname.tgz" "$vname"
