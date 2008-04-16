@@ -24,11 +24,11 @@ switch.logging = 1
 tutorial_local_source.path = tutorial/source
 
 # Setup remote target
-tutorial_remote_target.path = $target_dir
+tutorial_remote_target.path = tutorial/target
 tutorial_remote_target.host = some.host.name
 tutorial_remote_target.user = username.on.host
 tutorial_remote_target.mount.device = /dev/dev.on.remote.host
-tutorial_remote_target.mount.device = /mnt/path/on.remote.host
+tutorial_remote_target.mount.directory = /mnt/path/on.remote.host
 tutorial_remote_target.mount.umount = 1
 
 # specify a LOCAL directory to temporarily store files for the remote system (eg. database dumps)
