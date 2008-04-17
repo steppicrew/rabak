@@ -59,7 +59,7 @@ unmount= 1
 
 [example_target]
 
-path = $target_dir
+path = $target_base/rabak
 mount = &mount_external
 group = example
 

@@ -12,7 +12,7 @@ INCLUDE rabak.std.cf
 # =======================================================================================
 
 target = examples/example-backup
-exclude = *.bak, /root/git/rabak/examples/example-data/tmp
+exclude = *.bak
 
 [example]
 
