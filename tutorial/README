@@ -1,0 +1,35 @@
+
+(This is Work in progress!!! Stay tuned...)
+
+ ----
+
+The table of contents is in TABLE_OF_CONTENTS
+Have a look at the config file first before trying it. The files contain
+descriptions.
+
+ ----
+
+Try the tutorial configs from one directory up (the one "rabak" is in).
+
+To look at a tutorial's config file:
+./rabak -c tutorial/rabak.tutorial01.cf conf
+
+You will see what backup sets are available (e.g. "tutorial" or "tutorial04")
+
+ ----
+
+To look at a backup set's config:
+./rabak -c tutorial/rabak.tutorial01.cf conf <backup set>
+
+ ----
+
+To try a backup:
+./rabak -c tutorial/rabak.tutorial01.cf backup <backup set>
+
+PLEASE NOTE: Some of the tutorial files will stop with an Error. This is
+ok, as they demonstrate features e.g. mounting devices. The tutorials
+are meant to be examples, not out-of-the-box solutions.
+
+ ----
+
+Change the 01 in the file name to 02, 03, ..

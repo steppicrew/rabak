@@ -6,7 +6,7 @@ use warnings;
 use strict;
 
 use RabakLib::Log;
-use RabakLib::Path;
+use RabakLib::Path::Mountable;
 use RabakLib::Path::Source;
 use RabakLib::Path::Target;
 
@@ -76,7 +76,7 @@ sub get_validation_message {
 
 sub sort_show_key_order {
     my $self= shift;
-    ("title", "target", "source", $self->SUPER::sort_show_key_order());
+    ("title", "source", "target", $self->SUPER::sort_show_key_order());
 }
 
 sub show {
@@ -87,21 +87,22 @@ sub show {
     
     my $aResult= [];
     
-    push @$aResult, "#" x 80;
-    push @$aResult, "# Configuration for \"$self->{NAME}\"";
-    push @$aResult, "#" x 80, "";
+    push @$aResult, "",
+        "#" x 80,
+        "# Configuration for \"$self->{NAME}\"",
+        "#" x 80;
 
     my @oSources= $self->get_sourcePaths();
     my $oTarget= $self->get_targetPath();
 
     push @$aResult, @{$self->SUPER::show($hConfShowCache)};
 
-    push @$aResult, "", @{$oTarget->show($hConfShowCache)}, "";
-
     for my $oSource (@oSources) {
-        push @$aResult, @{$oSource->show($hConfShowCache)}, "";
+        push @$aResult, @{$oSource->show($hConfShowCache)};
     }
     
+    push @$aResult, @{$oTarget->show($hConfShowCache)};
+
     # print all not already shown references
     my @sSubResult= ();
     while (1) {
@@ -114,8 +115,8 @@ sub show {
         
         push @sSubResult, $self->showConfValue($_, $hConfShowCache) for (@sReferences);
     }
-    push @$aResult, "# Misc references:", @sSubResult if scalar @sSubResult;
     push @$aResult, "";
+    push @$aResult, "# Misc references:", @sSubResult if scalar @sSubResult;
     
     return $self->simplifyShow($aResult);
 }
@@ -621,9 +622,7 @@ sub _backup_setup {
 
     my ($sBakMonth, $sBakDay)= $self->_build_bakMonthDay;
     my $sBakSet= $self->get_value("name");
-    my $sBakSource= $oSource->get_value("name") || '';
-    # patch source name for anonymous sources
-    $sBakSource =~ s/\*//g;
+    my $sBakSource= $oSource->getBaksetName() || '';
 
     ($sSubSet, @sBakDir)= $self->collect_bakdirs($sBakSet, $sBakSource, $sBakDay);
 
@@ -654,7 +653,8 @@ sub _backup_run {
     my @sBakDir= @{ $self->{_BAK_DIR_LIST} };
     my $oTargetPath= $self->get_targetPath;
     my $sBakSetSource= $self->get_value("name");
-    $sBakSetSource.= "-" . $oSource->get_value("name") if $oSource->get_value("name");
+    my $sSourceName= $oSource->getBaksetName();
+    $sBakSetSource.= "-$sSourceName" if $sSourceName;
     my $sTarget= $self->{_TARGET};
 
     my $iErrorCode= 0;
@@ -674,7 +674,7 @@ sub _backup_run {
     # for backward compatiblity use only dir with source name (not set name like for file linking) 
     my @sKeepDirs= ();
     my $sqBakSource='';
-    $sqBakSource= quotemeta("." . $oSource->get_value("name")) if $oSource->get_value("name");
+    $sqBakSource= quotemeta(".$sSourceName") if $sSourceName;
     for my $sBakDir (@sBakDir) {
         push @sKeepDirs, $sBakDir if $sBakDir=~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?$sqBakSource$/;
     }

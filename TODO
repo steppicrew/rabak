@@ -1,33 +1,16 @@
 
-Was passiert wenn source und target das selbe mount-objekt referenzieren
-
-Put switch.commandline into env.commandline
-put switch.version into env.version
-
-Done:
-+ Log4Perl??
-+ Alle Values bei Initialisierung uebergeben
-+ make path to: type://user@host:path
-+ separate class for mount objects
-+ Output effective config file
-- make Conf.pm to CommonBase
-- Log rabak log command line, file name etc. include into mail
-
 In Progress:
+
 + Tests
 
 Code:
+
 + Build POD from config-file
-+ rabak.conf nach /etc
-+ make command line switches overwrite objects values
-? is there a better way to reference an object in lower (or top) level than with "." or "/"
 - Set Mail-Sender to <user@hostname>
-- Allow multiple Mail-Senders
-- Allow different Mail-Senders for Threshold-Warning
-- Mail::Send optional
-- Change config format to INI?
+- Allow multiple Mail-Recipients
+- Allow different Mail-Recipients for Threshold-Warning
 - More backup types (which?)
-- Proper exit codes
+- Proper exit codes (maybe done)
 - Make ACLs work (wait for next rsync release)
 - Implement post processing with faster-dupemerge
 - Make "rabak admin" do something useful
@@ -50,3 +33,14 @@ Ideas:
   - finding duplicates
   - file versioning
 - Collect stats on extra path for reports
+
+Done:
+
++ Log4Perl??
++ Alle Values bei Initialisierung uebergeben
++ make path to: type://user@host:path
++ separate class for mount objects
++ Output effective config file
++ Log rabak log command line, file name etc. include into mail
++ rabak.conf nach /etc
++ Change config format to INI?

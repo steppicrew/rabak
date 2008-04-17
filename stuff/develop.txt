@@ -1,0 +1,19 @@
+
+git checkout:
+    git clone git@github.com:steppicrew/rabak.git
+
+git status:
+    git status
+
+git (local) commit:
+    git commit -a
+    git commit <filename>
+
+push to server:
+    git push
+
+revert to last HEAD version:
+    git reset --hard HEAD
+
+git log of a certain file:
+    git log --follow <file>

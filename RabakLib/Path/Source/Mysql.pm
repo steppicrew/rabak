@@ -1,16 +1,16 @@
 #!/usr/bin/perl
 
-package RabakLib::SourceType::Mysql;
+package RabakLib::Path::Source::Mysql;
 
 use warnings;
 use strict;
 use vars qw(@ISA);
 
 use RabakLib::Path::Source;
-use RabakLib::SourceType::DBBase;
+use RabakLib::Path::Source::DBBase;
 use RabakLib::Log;
 
-@ISA = qw(RabakLib::SourceType::DBBase);
+@ISA = qw(RabakLib::Path::Source::DBBase);
 
 use Data::Dumper;
 

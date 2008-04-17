@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package RabakLib::SourceType::File;
+package RabakLib::Path::Source::File;
 
 use warnings;
 use strict;

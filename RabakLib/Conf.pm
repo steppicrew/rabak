@@ -483,11 +483,14 @@ sub simplifyShow {
         my $sNewScope= $sLine =~ s/^([^\s\=]+)\.// ? $1 : "";
         if ($sNewScope ne $sScope) {
             $sScope= $sNewScope;
-            push @sResult, "[$sScope]";
+            push @sResult, "", "[$sScope]";
         }
         push @sResult, $sLine;
     }
-    push @sResult, "[]" unless $sScope eq '';
+
+    # Always add a []. Will be removed by top level caller.
+    push @sResult, "[]";
+    ## push @sResult, "[]" unless $sScope eq '';
     return \@sResult;
 }
 

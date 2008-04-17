@@ -10,7 +10,7 @@ use RabakLib::ConfFile;
 
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Path);
+@ISA = qw(RabakLib::Path::Mountable);
 
 sub mountErrorIsFatal {
     my $self= shift;
@@ -141,14 +141,17 @@ sub sort_show_key_order {
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
+
+    my @sSuperResult= @{$self->SUPER::show($hConfShowCache)};
+    return [] unless @sSuperResult;
     
-    my @sResult= (
+    return [
+        "",
         "#" . "=" x 79,
         "# Target \"" . $self->getShowName() . "\": " . $self->getFullPath(),
-        "#" . "=" x 79
-    );
-    push @sResult, @{$self->SUPER::show($hConfShowCache)};
-    return \@sResult;
+        "#" . "=" x 79,
+        @sSuperResult
+    ];
 }
 
 1;

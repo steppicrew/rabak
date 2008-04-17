@@ -3,7 +3,7 @@
 # Produces a test environment. You can easily get rid of it again
 # with the testdev-remove script.
 
-BASEDIR="`dirname "$0"`/../test-data"
+BASEDIR="/tmp/rabak-sample-data"
 
 if which losetup >/dev/null 2>&1; then
     dummy=""

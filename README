@@ -1,6 +1,24 @@
 
 Welcome! This is Rabak, a backup tool
 
+What's Rabak?
+=============
+
+Rabak is a reliable rsync based backup system, simple to configure,
+simple to run, simple to restore data with.
+
+Rabak's strategy is to always make full backups, usually to one or more
+attached external hard drives. Using rsync's clever hard linking abilities,
+the resulting backups use up little target space. Rabak uses simple and
+flexible configuration files and supports backup to or from remote machines.
+It even supports remote to remote backup (think remote control).
+
+Rabak is very good for unattended safe remote backups, and has support
+for postgresql and mysql backups via database dump streaming.
+
+It's simple to configure different, multiple sources for one backup set.
+There's support for file filters that hide the complexity of the rsync filters
+(and make them actually usable).
 
 Requirements
 ============

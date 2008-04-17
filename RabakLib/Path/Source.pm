@@ -9,7 +9,7 @@ use RabakLib::Log;
 
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Path);
+@ISA = qw(RabakLib::Path::Mountable);
 
 sub Factory {
     my $class= shift;
@@ -32,8 +32,8 @@ sub Factory {
 
     my $new;
     eval {
-        require "RabakLib/SourceType/$sType.pm";
-        my $sClass= "RabakLib::SourceType::$sType";
+        require "RabakLib/Path/Source/$sType.pm";
+        my $sClass= "RabakLib::Path::Source::$sType";
         $new= $sClass->CloneConf($oOrigConf);
         1;
     };
@@ -50,6 +50,14 @@ sub Factory {
     return $new;
 }
 
+sub getBaksetName {
+    my $self= shift;
+    my $sName= $self->get_value("name");
+    $sName= "" unless defined $sName;
+    $sName=~ s/^\*/source/;
+    return $sName;
+}
+
 sub sort_show_key_order {
     my $self= shift;
     ("type", $self->SUPER::sort_show_key_order(), "keep");
@@ -59,13 +67,16 @@ sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
 
-    my @sResult= (
+    my @sSuperResult= @{$self->SUPER::show($hConfShowCache)};
+    return [] unless @sSuperResult;
+
+    return [
+        "",
         "#" . "=" x 79,
         "# Source \"" . $self->getShowName() . "\": " . $self->getFullPath(),
         "#" . "=" x 79,
-    );
-    push @sResult, @{$self->SUPER::show($hConfShowCache)};
-    return \@sResult;
+        @sSuperResult
+    ];
 }
 
 sub getFullPath {

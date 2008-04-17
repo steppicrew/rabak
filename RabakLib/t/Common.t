@@ -55,14 +55,14 @@ $oTargetConf->set_values({
 my $oSourceMountConf= RabakLib::Conf->new('testsource_file_mount', $oRootConf);
 $oRootConf->set_value('testsource_file_mount', $oSourceMountConf);
 $oSourceMountConf->set_values({
-    device => "$Bin/test-data/dev.source",
+    device => "/tmp/rabak-sample-data/dev.source",
     directory => $sSourceDir,
 });
 
 my $oTargetMountConf= RabakLib::Conf->new('testtarget_mount', $oRootConf);
 $oRootConf->set_value('testtarget_mount', $oTargetMountConf);
 $oTargetMountConf->set_values({
-    device => "$Bin/test-data/dev.loop?",
+    device => "/tmp/rabak-sample-data/test-data/dev.loop?",
     directory => $sTargetDir,
 });
 

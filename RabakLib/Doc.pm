@@ -21,7 +21,7 @@ __END__
 
 =head1 NAME
 
-rabak - A reliable rsync based backup system, simple to configure, simple to run, simple to restore data
+rabak - A reliable rsync based backup system, simple to configure, simple to run, simple to restore data with.
 
 =head1 SYNOPSIS
 
@@ -40,11 +40,7 @@ B<rabak> may be a simple, reliable and inexpensive solution for you.
 
 Most backup systems are based on the assumption that the space available on a backup media is smaller than
 the space of the data to be backed up.
-This is like is has been for a very long time and many people still are setting up backup systems
-based on this assumption.
-And they have to change the backup medias every day, hoping that the data can be restored when needed.
-
-How about using an external 500 GB hard drive as backup media?
+But, how about using an external 500 GB hard drive as backup media?
 The data that offices work with is often much less than 500 GB.
 And such a drive costs nothing compared with professional streamer hardware (plus media).
 
@@ -113,19 +109,14 @@ Or keep every Monday backup and remove the others.
 
 =item *
 
-If your backup target is a mounted device, then set your target to a subdirectory and not
-to the root of the device.
-This way, if a mount fails, the writing of files fails too.
-So no files are written to your (unmounted) mount point.
-(!! Deprecated: L<Target Objects>)
+If your backup target is a mounted device, then you have to create a file named "rabak.dev.cf"
+in the root directory of that device. This prevents copying data to wrong devices.
+(L<Targets>)
 
 =item *
 
-Workstations can't be backed up directly.
-This is how to do it: Install a hard drive into the server and copy the workstation data on that.
-Then configure B<rabak> to backup this hard drive.
-That works fine.
-(!! Deprecated: L<Remote Targets and Sources>)
+To back up workstations you only have to install rsync and a ssh daemon on the workstatsion.
+(L<Remote Targets and Sources>)
 
 =back
 
