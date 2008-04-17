@@ -17,15 +17,24 @@ logging = 1
 #    2: print errors and warnings only
 #    3: print additional output (rsync: stats, mount results)
 #    4: print additional output (rsync: files)
+#
 verbose = 3
 
-# switch.dev_conf_file: file that have to exist in root dir on any target device (istarget is set in mount section)
-#    default: rabak.dev.cf
-#    format is like from this file
-#    options:
+# switch.dev_conf_file:
+#    The name of the file that has to exist in the root directory on any target device.
+#    A target device is a mount target with the "istarget" flag set to 1.
+#
+#    Default value: rabak.dev.cf
+#
+#    The files format is same as this file:
+#    Possibly options:
 #        targetvalues= targetgroup.targetvalue ...
-#    device is valid for this backup if file exists, target group/value is found (optional)
+#
+#    A device is assumed to be a valid target device if the file exists
+#    and target group/value is found (optional).
+#
 dev_conf_file = rabak.dev.cf
+
 []
 
 # =======================================================================================

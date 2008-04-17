@@ -1,5 +1,12 @@
 
-# Rabak sample config file
+# Rabak example config file
+
+# This file is intended to be used for a example environment, which you can set up by
+# calling a script that is included in the distibution. This is how:
+# ./stuff/example-env-make
+#
+# When finished, the example environment can be removed by another script:
+# ./stuff/example-env-remove
 
 # For details see: perldoc RabakLib::Doc
 
@@ -12,7 +19,7 @@
 
 email = root
 
-target_base = /mnt/backup
+target_base = /tmp/rabak-example-backup
 target_dir = $target_base/rabak
 
 smb_dir = /mnt/samba/e
@@ -40,7 +47,7 @@ exclude_smb =
 exclude = $exclude_std, $exclude_smb, test-bak, test-data, stuff
 
 # =======================================================================================
-#       SAMPLE: sample rabak configuration
+#       EXAMPLE: example rabak configuration
 # =======================================================================================
 
 # Mount point "/dev/sd?1"
@@ -74,17 +81,17 @@ unmount= 1
 
 # Target to back up to
 
-[sample_target]
+[example_target]
 
 path = $target_dir
 mount = &mount_external
-group = sample
+group = example
 # send mail if free space on target drops below this value (possible units: 'B'yte, 'K' (default), 'M'ega, 'G'iga or '%')
 discfree_threshold = 10%
 
 # Target on remote host to backup to
 
-[sample_remotetarget]
+[example_remotetarget]
 
 path = $target_dir
 host = some.host.name
@@ -94,16 +101,16 @@ mount.device = /mnt/path/on.remote.host
 mount.umount = 1
 # specify a LOCAL directory to temporarily store files for the remote system (eg. database dumps)
 tempdir = /path/for/temporary/files/on.local.host
-group = sample
+group = example
 discfree_threshold = 10%
 
 # Full System + Samba Example
 
-[sample]
+[example]
 
 title = Gesamtsystem
 source = /
-target = &sample_target
+target = &example_target
 exclude = $exclude
 mount = &mount_boot &mount_smb_server
 
@@ -111,11 +118,11 @@ mount = &mount_boot &mount_smb_server
 #       EXAMPLE: POSTGRESQL BACKUP
 # =======================================================================================
 
-[sample_pg]
+[example_pg]
 
-title = Databases of sample
+title = Databases of example
 source = pgsql://vbulletin,postnuke
-target = $sample_target
+target = $example_target
 target.path = $target_base/postgres
 user = *default*
 # test_pg.password is secret -> look in rabak.secret.cf
@@ -126,11 +133,11 @@ keep = 3
 #       EXAMPLE: MYSQL BACKUP
 # =======================================================================================
 
-[sample_mysql]
+[example_mysql]
 
 title = Mysql-DBs
 source = mysql://*
-target = $sample_target
+target = $example_target
 target.path = $target_base/mysql
 user = $mysql_user
 # $mysql_password is secret -> look in rabak.secret.cf
@@ -143,47 +150,46 @@ mount = &mount_external
 #       TEST RABAK
 # =======================================================================================
 
-[test]
+[example]
 
-title = First Simple Test
+title = Very simple example
 switch.verbose = 1
 switch.logging = 1
 source = .
-target = test-bak
-exclude = $exclude
+target = $target_dir
 
 # =======================================================================================
 #       TEST SHARED RESOURCES
 # =======================================================================================
 
-[mount_test_target]
+[mount_example_target]
 
-device= /dev/junk[12] test-data/dev.loop[01]
-directory= test-data/mnt_target
+device= /dev/WONT_WORK[12] /tmp/rabak-example-data/dev.loop[01]
+directory= /tmp/rabak-example-data/mnt_target
 unmount= 1
 
-[mount_test_boot]
+[mount_example_boot]
 
-device= test-data/dev.boot
-directory= test-data/mnt_boot
+device= /tmp/rabak-example-data/dev.boot
+directory= /tmp/rabak-example-data/mnt_boot
 unmount= 1
 
-[test_target]
+[example_target]
 
 path = test-data/mnt_target/rabak
-mount = &mount_test_target
+mount = &mount_example_target
 
 # =======================================================================================
-#       TEST
+#       EXAMPLES
 # =======================================================================================
 
-[test1]
+[example_firstof]
 
-title = Test "firstof" Mount Option
+title = Sample of the "firstof" Mount Option
 switch.verbose = 1
 switch.logging = 1
 source.path = .
-target = $test_target
+target = $example_target
 # ", " will be replaced by newline automagically
 exclude = $exclude, test-bak,
     test-data, stuff
@@ -194,11 +200,11 @@ source.mount= &mount_test_boot
 #       TEST TARGETGROUP OPTION
 # =======================================================================================
 
-[test_targetgroup]
+[example_targetgroup]
 
-title = Test "targetgroup" Option
-source = $test1.source
-target = $test1.target
+title = Sample of the "targetgroup" Option
+source = $example_firstof.source
+target = $example_firstof.target
 target.group = dayofweek
 exclude = $test1.exclude
 # mount1= $target.mount
