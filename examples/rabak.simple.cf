@@ -21,6 +21,6 @@ switch.verbose = 4
 switch.logging = 1
 source = examples/example-data
 target = $target/rabak
-exclude = $exclude, /tmp
+exclude = $exclude, (&source)/tmp
 
 # EOF
