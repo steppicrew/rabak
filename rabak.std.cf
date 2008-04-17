@@ -140,10 +140,8 @@ exclude_profile_win = &default.exclude_profile_win
 exclude_std_win = &default.exclude_win
 exclude_std_common = &default.exclude_common
 exclude_std = &default.exclude
-## filter= &default.filter
 
-
-# Default exclude. You probably want to override this in your cf file.
+# Default exclude. You may want to override this in your cf file.
 exclude =
 
 # Default include: Include everything.
