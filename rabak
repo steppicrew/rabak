@@ -248,7 +248,7 @@ Possible switches:
   -c <file>  Use <file> for configuration
   -i <value> Save on device with targetgroup value <value>
   -l         Log to file
-  -p         Pretend
+  -p         Pretend (don't do anything, just tell what would happen)
   -q         Be quiet
   -v         Be verbose
   --version  Show version
