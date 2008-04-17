@@ -1,3 +1,8 @@
 
-Try the examples from the parent directory. It's also a good idea to
-use examples as templates for your own configurations.
+Try the examples from the parent directory:
+
+./rabak -c examples/rabak.simple.cf conf
+./rabak -c examples/rabak.simple.cf conf example
+./rabak -c examples/rabak.simple.cf backup example
+
+It's also a good idea to use examples as templates for your own configurations.
