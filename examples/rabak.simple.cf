@@ -1,15 +1,6 @@
 
 # Rabak example config file
 
-# This file is intended to be used for a example environment, which you can set up by
-# calling a script that is included in the distibution. This is how:
-# ./stuff/example-env-make
-#
-# When finished, the example environment can be removed by another script:
-# ./stuff/example-env-remove
-
-# For details see: perldoc RabakLib::Doc
-
 # =======================================================================================
 #       INCLUDE STANDARD SETTINGS
 # =======================================================================================
@@ -21,9 +12,7 @@ INCLUDE rabak.std.cf
 # =======================================================================================
 
 target = examples/example-backup
-exclude = *.bak, stuff
-
-# Full System + Samba Example
+exclude = *.bak
 
 [example]
 
@@ -32,6 +21,6 @@ switch.verbose = 4
 switch.logging = 1
 source = examples/example-data
 target = $target/rabak
-exclude = $exclude
+exclude = $exclude, /tmp
 
 # EOF
