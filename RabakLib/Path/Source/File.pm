@@ -16,11 +16,19 @@ use RabakLib::Log;
 sub _get_filter {
     my $self= shift;
     my $aMacroStack= shift || [];
+    my $oTarget= shift;
 
     my $sFilter= $self->get_raw_value('filter'); 
-    my $aFilter= ["&filter"];
-    unless (defined $sFilter) {
-        $aFilter= [];
+    
+    # target path is always excluded
+    my $aFilter= [];
+    if ($oTarget) {
+        push @$aFilter, "-" . $oTarget->getPath();
+    }
+    if (defined $sFilter) {
+        push @$aFilter, "&filter";
+    }
+    else {
         push @$aFilter, "-(", "&exclude", ")" if defined $self->get_raw_value('exclude');
         push @$aFilter, "+(", "&include", ")" if defined $self->get_raw_value('include');
     }
@@ -270,12 +278,13 @@ sub sort_show_key_order {
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
+    my $oTarget= shift;
     
-    my $aResult = $self->SUPER::show($hConfShowCache);
+    my $aResult = $self->SUPER::show($hConfShowCache, $oTarget);
     
     my $aMacroStack= [];
 
-    my @sFilter= $self->_get_filter($aMacroStack);
+    my @sFilter= $self->_get_filter($aMacroStack, $oTarget);
     my $sLastScope= "";
     my @sSubResult= ();
     for my $sMacroName ($self->get_all_references($aMacroStack)) {
@@ -364,7 +373,7 @@ sub run {
     # Write filter rules to temp file:
     my ($fhwRules, $sRulesFile)= $self->local_tempfile();
 
-    my @sFilter= $self->_get_filter();
+    my @sFilter= $self->_get_filter(undef, $oTargetPath);
     # print join("\n", @sFilter), "\n"; #die;
 
     print $fhwRules join("\n", @sFilter), "\n";

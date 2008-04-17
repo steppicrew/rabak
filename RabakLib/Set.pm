@@ -98,7 +98,7 @@ sub show {
     push @$aResult, @{$self->SUPER::show($hConfShowCache)};
 
     for my $oSource (@oSources) {
-        push @$aResult, @{$oSource->show($hConfShowCache)};
+        push @$aResult, @{$oSource->show($hConfShowCache, $oTarget)};
     }
     
     push @$aResult, @{$oTarget->show($hConfShowCache)};
