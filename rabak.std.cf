@@ -112,7 +112,6 @@ exclude_common =
     *.lock
 
 exclude =
-    &target_base
     &exclude_linux
     &exclude_win
     &exclude_common
