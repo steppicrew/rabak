@@ -61,6 +61,9 @@ sub _parseFilter {
         $sEntry= $self->remove_backslashes_part2($sEntry);
         $sEntry=~ s/^([\-\+\#]*)\s*//;
         my $sIncExc= $1;
+        
+        # pathes starting with "./" are relative to $sBasePath
+        $sEntry=~ s/^\.\//$sBaseDir/;
 
         my $isDir= $sEntry=~ /\/$/;
 
