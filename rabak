@@ -177,7 +177,7 @@ sub _conf_read {
 }
 
 sub _cmd_setup {
-    my $sBakSet= shift;
+    my $sBakSet= shift || '';
 
     _conf_read();
     my $hSetConf= $oConf->get_node($sBakSet);
@@ -208,7 +208,7 @@ sub _cmd_setup {
 # 3 error in conf file
 # 9 other error
 sub _exit {
-    my $iErrorCode= shift;
+    my $iErrorCode= shift || 0;
     usage() if $iErrorCode == 2;
     exit $iErrorCode;
 }
@@ -248,7 +248,7 @@ Possible switches:
   -c <file>  Use <file> for configuration
   -i <value> Save on device with targetgroup value <value>
   -l         Log to file
-  -p         Pretend
+  -p         Pretend (don't do anything, just tell what would happen)
   -q         Be quiet
   -v         Be verbose
   --version  Show version

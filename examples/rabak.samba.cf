@@ -1,0 +1,85 @@
+
+# Rabak example config file
+
+# This example won't work out of the box! It uses mount points that propably don't exist.
+
+# For details see: perldoc RabakLib::Doc
+
+# =======================================================================================
+#       INCLUDE STANDARD SETTINGS
+# =======================================================================================
+
+INCLUDE rabak.std.cf
+INCLUDE rabak.secret.cf
+
+# =======================================================================================
+#       SET UP SOME VARIABLES
+# =======================================================================================
+
+target_base = /tmp/rabak-example-backup
+target_dir = $target_base/rabak
+
+smb_dir = /mnt/samba/e
+smb_user = backup
+# smb_password is in rabak.secret.cf
+
+exclude_smb =
+    $smb_dir/( &exclude_std_win )
+    $smb_dir/backup/
+
+# =======================================================================================
+#       Mount point "/dev/sd?1"
+# =======================================================================================
+
+# External USB Drive Example (First-of Example)
+# Try all of these. Use the first mountable one.
+
+[mount_external]
+
+device= /dev/sd?1
+directory= $target_base
+istarget= 1
+unmount= 1
+
+# =======================================================================================
+#       Mount point "//smb_server/e$" (Samba mount point)
+# =======================================================================================
+
+[mount_smb_server]
+
+device= //smb_server/e$
+directory= $smb_dir
+type= cifs
+opts= "username=$smb_user,password=$smb_password,ro"
+unmount= 1
+
+# =======================================================================================
+#       Target to back up to
+# =======================================================================================
+
+[example_target]
+
+path = $target_base/rabak
+mount = &mount_external
+group = example
+
+# send mail if free space on target drops below this value
+# (possible units: 'B'yte, 'K' (default), 'M'ega, 'G'iga or '%')
+discfree_threshold = 10%
+
+# =======================================================================================
+#       BACKUP SET: Samba Example
+# =======================================================================================
+
+[example]
+
+title = Samba share example
+source = $smb_dir
+target = &example_target
+exclude = $exclude_std, $exclude_smb
+mount = &mount_smb_server
+
+# For this example, only pretend:
+switch.pretend = 1
+
+# EOF

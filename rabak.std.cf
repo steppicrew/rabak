@@ -10,6 +10,7 @@
 # =======================================================================================
 
 [switch]
+
 logging = 1
 
 # switch.verbose: verbosity level
@@ -17,24 +18,34 @@ logging = 1
 #    2: print errors and warnings only
 #    3: print additional output (rsync: stats, mount results)
 #    4: print additional output (rsync: files)
+#
 verbose = 3
 
-# switch.dev_conf_file: file that have to exist in root dir on any target device (istarget is set in mount section)
-#    default: rabak.dev.cf
-#    format is like from this file
-#    options:
+# switch.dev_conf_file:
+#    The name of the file that has to exist in the root directory on any target device.
+#    A target device is a mount target with the "istarget" flag set to 1.
+#
+#    Default value: rabak.dev.cf
+#
+#    The files format is same as this file:
+#    Possibly options:
 #        targetvalues= targetgroup.targetvalue ...
-#    device is valid for this backup if file exists, target group/value is found (optional)
+#
+#    A device is assumed to be a valid target device if the file exists
+#    and target group/value is found (optional).
+#
 dev_conf_file = rabak.dev.cf
+
 []
 
 # =======================================================================================
-#       GLOBAL VARIABLES
+#       DEFAULT VALUES
 # =======================================================================================
 
 # Standard excludes for Linux systems
 
 [default]
+
 exclude_linux =
     /dev/
     /proc/
@@ -103,7 +114,6 @@ exclude_common =
     *.lock
 
 exclude =
-    &target_base
     &exclude_linux
     &exclude_win
     &exclude_common
@@ -118,6 +128,10 @@ filter=
 
 []
 
+# =======================================================================================
+#       GLOBAL VARIABLES
+# =======================================================================================
+
 # redefine standard objects for backward compatibility
 exclude_std_linux = &default.exclude_linux
 win_root_dir = &default.win_root_dir
@@ -126,10 +140,8 @@ exclude_profile_win = &default.exclude_profile_win
 exclude_std_win = &default.exclude_win
 exclude_std_common = &default.exclude_common
 exclude_std = &default.exclude
-filter= &default.filter
 
-
-# Default exclude. You probably want to override this in your cf file.
+# Default exclude. You may want to override this in your cf file.
 exclude =
 
 # Default include: Include everything.
