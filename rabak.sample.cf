@@ -144,7 +144,6 @@ user = $mysql_user
 password = $mysql_password
 switch.logging = 1
 keep = 3
-mount = &mount_external
 
 # =======================================================================================
 #       TEST RABAK
