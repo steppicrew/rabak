@@ -57,14 +57,9 @@ sub new {
     return $self;
 }
 
-# TODO: In a perfect world, these would be constants:
-
-our $sIdent0= "[a-z_][a-z_0-9]*";
-our $sIdent= "$sIdent0(\\.$sIdent0)*";
-
-# simple! use this:
-# sub IDENT0 { "[a-z_][a-z_0-9]*" }
-# sub IDENT { IDENT0 . '(\.' . IDENT0 . ')*' };
+#define some regexp
+our $sIdent0= RabakLib::Conf->IDENT0;
+our $sIdent= RabakLib::Conf->IDENT;
 
 
 sub filename {

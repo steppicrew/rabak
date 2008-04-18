@@ -169,10 +169,13 @@ sub _expand {
                 sub {$self->_expand(@_)}, # function to expand macro's content
                 sub{ # function to modify macro's text before splitting
                     my $sEntry= shift;
+                    my $sIdent= $self->IDENTREF;
                     # remove spaces between +/- and path
                     $sEntry=~ s/(?<!\\)([\-\+])\s+/$1/g;
-                    # enclose all macros with parantheses
-                    $sEntry=~ s/(?<!\\)(\&[\.\w]+)/\($1\)/g;
+                    # enclose all macros &... with parantheses
+                    $sEntry=~ s/(?<!\\)(\&$sIdent)/\($1\)/g;
+                    # enclose all macros &{..} with parantheses
+                    $sEntry=~ s/(?<!\\)\&\{($sIdent)\}/\(\&$1\)/g;
                     # add space after '('
                     $sEntry=~ s/(?<!\\)\(\s*/\( /g;
                     # add space before ')'

@@ -26,6 +26,16 @@ sub new {
     bless $self, $class;
 }
 
+# define some regexp
+our $sIdent0= "[a-z_][a-z_0-9]*";
+our $sIdent= "$sIdent0(\\.$sIdent0)*";
+our $sIdentRef= "\\/?\\.*$sIdent0(\\.$sIdent0)*";
+
+# ...and publish them to other classes
+sub IDENT0 { $sIdent0 }
+sub IDENT { $sIdent };
+sub IDENTREF { $sIdentRef };
+
 sub CloneConf {
     my $class= shift;
     my $oOrigConf= shift;
@@ -347,25 +357,42 @@ sub _resolveObjects {
     my @oResult= ();
     
     for my $sValue (@$aValue) {
-        # simple scalars are copied to @oResult
-        unless ($sValue=~ s/^\&//) {
-            push @oResult, $sValue;
-            next;
-        }
-        # macros are expanded and result added to @oResult
+        # if value is a single macro simply resolve it
+        if ($sValue=~ s/^\&($sIdentRef)$/$1/) {
+            # macros are expanded and result added to @oResult
 # print "expanding macro: '$sValue'\n";
 # print "scope: ", $self->get_full_name() , "\n";
-        my $hResult = $self->expandMacro($sValue, $oScope, $aStack, sub{$self->_resolveObjects(@_)});
-        unless (defined $hResult->{DATA}) {
-            # logger->error($hResult->{ERROR}) if $hResult->{ERROR};
+            my $hResult = $self->expandMacro($sValue, $oScope, $aStack, sub{$self->_resolveObjects(@_)});
+            unless (defined $hResult->{DATA}) {
+                # logger->error($hResult->{ERROR}) if $hResult->{ERROR};
+                next;
+            }
+# print "got ", Dumper($hResult->{DATA}), "\n";
+            unless (ref $hResult->{DATA} eq "ARRAY") {
+                logger->error("Internal error: expandMacro() should return an array reference! ($hResult->{DATA})");
+                return [];
+            }
+            push @oResult, @{$hResult->{DATA}};
             next;
         }
-# print "got ", Dumper($hResult->{DATA}), "\n";
-        unless (ref $hResult->{DATA} eq "ARRAY") {
-            logger->error("Internal error: expandMacro() should return an array reference! ($hResult->{DATA})");
-            return [];
-        }
-        push @oResult, @{$hResult->{DATA}};
+        
+        # if value is a scalar
+        # expand all contained macros
+        my $f = sub {
+            my $sName= shift;
+            my $sResult= $self->joinValue(
+                $self->_resolveObjects(["&$sName"], $oScope, $aStack)
+            );
+            return $sResult if defined $sResult;
+            logger->warn("Could not resolve '&$sName'");
+            return '';
+        };
+        while ($sValue=~ s/(?<!\\)\&($sIdentRef)/$f->($1)/e ||
+            $sValue=~ s/(?<!\\)\&\{($sIdentRef)\}/$f->($1)/e
+        ) {}
+        logger->warn("There are unescaped '&' in '$sValue'") if $sValue=~ /(?<!\\)\&/;
+        # ...and push scalar
+        push @oResult, $sValue;
     }
     return \@oResult;
 }
