@@ -58,8 +58,7 @@ sub new {
 }
 
 #define some regexp
-our $sIdent0= RabakLib::Conf->IDENT0;
-our $sIdent= RabakLib::Conf->IDENT;
+our $sregIdent= RabakLib::Conf->REGIDENT;
 
 
 sub filename {
@@ -182,7 +181,7 @@ sub _read_file {
         last if $sLine =~ /^END\s*$/;
         
         $sPrefix= undef, next if $sLine =~ /^\[\s*\]$/;
-        $sPrefix= $1, next if $sLine =~ /^\[\s*($sIdent)\s*\]$/;
+        $sPrefix= $1, next if $sLine =~ /^\[\s*($sregIdent)\s*\]$/;
 
         if ($sLine =~ /^INCLUDE\s+(.+)/) {
             my $sInclude= $1;
@@ -216,7 +215,7 @@ sub _read_file {
             $sValue= $sLine;
         }
         else {
-            $self->_error("Syntax error", $sFile, $iLine, $sLine) unless $sLine =~ /^($sIdent)\s*=\s*(.*?)$/i;
+            $self->_error("Syntax error", $sFile, $iLine, $sLine) unless $sLine =~ /^($sregIdent)\s*=\s*(.*?)$/i;
 
             $sName= lc $1;
             $sName= "$sPrefix.$sName" if defined $sPrefix;
@@ -286,7 +285,7 @@ sub __expand {
             $self->__expand($hConf->{VALUES}{$_}, "$sKey.$_");
             next;
         }
-        if ($hConf->{VALUES}{$_} =~ /^\$($sIdent)$/s) {
+        if ($hConf->{VALUES}{$_} =~ /^\$($sregIdent)$/s) {
             my $hConf1= $self->_line_expand(substr("$sKey.$_", 1), $1, 1);
             if ($hConf1) {
                 $hConf->{VALUES}{$_}= dclone($hConf1);
@@ -296,7 +295,7 @@ sub __expand {
                 next;
             }
         }
-        $hConf->{VALUES}{$_} =~ s/(?<!\\)\$($sIdent)/$self->_line_expand(substr("$sKey.$_", 1), $1, 0)/ges;
+        $hConf->{VALUES}{$_} =~ s/(?<!\\)\$($sregIdent)/$self->_line_expand(substr("$sKey.$_", 1), $1, 0)/ges;
     }
 }
 

@@ -27,14 +27,13 @@ sub new {
 }
 
 # define some regexp
-our $sIdent0= "[a-z_][a-z_0-9]*";
-our $sIdent= "$sIdent0(\\.$sIdent0)*";
-our $sIdentRef= "\\/?\\.*$sIdent0(\\.$sIdent0)*";
-
+our $sregIdent0= "[a-z_][a-z_0-9]*";
+our $sregIdent= "$sregIdent0(\\.$sregIdent0)*";
+our $sregIdentRef= "\\/?\\.*$sregIdent";
 # ...and publish them to other classes
-sub IDENT0 { $sIdent0 }
-sub IDENT { $sIdent };
-sub IDENTREF { $sIdentRef };
+sub REGIDENT0   { $sregIdent0 }
+sub REGIDENT    { $sregIdent };
+sub REGIDENTREF { $sregIdentRef };
 
 sub CloneConf {
     my $class= shift;
@@ -358,7 +357,7 @@ sub _resolveObjects {
     
     for my $sValue (@$aValue) {
         # if value is a single macro simply resolve it
-        if ($sValue=~ s/^\&($sIdentRef)$/$1/) {
+        if ($sValue=~ s/^\&($sregIdentRef)$/$1/) {
             # macros are expanded and result added to @oResult
 # print "expanding macro: '$sValue'\n";
 # print "scope: ", $self->get_full_name() , "\n";
@@ -387,8 +386,8 @@ sub _resolveObjects {
             logger->warn("Could not resolve '&$sName'");
             return '';
         };
-        while ($sValue=~ s/(?<!\\)\&($sIdentRef)/$f->($1)/e ||
-            $sValue=~ s/(?<!\\)\&\{($sIdentRef)\}/$f->($1)/e
+        while ($sValue=~ s/(?<!\\)\&($sregIdentRef)/$f->($1)/e ||
+            $sValue=~ s/(?<!\\)\&\{($sregIdentRef)\}/$f->($1)/e
         ) {}
         logger->warn("There are unescaped '&' in '$sValue'") if $sValue=~ /(?<!\\)\&/;
         # ...and push scalar
