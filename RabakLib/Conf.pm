@@ -235,7 +235,7 @@ sub _get_property {
     my $sName= shift;
     
     return undef unless defined $sName;
-    return undef if $sName eq '.';
+    return undef if $sName eq '.' || $sName eq '';
     
     # leading slash means: search from root conf
     if ($sName=~ /^\//) {
