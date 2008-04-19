@@ -117,11 +117,11 @@ $oSubConf11->set_value('switch.test_key', 'test switch sub11');
 ok $oSubConf11->get_switch('test_key'), 'test switch', 'Getting switch from SubConf11';
 ok $oRootConf->get_switch('test_key'), 'test switch', 'Getting switch from RootConf';
 
-# test set_values and resolveObjects() with recursion check and wrong reference
+# test preset_values and resolveObjects() with recursion check and wrong reference
 my $oSubConf2= RabakLib::Conf->new('subconf2', $oRootConf);
 $oSubConf2->set_value('key1', 'some value');
 $oRootConf->set_value('subconf2', $oSubConf2);
-$oSubConf11->set_values({
+$oSubConf11->preset_values({
     '/test_key' => '&subconf2.key1 str\ ing',
     '.test_key' => 'sub1',
     '.reference' => '&/test_key &test_key &subconf11.test_key &/subconf11.test_key',

@@ -302,7 +302,7 @@ sub show {
     shift @$aMacroStack if scalar @$aMacroStack;
     push @{$hConfShowCache->{'.'}}, @$aMacroStack;
     
-    return $aResult unless $self->get_switch("logging") >= LOG_DEBUG_LEVEL;
+    return $aResult unless $self->get_switch("logging", 0) >= LOG_DEBUG_LEVEL;
 
     my $sBaseDir= $self->valid_source_dir();
     push @$aResult, "", "# Expanded rsync filter (relative to '$sBaseDir'):", map {"#\t$_"} @sFilter;

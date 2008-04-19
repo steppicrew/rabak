@@ -208,13 +208,29 @@ sub get_switch {
     my $sName= shift;
     my $sDefault= shift;
     
-    my $sSwitch= $self->get_value("/switch.$sName");
-    return $sSwitch if defined $sSwitch;
-    return $self->get_value($sName, $sDefault);
+    return $self->get_value("switch.$sName", $sDefault);
 }
 
 # find property and return it as it is (scalar, object etc.)
 sub get_property {
+    my $self= shift;
+    my $sName= shift;
+ 
+    return undef unless defined $sName;
+    unless ($sName =~ /\*/) {
+        my $sStarName= $sName;
+        $sStarName=~ s/^[\.\/]*//;
+        my ($oValue, $oParent)= $self->_get_property("/*.$sStarName");
+        if (defined $oValue) {
+            return ($oValue, $oParent) if wantarray;
+            return $oValue;
+        }
+    }
+    return $self->_get_property($sName);   
+}
+    
+# find property and return it as it is (scalar, object etc.)
+sub _get_property {
     my $self= shift;
     my $sName= shift;
     
@@ -223,13 +239,13 @@ sub get_property {
     
     # leading slash means: search from root conf
     if ($sName=~ /^\//) {
-        return $self->{PARENT_CONF}->get_property($sName) if $self->{PARENT_CONF};
+        return $self->{PARENT_CONF}->_get_property($sName) if $self->{PARENT_CONF};
         $sName=~ s/^[\/\.]+//;
     }
     
     # each leading dot means: going up one level in conf tree
     if ($sName=~ s/^\.//) {
-        return $self->{PARENT_CONF}->get_property($sName) if $self->{PARENT_CONF};
+        return $self->{PARENT_CONF}->_get_property($sName) if $self->{PARENT_CONF};
         # if on top conf, get property here
         $sName=~ s/^\.*//;
     }
@@ -241,7 +257,7 @@ sub get_property {
     my @sName= split(/\./, $sName);
     for (@sName) {
         unless (ref $oProp && defined $oProp->{VALUES}{$_}) {
-            return $self->{PARENT_CONF}->get_property($sName) if $self->{PARENT_CONF}; 
+            return $self->{PARENT_CONF}->_get_property($sName) if $self->{PARENT_CONF}; 
             return undef;
         }
         $oParentProp= $oProp;
@@ -260,7 +276,7 @@ sub get_node {
     return undef;
 }
 
-sub set_values {
+sub preset_values {
     my $self= shift;
     my $hValues= shift;
     for my $sName (keys(%$hValues)) {
