@@ -161,7 +161,7 @@ sub _conf_read {
     $oConfFile= RabakLib::ConfFile->new(@sConfFiles);
     $oConf= $oConfFile->conf();
     # overwrite values with comand line switches
-    my $sHostname= `hostname -f`;
+    my $sHostname= `hostname -f 2>/dev/null` || `hostname`;
     chomp $sHostname;
     $oConf->preset_values({
         '*.switch.pretend' => $sOpts{p},
