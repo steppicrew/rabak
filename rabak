@@ -174,8 +174,6 @@ sub _conf_read {
         '*.switch.commandline' => $sCommandLine,
         '*.switch.configfile' => $oConfFile->filename(),
     });
-print "switch.verbose = ", $oConf->get_switch("verbose"), "\n";
-print "switch.logging = ", $oConf->get_switch("logging")||'undef', "\n";
     return $oConfFile;
 }
 
