@@ -275,22 +275,25 @@ sub find_scope {
 }
 
 # finds given property, does not look in other scopes
+# returns property, best fitting scope and remaining key
 sub get_property {
     my $self= shift;
     my $sName= lc shift;
 
-    my $oParent= $self;
+    my $oScope= $self;
     my @sName= split(/\./, $sName);
+    # get last key
     my $sPropKey= pop @sName;
     while (my $sKey= shift @sName) {
-        unless (ref $oParent->{VALUES}{$sKey}) {
-            return (undef, $oParent, join('.', $sKey, @sName, $sPropKey)) if wantarray;
+        unless (ref $oScope->{VALUES}{$sKey}) {
+            #                       build key relative from last scope
+            return (undef, $oScope, join('.', $sKey, @sName, $sPropKey)) if wantarray;
             return undef;
         }
-        $oParent= $oParent->{VALUES}{$sKey};
+        $oScope= $oScope->{VALUES}{$sKey};
     }
-    return ($oParent->{VALUES}{$sPropKey}, $oParent, $sPropKey) if wantarray;
-    return $oParent->{VALUES}{$sPropKey};
+    return ($oScope->{VALUES}{$sPropKey}, $oScope, $sPropKey) if wantarray;
+    return $oScope->{VALUES}{$sPropKey};
     
 }
 
@@ -443,10 +446,11 @@ sub _resolveObjects {
             logger->warn("Could not resolve '&$sName'");
             return '';
         };
-        while ($sValue=~ s/(?<!\\)\&($sregIdentRef)/$f->($1)/e ||
-            $sValue=~ s/(?<!\\)\&\{($sregIdentRef)\}/$f->($1)/e
+        while (
+            $sValue=~ s/(?<!\\)\&($sregIdentRef)/$f->($1)/ge ||
+            $sValue=~ s/(?<!\\)\&\{($sregIdentRef)\}/$f->($1)/ge
         ) {}
-        logger->warn("There are unescaped '&' in '$sValue'") if $sValue=~ /(?<!\\)\&/;
+        logger->warn("Unescaped '&' in '$sValue'") if $sValue=~ /(?<!\\)\&/;
         # ...and push scalar
         push @oResult, $sValue;
     }
