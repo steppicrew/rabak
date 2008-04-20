@@ -199,18 +199,32 @@ sub get_switch {
     my $sName= shift;
     my $sDefault= shift;
     
-    my $sSwitch= $self->get_value("/switch.$sName");
-    return $sSwitch if defined $sSwitch;
-    return $self->get_value($sName, $sDefault);
+#    my $sSwitch= $self->get_value("/switch.$sName");
+#    return $sSwitch if defined $sSwitch;
+    return $self->get_value("switch.$sName", $sDefault);
 }
 
 # find property and return it as it is (scalar, object etc.)
 sub get_property {
     my $self= shift;
     my $sName= shift;
+    unless ($sName=~ /^\*/) {
+        my ($oProp, $oParent)= $self->_get_property("*$sName");
+        if (defined $oProp) {
+#print "*$sName->$oProp\n";
+            return ($oProp, $oParent) if wantarray;
+            return $oProp;
+        }
+    }
+    return $self->_get_property($sName);
+}
+
+sub _get_property {
+    my $self= shift;
+    my $sName= shift;
     
     return undef unless defined $sName;
-    return undef if $sName eq '.';
+    return undef if $sName eq '.' || $sName eq '';
     
     # leading slash means: search from root conf
     if ($sName=~ /^\//) {

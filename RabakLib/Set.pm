@@ -694,7 +694,7 @@ sub _backup_cleanup {
 
     $oSource->unmountAll;
 
-    my $sBakSource= $oSource->get_value("name");
+    my $sBakSource= $oSource->getBaksetName() || '';
     my $sBakDay= $self->{_BAK_DAY};
     my $sSubSet= $self->{_SUB_SET};
 

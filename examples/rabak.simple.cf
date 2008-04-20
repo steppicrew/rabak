@@ -14,11 +14,18 @@ INCLUDE rabak.std.cf
 target = examples/example-backup
 exclude = *.bak
 
+switch.pretend = 1
+switch.logging = 0
+switch.verbose = 0
+
 [example]
 
 title = Very simple example
-switch.verbose = 4
-switch.logging = 1
+# switch.verbose = 4
+# switch.logging = 1
+switch.logging = 0
+switch.verbose = 0
+switch.quiet = 1
 source = examples/example-data
 target = $target/rabak
 exclude = $exclude, ./tmp/
