@@ -221,47 +221,42 @@ sub _read_file {
             $sValue= $sPrefLine;
         }
 
+        my $oConf= $self->{CONF};
         # get pervious value and best matching scope
-        my ($sOldValue, $oScope)= $self->{CONF}->get_property($sName);
+        my ($sOldValue, $oScope)= $oConf->get_property($sName);
         my $sNewValue= $sValue;
         # In case of a multiline, we need a newline at the end of each line
         if ($bIndent) {
-            $sNewValue= $sOldValue;
-            $sNewValue= '' unless defined $sNewValue;
-            $sNewValue .= "\n" unless $sNewValue =~ /\n$/;
-            $sNewValue .= "$sValue\n";
+            $sNewValue= defined $sOldValue ? $sOldValue : '';
+            $sNewValue=~ s/\n?$/\n/;
+            $sNewValue.= "$sValue\n";
         }
         # remove current key to prevent self referencing
-        $self->{CONF}->remove_property($sName);
+        $oConf->remove_property($sName);
         if ($sNewValue=~ /^\$($sregIdentRef)$/) {
             # if value is a simple reference, replace it by reference's content (may be an object)
             my $sRef= $1;
             $sNewValue= $oScope->find_property($sRef);
-            $self->_error("Could not resolve symbol '$sRef'", $sFile, $iLine, $sLine) unless defined $sNewValue;
+            $self->_error("Could not resolve symbol '\$$sRef'", $sFile, $iLine, $sLine) unless defined $sNewValue;
         }
         else {
+            # function to expand referenced macros as scalar
+            my $f = sub {
+                my $sRef= shift;
+                my $sResult= $oScope->find_property($sRef);
+                $self->_error("Could not resolve symbol '$sRef'", $sFile, $iLine, $sLine) unless defined $sResult;
+                $self->_error("'$sRef' is an object", $sFile, $iLine, $sLine) if ref $sResult;
+                return $sResult;
+            };
             # replace every occurance of an reference with reference's scalar value (or raise an error)
-            $sNewValue=~ s/(?<!\\)\$($sregIdentRef)/$self->_expand($oScope, $1, $sFile, $iLine, $sLine)/ge;
+            $sNewValue=~ s/(?<!\\)\$($sregIdentRef)/$f->($1)/ge;
         }
-        $self->{CONF}->set_value($sName, $sNewValue);
+        $oConf->set_value($sName, $sNewValue);
     }
 
     $self->_error($self->{ERROR}, $sFile) if $self->{ERROR};
 
     return $self->{CONF};
-}
-
-# expand referenced macros as scalar
-sub _expand {
-    my $self= shift;
-    my $oScope= shift;
-    my $sRef= shift;
-    my @sError= @_;
-
-    my $sResult= $oScope->find_property($sRef);
-    $self->_error("Could not resolve symbol '$sRef'", @sError) unless defined $sResult;
-    $self->_error("'$sRef' is an object", @sError) if ref $sResult;
-    return $sResult;
 }
 
 1;
