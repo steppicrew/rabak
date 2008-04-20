@@ -161,32 +161,18 @@ sub _read_file {
         $self->_error($sMsg, $sFile);
     }
 
-    my $sName= '';
+    my $sName= undef;
     my $iLine= 0;
-    my $sPrefix= undef;
+    my $sPrefix= '';
     while (my $sLine= <$fin>) {
         $iLine++;
         next if $sLine =~ /^#/;
 
-        my $bIndent= 0;
-        if ($sLine =~ s/^(\s+)//) {
-            $bIndent = 1 
-        }
-        else {
-            $sName= '';
-        }
-
-        $sLine =~ s/\s+$//;
+        $sLine =~ s/(?<!\\)\s+$//;
         next if $sLine eq '';
 
-        last if $sLine =~ /^END\s*$/;
+        last if $sLine =~ /^END$/;
         
-        $sPrefix= undef, next if $sLine =~ /^\[\s*\]$/;
-        if ($sLine =~ /^\[\s*(\*|($sregIdentDef))\s*\]$/) {
-            $sPrefix= $1;
-            next;
-        }
-
         if ($sLine =~ /^INCLUDE\s+(.+)/) {
             my $sInclude= $1;
 
@@ -212,14 +198,25 @@ sub _read_file {
             next;
         }
 
+        if ($sLine =~ /^\[\s*\]$/) {
+            $sPrefix= '';
+            next ;
+        }
+        if ($sLine =~ /^\[\s*(\*|($sregIdentDef))\s*\]$/) {
+            $sPrefix= "$1.";
+            next;
+        }
+
+        my $bIndent= $sLine =~ s/^\s+//;
+
         my $sValue;
         if ($bIndent) {
-            $self->_error("Unexpected value", $sFile, $iLine, $sLine) unless $sName;
+            $self->_error("Unexpected value", $sFile, $iLine, $sLine) unless defined $sName;
 
             $sValue= $sLine;
         }
         else {
-            my $sPrefLine= defined $sPrefix ? "$sPrefix.$sLine" : $sLine;
+            my $sPrefLine= "$sPrefix$sLine";
             $self->_error("Syntax error", $sFile, $iLine, $sLine) unless $sPrefLine =~ s/^($sregIdentDef)\s*=\s*//i;
 
             $sName= lc $1;
@@ -252,7 +249,7 @@ sub _read_file {
         # In case of a multiline, we need a newline at the end of each line
         if ($bIndent) {
             $hConf->{VALUES}{$sKey}= '' unless defined $hConf->{VALUES}{$sKey};
-            $hConf->{VALUES}{$sKey} .= "\n" if length($hConf->{VALUES}{$sKey}) && substr($hConf->{VALUES}{$sKey}, -1) ne "\n";
+            $hConf->{VALUES}{$sKey} .= "\n" unless $hConf->{VALUES}{$sKey} =~ /\n$/;
             $hConf->{VALUES}{$sKey} .= "$sValue\n";
         }
         else {
@@ -268,6 +265,7 @@ sub _read_file {
     return $self->{CONF};
 }
 
+# TODO: i don't understand function of _expand, __expand, _line_expand. should be reviewed?
 sub _expand {
     my $self= shift;
 

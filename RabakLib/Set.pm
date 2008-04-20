@@ -98,7 +98,7 @@ sub show {
     }
     
     push @$aResult, @{$oTarget->show($hConfShowCache)};
-
+    
     # print all not already shown references
     my @sSubResult= ();
     while (1) {
