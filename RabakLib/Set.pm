@@ -99,6 +99,12 @@ sub show {
     
     push @$aResult, @{$oTarget->show($hConfShowCache)};
     
+    my $oRootConf= $self->find_scope("/switch");
+    my $oSwitches= $oRootConf->get_property("switch");
+    if (defined $oSwitches && ref $oSwitches) {
+        push @$aResult, "", "# Switches:", @{$oSwitches->show()};
+    }
+    
     # print all not already shown references
     my @sSubResult= ();
     while (1) {
