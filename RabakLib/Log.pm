@@ -56,7 +56,8 @@ BEGIN {
 
         SWITCH_PRETEND => 0,
         SWITCH_LOGGING => 0,
-        SWITCH_VERBOSITY => 0,
+        SWITCH_VERBOSITY => 3,
+        SWITCH_QUIET => 0,
     };
     
     ($oLog->{MSG_FH}, $oLog->{MSG_FILE_NAME}) =
@@ -236,7 +237,7 @@ sub debug {
     my @sMessage= @_;
 
     return [ LOG_DEBUG_LEVEL, @sMessage ] if wantarray;
-    $self->log($self->debug(@_));
+    $self->log($self->debug(@sMessage));
 }
 
 sub verbose {
@@ -244,7 +245,7 @@ sub verbose {
     my @sMessage= @_;
 
     return [ LOG_VERBOSE_LEVEL, @sMessage ] if wantarray;
-    $self->log($self->verbose(@_));
+    $self->log($self->verbose(@sMessage));
 }
 
 sub info {
@@ -252,7 +253,7 @@ sub info {
     my @sMessage= @_;
 
     return [ LOG_INFO_LEVEL, @sMessage ] if wantarray;
-    $self->log($self->info(@_));
+    $self->log($self->info(@sMessage));
 }
 
 sub warn {
@@ -260,7 +261,7 @@ sub warn {
     my @sMessage= @_;
 
     return [ LOG_WARN_LEVEL, @sMessage ] if wantarray;
-    $self->log($self->warn(@_));
+    $self->log($self->warn(@sMessage));
 }
 
 sub error {
@@ -268,7 +269,7 @@ sub error {
     my @sMessage= @_;
 
     return [ LOG_ERROR_LEVEL, @sMessage ] if wantarray;
-    $self->log($self->error(@_));
+    $self->log($self->error(@sMessage));
 }
 
 sub exitError {
