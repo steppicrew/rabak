@@ -60,7 +60,7 @@ sub new {
 #define some regexp
 our $sregIdent= RabakLib::Conf->REGIDENT;
 our $sregIdentDef= RabakLib::Conf->REGIDENTDEF;
-
+our $sregIdentRef= RabakLib::Conf->REGIDENTREF;
 
 sub filename {
     my $self= shift;
@@ -223,43 +223,28 @@ sub _read_file {
             $sValue= $sPrefLine;
         }
 
-        my @aKeys= split(/\./, $sName);
-        my $sKey= shift @aKeys;
-        my $hConf= $self->{CONF};
-
-        my $sErrKey= '';
-        for (@aKeys) {
-            $sErrKey .= ".$sKey";
-            if (defined $hConf->{VALUES}{$sKey} && !ref $hConf->{VALUES}{$sKey}) {
-                $self->_expand();
-                if (!ref $hConf->{VALUES}{$sKey}) {
-                    $self->_error("Variable \"" . substr($sErrKey, 1) . "\" is not a structure", $sFile, $iLine, $sLine);
-                }
-            }
-            $hConf->{VALUES}{$sKey}= RabakLib::Conf->new($sKey, $hConf) unless $hConf->{VALUES}{$sKey};
-            $hConf= $hConf->{VALUES}{$sKey};
-            $sKey= $_;
-        }
-
-        $sErrKey .= ".$sKey";
-        if (ref $hConf->{VALUES}{$sKey}) {
-            $self->_error("Can't assign string, variable \"" . substr($sErrKey, 1) . "\" is a structure", $sFile, $iLine, $sLine);
-        }
-
+        my ($sOldValue, $oScope, $sKey)= $self->{CONF}->get_property($sName);
+        my $sNewValue= $sValue;
         # In case of a multiline, we need a newline at the end of each line
         if ($bIndent) {
-            $hConf->{VALUES}{$sKey}= '' unless defined $hConf->{VALUES}{$sKey};
-            $hConf->{VALUES}{$sKey} .= "\n" unless $hConf->{VALUES}{$sKey} =~ /\n$/;
-            $hConf->{VALUES}{$sKey} .= "$sValue\n";
+            $sNewValue= $sOldValue;
+            $sNewValue= '' unless defined $sNewValue;
+            $sNewValue .= "\n" unless $sNewValue =~ /\n$/;
+            $sNewValue .= "$sValue\n";
+        }
+        # remove current key to prevent self referencing
+        $self->{CONF}->remove_property($sName);
+        if ($sNewValue=~ /^\$($sregIdentRef)^/) {
+            my $sRef= $1;
+            $sNewValue= $oScope->find_property($sRef);
+            $self->_error("Could not resolve symbol '$sRef'") unless defined $sNewValue;
         }
         else {
-            $hConf->{VALUES}{$sKey}= $sValue;
+            $sNewValue=~ s/(?<!\\)\$($sregIdentRef)/$self->_expand($oScope, $1)/ge;
         }
-
-        # $hConf->{$sKey}= (defined $hConf->{$sKey} && $bIndent && $hConf->{$sKey} ne '') ? $hConf->{$sKey} . "\n$sValue" : $sValue;
+        $self->{CONF}->set_value($sName, $sNewValue);
     }
 
-    $self->_expand();
     $self->_error($self->{ERROR}, $sFile) if $self->{ERROR};
 
     return $self->{CONF};
@@ -268,13 +253,13 @@ sub _read_file {
 # TODO: i don't understand function of _expand, __expand, _line_expand. should be reviewed?
 sub _expand {
     my $self= shift;
+    my $oScope= shift;
+    my $sRef= shift;
 
-    $self->{DID_EXPAND}= 1;
-    while ($self->{DID_EXPAND}) {
-        $self->{DID_EXPAND}= 0;
-        $self->{ERROR}= '';                     # TODO: Ok to do this here?
-        $self->__expand($self->{CONF}, '');
-    }
+    my $sResult= $oScope->find_property($sRef);
+    $self->_error("Could not resolve symbol '$sRef'") unless defined $sResult;
+    $self->_error("'$sRef' is an object") if ref $sResult;
+    return $sResult;
 }
 
 sub __expand {

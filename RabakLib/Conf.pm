@@ -115,7 +115,7 @@ sub get_raw_value {
     my $sName= shift;
     my $sDefault= shift;
     
-    my $sValue= $self->get_property($sName);
+    my $sValue= $self->find_property($sName);
     
     unless (defined $sValue) {
         return $self->{NAME} if lc($sName) eq 'name';      
@@ -194,12 +194,12 @@ sub get_value {
     return $sValue;
 }
 
-# TODO: Which is correct: get_property? get_value? get_prep_value? $oCOnf->{VALUES}?
+# TODO: Which is correct: find_property? get_value? get_prep_value? $oCOnf->{VALUES}?
 sub get_value_required_message {
     my $self= shift;
     my $sField= shift;
 
-    return "Required value \"" . $self->{NAME} . ".$sField\" missing." unless defined $self->get_property($sField);
+    return "Required value \"" . $self->{NAME} . ".$sField\" missing." unless defined $self->find_property($sField);
     return undef;
 }
 
@@ -214,7 +214,7 @@ sub get_switch {
 }
 
 # find property and return it as it is (scalar, object etc.)
-sub get_property {
+sub find_property {
     my $self= shift;
     my $sName= shift;
  
@@ -222,17 +222,41 @@ sub get_property {
     unless ($sName =~ /\*/) {
         my $sStarName= $sName;
         $sStarName=~ s/^[\.\/]*//;
-        my ($oValue, $oParent)= $self->_get_property("/*.$sStarName");
+        my ($oValue, $oParent, $sKey)= $self->_find_property("/*.$sStarName");
         if (defined $oValue) {
-            return ($oValue, $oParent) if wantarray;
+            return ($oValue, $oParent, $sKey) if wantarray;
             return $oValue;
         }
     }
-    return $self->_get_property($sName);   
+    return $self->_find_property($sName);   
 }
     
 # find property and return it as it is (scalar, object etc.)
-sub _get_property {
+sub _find_property {
+    my $self= shift;
+    my $sName= shift;
+    
+    return undef unless defined $sName;
+    return undef if $sName eq '.' || $sName eq '';
+    
+    my $oScope= $self->find_scope($sName);
+    $sName=~ s/^\/?\.*//;
+    
+    $sName= lc $sName;
+
+    while (1) {
+        return undef unless defined $oScope;
+        my ($oProp, $oParentConf, $sKey)= $oScope->get_property($sName);
+        if (defined $oProp) {
+            return ($oProp, $oParentConf, $sKey) if wantarray;
+            return $oProp;
+        }
+        $oScope= $oScope->{PARENT_CONF};
+    }
+}
+
+# finds proper scope
+sub find_scope {
     my $self= shift;
     my $sName= shift;
     
@@ -241,39 +265,49 @@ sub _get_property {
     
     # leading slash means: search from root conf
     if ($sName=~ /^\//) {
-        return $self->{PARENT_CONF}->_get_property($sName) if $self->{PARENT_CONF};
-        $sName=~ s/^[\/\.]+//;
+        $self= $self->{PARENT_CONF} while $self->{PARENT_CONF};
+        return $self;
     }
     
     # each leading dot means: going up one level in conf tree
-    if ($sName=~ s/^\.//) {
-        return $self->{PARENT_CONF}->_get_property($sName) if $self->{PARENT_CONF};
-        # if on top conf, get property here
-        $sName=~ s/^\.*//;
-    }
-    
-    $sName= lc $sName;
+    $self= $self->{PARENT_CONF} while $sName=~ s/^\.// && $self->{PARENT_CONF};
+    return $self;
+}
 
-    my $oProp= $self;
-    my $oParentProp= $self->{PARENT_CONF};
+# finds given property, does not look in other scopes
+sub get_property {
+    my $self= shift;
+    my $sName= lc shift;
+
+    my $oParent= $self;
     my @sName= split(/\./, $sName);
-    for (@sName) {
-        unless (ref $oProp && defined $oProp->{VALUES}{$_}) {
-            return $self->{PARENT_CONF}->_get_property($sName) if $self->{PARENT_CONF}; 
+    my $sPropKey= pop @sName;
+    while (my $sKey= shift @sName) {
+        unless (ref $oParent->{VALUES}{$sKey}) {
+            return (undef, $oParent, join('.', $sKey, @sName, $sPropKey)) if wantarray;
             return undef;
         }
-        $oParentProp= $oProp;
-        $oProp= $oProp->{VALUES}{$_};
+        $oParent= $oParent->{VALUES}{$sKey};
     }
-    return ($oProp, $oParentProp) if wantarray;
-    return $oProp;
+    return ($oParent->{VALUES}{$sPropKey}, $oParent, $sPropKey) if wantarray;
+    return $oParent->{VALUES}{$sPropKey};
+    
+}
+
+# deletes given property
+sub remove_property {
+    my $self= shift;
+    my $sName= shift;
+    
+    my (undef, $oScope, $sKey)= $self->get_property($sName);
+    delete $oScope->{VALUES}{$sKey} if defined $oScope && exists $oScope->{VALUES}{$sKey};
 }
 
 sub get_node {
     my $self= shift;
     my $sName= shift;
     
-    my $oConf= $self->get_property($sName);
+    my $oConf= $self->find_property($sName);
     return $oConf if ref $oConf;
     return undef;
 }
@@ -298,7 +332,12 @@ sub set_value {
     my @sName= split(/\./, $sName);
     $sName= pop @sName;
     for (@sName) {
-        $self->{VALUES}{$_}= RabakLib::Conf->new($_, $self) unless ref $self->{VALUES}{$_};
+        $self->{VALUES}{$_}= RabakLib::Conf->new($_, $self) unless exists $self->{VALUES}{$_};
+        unless (ref $self->{VALUES}{$_}) {
+            logger->error("'" . $self->get_full_name() . ".$_' is not an object!");
+            exit 3;
+        }
+        
         $self= $self->{VALUES}{$_};
     }
     
@@ -324,7 +363,7 @@ sub expandMacro {
 # print "Expanding $sMacroName\n";
 
     $sMacroName=~ s/^\&//;
-    my ($sMacro, $oMacroScope)= $oScope->get_property($sMacroName); 
+    my ($sMacro, $oMacroScope)= $oScope->find_property($sMacroName); 
     unless ($oMacroScope) {
         return {ERROR => "Unknown Macro '$sMacroName'"};
     }
