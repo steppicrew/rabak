@@ -212,18 +212,17 @@ sub _read_file {
         my $sValue;
         if ($bIndent) {
             $self->_error("Unexpected value", $sFile, $iLine, $sLine) unless defined $sName;
-
             $sValue= $sLine;
         }
         else {
             my $sPrefLine= "$sPrefix$sLine";
             $self->_error("Syntax error", $sFile, $iLine, $sLine) unless $sPrefLine =~ s/^($sregIdentDef)\s*=\s*//i;
-
             $sName= lc $1;
             $sValue= $sPrefLine;
         }
 
-        my ($sOldValue, $oScope, $sKey)= $self->{CONF}->get_property($sName);
+        # get pervious value and best matching scope
+        my ($sOldValue, $oScope)= $self->{CONF}->get_property($sName);
         my $sNewValue= $sValue;
         # In case of a multiline, we need a newline at the end of each line
         if ($bIndent) {
@@ -234,13 +233,15 @@ sub _read_file {
         }
         # remove current key to prevent self referencing
         $self->{CONF}->remove_property($sName);
-        if ($sNewValue=~ /^\$($sregIdentRef)^/) {
+        if ($sNewValue=~ /^\$($sregIdentRef)$/) {
+            # if value is a simple reference, replace it by reference's content (may be an object)
             my $sRef= $1;
             $sNewValue= $oScope->find_property($sRef);
-            $self->_error("Could not resolve symbol '$sRef'") unless defined $sNewValue;
+            $self->_error("Could not resolve symbol '$sRef'", $sFile, $iLine, $sLine) unless defined $sNewValue;
         }
         else {
-            $sNewValue=~ s/(?<!\\)\$($sregIdentRef)/$self->_expand($oScope, $1)/ge;
+            # replace every occurance of an reference with reference's scalar value (or raise an error)
+            $sNewValue=~ s/(?<!\\)\$($sregIdentRef)/$self->_expand($oScope, $1, $sFile, $iLine, $sLine)/ge;
         }
         $self->{CONF}->set_value($sName, $sNewValue);
     }
@@ -250,83 +251,17 @@ sub _read_file {
     return $self->{CONF};
 }
 
-# TODO: i don't understand function of _expand, __expand, _line_expand. should be reviewed?
+# expand referenced macros as scalar
 sub _expand {
     my $self= shift;
     my $oScope= shift;
     my $sRef= shift;
+    my @sError= @_;
 
     my $sResult= $oScope->find_property($sRef);
-    $self->_error("Could not resolve symbol '$sRef'") unless defined $sResult;
-    $self->_error("'$sRef' is an object") if ref $sResult;
+    $self->_error("Could not resolve symbol '$sRef'", @sError) unless defined $sResult;
+    $self->_error("'$sRef' is an object", @sError) if ref $sResult;
     return $sResult;
-}
-
-sub __expand {
-    my $self= shift;
-    my $hConf= shift;
-    my $sKey= shift;
-
-    for (keys %{ $hConf->{VALUES} }) {
-        if (ref($hConf->{VALUES}{$_})) {
-            $self->__expand($hConf->{VALUES}{$_}, "$sKey.$_");
-            next;
-        }
-        if ($hConf->{VALUES}{$_} =~ /^\$($sregIdent)$/s) {
-            my $hConf1= $self->_line_expand(substr("$sKey.$_", 1), $1, 1);
-            if ($hConf1) {
-                $hConf->{VALUES}{$_}= dclone($hConf1);
-                # correct name and parent conf to new location in conf tree
-                $hConf->{VALUES}{$_}{NAME}= $_;
-                $hConf->{VALUES}{$_}{PARENT_CONF}= $hConf;
-                next;
-            }
-        }
-        $hConf->{VALUES}{$_} =~ s/(?<!\\)\$($sregIdent)/$self->_line_expand(substr("$sKey.$_", 1), $1, 0)/ges;
-    }
-}
-
-sub _line_expand {
-    my $self= shift;
-    my $sName0= shift;
-    my $sName= shift;
-    my $bWantStructure= shift;
-
-    if ($sName0 eq $sName) {
-        $self->_error("Recursion occured while expanding \"$sName\"", "<Unknown>");
-    }
-    my @aKeys= split(/\./, $sName);
-    my $sKey= shift @aKeys;
-    my $hConf= $self->{CONF};
-    my $sErrKey= '';
-    for (@aKeys) {
-        $sErrKey .= ".$sKey";
-        if (!ref $hConf->{VALUES}{$sKey}) {
-            $self->{ERROR}= "Failed to expand \"$sName0\": \"\$" . substr($sErrKey, 1) . "\" is not a structure"; 
-            return $bWantStructure ? undef : '$'.$sName;
-        }
-        $hConf= $hConf->{VALUES}{$sKey};
-        $sKey= $_;
-    }
-    $sErrKey .= ".$sKey";
-    if ($bWantStructure) {
-        return undef if !ref $hConf->{VALUES}{$sKey};
-    }
-    else {
-        if (!defined $hConf->{VALUES}{$sKey}) {
-            $self->{ERROR}= "Failed to expand \"$sName0\": \"\$" . substr($sErrKey, 1) . "\" is not defined"; 
-            return '$'.$sName;
-        }
-        if (ref $hConf->{VALUES}{$sKey}) {
-            $self->{ERROR}= "Failed to expand \"$sName0\": \"\$" . substr($sErrKey, 1) . "\" is a structure"; 
-            return '$'.$sName;
-        }
-    }
-    if ('$'.$sName eq $hConf->{VALUES}{$sKey}) {
-        $self->_error("Recursion occured while expanding \"$sName\"", "<Unknown>");
-    }
-    $self->{DID_EXPAND}= 1;
-    return $hConf->{VALUES}{$sKey};
 }
 
 1;
