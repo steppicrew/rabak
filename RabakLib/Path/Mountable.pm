@@ -163,7 +163,7 @@ sub mountErrorIsFatal {
 sub getMountObjects {
     my $self= shift;
 
-    return () unless $self->get_property("mount");
+    return () unless $self->find_property("mount");
 
     my @oConfs= $self->resolveObjects("mount");
     my @oMounts= ();
