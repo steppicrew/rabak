@@ -112,7 +112,6 @@ title = Gesamtsystem
 source = /
 target = &example_target
 exclude = $exclude
-mount = &mount_boot &mount_smb_server
 
 # =======================================================================================
 #       EXAMPLE: POSTGRESQL BACKUP
@@ -121,13 +120,12 @@ mount = &mount_boot &mount_smb_server
 [example_pg]
 
 title = Databases of example
-source = pgsql://vbulletin,postnuke
+source.path = pgsql://vbulletin,postnuke
+source.dbuser = *default*
+source.keep = 3
 target = $example_target
 target.path = $target_base/postgres
-user = *default*
-# test_pg.password is secret -> look in rabak.secret.cf
 switch.logging = 1
-keep = 3
 
 # =======================================================================================
 #       EXAMPLE: MYSQL BACKUP
@@ -136,15 +134,14 @@ keep = 3
 [example_mysql]
 
 title = Mysql-DBs
-source = mysql://*
+source.path = mysql://*
+source.dbuser = $mysql_user
+# $mysql_password is secret -> look in rabak.secret.cf
+source.dbpassword = $mysql_password
+source.keep = 3
 target = $example_target
 target.path = $target_base/mysql
-user = $mysql_user
-# $mysql_password is secret -> look in rabak.secret.cf
-password = $mysql_password
 switch.logging = 1
-keep = 3
-mount = &mount_external
 
 # =======================================================================================
 #       TEST RABAK
@@ -189,12 +186,10 @@ title = Sample of the "firstof" Mount Option
 switch.verbose = 1
 switch.logging = 1
 source.path = .
-target = $example_target
-# ", " will be replaced by newline automagically
-exclude = $exclude, test-bak,
+source.exclude = $exclude, test-bak,
     test-data, stuff
-
 source.mount= &mount_test_boot
+target = $example_target
 
 # =======================================================================================
 #       TEST TARGETGROUP OPTION
@@ -206,7 +201,6 @@ title = Sample of the "targetgroup" Option
 source = $example_firstof.source
 target = $example_firstof.target
 target.group = dayofweek
-exclude = $test1.exclude
-# mount1= $target.mount
+exclude = $example_firstof.source.exclude
 
 # EOF

@@ -169,10 +169,13 @@ sub _expand {
                 sub {$self->_expand(@_)}, # function to expand macro's content
                 sub{ # function to modify macro's text before splitting
                     my $sEntry= shift;
+                    my $sregIdent= $self->REGIDENTREF;
                     # remove spaces between +/- and path
                     $sEntry=~ s/(?<!\\)([\-\+])\s+/$1/g;
-                    # enclose all macros with parantheses
-                    $sEntry=~ s/(?<!\\)(\&[\.\w]+)/\($1\)/g;
+                    # enclose all macros &... with parantheses
+                    $sEntry=~ s/(?<!\\)(\&$sregIdent)/\($1\)/g;
+                    # enclose all macros &{..} with parantheses
+                    $sEntry=~ s/(?<!\\)\&\{($sregIdent)\}/\(\&$1\)/g;
                     # add space after '('
                     $sEntry=~ s/(?<!\\)\(\s*/\( /g;
                     # add space before ')'
@@ -299,7 +302,7 @@ sub show {
     shift @$aMacroStack if scalar @$aMacroStack;
     push @{$hConfShowCache->{'.'}}, @$aMacroStack;
     
-    return $aResult unless $self->get_switch("logging") >= LOG_DEBUG_LEVEL;
+    return $aResult unless $self->get_switch("logging", 0) >= LOG_DEBUG_LEVEL;
 
     my $sBaseDir= $self->valid_source_dir();
     push @$aResult, "", "# Expanded rsync filter (relative to '$sBaseDir'):", map {"#\t$_"} @sFilter;

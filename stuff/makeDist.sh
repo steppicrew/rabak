@@ -79,18 +79,18 @@ fi
 mkdir -p "$basedir"
 
 for module in $MODULES; do
-  copyModule $module "$basedir" "."
+  copyModule $module "$basedir" "lib"
 done
 
 copyFiles "" "$ROOT_FILES"
-copyFiles "" "$BIN_FILES"
+copyFiles "bin" "$BIN_FILES"
 for file in "$srcdir/"*.pl; do
-  cp -p "$file" "$basedir/"
+  cp -p "$file" "$basedir/bin/"
 done
 
-copyFiles "" "$ETC_FILES"
+copyFiles "etc" "$ETC_FILES"
 
-copyFiles "" "$SHARE_FILES"
+copyFiles "share" "$SHARE_FILES"
 
   cat - > "$basedir/Makefile.PL" << EOF
 use 5.008008;

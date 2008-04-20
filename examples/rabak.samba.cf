@@ -54,6 +54,15 @@ opts= "username=$smb_user,password=$smb_password,ro"
 unmount= 1
 
 # =======================================================================================
+#       Source to back up
+# =======================================================================================
+
+[example_source]
+
+path = $smb_dir
+mount = &mount_smb_server
+
+# =======================================================================================
 #       Target to back up to
 # =======================================================================================
 
@@ -74,10 +83,9 @@ discfree_threshold = 10%
 [example]
 
 title = Samba share example
-source = $smb_dir
+source = &example_source
 target = &example_target
 exclude = $exclude_std, $exclude_smb
-mount = &mount_smb_server
 
 # For this example, only pretend:
 switch.pretend = 1

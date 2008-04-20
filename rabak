@@ -21,7 +21,7 @@ use RabakLib::Set;
 use RabakLib::Admin;
 use RabakLib::Log;
 
-my $VERSION= "1.0rc2";
+my $VERSION= "1.0rc3";
 my $DEBUG= 0;
 
 $Getopt::Std::STANDARD_HELP_VERSION= 1;
@@ -161,20 +161,20 @@ sub _conf_read {
     $oConfFile= RabakLib::ConfFile->new(@sConfFiles);
     $oConf= $oConfFile->conf();
     # overwrite values with comand line switches
-    my $sHostname= `hostname -f`;
+    my $sHostname= `hostname -f 2>/dev/null` || `hostname`;
     chomp $sHostname;
-    $oConf->set_values({
-        '*switch.pretend' => $sOpts{p},
-        '*switch.logging' => $sOpts{l},
-        '*switch.verbose' => defined $sOpts{v} ? LOG_DEBUG_LEVEL : LOG_DEFAULT_LEVEL,
-        '*switch.quiet' => $sOpts{q},
-        '*switch.targetvalue' => $sOpts{i},
-        '*switch.version' => $VERSION,
-        '*switch.hostname' => $sHostname,
-        '*switch.commandline' => $sCommandLine,
-        '*switch.configfile' => $oConfFile->filename(),
+    $oConf->preset_values({
+        '*.switch.pretend' => $sOpts{p},
+        '*.switch.verbose' => $sOpts{v},
+        '*.switch.logging' => $sOpts{l},
+        '*.switch.quiet' => $sOpts{q},
+        '*.switch.targetvalue' => $sOpts{i},
+        '*.switch.version' => $VERSION,
+        '*.switch.hostname' => $sHostname,
+        '*.switch.commandline' => $sCommandLine,
+        '*.switch.configfile' => $oConfFile->filename(),
     });
-#print Dumper($oConf->get_node("switch")->{VALUES});
+    # print Dumper($oConf->get_node("switch")->{VALUES});
     return $oConfFile;
 }
 

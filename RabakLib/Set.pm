@@ -33,10 +33,6 @@ sub new {
 
     $self->{_TARGET_OBJECT}= undef;
 
-    logger->init($self);
-
-    logger->set_category($sName);
-
     $self->set_value("name", $sName);
     bless $self, $class;
 }
@@ -488,6 +484,9 @@ sub backup {
 
     my $iSuccessCount= 0;
     my $iResult= 0; 
+    
+    logger->init($self);
+    logger->set_category($self->get_value("name"));
     
     logger->info("Rabak Version " . $self->get_switch("version"). " on \"" . $self->get_switch("hostname") . "\" as user \"" . getpwuid($>) . "\"");
     logger->info("Command line: " . $self->get_switch("commandline"));

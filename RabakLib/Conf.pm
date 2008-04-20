@@ -26,6 +26,15 @@ sub new {
     bless $self, $class;
 }
 
+# define some regexp
+our $sregIdent0= "[a-z_][a-z_0-9]*";
+our $sregIdent= "$sregIdent0(\\.$sregIdent0)*";
+our $sregIdentRef= "\\/?\\.*$sregIdent";
+# ...and publish them to other classes
+sub REGIDENT0   { $sregIdent0 }
+sub REGIDENT    { $sregIdent };
+sub REGIDENTREF { $sregIdentRef };
+
 sub CloneConf {
     my $class= shift;
     my $oOrigConf= shift;
@@ -199,8 +208,6 @@ sub get_switch {
     my $sName= shift;
     my $sDefault= shift;
     
-#    my $sSwitch= $self->get_value("/switch.$sName");
-#    return $sSwitch if defined $sSwitch;
     return $self->get_value("switch.$sName", $sDefault);
 }
 
@@ -208,17 +215,21 @@ sub get_switch {
 sub get_property {
     my $self= shift;
     my $sName= shift;
-    unless ($sName=~ /^\*/) {
-        my ($oProp, $oParent)= $self->_get_property("*$sName");
-        if (defined $oProp) {
-#print "*$sName->$oProp\n";
-            return ($oProp, $oParent) if wantarray;
-            return $oProp;
+ 
+    return undef unless defined $sName;
+    unless ($sName =~ /\*/) {
+        my $sStarName= $sName;
+        $sStarName=~ s/^[\.\/]*//;
+        my ($oValue, $oParent)= $self->_get_property("/*.$sStarName");
+        if (defined $oValue) {
+            return ($oValue, $oParent) if wantarray;
+            return $oValue;
         }
     }
-    return $self->_get_property($sName);
+    return $self->_get_property($sName);   
 }
-
+    
+# find property and return it as it is (scalar, object etc.)
 sub _get_property {
     my $self= shift;
     my $sName= shift;
@@ -228,13 +239,13 @@ sub _get_property {
     
     # leading slash means: search from root conf
     if ($sName=~ /^\//) {
-        return $self->{PARENT_CONF}->get_property($sName) if $self->{PARENT_CONF};
+        return $self->{PARENT_CONF}->_get_property($sName) if $self->{PARENT_CONF};
         $sName=~ s/^[\/\.]+//;
     }
     
     # each leading dot means: going up one level in conf tree
     if ($sName=~ s/^\.//) {
-        return $self->{PARENT_CONF}->get_property($sName) if $self->{PARENT_CONF};
+        return $self->{PARENT_CONF}->_get_property($sName) if $self->{PARENT_CONF};
         # if on top conf, get property here
         $sName=~ s/^\.*//;
     }
@@ -246,7 +257,7 @@ sub _get_property {
     my @sName= split(/\./, $sName);
     for (@sName) {
         unless (ref $oProp && defined $oProp->{VALUES}{$_}) {
-            return $self->{PARENT_CONF}->get_property($sName) if $self->{PARENT_CONF}; 
+            return $self->{PARENT_CONF}->_get_property($sName) if $self->{PARENT_CONF}; 
             return undef;
         }
         $oParentProp= $oProp;
@@ -265,7 +276,7 @@ sub get_node {
     return undef;
 }
 
-sub set_values {
+sub preset_values {
     my $self= shift;
     my $hValues= shift;
     for my $sName (keys(%$hValues)) {
@@ -361,25 +372,42 @@ sub _resolveObjects {
     my @oResult= ();
     
     for my $sValue (@$aValue) {
-        # simple scalars are copied to @oResult
-        unless ($sValue=~ s/^\&//) {
-            push @oResult, $sValue;
-            next;
-        }
-        # macros are expanded and result added to @oResult
+        # if value is a single macro simply resolve it
+        if ($sValue=~ s/^\&($sregIdentRef)$/$1/) {
+            # macros are expanded and result added to @oResult
 # print "expanding macro: '$sValue'\n";
 # print "scope: ", $self->get_full_name() , "\n";
-        my $hResult = $self->expandMacro($sValue, $oScope, $aStack, sub{$self->_resolveObjects(@_)});
-        unless (defined $hResult->{DATA}) {
-            # logger->error($hResult->{ERROR}) if $hResult->{ERROR};
+            my $hResult = $self->expandMacro($sValue, $oScope, $aStack, sub{$self->_resolveObjects(@_)});
+            unless (defined $hResult->{DATA}) {
+                # logger->error($hResult->{ERROR}) if $hResult->{ERROR};
+                next;
+            }
+# print "got ", Dumper($hResult->{DATA}), "\n";
+            unless (ref $hResult->{DATA} eq "ARRAY") {
+                logger->error("Internal error: expandMacro() should return an array reference! ($hResult->{DATA})");
+                return [];
+            }
+            push @oResult, @{$hResult->{DATA}};
             next;
         }
-# print "got ", Dumper($hResult->{DATA}), "\n";
-        unless (ref $hResult->{DATA} eq "ARRAY") {
-            logger->error("Internal error: expandMacro() should return an array reference! ($hResult->{DATA})");
-            return [];
-        }
-        push @oResult, @{$hResult->{DATA}};
+        
+        # if value is a scalar
+        # expand all contained macros
+        my $f = sub {
+            my $sName= shift;
+            my $sResult= $self->joinValue(
+                $self->_resolveObjects(["&$sName"], $oScope, $aStack)
+            );
+            return $sResult if defined $sResult;
+            logger->warn("Could not resolve '&$sName'");
+            return '';
+        };
+        while ($sValue=~ s/(?<!\\)\&($sregIdentRef)/$f->($1)/e ||
+            $sValue=~ s/(?<!\\)\&\{($sregIdentRef)\}/$f->($1)/e
+        ) {}
+        logger->warn("There are unescaped '&' in '$sValue'") if $sValue=~ /(?<!\\)\&/;
+        # ...and push scalar
+        push @oResult, $sValue;
     }
     return \@oResult;
 }
