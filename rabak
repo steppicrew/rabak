@@ -165,7 +165,7 @@ sub _conf_read {
     chomp $sHostname;
     $oConf->preset_values({
         '*.switch.pretend' => $sOpts{p},
-        '*.switch.verbose' => $sOpts{v},
+        '*.switch.verbose' => $sOpts{v} ? LOG_VERBOSE_LEVEL : undef,
         '*.switch.logging' => $sOpts{l},
         '*.switch.quiet' => $sOpts{q},
         '*.switch.targetvalue' => $sOpts{i},

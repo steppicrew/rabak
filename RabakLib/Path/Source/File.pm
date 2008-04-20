@@ -23,7 +23,7 @@ sub _get_filter {
     # target path is always excluded
     my $aFilter= [];
     if ($oTarget) {
-        push @$aFilter, "-" . $oTarget->getPath();
+        push @$aFilter, "-" . $oTarget->getPath() . "/";
     }
     if (defined $sFilter) {
         push @$aFilter, "&filter";
@@ -302,7 +302,7 @@ sub show {
     shift @$aMacroStack if scalar @$aMacroStack;
     push @{$hConfShowCache->{'.'}}, @$aMacroStack;
     
-    return $aResult unless $self->get_switch("logging", 0) >= LOG_DEBUG_LEVEL;
+    return $aResult unless $self->get_switch("verbose", 0) >= LOG_VERBOSE_LEVEL;
 
     my $sBaseDir= $self->valid_source_dir();
     push @$aResult, "", "# Expanded rsync filter (relative to '$sBaseDir'):", map {"#\t$_"} @sFilter;
