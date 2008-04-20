@@ -59,6 +59,7 @@ sub new {
 
 #define some regexp
 our $sregIdent= RabakLib::Conf->REGIDENT;
+our $sregIdentDef= RabakLib::Conf->REGIDENTDEF;
 
 
 sub filename {
@@ -181,7 +182,10 @@ sub _read_file {
         last if $sLine =~ /^END\s*$/;
         
         $sPrefix= undef, next if $sLine =~ /^\[\s*\]$/;
-        $sPrefix= $1, next if $sLine =~ /^\[\s*($sregIdent)\s*\]$/;
+        if ($sLine =~ /^\[\s*(\*|($sregIdentDef))\s*\]$/) {
+            $sPrefix= $1;
+            next;
+        }
 
         if ($sLine =~ /^INCLUDE\s+(.+)/) {
             my $sInclude= $1;
@@ -215,11 +219,11 @@ sub _read_file {
             $sValue= $sLine;
         }
         else {
-            $self->_error("Syntax error", $sFile, $iLine, $sLine) unless $sLine =~ /^($sregIdent)\s*=\s*(.*?)$/i;
+            my $sPrefLine= defined $sPrefix ? "$sPrefix.$sLine" : $sLine;
+            $self->_error("Syntax error", $sFile, $iLine, $sLine) unless $sPrefLine =~ s/^($sregIdentDef)\s*=\s*//i;
 
             $sName= lc $1;
-            $sName= "$sPrefix.$sName" if defined $sPrefix;
-            $sValue= $3;
+            $sValue= $sPrefLine;
         }
 
         my @aKeys= split(/\./, $sName);

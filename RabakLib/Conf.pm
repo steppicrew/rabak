@@ -29,10 +29,12 @@ sub new {
 # define some regexp
 our $sregIdent0= "[a-z_][a-z_0-9]*";
 our $sregIdent= "$sregIdent0(\\.$sregIdent0)*";
+our $sregIdentDef= "(\\*\\.)?$sregIdent";
 our $sregIdentRef= "\\/?\\.*$sregIdent";
 # ...and publish them to other classes
 sub REGIDENT0   { $sregIdent0 }
 sub REGIDENT    { $sregIdent };
+sub REGIDENTDEF { $sregIdentDef };
 sub REGIDENTREF { $sregIdentRef };
 
 sub CloneConf {
