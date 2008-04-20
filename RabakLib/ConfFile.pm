@@ -6,6 +6,7 @@ use warnings;
 use strict;
 
 use RabakLib::Conf;
+use RabakLib::Log;
 use Data::Dumper;
 use Storable qw(dclone);
 
@@ -38,7 +39,6 @@ sub new {
     my $self= {
         FILE => undef,
         SEARCHPATHS => [map {/(.*)\/[^\/]+$/ ? $1 : '.'} grep { defined } @sFiles],
-        ERROR => undef,
         CONF => RabakLib::Conf->new('*'),
     };
     bless $self, $class;
@@ -142,7 +142,6 @@ sub read_file {
     my $sFile= Cwd::abs_path(shift);
     $self->{CONF}= RabakLib::Conf->new('*');
     # $self->{CONF}= RabakLib::Conf->new($sFile);
-    $self->{ERROR}= undef;
     $self->{FILE}= $sFile;
     $self->_read_file($sFile);
 }
@@ -161,6 +160,7 @@ sub _read_file {
         $self->_error($sMsg, $sFile);
     }
 
+    my $oConf= $self->{CONF};
     my $sName= undef;
     my $iLine= 0;
     my $sPrefix= '';
@@ -221,8 +221,7 @@ sub _read_file {
             $sValue= $sPrefLine;
         }
 
-        my $oConf= $self->{CONF};
-        # get pervious value and best matching scope
+        # get previous value and best matching scope
         my ($sOldValue, $oScope)= $oConf->get_property($sName);
         my $sNewValue= $sValue;
         # In case of a multiline, we need a newline at the end of each line
@@ -233,7 +232,7 @@ sub _read_file {
         }
         # remove current key to prevent self referencing
         $oConf->remove_property($sName);
-        if ($sNewValue=~ /^\$($sregIdentRef)$/) {
+        if ($sNewValue=~ /^\$($sregIdentRef)$/ || $sNewValue=~ /^\$\{($sregIdentRef)\}$/) {
             # if value is a simple reference, replace it by reference's content (may be an object)
             my $sRef= $1;
             $sNewValue= $oScope->find_property($sRef);
@@ -249,14 +248,16 @@ sub _read_file {
                 return $sResult;
             };
             # replace every occurance of an reference with reference's scalar value (or raise an error)
-            $sNewValue=~ s/(?<!\\)\$($sregIdentRef)/$f->($1)/ge;
+            while (
+                $sNewValue=~ s/(?<!\\)\$($sregIdentRef)/$f->($1)/ge ||
+                $sNewValue=~ s/(?<!\\)\$\{($sregIdentRef)\}/$f->($1)/ge
+            ) {};
+            logger->warn("Unescaped '\$' in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ /(?<!\\)\$/;
         }
         $oConf->set_value($sName, $sNewValue);
     }
 
-    $self->_error($self->{ERROR}, $sFile) if $self->{ERROR};
-
-    return $self->{CONF};
+    return $oConf;
 }
 
 1;
