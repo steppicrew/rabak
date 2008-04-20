@@ -209,8 +209,9 @@ sub get_switch {
     my $self= shift;
     my $sName= shift;
     my $sDefault= shift;
+    my $aRefStack= shift;
     
-    return $self->get_value("switch.$sName", $sDefault);
+    return $self->get_value("switch.$sName", $sDefault, $aRefStack);
 }
 
 # find property and return it as it is (scalar, object etc.)
@@ -219,13 +220,21 @@ sub find_property {
     my $sName= shift;
  
     return undef unless defined $sName;
+    # first look in '*'-scope
     unless ($sName =~ /\*/) {
         my $sStarName= $sName;
         $sStarName=~ s/^[\.\/]*//;
-        my ($oValue, $oParent, $sKey)= $self->_find_property("/*.$sStarName");
-        if (defined $oValue) {
-            return ($oValue, $oParent, $sKey) if wantarray;
-            return $oValue;
+        # search for existing values in '/*'-scope ('*.zuppi' overwrites '*.zappi.zuppi')
+        my $oRootScope= $self->find_scope("/*.$sStarName");
+        my @sStarName= split(/\./, $sStarName);
+        $sStarName= '';
+        while (my $sSubKey= pop @sStarName) {
+            $sStarName= ".$sSubKey$sStarName";
+            my ($oValue, $oScope, $sKey)= $oRootScope->get_property("*$sStarName");
+            if (defined $oValue) {
+                return ($oValue, $oScope, $sKey) if wantarray;
+                return $oValue;
+            }
         }
     }
     return $self->_find_property($sName);   
@@ -280,6 +289,9 @@ sub get_property {
     my $self= shift;
     my $sName= lc shift;
 
+    return undef unless defined $sName;
+    return undef if $sName eq '.' || $sName eq '';
+    
     my $oScope= $self;
     my @sName= split(/\./, $sName);
     # get last key
