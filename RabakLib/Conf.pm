@@ -604,7 +604,7 @@ sub simplifyShow {
         if ($sNewScope ne $sScope) {
             $sScope= $sNewScope;
             # do not insert empty line if last was already empty
-            push @sResult, "" unless $sResult[-1] eq '';
+            push @sResult, "" if scalar @sResult && $sResult[-1] ne '';
             push @sResult, "[$sScope]";
         }
         push @sResult, $sLine;
