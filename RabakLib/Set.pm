@@ -106,17 +106,7 @@ sub show {
     }
     
     # print all not already shown references
-    my @sSubResult= ();
-    while (1) {
-        # show all referenced objects not already shown and not anonymous
-        my @sReferences= grep {
-            !defined $hConfShowCache->{$_} && !/\.\*\d+$/
-        } $self->get_all_references($hConfShowCache->{'.'});
-        
-        last unless scalar @sReferences;
-        
-        push @sSubResult, $self->showConfValue($_, $hConfShowCache) for (@sReferences);
-    }
+    my @sSubResult= $self->showUncachedReferences($hConfShowCache);
     push @$aResult, "";
     push @$aResult, "# Misc references:", @sSubResult if scalar @sSubResult;
     

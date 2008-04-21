@@ -509,6 +509,25 @@ sub get_all_references {
     return @sResult;
 }
 
+sub showUncachedReferences {
+    my $self= shift;
+    my $aMacroStack= shift;
+
+    my @sResult= ();
+    while (1) {
+        # show all referenced objects not already shown and not anonymous
+        my @sReferences= grep {
+            !defined $aMacroStack->{$_} && !/\.\*\d+$/
+        } $self->get_all_references($aMacroStack->{'.'});
+        
+        last unless scalar @sReferences;
+        
+        push @sResult, $self->showConfValue($_, $aMacroStack) for (@sReferences);
+    }
+    
+    return @{$self->simplifyShow(\@sResult)};
+}
+
 sub getShowName {
     my $self= shift;
     my $sName= $self->{NAME};
@@ -566,6 +585,7 @@ sub simplifyShow {
     my $sOrig= shift;
     my @sResult = ();
     
+#print Dumper($sOrig);
 #return $sOrig;
     my $sScope= "";
     my $sOrigScope= "";
@@ -574,15 +594,18 @@ sub simplifyShow {
             push @sResult, $sLine;
             next;
         }
-        if ($sLine =~ /^[(.*)]$/) {
+        if ($sLine =~ /^\[\s*(\S*)\s*\]$/) {
             $sOrigScope= $1;
+            $sOrigScope.= '.' unless $sOrigScope eq '';
             next;
         }
-        $sLine= "$sOrigScope.$sLine" unless $sOrigScope eq '';
-        my $sNewScope= $sLine =~ s/^([^\s\=]+)\.// ? $1 : "";
+        $sLine= "$sOrigScope$sLine";
+        my $sNewScope= $sLine =~ s/^($sregIdentDef)\.// ? $1 : "";
         if ($sNewScope ne $sScope) {
             $sScope= $sNewScope;
-            push @sResult, "", "[$sScope]";
+            # do not insert empty line if last was already empty
+            push @sResult, "" unless $sResult[-1] eq '';
+            push @sResult, "[$sScope]";
         }
         push @sResult, $sLine;
     }

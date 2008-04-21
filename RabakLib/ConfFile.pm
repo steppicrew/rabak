@@ -118,9 +118,19 @@ Prints the complete, parsed configuration.
 sub print_all {
     my $self= shift;
 
-    print "# These are the resulting values of \"" . $self->filename() . "\":\n";
-    print "# (Btw, this output may be used as a valid configuration file.)\n";
-    $self->{CONF}->show();
+    my $hConfShowCache= {};
+    $self->{CONF}->show($hConfShowCache);
+
+    my @sResult= (
+        "# These are the resulting values of \"" . $self->filename() . "\":",
+        "# (Btw, this output may be used as a valid configuration file.)",
+        "",
+    );
+
+    push @sResult, $self->{CONF}->showUncachedReferences($hConfShowCache);
+    # pop last "[]"
+    pop @sResult;
+    print join "\n", @sResult, "", "";
 }
 
 sub _error {
@@ -247,7 +257,7 @@ sub _read_file {
                 $self->_error("'$sRef' is an object", $sFile, $iLine, $sLine) if ref $sResult;
                 return $sResult;
             };
-            # replace every occurance of an reference with reference's scalar value (or raise an error)
+            # replace every occurance of a reference with reference's scalar value (or raise an error)
             while (
                 $sNewValue=~ s/(?<!\\)\$($sregIdentRef)/$f->($1)/ge ||
                 $sNewValue=~ s/(?<!\\)\$\{($sregIdentRef)\}/$f->($1)/ge
