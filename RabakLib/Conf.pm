@@ -557,7 +557,7 @@ sub show {
     
     my $sKey= $self->get_full_name();
 
-    return [] if $sKey=~ /\*\d+$/; # don't show anonymous objects
+    return [] if $sKey=~ /\*\d*$/; # don't show anonymous objects
 
     my $bKeyInvalid= 1;    
 
