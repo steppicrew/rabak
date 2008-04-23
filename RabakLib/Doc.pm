@@ -413,9 +413,40 @@ Example:
 
 would expand C<filter> to C<-/var/>.
 
+You should mark references with C<{}> in ambiguous contexts.
+Example:
+  [sample]
+  title= this_will_backup_&{source.path}_to &{target.path}.
+  source.path= /
+  target.path= /mnt/rabak
+
 Generally C<&> has to be used where references to multiple objects are required
 (like L<mount> and L<source>) or where values should be handled in a special way
 (L<filter>).
+
+References with C<$> and C<&> are resolved by looking in the context were
+referenced.
+If the referenced value is not found, it's looked up in the parent's context
+until found or not found in the top most context.
+
+You may explicitly refrenece values in the top most context by prefixing
+the name with C</>.
+You may explicitly go up one or more contexts to start looking for a value by
+prefixing the name with one ore more C<.>.
+Example:
+  a= a in root
+  b.a= a in b
+  c.a= a in c
+  
+  c.a_in_c= $a
+  c.a_in_root1= $/a
+  c.a_in_root2= $.a
+  c.a_in_b1= $b.a
+  c.a_in_b2= $/b.a
+  c.a_in_b3= $...b.a
+  c.b.b.b.a_in_c1= $a
+  c.b.b.b.a_in_c2= $.a
+  c.b.b.b.a_in_root= $/a
 
 For details on object expansion see L<mount>, L<source>, L<target> and L<filter>.
 
@@ -586,6 +617,8 @@ Number of old backups to keep. Superfluous versions will be deleted
 
 List of rsync like filters (seperated by whitespaces or C<,>).
 
+The first filter rule excludes always the target path.
+
 Rsync filters tend to be rather wierd and B<rakab> does some magick(TM) to make a
 hard administators life easier.
 This option is an I<alternative> to the L<include> and L<exclude>
@@ -618,7 +651,7 @@ of config variable $exclude_std.)
 Variable expansion is done at runtime (late expansion).
 (default: C<-&exclude +&include>)
 
-Effective filter rules can be displayed with C<rabak -v conf E<lt>baksetE<gt>>.
+Effective filter rules can be displayed with C<rabak -v conf E<lt>baksetE<gt>.
 B<Attention:> Pathes beginning with C</> are absolute (not relative to C<source> as in
 rsync filters)
 
