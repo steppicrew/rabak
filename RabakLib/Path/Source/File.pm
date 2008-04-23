@@ -449,7 +449,7 @@ sub run {
             $sSshCmd.= " -1" if $oSshPeer->get_value("protocol") eq "1";
             $sSshCmd.= " -2" if $oSshPeer->get_value("protocol") eq "2";
         }
-        $sFlags .= " --rsh='$sSshCmd' --timeout='$sTimeout'";
+        $sFlags .= " --rsh='$sSshCmd' --timeout='$sTimeout' --compress";
         $sFlags .= " --bwlimit='$sBandwidth'" if $sBandwidth;
     }
 
