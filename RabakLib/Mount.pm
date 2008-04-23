@@ -214,7 +214,13 @@ sub unmount {
         my $sResult= $oPath->get_error;
         chomp $sResult;
         $sResult =~ s/\r?\n/ - /g;
-        push @$arMessages, RabakLib::Log->logger->warn("Unmounting \"$sMountDir\" failed: $sResult!");
+        my $sError= "Unmounting \"$sMountDir\" failed: $sResult!";
+        unless ($self->get_value("lazy_unmount")) {
+            push @$arMessages, RabakLib::Log->logger->error($sError);
+            RabakLib::Log->logger->log(@$arMessages) if $bLogMessages;
+            return 0;
+        }
+        push @$arMessages, RabakLib::Log->logger->warn($sError);
         push @$arMessages, RabakLib::Log->logger->info("Trying lazy unmount.");
 
         $oPath->umount("-l " . $oPath->shell_quote($sMountDir));
