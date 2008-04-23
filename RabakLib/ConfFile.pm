@@ -247,6 +247,19 @@ sub _read_file {
             my $sRef= $1;
             $sNewValue= $oScope->find_property($sRef);
             $self->_error("Could not resolve symbol '\$$sRef'", $sFile, $iLine, $sLine) unless defined $sNewValue;
+            if (ref $sNewValue) {
+                # objects should be cloned to new location
+                my $sqNewValuesName= quotemeta $sNewValue->get_full_name();
+                $self->_error("Could not reference parent", $sFile, $iLine, $sLine) if $sName=~ /^$sqNewValuesName\./;
+                # preset value to create all parent objects
+                $oConf->set_value($sName, '');
+                my (undef, $oNewScope, $sLastKey)= $oConf->get_property($sName);
+                # create new conf-object
+                my $new= RabakLib::Conf->new($sLastKey, $oNewScope);
+                # and clone all values
+                $new->{VALUES}= dclone($sNewValue->{VALUES});
+                $sNewValue= $new;
+            }
         }
         else {
             # function to expand referenced macros as scalar
