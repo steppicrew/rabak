@@ -88,6 +88,17 @@ sub _parseFilter {
             $sIncExc=~ s/(?<=[\-\+]).*//;
         }
 
+        if ($isDir && $sEntry=~ /^\//) {
+            my $sqEntry= quotemeta $sEntry;
+            # if $sEntry contains $sBaseDir use $sBaseDir instead
+            if ($sBaseDir=~ /^$sqEntry./) {
+                my $sMsg= "Directory '$sEntry' contains source path '$sBaseDir'. Using source path instead.";
+                logger->debug($sMsg);
+                push @sResult, "# Notice: $sMsg";
+                $sEntry= $sBaseDir;
+            }
+        }
+
         if ($sEntry=~ /^\// && $sEntry!~ s/^$sqBaseDir/\//) {
             logger->debug("'$sEntry' is not contained in source path '$sBaseDir'.");
             push @sResult, "# Notice: '$sEntry' is not contained in source path '$sBaseDir'. Ignored.";
