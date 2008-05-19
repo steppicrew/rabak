@@ -98,8 +98,12 @@ sub _parseFilter {
                 $sEntry= $sBaseDir;
             }
         }
-
         if ($sEntry=~ /^\// && $sEntry!~ s/^$sqBaseDir/\//) {
+            if ($sEntry =~ /^(.+)\*/) {
+                my $sShortEntry= $1;
+                my $sShortBase= substr($sBaseDir, 0, length $sShortEntry);
+                logger->warn("Could not determine if '$sEntry' is contained in source path '$sBaseDir'. Ignored.") if $sShortBase eq $sShortEntry;
+            }
             logger->debug("'$sEntry' is not contained in source path '$sBaseDir'.");
             push @sResult, "# Notice: '$sEntry' is not contained in source path '$sBaseDir'. Ignored.";
             next;
