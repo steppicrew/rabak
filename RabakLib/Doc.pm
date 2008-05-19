@@ -364,6 +364,67 @@ is sent, if free space is below 10%.
 
 Valid units are 'B'yte, 'K' (default), 'M'ega, 'G'iga and '%'.
 
+=head2 How backup's directory is built
+
+All target pathes are relative to the path specified in target
+object's path property.
+
+The backup's path consists of a monthly directory with an extension set by bak set
+name and a daily directory with an extension set by source object in the
+following form:
+C<YYYY-MM.[bak set's extension]/YYYY-MM-DD.[source's extension]>
+(C<YYYY> is the current year with four digets, C<MM> is the current month with
+two digits and C<DD> is the current day with two digets).
+
+By default the name of bak set and source are used as directory extensions.
+
+The following example would create a backup directory
+C</mnt/rabak/YYYY-MM.full/YYYY-MM-DD.sample_source>:
+  sample_source.path = /
+  [full]
+  title = Complete Backup
+  source = &sample_source
+  target = /mnt/rabak
+
+You may set the extension explicitly by specifying a C<path_extension> property.
+The following example would create a backup directory
+C</mnt/rabak/YYYY-MM.baksets_ext/YYYY-MM-DD.sources_ext>:
+  sample_source.path = /
+  sample_source.path_extension = sources_ext
+  [full]
+  title = Complete Backup
+  source = &sample_source
+  target = /mnt/rabak
+  path_extension = baksets_ext
+
+To support path changes (caused by renaming bak sets or sources for example)
+you may specify one or more previous extensions for hard link support or
+correct tracking of old versions with C<keep> property in source's object.
+This is done with C<previous_path_extensions>. It is assumed, that an
+extension left from an other is more recent (if the directory contains
+the same date string).
+
+Example:
+  [sample_source]
+  path_extension = test
+  previous_path_extensions = test2, test1
+  [full]
+  title = Complete Backup
+  source = &sample_source
+  target = /mnt/rabak
+
+This would sort directories of the same days in the following order (example):
+  /mnt/rabak/YYYY-MM.full/YYYY-MM-DD.test_003
+  /mnt/rabak/YYYY-MM.full/YYYY-MM-DD.test_002
+  /mnt/rabak/YYYY-MM.full/YYYY-MM-DD.test_001
+  /mnt/rabak/YYYY-MM.full/YYYY-MM-DD.test
+  /mnt/rabak/YYYY-MM.full/YYYY-MM-DD.test2_001
+  /mnt/rabak/YYYY-MM.full/YYYY-MM-DD.test2
+  /mnt/rabak/YYYY-MM.full/YYYY-MM-DD.test1
+
+The first directories are used for hard linking and kept if C<keep> is
+specified.
+
 =head1 CONFIG FILE REFERENCE
 
 =head2 Introduction

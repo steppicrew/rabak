@@ -65,6 +65,7 @@ sub splitValue {
     
     return undef unless defined $sValue;
     
+    return [""] if $sValue eq "";
     my @Result = split /(?<!\\)[\s\,]+/, $sValue; # ?; # for correct syntax highlighting
     return \@Result;
 }

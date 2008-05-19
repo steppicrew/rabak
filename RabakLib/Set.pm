@@ -380,34 +380,32 @@ sub get_targetPath {
 # collect all backup dirs
 sub collect_bakdirs {
     my $self= shift;
-    my $sqBakSet= quotemeta shift;
-    my $sBakSource= shift;
+    my @sqBakSet= map {$_ eq '' ? '.{0}' : quotemeta $_} @{shift @_};
+    my @sqBakSource= map {$_ eq '' ? '.{0}' : quotemeta $_} @{shift @_};
     my $sSubSetBakDay= shift || 0;
 
-    my $sqBakSource;
-    if (defined $sBakSource && $sBakSource ne '') {
-        $sqBakSource= quotemeta ".$sBakSource";
-    }
-    else {
-        # match nothing
-        $sqBakSource= ".{0}";
-    }
+    my $sqBakSet= "(" . join(")|(", @sqBakSet) . ")";
+    my $sqBakSource= "(" . join(")|(", @sqBakSource) . ")";
+
     my $oTargetPath= $self->get_targetPath();
-    my @sBakDir= ();
+    my %sBakDirs= ();
     my $sSubSet= '';
 
     my %hBakDirs = $oTargetPath->getDirRecursive('', 1); # get recurisive file listing for 2 levels
     for my $sMonthDir (keys %hBakDirs) {
-        next unless ref $hBakDirs{$sMonthDir}; # dirs point to hashes
-
-        next unless $sMonthDir =~ /\/(\d\d\d\d\-\d\d)\.($sqBakSet)$/;
+        # skip all non-dirs
+        next unless ref $hBakDirs{$sMonthDir};
+        # skip all dirs not containing any bask set extension
+        next unless $sMonthDir =~ /\/\d\d\d\d\-\d\d($sqBakSet)$/;
 
         for my $sDayDir (keys %{$hBakDirs{$sMonthDir}}) {
-            next unless ref $hBakDirs{$sMonthDir}->{$sDayDir}; # dirs point to hashes
-            # print "$sDayDir??\n";
-            next unless $sDayDir =~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?(($sqBakSource)|(\.$sqBakSet))$/; # [a-z] for backward compatibility
-            if ($sSubSetBakDay eq $1) {
-                my $sCurSubSet= $2 || '';
+            # skip all non-dirs
+            next unless ref $hBakDirs{$sMonthDir}->{$sDayDir};
+            # [a-z] for backward compatibility
+            next unless $sDayDir =~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?($sqBakSource)$/;
+            my $sCurSubSetBakDay= $1;
+            my $sCurSubSet= $2 || '';
+            if ($sSubSetBakDay eq $sCurSubSetBakDay) {
                 die "Maximum of 1000 backups reached!" if $sCurSubSet eq '_999';
                 if (!$sCurSubSet) {
                     $sSubSet= '_001' if $sSubSet eq '';
@@ -417,16 +415,28 @@ sub collect_bakdirs {
                     $sSubSet= sprintf("_%03d", $sCurSubSet + 1);
                 }
             }
-            push @sBakDir, $sDayDir;
+            $sBakDirs{$sCurSubSetBakDay}= [] unless $sBakDirs{$sCurSubSetBakDay};
+            push @{$sBakDirs{$sCurSubSetBakDay}}, $sDayDir;
             # print "$sDayDir\n";
         }
     }
 
-    @sBakDir= sort { $b cmp $a } @sBakDir;
+    my @sResult = ();
+    for my $sBakDay (sort {$b cmp $a} keys %sBakDirs) {
+        my @sBakDirs= @{$sBakDirs{$sBakDay}};
+        for $sqBakSet (@sqBakSet) {
+            for $sqBakSource (@sqBakSource) {
+                my $regExp= qr/\/\d\d\d\d\-\d\d$sqBakSet\/\d\d\d\d\-\d\d\-\d\d[a-z]?([\-_]\d{3})?$sqBakSource$/;
+                push @sResult, sort {$b cmp $a} grep {/$regExp/} @sBakDirs;
+                # remove found dirs to prevent duplicate result strings
+                @sBakDirs = grep {!/$regExp/} @sBakDirs;
+            }
+        }
+    }
 
-    unshift @sBakDir, $sSubSet if $sSubSetBakDay;
+    unshift @sResult, $sSubSet if $sSubSetBakDay;
 
-    return @sBakDir;
+    return @sResult;
 }
 
 # -----------------------------------------------------------------------------
@@ -475,6 +485,24 @@ sub get_sourcePaths {
     return @oSources;
 }
 
+sub getPathExtension {
+    my $self= shift;
+    my $sExt = $self->get_value("path_extension", $self->get_value("name", ""));
+    return "" if $sExt eq "";
+    return ".$sExt";
+}
+
+sub getAllPathExtensions {
+    my $self= shift;
+    my $obj= shift || $self;
+    
+    return [
+        $obj->getPathExtension(),
+        map {$_ eq "" ? "" : ".$_"}
+            grep {! ref} $obj->resolveObjects("previous_path_extensions"),
+    ];
+}
+
 sub backup {
     my $self= shift;
 
@@ -518,19 +546,19 @@ sub backup {
     }
 
     my ($sBakMonth, $sBakDay)= $self->_build_bakMonthDay;
-    my $sBakSet= $self->get_value("name");
+    my $sBakSetExt= $self->getPathExtension();
 
     # create target month dir
-    my $sTarget= "$sBakMonth.$sBakSet";
+    my $sTarget= "$sBakMonth$sBakSetExt";
     $self->_mkdir($sTarget);
 
     # start logging
-    my $sLogFile= "$sBakMonth-log/$sBakDay.$sBakSet.log";
+    my $sLogFile= "$sBakMonth-log/$sBakDay$sBakSetExt.log";
 
     if (!$self->get_switch('pretend') && $self->get_switch('logging')) {
         $self->_mkdir("$sBakMonth-log");
 
-        my $sLogLink= "$sBakMonth.$sBakSet/$sBakDay.$sBakSet.log";
+        my $sLogLink= "$sBakMonth$sBakSetExt/$sBakDay$sBakSetExt.log";
 
         my $sLogFileName= $oTargetPath->get_value("path") . "/$sLogFile";
 
@@ -540,8 +568,8 @@ sub backup {
         }
         else {
             $oTargetPath->symlink("../$sLogFile", "$sLogLink");
-            $oTargetPath->unlink("current-log.$sBakSet");
-            $oTargetPath->symlink($sLogFile, "current-log.$sBakSet");
+            $oTargetPath->unlink("current-log$sBakSetExt");
+            $oTargetPath->symlink($sLogFile, "current-log$sBakSetExt");
         }
     }
     logger->info("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_switch('logging');
@@ -616,21 +644,25 @@ sub _backup_setup {
     logger->log(@sMountMessage);
 
     my ($sBakMonth, $sBakDay)= $self->_build_bakMonthDay;
-    my $sBakSet= $self->get_value("name");
-    my $sBakSource= $oSource->getBaksetName() || '';
+    my $sBakSetExt= $self->getPathExtension();
+    my $sBakSourceExt= $oSource->getPathExtension();
+    my $sBakSourceName= $oSource->get_value("name");
+    
+    ($sSubSet, @sBakDir)= $self->collect_bakdirs(
+        $self->getAllPathExtensions(),
+        $self->getAllPathExtensions($oSource),
+        $sBakDay,
+    );
 
-    ($sSubSet, @sBakDir)= $self->collect_bakdirs($sBakSet, $sBakSource, $sBakDay);
-
-    my $sUniqueTarget= "$sBakDay$sSubSet";
-    $sUniqueTarget.= ".$sBakSource" if $sBakSource ne '';
+    my $sUniqueTarget= "$sBakDay$sSubSet$sBakSourceExt";
     $self->set_value("unique_target", $sUniqueTarget);
-    my $sTarget= "$sBakMonth.$sBakSet/$sUniqueTarget";
+    my $sTarget= "$sBakMonth$sBakSetExt/$sUniqueTarget";
     $self->set_value("full_target", $oTargetPath->getPath . "/$sTarget");
 
     $self->_mkdir($sTarget);
 
     logger->info("Backup $sBakDay exists, using subset.") if $sSubSet;
-    logger->info("Backup start at " . strftime("%F %X", localtime) . ": $sBakSource, $sBakDay$sSubSet, " . $self->get_value("title"));
+    logger->info("Backup start at " . strftime("%F %X", localtime) . ": $sBakSourceName, $sBakDay$sSubSet, " . $self->get_value("title"));
     logger->info("Source: " . $oSource->getFullPath);
 
     $self->{_BAK_DIR_LIST}= \@sBakDir;
@@ -647,9 +679,9 @@ sub _backup_run {
 
     my @sBakDir= @{ $self->{_BAK_DIR_LIST} };
     my $oTargetPath= $self->get_targetPath;
-    my $sBakSetSource= $self->get_value("name");
-    my $sSourceName= $oSource->getBaksetName();
-    $sBakSetSource.= "-$sSourceName" if $sSourceName;
+    my $sBakSetSourceExt= $self->getPathExtension();
+    my $sSourceName= $oSource->get_value("name");
+    $sBakSetSourceExt.= "-$sSourceName" if $sSourceName;
     my $sTarget= $self->{_TARGET};
 
     my $iErrorCode= 0;
@@ -666,18 +698,10 @@ sub _backup_run {
         $iErrorCode= 9;
     }
 
-    # for backward compatiblity use only dir with source name (not set name like for file linking) 
-    my @sKeepDirs= ();
-    my $sqBakSource='';
-    $sqBakSource= quotemeta(".$sSourceName") if $sSourceName;
-    for my $sBakDir (@sBakDir) {
-        push @sKeepDirs, $sBakDir if $sBakDir=~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?$sqBakSource$/;
-    }
-
     unless ($self->get_switch('pretend')) {
-        $oTargetPath->remove_old($oSource->get_value("keep"), @sKeepDirs) unless $iErrorCode;    # only remove old if backup was done
-        $oTargetPath->unlink("current.$sBakSetSource");
-        $oTargetPath->symlink("$sTarget", "current.$sBakSetSource");
+        $oTargetPath->remove_old($oSource->get_value("keep"), @sBakDir) unless $iErrorCode;    # only remove old if backup was done
+        $oTargetPath->unlink("current$sBakSetSourceExt");
+        $oTargetPath->symlink("$sTarget", "current$sBakSetSourceExt");
     }
 
     return $iErrorCode;
@@ -689,7 +713,7 @@ sub _backup_cleanup {
 
     $oSource->unmountAll;
 
-    my $sBakSource= $oSource->getBaksetName() || '';
+    my $sBakSource= $oSource->get_value("name");
     my $sBakDay= $self->{_BAK_DAY};
     my $sSubSet= $self->{_SUB_SET};
 
@@ -728,6 +752,7 @@ sub rm_file {
     # TODO: Make a better check!
     logger->exitError(3, "Can't remove! \"$sBakSet.target\" is empty or points to file system root.") if $oTargetPath->getPath eq '' || $oTargetPath->getPath eq '/';
 
+    die "wrong parameters for collect_bakdirs()";
     my @sBakDir= $self->collect_bakdirs($sBakSet, $sBakSetDay);
 
     # print Dumper(\@sBakDir);

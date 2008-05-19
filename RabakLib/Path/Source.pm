@@ -50,12 +50,12 @@ sub Factory {
     return $new;
 }
 
-sub getBaksetName {
+sub getPathExtension {
     my $self= shift;
-    my $sName= $self->get_value("name");
-    $sName= "" unless defined $sName;
+    my $sName= $self->get_value("path_extension", $self->get_value("name", ""));
     $sName=~ s/^\*/source/;
-    return $sName;
+    return "" if $sName eq "";
+    return ".$sName";
 }
 
 sub sort_show_key_order {
