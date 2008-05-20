@@ -554,13 +554,13 @@ sub backup {
 
     # start logging
     my $sLogFile= "$sBakMonth-log/$sBakDay$sBakSetExt.log";
+    my $sLogFileName= $oTargetPath->getPath() . "/$sLogFile";
 
     if (!$self->get_switch('pretend') && $self->get_switch('logging')) {
         $self->_mkdir("$sBakMonth-log");
 
         my $sLogLink= "$sBakMonth$sBakSetExt/$sBakDay$sBakSetExt.log";
 
-        my $sLogFileName= $oTargetPath->get_value("path") . "/$sLogFile";
 
         my $sError= logger->open($sLogFileName, $oTargetPath);
         if ($sError) {
@@ -572,13 +572,13 @@ sub backup {
             $oTargetPath->symlink($sLogFile, "current-log$sBakSetExt");
         }
     }
-    logger->info("Logging to: ".$oTargetPath->getFullPath."/$sLogFile") if $self->get_switch('logging');
+    logger->info("Logging to: $sLogFileName") if $self->get_switch('logging');
     $self->logPretending();
 
     # now try backing up every source 
     my %sNames= ();
     for my $oSource (@oSources) {
-        my $sName= $oSource->get_value("name") || '';
+        my $sName= $oSource->get_value("name", "");
         $oSource->set_value("name", "") if $sName=~ s/^\*//;
         if ($sNames{$sName}) {
             logger->error("Name '$sName' of Source Object has already been used. Skipping backup of source.");
@@ -657,13 +657,13 @@ sub _backup_setup {
     my $sUniqueTarget= "$sBakDay$sSubSet$sBakSourceExt";
     $self->set_value("unique_target", $sUniqueTarget);
     my $sTarget= "$sBakMonth$sBakSetExt/$sUniqueTarget";
-    $self->set_value("full_target", $oTargetPath->getPath . "/$sTarget");
+    $self->set_value("full_target", $oTargetPath->getPath() . "/$sTarget");
 
     $self->_mkdir($sTarget);
 
     logger->info("Backup $sBakDay exists, using subset.") if $sSubSet;
     logger->info("Backup start at " . strftime("%F %X", localtime) . ": $sBakSourceName, $sBakDay$sSubSet, " . $self->get_value("title"));
-    logger->info("Source: " . $oSource->getFullPath);
+    logger->info("Source: " . $oSource->getFullPath());
 
     $self->{_BAK_DIR_LIST}= \@sBakDir;
     $self->{_BAK_DAY}= $sBakDay;
@@ -678,7 +678,7 @@ sub _backup_run {
     my $oSource= shift;
 
     my @sBakDir= @{ $self->{_BAK_DIR_LIST} };
-    my $oTargetPath= $self->get_targetPath;
+    my $oTargetPath= $self->get_targetPath();
     my $sBakSetSourceExt= $self->getPathExtension();
     my $sSourceName= $oSource->get_value("name");
     $sBakSetSourceExt.= "-$sSourceName" if $sSourceName;
