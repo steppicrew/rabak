@@ -31,7 +31,8 @@ my $oConf;
 
 my %sOpts= ();
 
-my $sCommandLine= "'" . join("' '", $0, @ARGV) . "'";
+my @sqArgs= map {/\s/ ? "'$_'" : $_} $0, @ARGV;
+my $sCommandLine= join " ", @sqArgs;
 
 getopts("hi:lc:pqv", \%sOpts) or die HELP_MESSAGE();
 

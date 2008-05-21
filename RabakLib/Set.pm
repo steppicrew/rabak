@@ -458,12 +458,6 @@ sub _mkdir {
     return 0;
 }
 
-sub _build_bakMonthDay {
-    my $self= shift;
-    return (strftime("%Y-%m", localtime), strftime("%Y-%m-%d", localtime));
-    
-}
-
 # -----------------------------------------------------------------------------
 #  Backup
 # -----------------------------------------------------------------------------
@@ -545,7 +539,9 @@ sub backup {
         goto cleanup;
     }
 
-    my ($sBakMonth, $sBakDay)= $self->_build_bakMonthDay;
+    my $sBakMonth= strftime("%Y-%m", localtime);
+    my $sBakDay= strftime("%Y-%m-%d", localtime);
+
     my $sBakSetExt= $self->getPathExtension();
 
     # create target month dir
@@ -553,13 +549,13 @@ sub backup {
     $self->_mkdir($sTarget);
 
     # start logging
-    my $sLogFile= "$sBakMonth-log/$sBakDay$sBakSetExt.log";
+    my $sLogDir= "$sBakMonth-log";
+    my $sLogFile= "$sLogDir/$sBakDay$sBakSetExt.log";
     my $sLogFileName= $oTargetPath->getPath() . "/$sLogFile";
 
     if (!$self->get_switch('pretend') && $self->get_switch('logging')) {
-        $self->_mkdir("$sBakMonth-log");
-
-        my $sLogLink= "$sBakMonth$sBakSetExt/$sBakDay$sBakSetExt.log";
+        $self->_mkdir($sLogDir);
+        my $sLogLink= "$sTarget/$sBakDay$sBakSetExt.log";
 
 
         my $sError= logger->open($sLogFileName, $oTargetPath);
@@ -568,8 +564,9 @@ sub backup {
         }
         else {
             $oTargetPath->symlink("../$sLogFile", "$sLogLink");
-            $oTargetPath->unlink("current-log$sBakSetExt");
-            $oTargetPath->symlink($sLogFile, "current-log$sBakSetExt");
+            my $sCurrentLogFileName= "current-log$sBakSetExt";
+            $oTargetPath->unlink($sCurrentLogFileName);
+            $oTargetPath->symlink($sLogFile, $sCurrentLogFileName);
         }
     }
     logger->info("Logging to: $sLogFileName") if $self->get_switch('logging');
@@ -586,10 +583,16 @@ sub backup {
         }
         $sNames{$sName}= 1;
         eval {
-            if ($self->_backup_setup($oSource) == 0) {
-                $iSuccessCount++ unless $self->_backup_run($oSource);
+            my $hBackupData= {
+                source => $oSource,
+                target => $oTargetPath,
+                target_dir => $sTarget,
+                bak_day => $sBakDay,
+            };
+            if ($self->_backup_setup($hBackupData) == 0) {
+                $iSuccessCount++ unless $self->_backup_run($hBackupData);
             }
-            $self->_backup_cleanup($oSource);
+            $self->_backup_cleanup($hBackupData);
         };
         logger->error("An error occured during backup: '$@'") if $@;
         $oSource->cleanupTempfiles();
@@ -625,11 +628,13 @@ cleanup:
 
 sub _backup_setup {
     my $self= shift;
-    my $oSource= shift;
+    my $hBackupData= shift;
+    
+    my $oSource= $hBackupData->{source};
 
     my $sSubSet= "";
     my @sBakDir= ();
-    my $oTargetPath= $self->get_targetPath();
+    my $oTarget= $hBackupData->{target};
 
     my @sMountMessage;
     my $iMountResult= $oSource->mountAll(\@sMountMessage);
@@ -643,11 +648,11 @@ sub _backup_setup {
 
     logger->log(@sMountMessage);
 
-    my ($sBakMonth, $sBakDay)= $self->_build_bakMonthDay;
     my $sBakSetExt= $self->getPathExtension();
     my $sBakSourceExt= $oSource->getPathExtension();
     my $sBakSourceName= $oSource->get_value("name");
     
+    my $sBakDay= $hBackupData->{bak_day};
     ($sSubSet, @sBakDir)= $self->collect_bakdirs(
         $self->getAllPathExtensions(),
         $self->getAllPathExtensions($oSource),
@@ -655,9 +660,9 @@ sub _backup_setup {
     );
 
     my $sUniqueTarget= "$sBakDay$sSubSet$sBakSourceExt";
-    $self->set_value("unique_target", $sUniqueTarget);
-    my $sTarget= "$sBakMonth$sBakSetExt/$sUniqueTarget";
-    $self->set_value("full_target", $oTargetPath->getPath() . "/$sTarget");
+    $hBackupData->{unique_name}= $sUniqueTarget;
+    my $sTarget= "$hBackupData->{target_dir}/$sUniqueTarget";
+    $hBackupData->{full_target}= $oTarget->getPath($sTarget);
 
     $self->_mkdir($sTarget);
 
@@ -665,29 +670,34 @@ sub _backup_setup {
     logger->info("Backup start at " . strftime("%F %X", localtime) . ": $sBakSourceName, $sBakDay$sSubSet, " . $self->get_value("title"));
     logger->info("Source: " . $oSource->getFullPath());
 
-    $self->{_BAK_DIR_LIST}= \@sBakDir;
-    $self->{_BAK_DAY}= $sBakDay;
-    $self->{_SUB_SET}= $sSubSet;
-    $self->{_TARGET}= $sTarget;
+    $hBackupData->{bak_dir_list}= \@sBakDir;
+    $hBackupData->{sub_set}= $sSubSet;
+    $hBackupData->{rel_target}= $sTarget;
 
     return 0;
 }
 
 sub _backup_run {
     my $self= shift;
-    my $oSource= shift;
-
-    my @sBakDir= @{ $self->{_BAK_DIR_LIST} };
-    my $oTargetPath= $self->get_targetPath();
+    my $hBackupData= shift;
+    
+    my $oSource= $hBackupData->{source};
+    my $oTarget= $hBackupData->{target};
+    my @sBakDir= @{ $hBackupData->{bak_dir_list} };
     my $sBakSetSourceExt= $self->getPathExtension();
     my $sSourceName= $oSource->get_value("name");
     $sBakSetSourceExt.= "-$sSourceName" if $sSourceName;
-    my $sTarget= $self->{_TARGET};
+    my $sTarget= $hBackupData->{rel_target};
 
     my $iErrorCode= 0;
     logger->set_prefix($oSource->get_value("type"));
-    $iErrorCode= $oSource->run($oTargetPath, $self->get_value("full_target"),
-        $self->get_value("unique_target"), $self->get_switch('pretend'), @sBakDir);
+    $iErrorCode= $oSource->run(
+        $oTarget,
+        $hBackupData->{full_target},
+        $hBackupData->{unique_name},
+        $self->get_switch('pretend'),
+        @sBakDir
+    );
     logger->set_prefix();
 
     if (!$iErrorCode) {
@@ -699,9 +709,9 @@ sub _backup_run {
     }
 
     unless ($self->get_switch('pretend')) {
-        $oTargetPath->remove_old($oSource->get_value("keep"), @sBakDir) unless $iErrorCode;    # only remove old if backup was done
-        $oTargetPath->unlink("current$sBakSetSourceExt");
-        $oTargetPath->symlink("$sTarget", "current$sBakSetSourceExt");
+        $oTarget->remove_old($oSource->get_value("keep"), @sBakDir) unless $iErrorCode;    # only remove old if backup was done
+        $oTarget->unlink("current$sBakSetSourceExt");
+        $oTarget->symlink("$sTarget", "current$sBakSetSourceExt");
     }
 
     return $iErrorCode;
@@ -709,13 +719,14 @@ sub _backup_run {
 
 sub _backup_cleanup {
     my $self= shift;
-    my $oSource= shift;
-
+    my $hBackupData= shift;
+    
+    my $oSource= $hBackupData->{source};
     $oSource->unmountAll;
 
     my $sBakSource= $oSource->get_value("name");
-    my $sBakDay= $self->{_BAK_DAY};
-    my $sSubSet= $self->{_SUB_SET};
+    my $sBakDay= $hBackupData->{bak_day};
+    my $sSubSet= $hBackupData->{sub_set};
 
     logger->info("Backup done at " . strftime("%F %X", localtime) . ": $sBakSource, $sBakDay$sSubSet") if $sBakSource && $sBakDay && $sSubSet;
 }

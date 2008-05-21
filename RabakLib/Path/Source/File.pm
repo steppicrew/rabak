@@ -375,9 +375,9 @@ sub _run_rsync {
 
 sub run {
     my $self= shift;
-    my $oTargetPath= shift;
-    my $sFullTarget= shift;
-    my $sUniqueTarget= shift;
+    my $oTarget= shift;
+    my $sTargetDir= shift;
+    my $sUniqueName= shift;
     my $bPretend= shift;
     my @sBakDir= @_;
 
@@ -394,14 +394,14 @@ sub run {
     # Write filter rules to temp file:
     my ($fhwRules, $sRulesFile)= $self->local_tempfile();
 
-    my @sFilter= $self->_get_filter(undef, $oTargetPath);
+    my @sFilter= $self->_get_filter(undef, $oTarget);
     # print join("\n", @sFilter), "\n"; #die;
 
     print $fhwRules join("\n", @sFilter), "\n";
     close $fhwRules;
 
     # copy filter rules to source if target AND source and remote
-    if ($oTargetPath->is_remote() && $self->is_remote()) {
+    if ($oTarget->is_remote() && $self->is_remote()) {
         my $sRemRulesFile= $self->tempfile;
         $self->copyLocalFileToRemote($sRulesFile, $sRemRulesFile);
         $sRulesFile = $sRemRulesFile;
@@ -429,19 +429,19 @@ sub run {
     # - is SourcePath otherwise
     my $oSshPeer;
     my $oRsyncPath = $self;
-    my $sSrcDirPref = "";
-    my $sDstDirPref = "";
-    if ($oTargetPath->is_remote()) {
+    my $sSourceDirPref = "";
+    my $sTargetDirPref = "";
+    if ($oTarget->is_remote()) {
         # unless target and source on same host/user/port
-        unless ($oTargetPath->getUserHostPort() eq $self->getUserHostPort()) {
-            $oSshPeer = $oTargetPath;
-            $sDstDirPref= $oTargetPath->getUserHost(":");
+        unless ($oTarget->getUserHostPort() eq $self->getUserHostPort()) {
+            $oSshPeer = $oTarget;
+            $sTargetDirPref= $oTarget->getUserHost(":");
         }
     }
     elsif ($self->is_remote()) {
         $oSshPeer= $self;
-        $sSrcDirPref= $self->getUserHost(":");
-        $oRsyncPath = $oTargetPath;
+        $sSourceDirPref= $self->getUserHost(":");
+        $oRsyncPath = $oTarget;
     }
     if ($oSshPeer) {
         my $sPort= $oSshPeer->get_value("port") || 22;
@@ -454,7 +454,7 @@ sub run {
             logger->warn("--bandwidth in 'rsync_opts' is deprecated. Please use 'bandwidth' option (see Doc)!");
         }
         if ($sRsyncOpts=~ s/\-\-timeout\=(\d+)//) {
-            $sTimeout= $1 unless $oTargetPath->get_value("timeout");
+            $sTimeout= $1 unless $oTarget->get_value("timeout");
             logger->warn("--timeout in 'rsync_opts' is deprecated. Please use 'timeout' option (see Doc)!");
         }
 
@@ -474,17 +474,15 @@ sub run {
     my $sLinkFlags = "";
     map { $sLinkFlags .= " --link-dest=" . $self->shell_quote($_); } @sBakDir;
 
-    my $sSrcDir = $self->getPath;
+    my $sSourceDir = $self->getPath;
 
     # make sure path ends with "/"
-    $sSrcDir=~ s/\/?$/\//;
-
-    my $sDstDir= $oTargetPath->getPath($sFullTarget);
+    $sSourceDir=~ s/\/?$/\//;
 
     # prepare handles for stdout/stderr
     my $sStdOutStat= 0;
     my @sLinkErrors= ();
-    my $qDstDir= quotemeta $sDstDir;
+    my $sqTargetDir= quotemeta $sTargetDir;
     my %Handles= (
         STDOUT => sub {
             for my $sLine (@_) {
@@ -510,7 +508,7 @@ sub run {
         STDERR => sub {
             for my $sLine (@_) {
                 chomp $sLine;
-                if ($sLine =~ /^rsync\: link \"$qDstDir\/(.+)\" \=\> .+ failed\: Too many links/) {
+                if ($sLine =~ /^rsync\: link \"$sqTargetDir\/(.+)\" \=\> .+ failed\: Too many links/) {
                     push @sLinkErrors, $1;
                     logger->verbose($sLine);
                     next;
@@ -521,7 +519,7 @@ sub run {
     );
 
     # run rsync cmd
-    my $iRsyncExit = $self->_run_rsync($oRsyncPath, $sSrcDirPref.$sSrcDir, $sDstDirPref.$sDstDir, $sFlags.$sLinkFlags, \%Handles);
+    my $iRsyncExit = $self->_run_rsync($oRsyncPath, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir, $sFlags.$sLinkFlags, \%Handles);
 
     if (scalar @sLinkErrors) {
         logger->info("The following files could not be hard linked, trying again without --hard-links flag:");
@@ -547,7 +545,7 @@ sub run {
         $Handles{STDERR} = sub {logger->error(@_)};
 
         # run rsync cmd (drop exit code - has been logged anyway)
-        $self->_run_rsync($oRsyncPath, $sSrcDirPref.$sSrcDir, $sDstDirPref.$sDstDir,
+        $self->_run_rsync($oRsyncPath, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir,
             "$sFlags --files-from=" . $self->shell_quote($sFilesFile),
             \%Handles);
 
