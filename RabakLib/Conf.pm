@@ -89,7 +89,9 @@ sub joinValue {
             $bError= 1;
         }
         else {
-            $self->remove_backslashes_part2($_);
+            # remove_backslashes_part2 should already have been called
+#            $self->remove_backslashes_part2($_);
+            $_;
         }
     } @$aValue;
     return undef if $bError;
@@ -131,14 +133,24 @@ sub remove_backslashes_part1 {
     my $self= shift;
     my $sValue= shift;
 
-    return $sValue unless $sValue;
+    return $sValue unless defined $sValue;
+    return $sValue if ref $sValue;
 
     if ($sValue =~ /\\$/) {
         logger->warn("Conf-File contains lines ending with backslashes!");
     }
 
+    # unquote quoted parts (precede \s, "\" and "," with "\" if inside quotes)
+    my $unquote= sub {
+        my $quote= shift;
+        $quote =~ s/([\\\s\,])/\\$1/g;
+        return $quote;
+    };
+    $sValue =~ s/(?<!\\)([\'\"])(.*?)\1/$unquote->($2)/eg; # ?; # for correct highlighting
+
     # make every "~" preceeded by "." (not space to keep word separators)
     $sValue =~ s/\~/\.\~/g;
+
     # replace every double backslash with "\~"
     $sValue =~ s/\\\\/\\\~/g;
     return $sValue;
@@ -148,9 +160,10 @@ sub undo_remove_backslashes_part1 {
     my $self= shift;
     my $sValue= shift;
 
-    return $sValue unless $sValue;
+    return $sValue unless defined $sValue;
+    return $sValue if ref $sValue;
 
-    $sValue =~ s/\\\~/\\\\/g;
+    $sValue =~ s/\\\~/\\/g;
     $sValue =~ s/\.\~/\~/g;
     return $sValue;
 }
@@ -159,7 +172,8 @@ sub remove_backslashes_part2 {
     my $self= shift;
     my $sValue= shift;
 
-    return $sValue unless $sValue;
+    return $sValue unless defined $sValue;
+    return $sValue if ref $sValue;
 
     # Insert support for tab etc.. here
     # $sValue =~ s/\\t/\t/g;
