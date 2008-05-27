@@ -142,11 +142,13 @@ sub remove_backslashes_part1 {
 
     # unquote quoted parts (precede \s, "\" and "," with "\" if inside quotes)
     my $unquote= sub {
+        my $qchar= shift;
         my $quote= shift;
         $quote =~ s/([\\\s\,])/\\$1/g;
+        $quote =~ s/([\$\&])/\\$1/g if $qchar eq "'";
         return $quote;
     };
-    $sValue =~ s/(?<!\\)([\'\"])(.*?)\1/$unquote->($2)/eg; # ?; # for correct highlighting
+    $sValue =~ s/(?<!\\)([\'\"])(.*?)\1/$unquote->($1, $2)/eg; # ?; # for correct highlighting
 
     # make every "~" preceeded by "." (not space to keep word separators)
     $sValue =~ s/\~/\.\~/g;
