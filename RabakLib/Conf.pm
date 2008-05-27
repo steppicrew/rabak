@@ -144,7 +144,9 @@ sub remove_backslashes_part1 {
     my $unquote= sub {
         my $qchar= shift;
         my $quote= shift;
+        # escape all occurances of "\", \s and ","
         $quote =~ s/([\\\s\,])/\\$1/g;
+        # escape all occurances of "$" and "&" for single quotes
         $quote =~ s/([\$\&])/\\$1/g if $qchar eq "'";
         return $quote;
     };
