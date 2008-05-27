@@ -135,8 +135,8 @@ Example:
     value = some value
     object1.prop = some other value
     object1.prop2 = another value
-    object1.subobject.prop1 = subobject's value
-    object2.something_other = object2's value
+    object1.subobject.prop1 = subobjects value
+    object2.something_other = object2s value
 
 This would set C<value> to C<some value>, create an object C<object1> with
 porperties C<prop>, C<prop2> and object C<subobject> and a 2nd object
@@ -455,6 +455,45 @@ You may group settings for the same object in ini file sytle:
 This defines the same C<bakset1> object as above. With C<[]> you can reset
 to the root namespace.
 
+Names (left from the C<=>-char) have to start with a letter (C<a>-C<z>) or C<_>
+optionally followed by one or more letters, C<_> or digits (C<0>-C<9>). The
+C<.>-char may be used to separate names of cascaded objects. Trailing
+whitespaces are ignored.
+
+Values (right from the C<=>-char) may contain any chars. Because some chars
+do have special meanings (eg. C<$> or C<&>) you should escape them with
+a leading C<\>. It's save to escape every special char.
+Furthermore values may contain lists. That's why values are generally
+separated on whitespaces or C<,> and rebuild by concatenating the
+elements if not used in a list context. This caused any group of whitespaces
+and C<,>-chars to be merged to a single space.
+To keep those characters you should escape them. Alternatively you may
+quote strings in C<'>- or C<">-chars. Quoted text is not separated at
+whitespaces or C<,> in the first place and are kept as they are.
+Additionally macros are not expanded if refrenced with C<&> or C<$>
+in a C<'>-quote.
+
+Example:
+  value1= This is a test, but not a good one
+  value2= This is a test\,\ but not a good one
+  value3= "This is a test, but not a good one"
+  value4= "This is a test, but not a good one. '$value3'"
+  value5= 'This is a test, but not a good one. "$value3"'
+
+would be expanded to:
+  value1: B<This is a test but not a good one>
+  value2: B<This is a test, but not a good one>
+  value3: B<This is a test, but not a good one>
+  value4: B<This is a test, but not a good one. 'This is a test, but not a good one'>
+  value5: B<This is a test, but not a good one. "&value3">
+
+or in list contexts it's equal to:
+  value1: B<This | is | a | test | but | not | a | good | one>
+  value2: B<This | is | a | test, but | not | a | good | one>
+  value3: B<This is a test, but not a good one>
+  value4: B<This is a test, but not a good one. 'This is a test, but not a good one'>
+  value5: B<This is a test, but not a good one. "&value3">
+
 Referring to other values or objects is done by prefix C<$> or C<&>.
 References prefixed by C<$> are replaced literally during the parsing process
 of the config file. Therefore the referenced object/value has to be defined
@@ -712,7 +751,7 @@ of config variable $exclude_std.)
 Variable expansion is done at runtime (late expansion).
 (default: C<-&exclude +&include>)
 
-Effective filter rules can be displayed with C<rabak -v conf E<lt>baksetE<gt>.
+Effective filter rules can be displayed with C<rabak -v conf E<lt>baksetE<gt>>.
 B<Attention:> Pathes beginning with C</> are absolute (not relative to C<source> as in
 rsync filters)
 

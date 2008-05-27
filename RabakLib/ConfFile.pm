@@ -240,6 +240,9 @@ sub _read_file {
             $sNewValue=~ s/\n?$/\n/;
             $sNewValue.= "$sValue\n";
         }
+
+        $sNewValue= $self->remove_quotes($sNewValue);
+
         # remove current key to prevent self referencing
         $oConf->remove_property($sName);
         if ($sNewValue=~ /^\$($sregIdentRef)$/ || $sNewValue=~ /^\$\{($sregIdentRef)\}$/) {
@@ -281,6 +284,24 @@ sub _read_file {
     }
 
     return $oConf;
+}
+
+sub remove_quotes {
+    my $self= shift;
+    my $sValue= shift;
+
+    # unquote quoted parts (precede \s, "\" and "," with "\" if inside quotes)
+    my $unquote= sub {
+        my $qchar= shift;
+        my $quote= shift;
+        # escape all occurances of "\", \s and ","
+        $quote =~ s/([\\\s\,\'\"])/\\$1/g;
+        # escape all occurances of "$" and "&" for single quotes
+        $quote =~ s/([\$\&])/\\$1/g if $qchar eq "'";
+        return $quote;
+    };
+    $sValue =~ s/(?<!\\)([\'\"])(.*?)\1/$unquote->($1, $2)/egs; # ?; # for correct highlighting
+    return $sValue;
 }
 
 1;

@@ -140,18 +140,6 @@ sub remove_backslashes_part1 {
         logger->warn("Conf-File contains lines ending with backslashes!");
     }
 
-    # unquote quoted parts (precede \s, "\" and "," with "\" if inside quotes)
-    my $unquote= sub {
-        my $qchar= shift;
-        my $quote= shift;
-        # escape all occurances of "\", \s and ","
-        $quote =~ s/([\\\s\,])/\\$1/g;
-        # escape all occurances of "$" and "&" for single quotes
-        $quote =~ s/([\$\&])/\\$1/g if $qchar eq "'";
-        return $quote;
-    };
-    $sValue =~ s/(?<!\\)([\'\"])(.*?)\1/$unquote->($1, $2)/eg; # ?; # for correct highlighting
-
     # make every "~" preceeded by "." (not space to keep word separators)
     $sValue =~ s/\~/\.\~/g;
 
