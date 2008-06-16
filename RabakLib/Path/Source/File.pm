@@ -185,8 +185,8 @@ sub _expand {
                 sub{ # function to modify macro's text before splitting
                     my $sEntry= shift;
                     my $sregIdent= $self->REGIDENTREF;
-                    # remove spaces between +/- and path
-                    $sEntry=~ s/(?<!\\)([\-\+])\s+/$1/g;
+                    # remove spaces between +/- and path, a +/- always separates
+                    $sEntry=~ s/(?<!\\)\s*(?<!\\)([\-\+])\s+/ $1/g;
                     # enclose all macros &... with parantheses
                     $sEntry=~ s/(?<!\\)(\&$sregIdent)/\($1\)/g;
                     # enclose all macros &{..} with parantheses
