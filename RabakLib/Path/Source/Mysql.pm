@@ -74,7 +74,8 @@ sub get_dump_cmd {
     my $self= shift;
     my $sDb= $self->shell_quote(shift);
 
-    my $sDumpCmd= "mysqldump --all --extended-insert --add-drop-table --allow-keywords --quick " . $self->_get_log_credentials() . " --databases $sDb";
+    my $sParamFlush= $self->get_value("dbflushlogs", 1) ? " --flush-logs" : "";
+    my $sDumpCmd= "mysqldump --all --extended-insert --add-drop-table --allow-keywords --quick " . $self->_get_log_credentials() . "$sParamFlush --databases $sDb";
     return $self->_replace_password($sDumpCmd, "Running dump");
 }
 

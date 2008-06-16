@@ -836,6 +836,10 @@ User to connect database as.
 
 Password to connect to database
 
+=item dbflushlogs (type I<mysql> only).
+
+flush logs before dumping (default: I<1>)
+
 =item packer (types I<mysql> and I<pgsql> only)
 
 Program for packing dumps. valid values are C<bzip2> and C<gzip> (default: C<bzip2>).
