@@ -274,11 +274,13 @@ sub _read_file {
                 return $sResult;
             };
             # replace every occurance of a reference with reference's scalar value (or raise an error)
+            $sNewValue= $oConf->remove_backslashes_part1($sNewValue);
             while (
                 $sNewValue=~ s/(?<!\\)\$($sregIdentRef)/$f->($1)/ge ||
                 $sNewValue=~ s/(?<!\\)\$\{($sregIdentRef)\}/$f->($1)/ge
             ) {};
             logger->warn("Unescaped '\$' in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ /(?<!\\)\$/;
+            $sNewValue= $oConf->undo_remove_backslashes_part1($sNewValue);
         }
         $oConf->set_value($sName, $sNewValue);
     }

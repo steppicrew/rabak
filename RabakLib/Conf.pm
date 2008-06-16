@@ -155,7 +155,7 @@ sub undo_remove_backslashes_part1 {
     return $sValue unless defined $sValue;
     return $sValue if ref $sValue;
 
-    $sValue =~ s/\\\~/\\/g;
+    $sValue =~ s/\\\~/\\\\/g;
     $sValue =~ s/\.\~/\~/g;
     return $sValue;
 }
@@ -173,7 +173,9 @@ sub remove_backslashes_part2 {
     # remove all backslashes not followed by "~"
     $sValue =~ s/\\(?!\~)//g;
     # undo changes made in part1
-    return $self->undo_remove_backslashes_part1($sValue);
+    $sValue =~ s/\\\~/\\/g;
+    $sValue =~ s/\.\~/\~/g;
+    return $sValue;
 }
 
 sub remove_backslashes {
