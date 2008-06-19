@@ -4,6 +4,7 @@ package RabakLib::Log;
 
 use warnings;
 use strict;
+no warnings 'redefine';
 
 use Data::Dumper;
 use RabakLib::Conf;

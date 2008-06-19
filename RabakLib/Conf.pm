@@ -4,6 +4,7 @@ package RabakLib::Conf;
 
 use warnings;
 use strict;
+no warnings 'redefine';
 
 use Data::Dumper;
 use Storable qw(dclone);

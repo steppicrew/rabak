@@ -6,6 +6,7 @@ package RabakLib::Path::Mountable;
 
 use warnings;
 use strict;
+no warnings 'redefine';
 
 use Data::Dumper;
 use File::Spec ();

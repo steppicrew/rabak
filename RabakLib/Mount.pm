@@ -4,6 +4,7 @@ package RabakLib::Mount;
 
 use warnings;
 use strict;
+no warnings 'redefine';
 
 use Data::Dumper;
 
