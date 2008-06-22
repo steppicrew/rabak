@@ -203,6 +203,7 @@ sub _read_file {
                 # take the first existing file (if any)
                 $sInclude= $sIncFiles[0] if scalar @sIncFiles;
             }
+
             # try reading file or raise error
             $self->_read_file($sInclude, $sFile, $iLine);
             next;
@@ -234,6 +235,7 @@ sub _read_file {
         # get previous value and best matching scope
         my ($sOldValue, $oScope)= $oConf->get_property($sName);
         my $sNewValue= $sValue;
+
         # In case of a multiline, we need a newline at the end of each line
         if ($bIndent) {
             $sNewValue= defined $sOldValue ? $sOldValue : '';
@@ -246,25 +248,31 @@ sub _read_file {
         # remove current key to prevent self referencing
         $oConf->remove_property($sName);
         if ($sNewValue=~ /^\$($sregIdentRef)$/ || $sNewValue=~ /^\$\{($sregIdentRef)\}$/) {
+
             # if value is a simple reference, replace it by reference's content (may be an object)
             my $sRef= $1;
             $sNewValue= $oScope->find_property($sRef);
             $self->_error("Could not resolve symbol '\$$sRef'", $sFile, $iLine, $sLine) unless defined $sNewValue;
             if (ref $sNewValue) {
+
                 # objects should be cloned to new location
                 my $sqNewValuesName= quotemeta $sNewValue->get_full_name();
                 $self->_error("Could not reference parent", $sFile, $iLine, $sLine) if $sName=~ /^$sqNewValuesName\./;
+
                 # preset value to create all parent objects
                 $oConf->set_value($sName, '');
                 my (undef, $oNewScope, $sLastKey)= $oConf->get_property($sName);
+
                 # create new conf-object
                 my $new= RabakLib::Conf->new($sLastKey, $oNewScope);
+
                 # and clone all values
                 $new->{VALUES}= dclone($sNewValue->{VALUES});
                 $sNewValue= $new;
             }
         }
         else {
+
             # function to expand referenced macros as scalar
             my $f = sub {
                 my $sRef= shift;
@@ -273,6 +281,7 @@ sub _read_file {
                 $self->_error("'$sRef' is an object", $sFile, $iLine, $sLine) if ref $sResult;
                 return $sResult;
             };
+
             # replace every occurance of a reference with reference's scalar value (or raise an error)
             $sNewValue= $oConf->remove_backslashes_part1($sNewValue);
             while (
@@ -296,8 +305,10 @@ sub remove_quotes {
     my $unquote= sub {
         my $qchar= shift;
         my $quote= shift;
+
         # escape all occurances of "\", \s and ","
         $quote =~ s/([\\\s\,\'\"\(\)])/\\$1/g;
+
         # escape all occurances of "$" and "&" for single quotes
         $quote =~ s/([\$\&])/\\$1/g if $qchar eq "'";
         return $quote;

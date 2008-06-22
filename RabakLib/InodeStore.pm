@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package DupMerge::DataStore;
+package RabakLib::InodeStore;
 
 use warnings;
 use strict;
@@ -10,7 +10,6 @@ use vars qw(@ISA);
 # use FindBin qw($Bin);
 
 use File::Temp();
-
 use Data::Dumper;
 
 sub Factory {
@@ -18,15 +17,15 @@ sub Factory {
     my %params= @_;
     
     my %classNames= (
-        "multidb" => "DataStoreMultiDB",
+        "multidb" => "MultiDB",
     );
     my $sType= $params{type};
     my $sClassName= $classNames{$sType};
     my $new;
-    die "No valid DataStore type specified! - Internal error" unless $sClassName;
+    die "No valid InodeStore type specified! - Internal error" unless $sClassName;
     eval {
-        require "DupMerge/DataStore/$sClassName.pm";
-        my $sClass= "DupMerge::DataStore::$sClassName";
+        require "RabakLib/InodeStore/$sClassName.pm";
+        my $sClass= "RabakLib::InodeStore::$sClassName";
         $new= $sClass->new(\%params);
         1;
     };
@@ -102,14 +101,14 @@ sub finishDirectory {
     $self->{current_dir}= undef;
 };
 
-sub getDigestByInode {
+sub getInodeDigest {
     my $self= shift;
     my $iInode= shift;
     
     return undef;
 }
 
-sub setInodesDigest {
+sub setInodeDigest {
     my $self= shift;
     my $iInode= shift;
     my $sDigest= shift;
@@ -133,13 +132,13 @@ sub getOneFileByInode {
 }
 
 # has to be overwritten
-sub addInode { die "Sould have been overriden"; }
-sub getDescSortedSizes { die "Sould have been overriden"; }
-sub getKeysBySize { die "Sould have been overriden"; }
-sub getInodesBySizeKey { die "Sould have been overriden"; }
-sub getInodeFiles { die "Sould have been overriden"; }
-sub getFileKeyByInode { die "Sould have been overriden"; }
-sub getCurrentFileCount { die "Sould have been overriden"; }
+sub addInode { die "Must be overriden"; }
+sub getDescSortedSizes { die "Must be overriden"; }
+sub getKeysBySize { die "Must be overriden"; }
+sub getInodesBySizeKey { die "Must be overriden"; }
+sub getInodeFiles { die "Must be overriden"; }
+sub getFileKeyByInode { die "Must be overriden"; }
+sub getCurrentFileCount { die "Must be overriden"; }
 
 # may be overwritten
 sub beginWork {};

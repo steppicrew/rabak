@@ -1,14 +1,16 @@
-package DupMerge::DataStore::DataStoreMultiDB;
+package RabakLib::InodeStore::MultiDB;
 
 use warnings;
 use strict;
 
+use Data::Dumper;
+
+use RabakLib::InodeStore;
+use RabakLib::InodeStore::DBBackend;
+
 use vars qw(@ISA);
 
-@ISA = qw(DupMerge::DataStore);
-
-use DupMerge::DataStore::DataStoreDBBackend;
-use Data::Dumper;
+@ISA = qw(RabakLib::InodeStore);
 
 sub new {
     my $class= shift;
@@ -16,13 +18,14 @@ sub new {
     
     my $self= $class->SUPER::new();
     $self->{dbfn_postfix}= $hParams->{db_postfix};
-    $self->{db_engine}= $hParams->{db_engine};
-    $self->{temp_dir}= $hParams->{temp_dir};
+    $self->{db_engine}=    $hParams->{db_engine};
+    $self->{temp_dir}=     $hParams->{temp_dir};
 
     $self->{dbs}= []; # array of db hashes
     $self->{current_db}= undef;
+
     my $sInodeFileName= "$hParams->{base_dir}/inodes.db";
-    $self->{inode_db}= DupMerge::DataStore::DataStoreDBBackend->new(
+    $self->{inode_db}= RabakLib::InodeStore::DBBackend->new(
         $sInodeFileName, $self->{db_engine}, $self->{temp_dir}
     );
 
@@ -38,7 +41,7 @@ sub newDirectory {
     $sFileName =~ s/\/+$//;
     $sFileName.= $self->{dbfn_postfix};
     my $bDbIsNew= ! -f $sFileName;
-    $self->{current_db}= DupMerge::DataStore::DataStoreDBBackend->new(
+    $self->{current_db}= RabakLib::InodeStore::DBBackend->new(
         $sFileName, $self->{db_engine}, $self->{temp_dir}, {directory=> $sDirectory}
     );
     push @{$self->{dbs}}, $self->{current_db};
@@ -211,19 +214,19 @@ sub getInodes {
     return $self->{inode_db}->getInodes();
 }
 
-sub getDigestByInode {
+sub getInodeDigest {
     my $self= shift;
     my $iInode= shift;
     
-    return $self->{inode_db}->getDigestByInode($iInode);
+    return $self->{inode_db}->getInodeDigest($iInode);
 }
 
-sub setInodesDigest {
+sub setInodeDigest {
     my $self= shift;
     my $iInode= shift;
     my $sDigest= shift;
     
-    return $self->{inode_db}->setInodesDigest($iInode, $sDigest);
+    return $self->{inode_db}->setInodeDigest($iInode, $sDigest);
 }
 
 sub removeInode {

@@ -9,7 +9,7 @@ use strict;
 use Getopt::Std;
 use Data::Dumper;
 
-use DupMerge::DupMerge;
+use RabakLib::DupMerge;
 
 $Getopt::Std::STANDARD_HELP_VERSION= 1;
 my %opts= ();
@@ -17,9 +17,9 @@ my %opts= ();
 getopts("hdpotvnzi:x:w:qb:m:a:", \%opts) or die HELP_MESSAGE();
 
 my @sDirectories= @ARGV;
-my $dm= DupMerge::DupMerge->new();
+my $dm= RabakLib::DupMerge->new({
+	dirs			=> \@sDirectories,
 
-$dm->run(\@sDirectories, {
     temp_dir        => $opts{w},
     base_dir        => $opts{a},
     skip_zero       => $opts{z},
@@ -37,6 +37,8 @@ $dm->run(\@sDirectories, {
     
     cb_infoS        => sub {print join "\n", @_; STDOUT->flush();}
 });
+
+$dm->run();
 
 sub HELP_MESSAGE {
     print "Usage:

@@ -173,6 +173,7 @@ sub remove_backslashes_part2 {
 
     # remove all backslashes not followed by "~"
     $sValue =~ s/\\(?!\~)//g;
+
     # undo changes made in part1
     $sValue =~ s/\\\~/\\/g;
     $sValue =~ s/\.\~/\~/g;

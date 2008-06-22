@@ -30,7 +30,7 @@ sub CloneConf {
     
     if ($sPath) {
         # remove leading "file://" etc.
-        warn("Internel error: '$1' should already been removed. Please file a bug report with config included!") if $sPath=~ s/^(\w+\:\/\/)//;
+        warn("Internal error: '$1' should already be removed. Please file a bug report with config included!") if $sPath=~ s/^(\w+\:\/\/)//;
         # extract hostname, user and port
         if ($sPath=~ s/^(\S+?\@)?([\-0-9a-z\.]+)(\:\d+)?\://i) {
             my $sUser= $1 || '';

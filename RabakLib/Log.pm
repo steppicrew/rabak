@@ -51,7 +51,7 @@ BEGIN {
         ERRORCOUNT => 0,
         WARNCOUNT => 0,
         
-        INDENT => 0,            # identing for message grouping
+        INDENT => 0,            # indenting for message grouping
 
         TARGET => undef,
 
@@ -104,6 +104,7 @@ sub incIndent {
     my $self= shift;
     $self->{INDENT}++;
 }
+
 sub decIndent {
     my $self= shift;
     $self->{INDENT}-- if $self->{INDENT};
@@ -300,7 +301,7 @@ sub _levelLog {
     my $iLevel= shift;
     my @sMessage= @_;
     
-    return unless join"", @sMessage;
+    return unless join "", @sMessage;
 
     my $sMsgPref;
     if ($iLevel == LOG_ERROR_LEVEL) {

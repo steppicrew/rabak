@@ -1,4 +1,4 @@
-package DupMerge::DataStore::DataStoreDBBackend;
+package RabakLib::InodeStore::DBBackend;
 
 use warnings;
 use strict;
@@ -361,7 +361,7 @@ sub getInodes {
     );
 }
 
-sub getDigestByInode {
+sub getInodeDigest {
     my $self= shift;
     my $iInode= shift;
     
@@ -371,7 +371,7 @@ sub getDigestByInode {
     );
 }
 
-sub setInodesDigest {
+sub setInodeDigest {
     my $self= shift;
     my $iInode= shift;
     my $sDigest= shift;
