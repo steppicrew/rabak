@@ -64,8 +64,9 @@ sub _init {
 # callback function for File::Find
 sub _processFiles {
     my $self= shift;
+    my $oTrap= shift;
 
-    return if $self->{_terminate};
+    return if $oTrap->terminated();
     
     my $sFileName= $_;
     my ($dev, $inode, $mode, $nlink, $uid, $gid, $rdev, $size,
@@ -163,7 +164,8 @@ sub collect {
     my $aDirs= $self->{OPTS}{dirs};
     my %hDirsDone= ();
     for my $sDir (@$aDirs) {
-        last if  $self->{_terminate};
+    	last if $oTrap->terminated();
+
         $sDir= Cwd::abs_path($sDir);
         unless (-d $sDir) {
             logger()->warn("'$sDir' is not a directory. Skipping.");
@@ -177,7 +179,7 @@ sub collect {
         logger()->info("\tProcessing directory '$sDir'...");
         if ($self->{DS}->newDirectory($sDir)) {
             find({
-                wanted => sub { $self->_processFiles(); },
+                wanted => sub { $self->_processFiles($oTrap); },
                 no_chdir => 1,
             }, $sDir);
         }

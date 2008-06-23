@@ -130,7 +130,7 @@ sub _run {
                     next unless $FilesByInode{$iInode};
 
                     if ($iInode == $iMaxInode) {
-                        $self->setInodeDigest($iInode, $sDigest) unless $hInode->{cached};
+                        $oStore->setInodeDigest($iInode, $sDigest) unless $hInode->{cached};
                         next;
                     }
                     $self->{INODE_CACHE}{STATS}{linked_size} += -s $sLinkFile;
