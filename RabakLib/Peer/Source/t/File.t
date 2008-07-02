@@ -3,12 +3,12 @@ use Test;
 
 BEGIN { plan tests => 45 };
 
-use RabakLib::Path::Source;
+use RabakLib::Peer::Source;
 use RabakLib::Set;
 use Data::Dumper;
 use FindBin qw($Bin);
 
-print "# Testing 'RabakLib::Path::Source::File'\n";
+print "# Testing 'RabakLib::Peer::Source::File'\n";
 
 # TODO: test remote sources (dont know how to)
 
@@ -27,8 +27,8 @@ ok ref $oSet, 'RabakLib::Set', 'Creating bak set from Conf';
 my $oSourceConf= $oRootConf->get_node("testsource_file");
 ok ref $oSourceConf, 'RabakLib::Conf', 'Checking source config';
 ok -d $oSourceConf->get_value("path"), 1, 'Source path is a directory';
-my $oSource= RabakLib::Path::Source->Factory($oSourceConf);
-ok ref $oSource, 'RabakLib::Path::Source::File', 'Creating file source from Conf';
+my $oSource= RabakLib::Peer::Source->Factory($oSourceConf);
+ok ref $oSource, 'RabakLib::Peer::Source::File', 'Creating file source from Conf';
 
 ####################################################
 # test filter-routines
@@ -156,8 +156,8 @@ ok joinFilter(@sFilter), joinFilter(
 ####################################################
 # create target
 
-my $oTarget= $oSet->get_targetPath();
-ok ref $oTarget, 'RabakLib::Path::Target', 'Retrieving target from bakset';
+my $oTarget= $oSet->get_targetPeer();
+ok ref $oTarget, 'RabakLib::Peer::Target', 'Retrieving target from bakset';
 ok -d $oTarget->get_value("path"), 1, 'Target path is a directory';
 
 ####################################################

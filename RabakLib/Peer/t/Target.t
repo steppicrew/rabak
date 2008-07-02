@@ -3,12 +3,12 @@ use Test;
 
 BEGIN { plan tests => 44 };
 
-use RabakLib::Path::Target;
+use RabakLib::Peer::Target;
 use RabakLib::Set;
 use Data::Dumper;
 use FindBin qw($Bin);
 
-print "# Testing 'RabakLib::Path::Target'\n";
+print "# Testing 'RabakLib::Peer::Target'\n";
 
 # TODO: test remote sources (dont know how to)
 
@@ -27,8 +27,8 @@ ok ref $oSet, 'RabakLib::Set', 'Creating bak set from Conf';
 my $oTargetConf= $oRootConf->get_node("testtarget");
 ok ref $oTargetConf, 'RabakLib::Conf', 'Checking target config';
 ok -d $oTargetConf->get_value("path"), 1, 'Target path is a directory';
-my $oTarget= RabakLib::Path::Target->CloneConf($oTargetConf);
-ok ref $oTarget, 'RabakLib::Path::Target', 'Creating Target from Conf';
+my $oTarget= RabakLib::Peer::Target->CloneConf($oTargetConf);
+ok ref $oTarget, 'RabakLib::Peer::Target', 'Creating Target from Conf';
 
 ####################################################
 # mounting and unmounting
