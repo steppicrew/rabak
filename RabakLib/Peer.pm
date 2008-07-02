@@ -190,6 +190,31 @@ sub _outbufSplitFact {
     };
 }
 
+sub _prepare_io_handles {
+    my $self= shift;
+    my $hHandles= shift;
+    
+    my ($fStdIn, $fStdOut, $fStdErr);
+    # prepare standard i/o handles
+    $fStdIn= $hHandles->{STDIN}   || sub {undef};
+    $fStdOut= $hHandles->{STDOUT} ||
+        sub {$self->{LAST_RESULT}{stdout}.= join "\n", @_, ""};
+    $fStdErr= $hHandles->{STDERR} ||
+        sub {$self->{LAST_RESULT}{stderr}.= join "\n", @_, ""};
+    
+    # if stdin is a scalar create a function returning its value once
+    unless (ref $fStdIn) {
+        my @aStdIn= ($fStdIn);
+        $fStdIn= sub {shift @aStdIn};
+    }
+
+    # stdout/err functions will be line buffered unless forbidden
+    $fStdOut = $self->_outbufSplitFact($fStdOut) unless $hHandles->{STDOUT_UNBUFFERED}; 
+    $fStdErr = $self->_outbufSplitFact($fStdErr) unless $hHandles->{STDERR_UNBUFFERED};
+
+    return ($fStdIn, $fStdOut, $fStdErr);
+}
+
 # run command locally
 # $aCmd: Command to be run (array reference or scalar)
 # $hHandles->{STDIN}: func ref to get stdin or scalar to be fed (optional)
@@ -211,24 +236,7 @@ sub _run_local_cmd {
         error => '',
     };
 
-    my ($fStdIn, $fStdOut, $fStdErr);
-
-    # prepare standard i/o handles
-    $fStdIn= $hHandles->{STDIN}   || sub {undef};
-    $fStdOut= $hHandles->{STDOUT} ||
-        sub {$self->{LAST_RESULT}{stdout}.= join "\n", @_, ""};
-    $fStdErr= $hHandles->{STDERR} ||
-        sub {$self->{LAST_RESULT}{stderr}.= join "\n", @_, ""};
-    
-    # if stdin is a scalar create a function returning its value once
-    unless (ref $fStdIn) {
-        my @aStdIn= ($fStdIn);
-        $fStdIn= sub {shift @aStdIn};
-    }
-
-    # stdout/err functions will be line buffered
-    $fStdOut = $self->_outbufSplitFact($fStdOut) unless $hHandles->{STDOUT_UNBUFFERED}; 
-    $fStdErr = $self->_outbufSplitFact($fStdErr) unless $hHandles->{STDERR_UNBUFFERED};
+    my ($fStdIn, $fStdOut, $fStdErr)= $self->_prepare_io_handles($hHandles);
 
     # start $aCmd in shell context if its a scalar
     # ($sCmd should be an array reference to avoid shell,
@@ -307,7 +315,7 @@ sub _run_ssh_cmd {
         die "More than one STDIN defined!" if defined $hHandles->{STDIN};
         $hHandles->{STDIN}= $sStdIn;
     }
-
+    
     $sRunCmd= $self->build_ssh_cmd($sCmd);
     print "SSH: stdin [$sStdIn]\n######################\n" if $self->{DEBUG} && defined $sStdIn;
     print "SSH: running [$sRunCmd]\n" if $self->{DEBUG};
