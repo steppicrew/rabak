@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package RabakLib::Path::Target;
+package RabakLib::Peer::Target;
 
 use warnings;
 use strict;
@@ -10,7 +10,7 @@ use RabakLib::ConfFile;
 
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Path::Mountable);
+@ISA = qw(RabakLib::Peer::Mountable);
 
 sub mountErrorIsFatal {
     my $self= shift;

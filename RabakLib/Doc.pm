@@ -336,7 +336,7 @@ mounted of the two devices would be used.
 
 To back up your data to or from remote hosts, you simply have to specify a host name and
 an optional user name in your L<Source|Source Objects>/L<Target Object|Target Objects> (for full syntax see
-L</"CONFIG FILE REFERENCE"> and L</"Path Objects">):
+L</"CONFIG FILE REFERENCE"> and L</"Peer Objects">):
 
   [mytarget]
   host= rabak.localdomain
@@ -647,9 +647,9 @@ additional mount options passed to mount command (default: none)
 
 =back
 
-=head2 Path Objects
+=head2 Peer Objects
 
-Path Objects specify sources or targets for backups. At least you have to specify a path value.
+Peer Objects specify sources or targets for backups. At least you have to specify a path value.
 
 Common values for L<Target|Target Objects> and L<Source Objects|Source Objects> are:
 
@@ -659,24 +659,24 @@ Common values for L<Target|Target Objects> and L<Source Objects|Source Objects> 
 
 Path of source/target directory (See L<Source Objects> for further information).
 
-=item host (for remote paths only)
+=item host (for remote peers only)
 
 Hostname to connect to.
 
-=item port (for remote paths only) 
+=item port (for remote peers only) 
 
 Port to connect to (default: C<22>).
 
-=item protocol (for remote paths only) 
+=item protocol (for remote peers only) 
 
 SSH protocol to connect to (default: C<2>).
 Possible values: I<1>, I<2>
 
-=item timeout (for remote paths only) 
+=item timeout (for remote peers only) 
 
 Connection timeout in seconds (default: C<150>).
 
-=item user (for remote paths only)
+=item user (for remote peers only)
 
 Username to connect as.
 
@@ -862,7 +862,7 @@ Max bandwidth (default: C<0> for no limit).
 =item identity_files (for remote targets only)
 
 Identity files for ssh authentication.
-If you get C<Permission denied at RabakLib/Path.pm> try specifying B<identity_files>.
+If you get C<Permission denied at RabakLib/Peer.pm> try specifying B<identity_files>.
 (Default: empty for system settings.)
 Example: C<identity_files= /root/.ssh/id_rsa>
 

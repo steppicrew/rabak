@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package RabakLib::Path;
+package RabakLib::Peer;
 
 # wrapper class to exceute commands remotely or locally
 
@@ -261,8 +261,8 @@ sub build_ssh_cmd {
     my $self= shift;
     my $sCmd= shift;
 
-    die "PathBase.pm: No command specified!" unless defined $sCmd;
-    die "PathBase.pm: No host specified!" unless defined $self->get_value("host");
+    die "Peer.pm: No command specified!" unless defined $sCmd;
+    die "Peer.pm: No host specified!" unless defined $self->get_value("host");
 
     my @sSshCmd= ('ssh');
 
@@ -727,7 +727,7 @@ sub rmtree {
     my $self= shift;
     my $sTree= $self->getPath(shift);
 
-    die "RabakLib::Path::rmtree called with dangerous parameter ($sTree)!" if $sTree eq '' || $sTree eq '/' || $sTree=~ /\*/;
+    die "RabakLib::Peer::rmtree called with dangerous parameter ($sTree)!" if $sTree eq '' || $sTree eq '/' || $sTree=~ /\*/;
 
     $self= $self->new() unless ref $self;
     return $self->savecmd("if [ -e '$sTree' ]; then rm -rf '$sTree'; fi");

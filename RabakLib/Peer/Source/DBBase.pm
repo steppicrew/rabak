@@ -1,12 +1,12 @@
 #!/usr/bin/perl
 
-package RabakLib::Path::Source::DBBase;
+package RabakLib::Peer::Source::DBBase;
 
 use warnings;
 use strict;
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Path::Source);
+@ISA = qw(RabakLib::Peer::Source);
 
 use Data::Dumper;
 use RabakLib::Log;

@@ -8,8 +8,8 @@ no warnings 'redefine';
 
 use Data::Dumper;
 use RabakLib::Conf;
-use RabakLib::Path;
-use RabakLib::Path::Mountable;
+use RabakLib::Peer;
+use RabakLib::Peer::Mountable;
 
 # use File::Spec ();
 use POSIX qw(strftime);
@@ -62,7 +62,7 @@ BEGIN {
     };
     
     ($oLog->{MSG_FH}, $oLog->{MSG_FILE_NAME}) =
-        RabakLib::Path->local_tempfile();
+        RabakLib::Peer->local_tempfile();
 
     bless $oLog, "RabakLib::Log";
 }
@@ -161,7 +161,7 @@ sub get_messages_file {
 sub open {
     my $self= shift;
     my $sFileName= shift;
-    my $oTarget= shift || RabakLib::Path::Mountable->new();
+    my $oTarget= shift || RabakLib::Peer::Mountable->new();
 
     $self->close() if $self->{TARGET};
 

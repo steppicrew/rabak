@@ -6,9 +6,9 @@ use warnings;
 use strict;
 
 use RabakLib::Log;
-use RabakLib::Path::Mountable;
-use RabakLib::Path::Source;
-use RabakLib::Path::Target;
+use RabakLib::Peer::Mountable;
+use RabakLib::Peer::Source;
+use RabakLib::Peer::Target;
 
 use Data::Dumper;
 use File::Spec ();
@@ -88,8 +88,8 @@ sub show {
         "# Configuration for \"$self->{NAME}\"",
         "#" x 80;
 
-    my @oSources= $self->get_sourcePaths();
-    my $oTarget= $self->get_targetPath();
+    my @oSources= $self->get_sourcePeers();
+    my $oTarget= $self->get_targetPeer();
 
     push @$aResult, @{$self->SUPER::show($hConfShowCache)};
 
@@ -229,7 +229,7 @@ sub toDot {
     # print $self->get_value("title");
     # print "]\n[";
 
-    my @oSources= $self->get_sourcePaths();
+    my @oSources= $self->get_sourcePeers();
 
     my $sResult= '';
 
@@ -239,7 +239,7 @@ sub toDot {
         $sResult .= $self->_dotAddBox('source', $oSource, $self);
     }
 
-    my $oTarget= $self->get_targetPath();
+    my $oTarget= $self->get_targetPeer();
     $sResult .= $self->_dotAddBox('target', $oTarget, $self);
 
     my $sTitle= dotify(_dotConfTitle('set', $self));
@@ -358,7 +358,7 @@ sub _mail_warning {
 #  ...
 # -----------------------------------------------------------------------------
 
-sub get_targetPath {
+sub get_targetPeer {
     my $self= shift;
 
     unless ($self->{_TARGET_OBJECT}) {
@@ -371,7 +371,7 @@ sub get_targetPath {
             $oConf= RabakLib::Conf->new(undef, $self);
             $oConf->set_value("path", $sPath);
         }
-        $self->{_TARGET_OBJECT}= RabakLib::Path::Target->CloneConf($oConf);
+        $self->{_TARGET_OBJECT}= RabakLib::Peer::Target->CloneConf($oConf);
         ## $self->{_TARGET_OBJECT}->set_value("switch.warn_on_remote_access", );
     }
     return $self->{_TARGET_OBJECT};
@@ -387,11 +387,11 @@ sub collect_bakdirs {
     my $sqBakSet= "(" . join(")|(", @sqBakSet) . ")";
     my $sqBakSource= "(" . join(")|(", @sqBakSource) . ")";
 
-    my $oTargetPath= $self->get_targetPath();
+    my $oTargetPeer= $self->get_targetPeer();
     my %sBakDirs= ();
     my $sSubSet= '';
 
-    my %hBakDirs = $oTargetPath->getDirRecursive('', 1); # get recurisive file listing for 2 levels
+    my %hBakDirs = $oTargetPeer->getDirRecursive('', 1); # get recurisive file listing for 2 levels
     for my $sMonthDir (keys %hBakDirs) {
         # skip all non-dirs
         next unless ref $hBakDirs{$sMonthDir};
@@ -452,7 +452,7 @@ sub _mkdir {
     # TODO: set MASK ?
     # return 1 if $self->{_TARGET_OBJECT}->mkdir($sDir);
 
-    return 1 if $self->get_targetPath()->mkdir($sDir);
+    return 1 if $self->get_targetPeer()->mkdir($sDir);
 
     logger->warn("Mkdir '$sDir' failed: $!");
     return 0;
@@ -462,7 +462,7 @@ sub _mkdir {
 #  Backup
 # -----------------------------------------------------------------------------
 
-sub get_sourcePaths {
+sub get_sourcePeers {
     my $self= shift;
     
     my @oConfs= $self->resolveObjects("source");
@@ -474,7 +474,7 @@ sub get_sourcePaths {
             $oConf= RabakLib::Conf->new(undef, $self);
             $oConf->set_value("path", $sPath);
         }
-        push @oSources, RabakLib::Path::Source->Factory($oConf);
+        push @oSources, RabakLib::Peer::Source->Factory($oConf);
     } 
     return @oSources;
 }
@@ -510,12 +510,12 @@ sub backup {
     logger->info("Command line: " . $self->get_switch("commandline"));
     logger->info("Configuration read from: '" . $self->get_switch("configfile") . "'");
 
-    my @oSources= $self->get_sourcePaths();
+    my @oSources= $self->get_sourcePeers();
 
     # mount all target mount objects
     my @sMountMessage= ();
-    my $oTargetPath= $self->get_targetPath();
-    my $iMountResult= $oTargetPath->mountAll(\@sMountMessage);
+    my $oTargetPeer= $self->get_targetPeer();
+    my $iMountResult= $oTargetPeer->mountAll(\@sMountMessage);
 
     unless ($iMountResult) { # fatal mount error
         logger->error("There was at least one fatal mount error on target. Backup set skipped.");
@@ -526,15 +526,15 @@ sub backup {
     logger->log(@sMountMessage);
 
     # check target dir
-    unless ($oTargetPath->isDir) {
+    unless ($oTargetPeer->isDir) {
         logger->error(@sMountMessage);
-        logger->error("Target \"".$oTargetPath->get_value("path")."\" is not a directory. Backup set skipped.");
+        logger->error("Target \"".$oTargetPeer->get_value("path")."\" is not a directory. Backup set skipped.");
         $iResult= -1;
         goto cleanup;
     }
-    unless ($oTargetPath->isWritable) {
+    unless ($oTargetPeer->isWritable) {
         logger->error(@sMountMessage);
-        logger->error("Target \"".$oTargetPath->get_value("path")."\" is not writable. Backup set skipped.");
+        logger->error("Target \"".$oTargetPeer->get_value("path")."\" is not writable. Backup set skipped.");
         $iResult= -2;
         goto cleanup;
     }
@@ -551,22 +551,22 @@ sub backup {
     # start logging
     my $sLogDir= "$sBakMonth-log";
     my $sLogFile= "$sLogDir/$sBakDay$sBakSetExt.log";
-    my $sLogFileName= $oTargetPath->getPath() . "/$sLogFile";
+    my $sLogFileName= $oTargetPeer->getPath() . "/$sLogFile";
 
     if (!$self->get_switch('pretend') && $self->get_switch('logging')) {
         $self->_mkdir($sLogDir);
         my $sLogLink= "$sTarget/$sBakDay$sBakSetExt.log";
 
 
-        my $sError= logger->open($sLogFileName, $oTargetPath);
+        my $sError= logger->open($sLogFileName, $oTargetPeer);
         if ($sError) {
             logger->warn("Can't open log file \"$sLogFileName\" ($sError). Going on without...");
         }
         else {
-            $oTargetPath->symlink("../$sLogFile", "$sLogLink");
+            $oTargetPeer->symlink("../$sLogFile", "$sLogLink");
             my $sCurrentLogFileName= "current-log$sBakSetExt";
-            $oTargetPath->unlink($sCurrentLogFileName);
-            $oTargetPath->symlink($sLogFile, $sCurrentLogFileName);
+            $oTargetPeer->unlink($sCurrentLogFileName);
+            $oTargetPeer->symlink($sLogFile, $sCurrentLogFileName);
         }
     }
     logger->info("Logging to: $sLogFileName") if $self->get_switch('logging');
@@ -585,7 +585,7 @@ sub backup {
         eval {
             my $hBackupData= {
                 source => $oSource,
-                target => $oTargetPath,
+                target => $oTargetPeer,
                 target_dir => $sTarget,
                 bak_day => $sBakDay,
             };
@@ -601,8 +601,8 @@ sub backup {
     $iResult= scalar(@oSources) - $iSuccessCount;
 
 cleanup:
-    $oTargetPath->cleanupTempfiles();
-    my $aDf = $oTargetPath->checkDf();
+    $oTargetPeer->cleanupTempfiles();
+    my $aDf = $oTargetPeer->checkDf();
     if (defined $aDf) {
         logger->warn(join " ", @$aDf);
         $self->_mail_warning("disc space too low", @$aDf);
@@ -612,7 +612,7 @@ cleanup:
     logger->close();
     
     # unmount all target mounts
-    $oTargetPath->unmountAll;
+    $oTargetPeer->unmountAll;
 
     my $sSubject= "successfully finished";
     $sSubject= "$iSuccessCount of " . scalar(@oSources) . " backups $sSubject" if $iResult;
@@ -758,10 +758,10 @@ sub rm_file {
     my $sBakSet= $self->get_value("name");
     my $sBakSetDay= $sBakSet;
     $sBakSetDay.= "-" . $oSource->get_value("name") if $oSource->get_value("name");
-    my $oTargetPath= $self->get_targetPath();
+    my $oTargetPeer= $self->get_targetPeer();
 
     # TODO: Make a better check!
-    logger->exitError(3, "Can't remove! \"$sBakSet.target\" is empty or points to file system root.") if $oTargetPath->getPath eq '' || $oTargetPath->getPath eq '/';
+    logger->exitError(3, "Can't remove! \"$sBakSet.target\" is empty or points to file system root.") if $oTargetPeer->getPath eq '' || $oTargetPeer->getPath eq '/';
 
     die "wrong parameters for collect_bakdirs()";
     my @sBakDir= $self->collect_bakdirs($sBakSet, $sBakSetDay);

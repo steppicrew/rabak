@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package RabakLib::Path::Mountable;
+package RabakLib::Peer::Mountable;
 
 # wrapper class to exceute commands remotely or locally
 
@@ -18,7 +18,7 @@ use RabakLib::Mount;
 
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Path);
+@ISA = qw(RabakLib::Peer);
 
 sub CloneConf {
     my $class= shift;

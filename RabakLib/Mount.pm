@@ -21,7 +21,7 @@ sub new {
 
     my $self= $class->SUPER::new($sName, $oParentConf);
     
-    $self->{PATH_OBJECT} = undef;
+    $self->{PEER_OBJECT} = undef;
     $self->{MOUNTPOINT} = undef;
 
     bless $self, $class;
@@ -40,13 +40,13 @@ sub is_mounted {
 sub MountDir2Device {
     my $self= shift;
     my $sMountDir= shift;
-    my $oPath= shift || RabakLib::Path::Mountable->new(undef, undef);
+    my $oPeer= shift || RabakLib::Peer::Mountable->new(undef, undef);
     
     return undef unless defined $sMountDir;
     
-    my $sFsTab= $oPath->cat("/etc/fstab") || '';
+    my $sFsTab= $oPeer->cat("/etc/fstab") || '';
     my $sqMountDir= quotemeta $sMountDir;
-    return $oPath->abs_path($1) if $sFsTab=~ /^(\S+)\s+$sqMountDir\s+/m;
+    return $oPeer->abs_path($1) if $sFsTab=~ /^(\S+)\s+$sqMountDir\s+/m;
     return undef; 
     
 }
@@ -54,19 +54,19 @@ sub MountDir2Device {
 sub MountDevice2Dir {
     my $self= shift;
     my $sMountDevice= shift;
-    my $oPath= shift || RabakLib::Path::Mountable->new(undef, undef);
+    my $oPeer= shift || RabakLib::Peer::Mountable->new(undef, undef);
     
     return undef unless defined $sMountDevice;
     
-    my $sFsTab= $oPath->cat("/etc/fstab") || '';
+    my $sFsTab= $oPeer->cat("/etc/fstab") || '';
     my $sqMountDevice= quotemeta $sMountDevice;
-    return $oPath->abs_path($1) if $sFsTab=~ /^$sqMountDevice\s+(\S+)\s+/m;
+    return $oPeer->abs_path($1) if $sFsTab=~ /^$sqMountDevice\s+(\S+)\s+/m;
     return undef; 
     
 }
 
-# @param $oPath
-#       A RakakPath for system commands
+# @param $oPeer
+#       A RakakPeer for system commands
 # @param $arMessage
 #       A ref to an array, in which _mount stores warnings and messages
 # @param $arUnmount
@@ -76,11 +76,11 @@ sub MountDevice2Dir {
 #       1: succeeded
 sub mount {
     my $self= shift;
-    my $oPath= shift;
+    my $oPeer= shift;
     my $arMessage= shift || [];
     my $arUnmount= shift || [];
     
-    $self->{PATH_OBJECT}= $oPath;
+    $self->{PEER_OBJECT}= $oPeer;
 
     my $sMountDeviceList= $self->get_value("device") || '';
     my $sMountDir= $self->get_value("directory") || '';
@@ -90,19 +90,19 @@ sub mount {
 
     # parameters for mount command
     my $spMountOpts= "";
-    $spMountOpts.=  "-t " . $oPath->shell_quote($sMountType) . " " if $sMountType;
-    $spMountOpts.=  "-o" . $oPath->shell_quote($sMountOpts) . " " if $sMountOpts;
+    $spMountOpts.=  "-t " . $oPeer->shell_quote($sMountType) . " " if $sMountType;
+    $spMountOpts.=  "-o" . $oPeer->shell_quote($sMountOpts) . " " if $sMountOpts;
 
     my %checkResult;
 
     my @sMountDevices= ();
 
     for my $sMountDevice (split(/\s+/, $sMountDeviceList)) {
-        push @sMountDevices, $oPath->glob($sMountDevice);
+        push @sMountDevices, $oPeer->glob($sMountDevice);
     }
 
     # if no device were given, try mounting by mount point
-    push @sMountDevices, $self->MountDir2Device($sMountDir, $oPath) unless scalar @sMountDevices;
+    push @sMountDevices, $self->MountDir2Device($sMountDir, $oPeer) unless scalar @sMountDevices;
 
     # array for collected mount messages (will be reseted if mount succeeds)
     my @sMountMessage = ();
@@ -111,7 +111,7 @@ sub mount {
     my $iResult= 0;
     for my $sMountDevice (@sMountDevices) {
         @sCurMountMessage= ();
-        $sMountDir= $self->MountDevice2Dir($sMountDevice, $oPath) unless $sMountDir;
+        $sMountDir= $self->MountDevice2Dir($sMountDevice, $oPeer) unless $sMountDir;
         unless ($sMountDir && $sMountDevice) {
             push @$arMessage, RabakLib::Log->logger->error("Could not find mount point for device \"$sMountDevice\"") unless $sMountDir;
             push @$arMessage, RabakLib::Log->logger->error("Could not find device for mount point \"$sMountDir\"") unless $sMountDevice;
@@ -121,7 +121,7 @@ sub mount {
         push @$arMessage, RabakLib::Log->logger->info("Trying to mount \"$sMountDevice\" to \"$sMountDir\"");
 
         # check if device is already mounted
-        my $sMountPath= $oPath->checkMount($sMountDevice, \@sCurMountMessage);
+        my $sMountPath= $oPeer->checkMount($sMountDevice, \@sCurMountMessage);
 
         # don't know which device to check: skip this mount (this should not happen!)
         if ($sMountPath eq "0") {
@@ -148,9 +148,9 @@ sub mount {
         }
 
         # ...and mount
-        $oPath->mount("$spMountOpts" . $oPath->shell_quote($sMountDevice) . " " . $oPath->shell_quote($sMountDir));
+        $oPeer->mount("$spMountOpts" . $oPeer->shell_quote($sMountDevice) . " " . $oPeer->shell_quote($sMountDir));
         if ($?) { # mount failed
-            my $sMountResult= $oPath->get_error;
+            my $sMountResult= $oPeer->get_error;
             chomp $sMountResult;
             $sMountResult =~ s/\r?\n/ - /g;
             push @$arMessage, RabakLib::Log->logger->warn("Mounting \"$sMountDevice\" on \"$sMountDir\" failed with: $sMountResult!");
@@ -158,7 +158,7 @@ sub mount {
         }
 
         # check mount result again
-        $sMountPath= $oPath->checkMount($sMountDevice, \@sCurMountMessage);
+        $sMountPath= $oPeer->checkMount($sMountDevice, \@sCurMountMessage);
 
         # device is not mounted: try next
         if ($sMountPath eq "1") {
@@ -209,10 +209,10 @@ sub unmount {
     
     return unless $sMountDir;
 
-    my $oPath = $self->{PATH_OBJECT};
-    $oPath->umount($oPath->shell_quote($sMountDir));
+    my $oPeer = $self->{PEER_OBJECT};
+    $oPeer->umount($oPeer->shell_quote($sMountDir));
     if ($?) {
-        my $sResult= $oPath->get_error;
+        my $sResult= $oPeer->get_error;
         chomp $sResult;
         $sResult =~ s/\r?\n/ - /g;
         my $sError= "Unmounting \"$sMountDir\" failed: $sResult!";
@@ -224,9 +224,9 @@ sub unmount {
         push @$arMessages, RabakLib::Log->logger->warn($sError);
         push @$arMessages, RabakLib::Log->logger->info("Trying lazy unmount.");
 
-        $oPath->umount("-l " . $oPath->shell_quote($sMountDir));
+        $oPeer->umount("-l " . $oPeer->shell_quote($sMountDir));
         if ($?) {
-            my $sResult= $oPath->get_error;
+            my $sResult= $oPeer->get_error;
             chomp $sResult;
             $sResult =~ s/\r?\n/ - /g;
     

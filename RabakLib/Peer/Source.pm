@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package RabakLib::Path::Source;
+package RabakLib::Peer::Source;
 
 use warnings;
 use strict;
@@ -9,7 +9,7 @@ use RabakLib::Log;
 
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Path::Mountable);
+@ISA = qw(RabakLib::Peer::Mountable);
 
 sub Factory {
     my $class= shift;
@@ -32,8 +32,8 @@ sub Factory {
 
     my $new;
     eval {
-        require "RabakLib/Path/Source/$sType.pm";
-        my $sClass= "RabakLib::Path::Source::$sType";
+        require "RabakLib/Peer/Source/$sType.pm";
+        my $sClass= "RabakLib::Peer::Source::$sType";
         $new= $sClass->CloneConf($oOrigConf);
         1;
     };

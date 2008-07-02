@@ -1,12 +1,12 @@
 #!/usr/bin/perl
 
-package RabakLib::Path::Source::File;
+package RabakLib::Peer::Source::File;
 
 use warnings;
 use strict;
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Path::Source);
+@ISA = qw(RabakLib::Peer::Source);
 
 use Data::Dumper;
 use File::Spec;
@@ -343,7 +343,7 @@ sub valid_source_dir {
 
 sub _run_rsync {
     my $self = shift;
-    my $oRsyncPath = shift || $self;
+    my $oRsyncPeer = shift || $self;
     my $sSrc = shift or die "_run_rsync: No source specified";
     my $sDst = shift or die "_run_rsync: No target specified";
     my $sFlags = shift || '';
@@ -354,14 +354,14 @@ sub _run_rsync {
     my $sRsyncCmd= "rsync $sFlags $sSrc $sDst";
 
     logger->info("Running" .
-        ($oRsyncPath->is_remote() ?
-            " on '" . $oRsyncPath->getUserHostPort() . "'" :
+        ($oRsyncPeer->is_remote() ?
+            " on '" . $oRsyncPeer->getUserHostPort() . "'" :
             "") .
         ": $sRsyncCmd");
     logger->incIndent();
 
     # run rsync command
-    my (undef, undef, $iExit, $sError)= $oRsyncPath->run_cmd($sRsyncCmd, $hHandles);
+    my (undef, undef, $iExit, $sError)= $oRsyncPeer->run_cmd($sRsyncCmd, $hHandles);
 
     logger->decIndent();
     logger->error($sError) if $sError;
@@ -422,13 +422,13 @@ sub run {
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
     
     # $oSshPeer contains ssh parameters for rsync (seen from executing location)
-    # - is TargetPath if target is remote (rsync will be run on SourcePath)
-    # - is SourcePath if target is local and source is remote (rsync will be run locally)
-    # $oRsyncPath contains path rsync is running from
-    # - is TargetPath if target is local and source is remote
-    # - is SourcePath otherwise
+    # - is TargetPeer if target is remote (rsync will be run on SourcePeer)
+    # - is SourcePeer if target is local and source is remote (rsync will be run locally)
+    # $oRsyncPeer contains peer rsync is running from
+    # - is TargetPeer if target is local and source is remote
+    # - is SourcePeer otherwise
     my $oSshPeer;
-    my $oRsyncPath = $self;
+    my $oRsyncPeer = $self;
     my $sSourceDirPref = "";
     my $sTargetDirPref = "";
     if ($oTarget->is_remote()) {
@@ -441,7 +441,7 @@ sub run {
     elsif ($self->is_remote()) {
         $oSshPeer= $self;
         $sSourceDirPref= $self->getUserHost(":");
-        $oRsyncPath = $oTarget;
+        $oRsyncPeer = $oTarget;
     }
     if ($oSshPeer) {
         my $sPort= $oSshPeer->get_value("port") || 22;
@@ -519,7 +519,7 @@ sub run {
     );
 
     # run rsync cmd
-    my $iRsyncExit = $self->_run_rsync($oRsyncPath, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir, $sFlags.$sLinkFlags, \%Handles);
+    my $iRsyncExit = $self->_run_rsync($oRsyncPeer, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir, $sFlags.$sLinkFlags, \%Handles);
 
     if (scalar @sLinkErrors) {
         logger->info("The following files could not be hard linked, trying again without --hard-links flag:");
@@ -534,9 +534,9 @@ sub run {
         close $fhwFiles;
 
         # copy files file to source if rsync is run remotely
-        if ($oRsyncPath->is_remote()) {
-            my $sRemFilesFile= $oRsyncPath->tempfile;
-            $oRsyncPath->copyLocalFileToRemote($sFilesFile, $sRemFilesFile);
+        if ($oRsyncPeer->is_remote()) {
+            my $sRemFilesFile= $oRsyncPeer->tempfile;
+            $oRsyncPeer->copyLocalFileToRemote($sFilesFile, $sRemFilesFile);
             $sFilesFile = $sRemFilesFile;
         }
         # reset StdOut flag for STDOUT handler
@@ -545,7 +545,7 @@ sub run {
         $Handles{STDERR} = sub {logger->error(@_)};
 
         # run rsync cmd (drop exit code - has been logged anyway)
-        $self->_run_rsync($oRsyncPath, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir,
+        $self->_run_rsync($oRsyncPeer, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir,
             "$sFlags --files-from=" . $self->shell_quote($sFilesFile),
             \%Handles);
 
