@@ -163,12 +163,12 @@ sub collect {
 
     my $aDirs= $self->{OPTS}{dirs};
     my %hDirsDone= ();
-    for my $sDir (@$aDirs) {
+    for my $sRelDir (@$aDirs) {
     	last if $oTrap->terminated();
 
-        $sDir= Cwd::abs_path($sDir);
-        unless (-d $sDir) {
-            logger()->warn("'$sDir' is not a directory. Skipping.");
+        my $sDir= Cwd::abs_path($sRelDir);
+        unless (defined $sDir && -d $sDir) {
+            logger()->warn("'$sRelDir' is not a directory. Skipping.");
             next;
         }
         if (exists $hDirsDone{$sDir}) {
@@ -176,7 +176,8 @@ sub collect {
             next;
         }
         $hDirsDone{$sDir}= undef;
-        logger()->info("\tProcessing directory '$sDir'...");
+        logger()->incIndent();
+        logger()->info("Processing directory '$sDir'...");
         if ($self->{DS}->newDirectory($sDir)) {
             find({
                 wanted => sub { $self->_processFiles($oTrap); },
@@ -189,6 +190,7 @@ sub collect {
         }
         $self->{DS}->finishDirectory();
         logger()->info("done");
+        logger()->decIndent();
     }
     $self->{STATS}{total_inodes}= $self->{DS}->getInodeCount();
     logger()->info("done", "Finishing information store...");
