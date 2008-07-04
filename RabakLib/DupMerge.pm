@@ -17,6 +17,7 @@ use RabakLib::Trap;
 use RabakLib::Log;
 use RabakLib::InodeStore;
 use RabakLib::InodeCache;
+use RabakLib::Conf;
 
 sub new {
     my $class= shift;
@@ -189,6 +190,12 @@ sub _run {
 
 sub run {
     my $self= shift;
+    
+    my $oConf= RabakLib::Conf->new();
+    $oConf->set_value("switch.verbose", $self->{OPTS}{verbose} ? 6 : 3);
+    $oConf->set_value("switch.pretend", $self->{OPTS}{dryrun});
+    $oConf->set_value("switch.quiet", $self->{OPTS}{quiet});
+    logger()->init($oConf);
 
     return unless $self->{INODE_CACHE}->collect();
 
