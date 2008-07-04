@@ -121,39 +121,48 @@ sub getInodesBySizeKey {
     return $self->{inode_db}->getInodesBySizeKey($iSize, $hKeys);
 }
 
+sub _loopFilesByInode {
+    my $self= shift;
+    my $iInode= shift;
+    my $fFileOp= shift;
+    
+    for my $db (@{$self->{dbs}}) {
+        my $sDirectory= $db->getData("directory");
+        for my $sFile (@{$db->getFilesByInode($iInode)}) {
+            my $sFullFileName= "$sDirectory/$sFile";
+            if (-f $sFullFileName) {
+                # check if inode is connected to this file
+                my $iCurInode= (lstat($sFullFileName))[1];
+                
+                if ($iCurInode == $iInode) {
+                    return $sFullFileName unless $fFileOp->($sFullFileName);
+                    next;
+                }
+ 
+                warn "File '$sFullFileName' has changed inode!";
+                # TODO: insert new inode if not existant
+                if ($self->inodeExists($iCurInode)) {
+                    $db->updateInodeFile($iCurInode, $sFile);
+                }
+                else {
+                    $db->removeFile($sFile);
+                }
+            }
+            else {
+                warn "File '$sFullFileName' disappeared!";
+                $db->removeFile($sFile);
+            }
+        }
+    }
+    return undef;
+}
+
 sub getFilesByInode {
     my $self= shift;
     my $iInode= shift;
     
     my @files= ();
-    for my $db (@{$self->{dbs}}) {
-        my $sDirectory= $db->getData("directory");
-        my $sFile= undef;
-        my $aFiles= $db->getFilesByInode($iInode);
-        while ($sFile= shift @$aFiles) {
-            if (-f "$sDirectory/$sFile") {
-                # check if inode is connected to this file
-                my $iCurInode= (lstat("$sDirectory/$sFile"))[1];
-                if ($iCurInode == $iInode) {
-                    push @files, "$sDirectory/$sFile";
-                }
-                else {
-                    warn "File '$sDirectory/$sFile' has changed inode!";
-                    # TODO: insert new inode if not existant
-                    if ($self->inodeExists($iCurInode)) {
-                        $db->updateInodeFile($iCurInode, $sFile);
-                    }
-                    else {
-                        $db->removeFile($sFile);
-                    }
-                }
-            }
-            else {
-                warn "File '$sDirectory/$sFile' disappeared!";
-                $db->removeFile($sFile);
-            }
-        }
-    }
+    $self->_loopFilesByInode($iInode, sub{ push @files, @_ });
     return \@files;
 }
 
@@ -161,32 +170,7 @@ sub getOneFileByInode {
     my $self= shift;
     my $iInode= shift;
     
-    for my $db (@{$self->{dbs}}) {
-        my $sDirectory= $db->getData("directory");
-        for my $sFile (@{$db->getFilesByInode($iInode)}) {
-            if (-f "$sDirectory/$sFile") {
-                # check if inode is connected to this file
-                my $iCurInode= (lstat("$sDirectory/$sFile"))[1];
-                if ($iCurInode == $iInode) {
-                    return "$sDirectory/$sFile";
-                }
-                else {
-                    warn "File '$sDirectory/$sFile' has changed inode!";
-                    # TODO: insert new inode if not existant
-                    if ($self->inodeExists($iCurInode)) {
-                        $db->updateInodeFile($iCurInode, $sFile);
-                    }
-                    else {
-                        $db->removeFile($sFile);
-                    }
-                }
-            }
-            else {
-                warn "File '$sDirectory/$sFile' disappeared!";
-                $db->removeFile($sFile);
-            }
-        }
-    }
+    return $self->_loopFilesByInode($iInode, sub{ 0 });
 }
 
 sub getFileKeyByInode {
