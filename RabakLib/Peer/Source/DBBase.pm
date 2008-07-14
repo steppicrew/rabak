@@ -141,11 +141,4 @@ sub run {
     return $bFoundOne ? 0 : 9;
 }
 
-sub getPath {
-    my $self= shift;
-    my $sPath= shift || $self->get_value("path");
-
-    return $sPath;
-}
-
 1;

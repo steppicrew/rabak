@@ -9,7 +9,7 @@ use RabakLib::Log;
 
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Peer::Mountable);
+@ISA = qw(RabakLib::Peer);
 
 sub Factory {
     my $class= shift;
