@@ -112,6 +112,7 @@ sub getPath {
     return $sPath unless $sBasePath;
 
 #    unless (File::Spec->file_name_is_absolute($sBasePath)) {
+    # path may contain symlinks and should be expanded once
     unless ($self->{PATH_IS_ABSOLUTE}) {
         $sBasePath= $self->abs_path($sBasePath);
         $self->set_value("path", $sBasePath);
