@@ -291,13 +291,11 @@ sub _flatten_mixed_filter {
     return $aTails;
 }
 
-#TODO: call super-functions of ALL parent-classes
 sub sort_show_key_order {
     my $self= shift;
     ($self->SUPER::sort_show_key_order(), "exclude", "include", "filter", "mount");
 }
 
-#TODO: call super-functions of ALL parent-classes
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};

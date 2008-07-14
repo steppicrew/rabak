@@ -50,12 +50,12 @@ sub CloneConf {
     return $new;
 }
 
-sub sort_show_key_order {
+sub _mountable_sort_show_key_order {
     my $self= shift;
     ("host", "user", "path", $self->SUPER::sort_show_key_order());
 }
 
-sub show {
+sub _mountable_show {
     my $self= shift;
     my $hConfShowCache= shift || {};
 

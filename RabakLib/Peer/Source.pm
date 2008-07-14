@@ -60,14 +60,31 @@ sub getPathExtension {
 
 sub sort_show_key_order {
     my $self= shift;
-    ("type", $self->SUPER::sort_show_key_order(), "keep");
+    
+    my @sSuperResult= ();
+    # TODO: is there a better way to call parallel objects?
+    if ($self->can("_mountable_sort_show_key_order")) {
+        @sSuperResult= $self->_mountable_sort_show_key_order();
+    }
+    else {
+        @sSuperResult= SUPER::sort_show_key_order();
+    }
+    ("type", @sSuperResult, "keep");
 }
 
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
+    
+    my @sSuperResult= ();
+    # TODO: is there a better way to call parallel objects?
+    if ($self->can("_mountable_show")) {
+        @sSuperResult= @{$self->_mountable_show($hConfShowCache)};
+    }
+    else {
+        @sSuperResult= @{SUPER::show($hConfShowCache)};
+    }
 
-    my @sSuperResult= @{$self->SUPER::show($hConfShowCache)};
     return [] unless @sSuperResult;
 
     return [
