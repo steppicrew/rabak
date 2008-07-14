@@ -43,6 +43,7 @@ sub CloneConf {
             $new->set_value("port", $iPort) if $iPort;
         }
         $new->set_value("path", $sPath);
+        $new->{PATH_IS_ABSOLUTE}= 0;
     }
 
     # print Data::Dumper->Dump([$self->{VALUES}]); die;
@@ -100,7 +101,7 @@ sub show {
     return $aResult;
 }
 
-# get path works only with file object!
+# getPath works only with file objects!
 # should be overwritten by other subclasses
 sub getPath {
     my $self= shift;
@@ -110,9 +111,11 @@ sub getPath {
 
     return $sPath unless $sBasePath;
 
-    unless (File::Spec->file_name_is_absolute($sBasePath)) {
+#    unless (File::Spec->file_name_is_absolute($sBasePath)) {
+    unless ($self->{PATH_IS_ABSOLUTE}) {
         $sBasePath= $self->abs_path($sBasePath);
         $self->set_value("path", $sBasePath);
+        $self->{PATH_IS_ABSOLUTE}= 1;
     }
 
     $sPath= File::Spec->canonpath($sPath); # simplify path

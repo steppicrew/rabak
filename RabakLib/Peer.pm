@@ -120,7 +120,7 @@ sub getFullPath {
     return $sPath;
 }
 
-# dummy function - to be overridden
+# dummy function - to be overridden (Mountable.pm)
 sub getPath {
     my $self= shift;
     my $sPath= shift || $self->get_value("path");
@@ -644,8 +644,8 @@ sub isSymlink {
 # abs_path *MUST NOT* use getPath!! would result in an infinte loop
 sub abs_path {
     my $self= shift;
-    my $sFile= shift; # !! path *NOT* relative to target path but to cwd
-
+    my $sFile= shift || '.'; # !! path *NOT* relative to target path but to cwd
+    
     return ${$self->_saveperl('
             # abs_path()
             use Cwd;
