@@ -50,6 +50,16 @@ sub CloneConf {
     return $new;
 }
 
+sub sort_show_key_order {
+    my $self= shift;
+    return $self->_mountable_sort_show_key_order();
+}
+
+sub show {
+    my $self= shift;
+    return $self->_mountable_show();
+}
+
 sub _mountable_sort_show_key_order {
     my $self= shift;
     ("host", "user", "path", $self->SUPER::sort_show_key_order());
