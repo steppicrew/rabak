@@ -50,37 +50,6 @@ sub CloneConf {
     return $new;
 }
 
-sub getFullPath {
-    my $self= shift;
-    my $sPath= $self->getPath(shift);
-
-    return $self->getUserHostPort(":") . "$sPath"
-}
-
-sub getUserHost {
-    my $self= shift;
-    my $sSeparator= shift || '';
-
-    return "" unless $self->is_remote();
-
-    my $sUser= $self->get_value("user");
-    return ($sUser ? "$sUser\@" : "") .
-        $self->get_value("host") .
-        $sSeparator;
-}
-
-sub getUserHostPort {
-    my $self= shift;
-    my $sSeparator= shift || '';
-
-    return "" unless $self->is_remote();
-
-    my $iPort= $self->get_value("port", 22);
-    return $self->getUserHost() .
-        ($iPort == 22 ? "" : ":$iPort") .
-        $sSeparator;
-}
-
 sub sort_show_key_order {
     my $self= shift;
     ("host", "user", "path", $self->SUPER::sort_show_key_order());
@@ -101,8 +70,6 @@ sub show {
     return $aResult;
 }
 
-# getPath works only with file objects!
-# should be overwritten by other subclasses
 sub getPath {
     my $self= shift;
     my $sPath= shift || '.';

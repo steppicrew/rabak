@@ -113,19 +113,43 @@ sub is_remote {
     return $self->get_value("host");
 }
 
-# dummy function - to be overridden
-sub getFullPath {
-    my $self= shift;
-    my $sPath= $self->get_value("path");
-    return $sPath;
-}
-
 # dummy function - to be overridden (Mountable.pm)
 sub getPath {
     my $self= shift;
     my $sPath= shift || $self->get_value("path");
 
     return $sPath;
+}
+
+sub getFullPath {
+    my $self= shift;
+    my $sPath= $self->getPath(shift);
+
+    return $self->getUserHostPort(":") . "$sPath"
+}
+
+sub getUserHost {
+    my $self= shift;
+    my $sSeparator= shift || '';
+
+    return "" unless $self->is_remote();
+
+    my $sUser= $self->get_value("user");
+    return ($sUser ? "$sUser\@" : "") .
+        $self->get_value("host") .
+        $sSeparator;
+}
+
+sub getUserHostPort {
+    my $self= shift;
+    my $sSeparator= shift || '';
+
+    return "" unless $self->is_remote();
+
+    my $iPort= $self->get_value("port", 22);
+    return $self->getUserHost() .
+        ($iPort == 22 ? "" : ":$iPort") .
+        $sSeparator;
 }
 
 # run command locally or remote
