@@ -293,7 +293,15 @@ sub _flatten_mixed_filter {
 
 sub sort_show_key_order {
     my $self= shift;
-    ($self->SUPER::sort_show_key_order(), "exclude", "include", "filter", "mount");
+    (
+        # overwrite Source's SUPER class with Mountable
+        $self->SUPER::sort_show_key_order(
+            sub{
+                $self->RabakLib::Peer::Mountable::sort_show_key_order(@_);
+            }
+        ),
+        "exclude", "include", "filter", "mount"
+    );
 }
 
 sub show {
@@ -301,7 +309,13 @@ sub show {
     my $hConfShowCache= shift || {};
     my $oTarget= shift;
     
-    my $aResult = $self->SUPER::show($hConfShowCache, $oTarget);
+    # overwrite Source's SUPER class with Mountable
+    my $aResult = $self->SUPER::show(
+        $hConfShowCache,
+        sub{
+            $self->RabakLib::Peer::Mountable::show(@_)
+        },
+    );
     
     my $aMacroStack= [];
 

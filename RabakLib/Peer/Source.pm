@@ -58,16 +58,17 @@ sub getPathExtension {
     return ".$sName";
 }
 
+# TODO: is there a better way to call parallel objects?
 sub sort_show_key_order {
     my $self= shift;
+    my $fSuper= shift;
     
     my @sSuperResult= ();
-    # TODO: is there a better way to call parallel objects?
-    if ($self->can("_mountable_sort_show_key_order")) {
-        @sSuperResult= $self->_mountable_sort_show_key_order();
+    if ($fSuper) {
+        @sSuperResult= $fSuper->();
     }
     else {
-        @sSuperResult= SUPER::sort_show_key_order();
+        @sSuperResult= $self->SUPER::sort_show_key_order();
     }
     ("type", @sSuperResult, "keep");
 }
@@ -75,14 +76,14 @@ sub sort_show_key_order {
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
+    my $fSuper= shift;
     
     my @sSuperResult= ();
-    # TODO: is there a better way to call parallel objects?
-    if ($self->can("_mountable_show")) {
-        @sSuperResult= @{$self->_mountable_show($hConfShowCache)};
+    if ($fSuper) {
+        @sSuperResult= @{$fSuper->($hConfShowCache)};
     }
     else {
-        @sSuperResult= @{SUPER::show($hConfShowCache)};
+        @sSuperResult= @{$self->SUPER::show($hConfShowCache)};
     }
 
     return [] unless @sSuperResult;
