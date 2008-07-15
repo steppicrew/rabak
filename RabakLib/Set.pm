@@ -107,8 +107,8 @@ sub show {
     
     # print all not already shown references
     my @sSubResult= $self->showUncachedReferences($hConfShowCache);
+    push @$aResult, "", "# Misc references:", @sSubResult if scalar @sSubResult > 1;
     push @$aResult, "";
-    push @$aResult, "# Misc references:", @sSubResult if scalar @sSubResult > 1;
     
     return $self->simplifyShow($aResult);
 }
