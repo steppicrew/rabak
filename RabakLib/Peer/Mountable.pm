@@ -22,7 +22,7 @@ use vars qw(@ISA);
 
 =head1 DESCRIPTION
 
-Mountable.pm is a abstract class for local or remote file objects.
+Mountable.pm is an abstract class for local or remote file objects.
 It provides mount operations.
 
 =over 4

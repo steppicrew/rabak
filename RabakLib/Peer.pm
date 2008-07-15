@@ -18,8 +18,7 @@ use IPC::Run qw(start pump finish);
 
 =head1 DESCRIPTION
 
-Peer.pm is a abstract class for local or remote objects (file objects,
-databases etc.).
+Peer.pm is an abstract class for local or remote objects (file, databases etc.).
 It provides some basic filesystem operations on peer's system and 
 methods for command execution.
 

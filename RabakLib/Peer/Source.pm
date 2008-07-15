@@ -13,8 +13,8 @@ use vars qw(@ISA);
 
 =head1 DESCRIPTION
 
-Source.pm is a abstract class for source objects (file, databases etc.).
-It provides an abstract method 'Factory' to create specialized source objects 
+Source.pm is an abstract class for source objects (file, databases etc.).
+It provides a static method 'Factory' to create specialized source objects 
 
 =over 4
 
@@ -34,10 +34,10 @@ sub Factory {
     }
     my $sType= $oOrigConf->get_value("type");
     unless (defined $sType) {
-       $sType= "file" unless $sType;
+       $sType= "file";
        $oOrigConf->set_value("type", $sType);
     } 
-    $sType= ucfirst $sType;
+    $sType= ucfirst lc $sType;
 
     my $new;
     eval {
