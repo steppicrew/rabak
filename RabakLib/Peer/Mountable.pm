@@ -20,33 +20,23 @@ use vars qw(@ISA);
 
 @ISA = qw(RabakLib::Peer);
 
+=head1 DESCRIPTION
+
+Mountable.pm is a abstract class for local or remote file objects.
+It provides mount operations.
+
+=over 4
+
+=cut
+
 sub CloneConf {
     my $class= shift;
     my $oOrigConf= shift;
     
     my $new= $class->SUPER::CloneConf($oOrigConf);
 
-    my $sPath= $new->get_value("path");
-    
-    if ($sPath) {
-        # remove leading "file://" etc.
-        warn("Internal error: '$1' should already be removed. Please file a bug report with config included!") if $sPath=~ s/^(\w+\:\/\/)//;
-        # extract hostname, user and port
-        if ($sPath=~ s/^(\S+?\@)?([\-0-9a-z\.]+)(\:\d+)?\://i) {
-            my $sUser= $1 || '';
-            my $sHost= $2;
-            my $iPort= $3 || 0;
-            $sUser=~ s/\@$//;
-            $iPort=~ s/^\://;
-            $new->set_value("host", $sHost);
-            $new->set_value("user", $sUser) if $sUser;
-            $new->set_value("port", $iPort) if $iPort;
-        }
-        $new->set_value("path", $sPath);
-        $new->{PATH_IS_ABSOLUTE}= 0;
-    }
+    $new->{PATH_IS_ABSOLUTE}= 0;
 
-    # print Data::Dumper->Dump([$self->{VALUES}]); die;
     return $new;
 }
 
@@ -59,7 +49,7 @@ sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
 
-    my  @oMounts= $self->getMountObjects();
+    my @oMounts= $self->getMountObjects();
     my $aResult= $self->SUPER::show($hConfShowCache);
     
     my @sSubResult= ();

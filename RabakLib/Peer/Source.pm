@@ -11,6 +11,15 @@ use vars qw(@ISA);
 
 @ISA = qw(RabakLib::Peer);
 
+=head1 DESCRIPTION
+
+Source.pm is a abstract class for source objects (file, databases etc.).
+It provides an abstract method 'Factory' to create specialized source objects 
+
+=over 4
+
+=cut
+
 sub Factory {
     my $class= shift;
     my $oOrigConf= shift;

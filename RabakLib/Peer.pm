@@ -18,6 +18,11 @@ use IPC::Run qw(start pump finish);
 
 =head1 DESCRIPTION
 
+Peer.pm is a abstract class for local or remote objects (file objects,
+databases etc.).
+It provides some basic filesystem operations on peer's system and 
+methods for command execution.
+
 =over 4
 
 =cut
@@ -41,6 +46,35 @@ sub new {
 
     bless $self, $class;
 
+}
+
+sub CloneConf {
+    my $class= shift;
+    my $oOrigConf= shift;
+    
+    my $new= $class->SUPER::CloneConf($oOrigConf);
+
+    my $sPath= $new->get_value("path");
+    
+    if ($sPath) {
+        # remove leading "file://" etc.
+        warn("Internal error: '$1' should already been removed. Please file a bug report with config included!") if $sPath=~ s/^(\w+\:\/\/)//;
+        # extract hostname, user and port
+        if ($sPath=~ s/^(\S+?\@)?([\-0-9a-z\.]+)(\:\d+)?\://i) {
+            my $sUser= $1 || '';
+            my $sHost= $2;
+            my $iPort= $3 || 0;
+            $sUser=~ s/\@$//;
+            $iPort=~ s/^\://;
+            $new->set_value("host", $sHost);
+            $new->set_value("user", $sUser) if $sUser;
+            $new->set_value("port", $iPort) if $iPort;
+        }
+        $new->set_value("path", $sPath);
+    }
+
+    # print Data::Dumper->Dump([$self->{VALUES}]); die;
+    return $new;
 }
 
 # delete all non deleted temp files on exit (important for remote sessions)

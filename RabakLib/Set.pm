@@ -636,17 +636,19 @@ sub _backup_setup {
     my @sBakDir= ();
     my $oTarget= $hBackupData->{target};
 
-    my @sMountMessage;
-    my $iMountResult= $oSource->mountAll(\@sMountMessage);
+    if ($oSource->isa("RabakLib::Peer::Mountable")) {
+        my @sMountMessage;
+        my $iMountResult= $oSource->mountAll(\@sMountMessage);
 
-    # mount errors on source are non-fatal!
-    #unless ($iMountResult) { # fatal mount error
-    #    logger->error("There was at least one fatal mount error on source. Backup set skipped.");
-    #    logger->error(@sMountMessage);
-    #    return 3;
-    #}
+        # mount errors on source are non-fatal!
+        #unless ($iMountResult) { # fatal mount error
+        #    logger->error("There was at least one fatal mount error on source. Backup set skipped.");
+        #    logger->error(@sMountMessage);
+        #    return 3;
+        #}
 
-    logger->log(@sMountMessage);
+        logger->log(@sMountMessage);
+    }
 
     my $sBakSetExt= $self->getPathExtension();
     my $sBakSourceExt= $oSource->getPathExtension();
@@ -722,7 +724,7 @@ sub _backup_cleanup {
     my $hBackupData= shift;
     
     my $oSource= $hBackupData->{source};
-    $oSource->unmountAll;
+    $oSource->unmountAll() if $oSource->isa("RabakLib::Peer::Mountable");
 
     my $sBakSource= $oSource->get_value("name");
     my $sBakDay= $hBackupData->{bak_day};
