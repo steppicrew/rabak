@@ -57,14 +57,14 @@ sub CloneConf {
     
     if ($sPath) {
         # remove leading "file://" etc.
-        warn("Internal error: '$1' should already been removed. Please file a bug report with config included!") if $sPath=~ s/^(\w+\:\/\/)//;
+        warn("Internal error: '$1' should already have been removed. Please file a bug report with config included!") if $sPath=~ s/^(\w+\:\/\/)//;
         # extract hostname, user and port
         if ($sPath=~ s/^(\S+?\@)?([\-0-9a-z\.]+)(\:\d+)?\://i) {
             my $sUser= $1 || '';
             my $sHost= $2;
-            my $iPort= $3 || 0;
+            my $iPort= $3;
             $sUser=~ s/\@$//;
-            $iPort=~ s/^\://;
+            $iPort=~ s/^\:// if $iPort;
             $new->set_value("host", $sHost);
             $new->set_value("user", $sUser) if $sUser;
             $new->set_value("port", $iPort) if $iPort;
@@ -146,7 +146,7 @@ sub is_remote {
     return $self->get_value("host");
 }
 
-# dummy function - to be overridden (Mountable.pm)
+# may be overridden (Mountable.pm)
 sub getPath {
     my $self= shift;
     my $sPath= shift || $self->get_value("path");
@@ -350,7 +350,7 @@ sub build_ssh_cmd {
     return join(" ", @sSshCmd);
 }
 
-# quote "'" cahr for shell execution
+# quote "'" char for shell execution
 sub shell_quote {
     my $self= shift;
     my $sVal= shift;
