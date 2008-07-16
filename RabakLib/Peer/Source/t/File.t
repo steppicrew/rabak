@@ -20,7 +20,7 @@ ok ref $oRootConf, 'RabakLib::Conf', 'Checking base config';
 
 my $oSetConf= $oRootConf->get_node("testbakset");
 ok ref $oSetConf, 'RabakLib::Conf', 'Checking bakset config';
-my $oSet= RabakLib::Set->CloneConf($oSetConf);
+my $oSet= RabakLib::Set->newFromConf($oSetConf);
 ok ref $oSet, 'RabakLib::Set', 'Creating bak set from Conf';
 ####################################################
 # test source factory

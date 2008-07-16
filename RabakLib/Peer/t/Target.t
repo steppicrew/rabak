@@ -20,14 +20,14 @@ ok ref $oRootConf, 'RabakLib::Conf', 'Checking base config';
 
 my $oSetConf= $oRootConf->get_node("testbakset");
 ok ref $oSetConf, 'RabakLib::Conf', 'Checking bakset config';
-my $oSet= RabakLib::Set->CloneConf($oSetConf);
+my $oSet= RabakLib::Set->newFromConf($oSetConf);
 ok ref $oSet, 'RabakLib::Set', 'Creating bak set from Conf';
 ####################################################
 # test target creation
 my $oTargetConf= $oRootConf->get_node("testtarget");
 ok ref $oTargetConf, 'RabakLib::Conf', 'Checking target config';
 ok -d $oTargetConf->get_value("path"), 1, 'Target path is a directory';
-my $oTarget= RabakLib::Peer::Target->CloneConf($oTargetConf);
+my $oTarget= RabakLib::Peer::Target->newFromConf($oTargetConf);
 ok ref $oTarget, 'RabakLib::Peer::Target', 'Creating Target from Conf';
 
 ####################################################

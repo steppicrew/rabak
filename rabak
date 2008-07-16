@@ -191,7 +191,7 @@ sub _cmd_setup {
     }
 
     # Build a Set from Hash
-    my $oSet= RabakLib::Set->CloneConf($hSetConf);
+    my $oSet= RabakLib::Set->newFromConf($hSetConf);
     my $sError= $oSet->get_validation_message();
 
     if ($sError) {

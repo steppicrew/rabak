@@ -97,7 +97,7 @@ ok $oSubConf1->get_value('test_key'), 'sub1 test value 1', 'Checking other sub v
 ok $oSubConf11->get_value('test_key'), 'sub11 test value', 'Checking other sub values';
 
 # test cloning
-my $oCloneSubConf1= RabakLib::Conf->CloneConf($oSubConf1);
+my $oCloneSubConf1= RabakLib::Conf->newFromConf($oSubConf1);
 ok $oCloneSubConf1->{PARENT_CONF}, $oRootConf, 'Reference to RootConf from CloneSubConf1';
 ok $oCloneSubConf1, $oRootConf->get_node('subconf1'), 'Reference to CloneSubConf1 from RootConf';
 ok $oSubConf11->{PARENT_CONF}, $oCloneSubConf1, 'Reference to CloneSubConf1 from SubConf11';

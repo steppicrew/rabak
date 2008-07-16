@@ -30,11 +30,11 @@ It provides mount operations.
 =cut
 
 # this method is never called for SourceMountable objects! and should be removed!
-#sub CloneConf {
+#sub newFromConf {
 #    my $class= shift;
 #    my $oOrigConf= shift;
 #    
-#    my $new= $class->SUPER::CloneConf($oOrigConf);
+#    my $new= $class->SUPER::newFromConf($oOrigConf);
 #
 #    $new->{PATH_IS_ABSOLUTE}= 0;
 #
@@ -137,7 +137,7 @@ sub getMountObjects {
             $oConf= RabakLib::Conf->new(undef, $self);
             $oConf->set_value("directory", $sPath);
         }
-        push @oMounts, RabakLib::Mount->CloneConf($oConf);
+        push @oMounts, RabakLib::Mount->newFromConf($oConf);
     } 
     return @oMounts;
 }
