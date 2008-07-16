@@ -67,6 +67,9 @@ sub getPathExtension {
     return ".$sName";
 }
 
+sub prepareBackup { 1 }
+sub finishBackup { 1 }
+
 # TODO: is there a better way to call parallel objects?
 sub sort_show_key_order {
     my $self= shift;
