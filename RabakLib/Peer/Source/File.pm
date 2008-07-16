@@ -6,11 +6,12 @@ use warnings;
 use strict;
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Peer::Source);
+@ISA = qw(RabakLib::Peer::SourceMountable);
 
 use Data::Dumper;
 use File::Spec;
 use RabakLib::Log;
+use RabakLib::Peer::SourceMountable;
 
 # hash table for detecting references and list of all used macros in filter expansion
 sub _get_filter {
@@ -32,7 +33,7 @@ sub _get_filter {
         push @$aFilter, "-(", "&exclude", ")" if defined $self->get_raw_value('exclude');
         push @$aFilter, "+(", "&include", ")" if defined $self->get_raw_value('include');
     }
-    return $self->_parseFilter($aFilter, $self->valid_source_dir(), $aMacroStack);
+    return $self->_parseFilter($aFilter, $self->getPath(), $aMacroStack);
 }
 
 # parse filter string in $sFilter
@@ -99,7 +100,8 @@ sub _parseFilter {
             }
         }
         if ($sEntry=~ /^\// && $sEntry!~ s/^$sqBaseDir/\//) {
-            if ($sEntry =~ /^(.+)\*/) {
+            # cut entry on first occurance of '*'. '?' or '['
+            if ($sEntry =~ /^(.+?)[\*\?\[]/) {
                 my $sShortEntry= $1;
                 my $sShortBase= substr($sBaseDir, 0, length $sShortEntry);
                 logger->warn("Could not determine if '$sEntry' is contained in source path '$sBaseDir'. Ignored.") if $sShortBase eq $sShortEntry;
@@ -293,7 +295,11 @@ sub _flatten_mixed_filter {
 
 sub sort_show_key_order {
     my $self= shift;
-    ($self->SUPER::sort_show_key_order(), "exclude", "include", "filter", "mount");
+    (
+        # overwrite Source's SUPER class with Mountable
+        $self->SUPER::sort_show_key_order(),
+        "exclude", "include", "filter", "mount"
+    );
 }
 
 sub show {
@@ -301,7 +307,8 @@ sub show {
     my $hConfShowCache= shift || {};
     my $oTarget= shift;
     
-    my $aResult = $self->SUPER::show($hConfShowCache, $oTarget);
+    # overwrite Source's SUPER class with Mountable
+    my $aResult = $self->SUPER::show($hConfShowCache);
     
     my $aMacroStack= [];
 
@@ -319,7 +326,7 @@ sub show {
     
     return $aResult unless $self->get_switch("verbose", 0) >= LOG_VERBOSE_LEVEL;
 
-    my $sBaseDir= $self->valid_source_dir();
+    my $sBaseDir= $self->getFullPath();
     push @$aResult, "", "# Expanded rsync filter (relative to '$sBaseDir'):", map {"#\t$_"} @sFilter;
     return $aResult;
 }
@@ -329,16 +336,16 @@ sub valid_source_dir {
 
     my $sSourceDir= $self->getFullPath();
 
-    if (!$self->isDir()) {
+    unless ($self->isDir()) {
         logger->error("Source \"$sSourceDir\" is not a directory. Backup set skipped.");
         return undef;
     }
-    if (!$self->isReadable()) {
+    unless ($self->isReadable()) {
         logger->error("Source \"$sSourceDir\" is not readable. Backup set skipped.");
         return undef;
     }
 
-    return $self->getPath;
+    return $self->getPath();
 }
 
 sub _run_rsync {
@@ -373,6 +380,24 @@ sub _run_rsync {
     return 0;    
 }
 
+sub prepareBackup {
+    my $self= shift;
+    
+    my @sMountMessage;
+    my $iMountResult= $self->mountAll(\@sMountMessage);
+
+    logger->log(@sMountMessage);
+    # returns undef if source path is not a readable directory
+    return $self->valid_source_dir();
+}
+
+sub finishBackup {
+    my $self= shift;
+    
+    $self->unmountAll();
+    return 1;
+}
+
 sub run {
     my $self= shift;
     my $oTarget= shift;
@@ -380,8 +405,6 @@ sub run {
     my $sUniqueName= shift;
     my $bPretend= shift;
     my @sBakDir= @_;
-
-    return 3 unless $self->valid_source_dir();
 
     # print Dumper($self); die;
 

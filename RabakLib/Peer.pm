@@ -18,6 +18,10 @@ use IPC::Run qw(start pump finish);
 
 =head1 DESCRIPTION
 
+Peer.pm is an abstract class for local or remote objects (file, databases etc.).
+It provides some basic filesystem operations on peer's system and 
+methods for command execution.
+
 =over 4
 
 =cut
@@ -41,6 +45,35 @@ sub new {
 
     bless $self, $class;
 
+}
+
+sub CloneConf {
+    my $class= shift;
+    my $oOrigConf= shift;
+    
+    my $new= $class->SUPER::CloneConf($oOrigConf);
+
+    my $sPath= $new->get_value("path");
+    
+    if ($sPath) {
+        # remove leading "file://" etc.
+        warn("Internal error: '$1' should already have been removed. Please file a bug report with config included!") if $sPath=~ s/^(\w+\:\/\/)//;
+        # extract hostname, user and port
+        if ($sPath=~ s/^(\S+?\@)?([\-0-9a-z\.]+)(\:\d+)?\://i) {
+            my $sUser= $1 || '';
+            my $sHost= $2;
+            my $iPort= $3;
+            $sUser=~ s/\@$//;
+            $iPort=~ s/^\:// if $iPort;
+            $new->set_value("host", $sHost);
+            $new->set_value("user", $sUser) if $sUser;
+            $new->set_value("port", $iPort) if $iPort;
+        }
+        $new->set_value("path", $sPath);
+    }
+
+    # print Data::Dumper->Dump([$self->{VALUES}]); die;
+    return $new;
 }
 
 # delete all non deleted temp files on exit (important for remote sessions)
@@ -113,19 +146,43 @@ sub is_remote {
     return $self->get_value("host");
 }
 
-# dummy function - to be overridden
-sub getFullPath {
-    my $self= shift;
-    my $sPath= $self->get_value("path");
-    return $sPath;
-}
-
-# dummy function - to be overridden
+# may be overridden (Mountable.pm)
 sub getPath {
     my $self= shift;
     my $sPath= shift || $self->get_value("path");
 
     return $sPath;
+}
+
+sub getFullPath {
+    my $self= shift;
+    my $sPath= $self->getPath(shift);
+
+    return $self->getUserHostPort(":") . "$sPath"
+}
+
+sub getUserHost {
+    my $self= shift;
+    my $sSeparator= shift || '';
+
+    return "" unless $self->is_remote();
+
+    my $sUser= $self->get_value("user");
+    return ($sUser ? "$sUser\@" : "") .
+        $self->get_value("host") .
+        $sSeparator;
+}
+
+sub getUserHostPort {
+    my $self= shift;
+    my $sSeparator= shift || '';
+
+    return "" unless $self->is_remote();
+
+    my $iPort= $self->get_value("port", 22);
+    return $self->getUserHost() .
+        ($iPort == 22 ? "" : ":$iPort") .
+        $sSeparator;
 }
 
 # run command locally or remote
@@ -293,7 +350,7 @@ sub build_ssh_cmd {
     return join(" ", @sSshCmd);
 }
 
-# quote "'" cahr for shell execution
+# quote "'" char for shell execution
 sub shell_quote {
     my $self= shift;
     my $sVal= shift;
@@ -644,8 +701,8 @@ sub isSymlink {
 # abs_path *MUST NOT* use getPath!! would result in an infinte loop
 sub abs_path {
     my $self= shift;
-    my $sFile= shift; # !! path *NOT* relative to target path but to cwd
-
+    my $sFile= shift || '.'; # !! path *NOT* relative to target path but to cwd
+    
     return ${$self->_saveperl('
             # abs_path()
             use Cwd;

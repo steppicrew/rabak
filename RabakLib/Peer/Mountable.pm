@@ -20,65 +20,26 @@ use vars qw(@ISA);
 
 @ISA = qw(RabakLib::Peer);
 
-sub CloneConf {
-    my $class= shift;
-    my $oOrigConf= shift;
-    
-    my $new= $class->SUPER::CloneConf($oOrigConf);
+=head1 DESCRIPTION
 
-    my $sPath= $new->get_value("path");
-    
-    if ($sPath) {
-        # remove leading "file://" etc.
-        warn("Internal error: '$1' should already be removed. Please file a bug report with config included!") if $sPath=~ s/^(\w+\:\/\/)//;
-        # extract hostname, user and port
-        if ($sPath=~ s/^(\S+?\@)?([\-0-9a-z\.]+)(\:\d+)?\://i) {
-            my $sUser= $1 || '';
-            my $sHost= $2;
-            my $iPort= $3 || 0;
-            $sUser=~ s/\@$//;
-            $iPort=~ s/^\://;
-            $new->set_value("host", $sHost);
-            $new->set_value("user", $sUser) if $sUser;
-            $new->set_value("port", $iPort) if $iPort;
-        }
-        $new->set_value("path", $sPath);
-    }
+Mountable.pm is an abstract class for local or remote file objects.
+It provides mount operations.
 
-    # print Data::Dumper->Dump([$self->{VALUES}]); die;
-    return $new;
-}
+=over 4
 
-sub getFullPath {
-    my $self= shift;
-    my $sPath= $self->getPath(shift);
+=cut
 
-    return $self->getUserHostPort(":") . "$sPath"
-}
-
-sub getUserHost {
-    my $self= shift;
-    my $sSeparator= shift || '';
-
-    return "" unless $self->is_remote();
-
-    my $sUser= $self->get_value("user");
-    return ($sUser ? "$sUser\@" : "") .
-        $self->get_value("host") .
-        $sSeparator;
-}
-
-sub getUserHostPort {
-    my $self= shift;
-    my $sSeparator= shift || '';
-
-    return "" unless $self->is_remote();
-
-    my $iPort= $self->get_value("port", 22);
-    return $self->getUserHost() .
-        ($iPort == 22 ? "" : ":$iPort") .
-        $sSeparator;
-}
+# this method is never called for SourceMountable objects! and should be removed!
+#sub CloneConf {
+#    my $class= shift;
+#    my $oOrigConf= shift;
+#    
+#    my $new= $class->SUPER::CloneConf($oOrigConf);
+#
+#    $new->{PATH_IS_ABSOLUTE}= 0;
+#
+#    return $new;
+#}
 
 sub sort_show_key_order {
     my $self= shift;
@@ -89,7 +50,7 @@ sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
 
-    my  @oMounts= $self->getMountObjects();
+    my @oMounts= $self->getMountObjects();
     my $aResult= $self->SUPER::show($hConfShowCache);
     
     my @sSubResult= ();
@@ -100,8 +61,6 @@ sub show {
     return $aResult;
 }
 
-# get path works only with file object!
-# should be overwritten by other subclasses
 sub getPath {
     my $self= shift;
     my $sPath= shift || '.';
@@ -110,9 +69,12 @@ sub getPath {
 
     return $sPath unless $sBasePath;
 
-    unless (File::Spec->file_name_is_absolute($sBasePath)) {
+#    unless (File::Spec->file_name_is_absolute($sBasePath)) {
+    # path may contain symlinks and should be expanded once
+    unless ($self->{PATH_IS_ABSOLUTE}) {
         $sBasePath= $self->abs_path($sBasePath);
         $self->set_value("path", $sBasePath);
+        $self->{PATH_IS_ABSOLUTE}= 1;
     }
 
     $sPath= File::Spec->canonpath($sPath); # simplify path

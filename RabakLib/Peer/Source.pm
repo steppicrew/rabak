@@ -9,7 +9,16 @@ use RabakLib::Log;
 
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Peer::Mountable);
+@ISA = qw(RabakLib::Peer);
+
+=head1 DESCRIPTION
+
+Source.pm is an abstract class for source objects (file, databases etc.).
+It provides a static method 'Factory' to create specialized source objects 
+
+=over 4
+
+=cut
 
 sub Factory {
     my $class= shift;
@@ -25,10 +34,10 @@ sub Factory {
     }
     my $sType= $oOrigConf->get_value("type");
     unless (defined $sType) {
-       $sType= "file" unless $sType;
+       $sType= "file";
        $oOrigConf->set_value("type", $sType);
     } 
-    $sType= ucfirst $sType;
+    $sType= ucfirst lc $sType;
 
     my $new;
     eval {
@@ -58,16 +67,37 @@ sub getPathExtension {
     return ".$sName";
 }
 
+sub prepareBackup { 1 }
+sub finishBackup { 1 }
+
+# TODO: is there a better way to call parallel objects?
 sub sort_show_key_order {
     my $self= shift;
-    ("type", $self->SUPER::sort_show_key_order(), "keep");
+    my $fSuper= shift;
+    
+    my @sSuperResult= ();
+    if ($fSuper) {
+        @sSuperResult= $fSuper->();
+    }
+    else {
+        @sSuperResult= $self->SUPER::sort_show_key_order();
+    }
+    ("type", @sSuperResult, "keep");
 }
 
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
+    my $fSuper= shift;
+    
+    my @sSuperResult= ();
+    if ($fSuper) {
+        @sSuperResult= @{$fSuper->($hConfShowCache)};
+    }
+    else {
+        @sSuperResult= @{$self->SUPER::show($hConfShowCache)};
+    }
 
-    my @sSuperResult= @{$self->SUPER::show($hConfShowCache)};
     return [] unless @sSuperResult;
 
     return [

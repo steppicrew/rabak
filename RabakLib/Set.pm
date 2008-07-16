@@ -107,8 +107,8 @@ sub show {
     
     # print all not already shown references
     my @sSubResult= $self->showUncachedReferences($hConfShowCache);
+    push @$aResult, "", "# Misc references:", @sSubResult if scalar @sSubResult > 1;
     push @$aResult, "";
-    push @$aResult, "# Misc references:", @sSubResult if scalar @sSubResult;
     
     return $self->simplifyShow($aResult);
 }
@@ -475,17 +475,7 @@ sub _backup_setup {
     my @sBakDir= ();
     my $oTarget= $hBackupData->{target};
 
-    my @sMountMessage;
-    my $iMountResult= $oSource->mountAll(\@sMountMessage);
-
-    # mount errors on source are non-fatal!
-    #unless ($iMountResult) { # fatal mount error
-    #    logger->error("There was at least one fatal mount error on source. Backup set skipped.");
-    #    logger->error(@sMountMessage);
-    #    return 3;
-    #}
-
-    logger->log(@sMountMessage);
+    return 1 unless $oSource->prepareBackup();
 
     my $sBakSetExt= $self->getPathExtension();
     my $sBakSourceExt= $oSource->getPathExtension();
@@ -563,7 +553,7 @@ sub _backup_cleanup {
     my $hBackupData= shift;
     
     my $oSource= $hBackupData->{source};
-    $oSource->unmountAll;
+    $oSource->finishBackup();
 
     my $sBakSource= $oSource->get_value("name");
     my $sBakDay= $hBackupData->{bak_day};
