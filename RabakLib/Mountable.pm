@@ -44,7 +44,7 @@ sub getPeer {
 
 sub sort_show_key_order {
     my $self= shift;
-    ("host", "user", "path", $self->SUPER::sort_show_key_order());
+    ("host", "user", "path", );
 }
 
 sub show {
@@ -52,14 +52,13 @@ sub show {
     my $hConfShowCache= shift || {};
 
     my @oMounts= $self->getMountObjects();
-    my $aResult= $self->SUPER::show($hConfShowCache);
     
     my @sSubResult= ();
     for my $oMount (@oMounts) {
         push @sSubResult, @{$oMount->show($hConfShowCache)};
     }
-    push @$aResult, "", "# Referenced mounts:", @sSubResult if scalar @sSubResult;
-    return $aResult;
+    return [] unless scalar @sSubResult;
+    return ["", "# Referenced mounts:", @sSubResult, ];
 }
 
 sub getPath {

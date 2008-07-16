@@ -311,6 +311,7 @@ sub sort_show_key_order {
     (
         # overwrite Source's SUPER class with Mountable
         $self->SUPER::sort_show_key_order(),
+        $self->mountable()->sort_show_key_order(),
         "exclude", "include", "filter", "mount"
     );
 }
@@ -322,6 +323,7 @@ sub show {
     
     # overwrite Source's SUPER class with Mountable
     my $aResult = $self->SUPER::show($hConfShowCache);
+    push @$aResult, @{$self->mountable()->show($hConfShowCache)};
     
     my $aMacroStack= [];
 
@@ -592,6 +594,11 @@ sub run {
     # return success for partial transfer errors (errors were logged already above)
     return 0 if $iRsyncExit == 23 || $iRsyncExit == 24;
     return $iRsyncExit;
+}
+
+sub getPath {
+    my $self= shift;
+    return $self->mountable()->getPath();
 }
 
 1;

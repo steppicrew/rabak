@@ -173,14 +173,21 @@ sub prepareBackup {
 sub finishBackup {
     my $self= shift;
 
+    my $mountable= $self->mountable();
+
     # unmount all target mounts
-    $self->unmountAll();
+    $mountable->unmountAll();
     return 0;
 }
 
 sub sort_show_key_order {
     my $self= shift;
-    ($self->SUPER::sort_show_key_order(), "group", "mount");
+
+    (
+        $self->SUPER::sort_show_key_order(),
+        $self->mountable()->sort_show_key_order(),
+        "group", "mount",
+    );
 }
 
 sub show {
@@ -188,6 +195,7 @@ sub show {
     my $hConfShowCache= shift || {};
 
     my @sSuperResult= @{$self->SUPER::show($hConfShowCache)};
+    push @sSuperResult, @{$self->mountable()->show($hConfShowCache)};
     return [] unless @sSuperResult;
     
     return [
@@ -197,6 +205,11 @@ sub show {
         "#" . "=" x 79,
         @sSuperResult
     ];
+}
+
+sub getPath {
+    my $self= shift;
+    return $self->mountable()->getPath();
 }
 
 1;
