@@ -212,4 +212,87 @@ sub getPath {
     return $self->mountable()->getPath();
 }
 
+sub collectBakdirs {
+    my $self= shift;
+
+    # get recursive file listing for 1 extra level
+    my %hDirs= $self->getDirRecursive(undef, 1);
+
+    my %hResult= ();
+
+    # hDirs is of the format: { dir => { file => 1 }, file, ... }
+    # The next three lines iterates over the values of the outer hash, skips the files, takes the dirs.
+    # These dirs are iteratet over and all keys (=files) are collected. voila!
+    map {
+        my $hDir= $_;
+        map {
+            $hResult{$_}= {
+                path => $1,
+                set_ext => $2,
+                date => $3,
+                year => $4,
+                month => $5,
+                day => $6,
+                subset => "_$8",
+                source_ext => (defined $9 ? $9 : ''),
+            } if /(.*)\/\d{4}-\d\d(\..+)\/((\d{4})\-(\d\d)\-(\d\d))([\-_](\d{3,4}))?(\..+)?$/;
+        } grep { ref $$hDir{$_} eq 'HASH' } keys %$hDir;
+    } grep { ref $_ } values %hDirs;
+
+    # decremental backup
+
+    return \%hResult;
+}
+
+sub collectSetBackdirs {
+    my $self= shift;
+    my $asSetExts= shift;
+    my $asSourceExts= shift;
+    my $sBakDay= shift;         # default to today?
+
+    my $hDirs= $self->collectBakdirs();
+
+    my %hSetExts;
+    my %hSetSourceExts;
+
+    my $i= 1;
+    map { $hSetExts{$_}= $i++ } @$asSetExts;
+    map { $hSourceExts{$_}= $i++ } @$asSourceExts;
+
+    my @sBakDirs= ();
+
+    my $cmp= sub {
+        my $ad= $hDirs->{$a};
+        my $bd= $hDirs->{$b};
+        return
+            $bd->{date} cmp $ad->{date}
+            || $hSetExts{$ad->{set_ext}} cmp $hSetExts{$bd->{set_ext}}
+            || $hSourceExts{$ad->{source_ext}} cmp $hSourceExts{$bd->{source_ext}}
+            || $bd->{subset} cmp $ad->{subset}
+        ;
+    };
+
+    # go away if you don't grok this:
+    @sBakDirs= sort $cmp grep {
+        my $hDir= $hDirs->{$_};
+        exists $hSetExts{$hDir->{set_ext}} && exists $hSourceExts{$hDir->{source_ext}}
+    } keys %{ $self->{DIRS} };
+
+    my $sSubSet= '';
+    if (scalar @sBakDirs && $hDirs->{$sBakDirs[0]}{date} eq $sBakDay) {
+        $sSubSet= $hDirs->{$sBakDirs[0]}{subset};
+
+        die "Maximum of 1000 backups reached!" if $sSubSet eq '_999';
+        if (!$sSubSet) {
+            $sSubSet= '_001';
+        }
+        else {
+            $sSubSet=~ s/^_0*//;
+            $sSubSet= sprintf("_%03d", $sSubSet + 1);
+        }
+    }
+
+    return ($sSubSet, @sBakDirs);
+}
+
 1;
