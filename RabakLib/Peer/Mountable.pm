@@ -29,16 +29,17 @@ It provides mount operations.
 
 =cut
 
-sub CloneConf {
-    my $class= shift;
-    my $oOrigConf= shift;
-    
-    my $new= $class->SUPER::CloneConf($oOrigConf);
-
-    $new->{PATH_IS_ABSOLUTE}= 0;
-
-    return $new;
-}
+# this method is never called for SourceMountable objects! and should be removed!
+#sub CloneConf {
+#    my $class= shift;
+#    my $oOrigConf= shift;
+#    
+#    my $new= $class->SUPER::CloneConf($oOrigConf);
+#
+#    $new->{PATH_IS_ABSOLUTE}= 0;
+#
+#    return $new;
+#}
 
 sub sort_show_key_order {
     my $self= shift;

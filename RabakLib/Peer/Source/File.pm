@@ -6,11 +6,12 @@ use warnings;
 use strict;
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Peer::Source RabakLib::Peer::Mountable);
+@ISA = qw(RabakLib::Peer::SourceMountable);
 
 use Data::Dumper;
 use File::Spec;
 use RabakLib::Log;
+use RabakLib::Peer::SourceMountable;
 
 # hash table for detecting references and list of all used macros in filter expansion
 sub _get_filter {
@@ -296,11 +297,7 @@ sub sort_show_key_order {
     my $self= shift;
     (
         # overwrite Source's SUPER class with Mountable
-        $self->SUPER::sort_show_key_order(
-            sub{
-                $self->RabakLib::Peer::Mountable::sort_show_key_order(@_);
-            }
-        ),
+        $self->SUPER::sort_show_key_order(),
         "exclude", "include", "filter", "mount"
     );
 }
@@ -311,12 +308,7 @@ sub show {
     my $oTarget= shift;
     
     # overwrite Source's SUPER class with Mountable
-    my $aResult = $self->SUPER::show(
-        $hConfShowCache,
-        sub{
-            $self->RabakLib::Peer::Mountable::show(@_)
-        },
-    );
+    my $aResult = $self->SUPER::show($hConfShowCache);
     
     my $aMacroStack= [];
 
@@ -337,11 +329,6 @@ sub show {
     my $sBaseDir= $self->getFullPath();
     push @$aResult, "", "# Expanded rsync filter (relative to '$sBaseDir'):", map {"#\t$_"} @sFilter;
     return $aResult;
-}
-
-sub getPath {
-    my $self= shift;
-    return $self->RabakLib::Peer::Mountable::getPath(@_);
 }
 
 sub valid_source_dir {
