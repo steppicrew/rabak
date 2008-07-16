@@ -43,7 +43,7 @@ sub Factory {
     eval {
         require "RabakLib/Peer/Source/$sType.pm";
         my $sClass= "RabakLib::Peer::Source::$sType";
-        $new= $sClass->CloneConf($oOrigConf);
+        $new= $sClass->newFromConf($oOrigConf);
         1;
     };
     if ($@) {

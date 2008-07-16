@@ -16,11 +16,11 @@ our %sPackers = (
     gzip  => { cmd => "gzip" , ext => "gz"},
 );
 
-sub CloneConf {
+sub newFromConf {
     my $class= shift;
     my $oOrigConf= shift;
     
-    my $new= $class->SUPER::CloneConf($oOrigConf);
+    my $new= $class->SUPER::newFromConf($oOrigConf);
 
     my $sPacker= lc $new->get_value("packer");
 

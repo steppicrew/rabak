@@ -47,11 +47,11 @@ sub new {
 
 }
 
-sub CloneConf {
+sub newFromConf {
     my $class= shift;
     my $oOrigConf= shift;
     
-    my $new= $class->SUPER::CloneConf($oOrigConf);
+    my $new= $class->SUPER::newFromConf($oOrigConf);
 
     my $sPath= $new->get_value("path");
     

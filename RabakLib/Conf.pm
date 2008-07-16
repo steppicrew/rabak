@@ -38,7 +38,8 @@ sub REGIDENT    { $sregIdent };
 sub REGIDENTDEF { $sregIdentDef };
 sub REGIDENTREF { $sregIdentRef };
 
-sub CloneConf {
+# clone
+sub newFromConf {
     my $class= shift;
     my $oOrigConf= shift;
 

@@ -34,8 +34,10 @@ Format very similar to postfix config files:
 
 sub new {
     my $class= shift;
+
     # if multiple files are specified, the first existing is used
     my @sFiles= @_;
+
     my $self= {
         FILE => undef,
         SEARCHPATHS => [map {/(.*)\/[^\/]+$/ ? $1 : '.'} grep { defined } @sFiles],
@@ -91,7 +93,7 @@ sub print_set_list {
             && defined $oConf->{VALUES}{$sBakSet}->{VALUES}{title}
             && defined $oConf->{VALUES}{$sBakSet}->{VALUES}{source}
             && defined $oConf->{VALUES}{$sBakSet}->{VALUES}{target};
-        my $oSet= RabakLib::Set->CloneConf($oConf->{VALUES}{$sBakSet});
+        my $oSet= RabakLib::Set->newFromConf($oConf->{VALUES}{$sBakSet});
         my $oTarget= $oSet->get_targetPeer(); 
         my @oSources= $oSet->get_sourcePeers();
         next unless $oTarget && scalar @oSources;

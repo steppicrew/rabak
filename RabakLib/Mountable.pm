@@ -138,7 +138,7 @@ sub getMountObjects {
             $oConf= RabakLib::Conf->new(undef, $peer);
             $oConf->set_value("directory", $sPath);
         }
-        push @oMounts, RabakLib::Mount->CloneConf($oConf);
+        push @oMounts, RabakLib::Mount->newFromConf($oConf);
     } 
     return @oMounts;
 }

@@ -36,11 +36,11 @@ sub new {
     bless $self, $class;
 }
 
-sub CloneConf {
+sub newFromConf {
     my $class= shift;
     my $oOrigConf= shift;
     
-    my $new= $class->SUPER::CloneConf($oOrigConf);
+    my $new= $class->SUPER::newFromConf($oOrigConf);
 
     # FIXME: Where is ERROR used? Use get_validation_message on returned instance!
 
@@ -206,7 +206,7 @@ sub get_targetPeer {
             $oConf= RabakLib::Conf->new(undef, $self);
             $oConf->set_value("path", $sPath);
         }
-        $self->{_TARGET_OBJECT}= RabakLib::Peer::Target->CloneConf($oConf);
+        $self->{_TARGET_OBJECT}= RabakLib::Peer::Target->newFromConf($oConf);
         ## $self->{_TARGET_OBJECT}->set_value("switch.warn_on_remote_access", );
     }
     return $self->{_TARGET_OBJECT};
