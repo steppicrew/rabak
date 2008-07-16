@@ -6,12 +6,25 @@ use warnings;
 use strict;
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Peer::SourceMountable);
+@ISA = qw(RabakLib::Peer::Source);
 
 use Data::Dumper;
 use File::Spec;
 use RabakLib::Log;
-use RabakLib::Peer::SourceMountable;
+
+sub new {
+    my $class= shift;
+
+    my $self= $class->SUPER::new(@_);
+    $self->{MOUNTABLE}= RabakLib::Mountable->new($self);
+    
+    return $self;
+}
+
+sub mountable {
+    my $self= shift;
+    return $self->{MOUNTABLE};
+}
 
 # hash table for detecting references and list of all used macros in filter expansion
 sub _get_filter {
@@ -384,18 +397,18 @@ sub prepareBackup {
     my $self= shift;
     
     my @sMountMessage;
-    my $iMountResult= $self->mountAll(\@sMountMessage);
+    my $iMountResult= $self->mountable()->mountAll(\@sMountMessage);
 
     logger->log(@sMountMessage);
     # returns undef if source path is not a readable directory
-    return $self->valid_source_dir();
+    return $self->valid_source_dir() ? 0 : 1;
 }
 
 sub finishBackup {
     my $self= shift;
     
-    $self->unmountAll();
-    return 1;
+    $self->mountable()->unmountAll();
+    return 0;
 }
 
 sub run {

@@ -9,7 +9,7 @@ no warnings 'redefine';
 use Data::Dumper;
 use RabakLib::Conf;
 use RabakLib::Peer;
-use RabakLib::Peer::Mountable;
+use RabakLib::Mountable;
 
 # use File::Spec ();
 use POSIX qw(strftime);

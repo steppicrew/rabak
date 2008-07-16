@@ -10,13 +10,20 @@ use RabakLib::ConfFile;
 
 use vars qw(@ISA);
 
-@ISA = qw(RabakLib::Peer::Mountable);
+@ISA = qw(RabakLib::Peer);
 
-sub mountErrorIsFatal {
-    my $self= shift;
-    my $iMountResult= shift;
+sub new {
+    my $class= shift;
+
+    my $self= $class->SUPER::new(@_);
+    $self->{MOUNTABLE}= RabakLib::Mountable->new($self);
     
-    return $iMountResult;
+    return $self;
+}
+
+sub mountable {
+    my $self= shift;
+    return $self->{MOUNTABLE};
 }
 
 # tests if device is mounted and is a valid rabak target
@@ -36,7 +43,7 @@ sub checkMount {
     my $sMountDevice= shift;
     my $arMountMessages= shift;
     
-    my $sMountPath= $self->SUPER::checkMount($sMountDevice, $arMountMessages);
+    my $sMountPath= $self->mountable()->checkMount($sMountDevice, $arMountMessages);
     
     return $sMountPath if $sMountPath=~ /^\d+$/;
 
@@ -131,6 +138,44 @@ sub remove_old {
         $self->rmtree($sDir);
         logger->error($self->get_last_error()) if $self->get_last_exit();
     }
+}
+
+sub prepareBackup {
+    my $self= shift;
+
+    my $mountable= $self->mountable();
+
+    # mount all target mount objects
+    my @sMountMessage= ();
+    my $iMountResult= $mountable->mountAll(\@sMountMessage);
+
+    unless ($iMountResult) { # fatal mount error
+        logger->error("There was at least one fatal mount error on target. Backup set skipped.");
+        logger->error(@sMountMessage);
+        return -3;
+    }
+    logger->log(@sMountMessage);
+
+    # check target dir
+    unless ($self->isDir()) {
+        logger->error(@sMountMessage);
+        logger->error("Target \"".$self->get_value("path")."\" is not a directory. Backup set skipped.");
+        return -1;
+    }
+    unless ($self->isWritable()) {
+        logger->error(@sMountMessage);
+        logger->error("Target \"".$self->get_value("path")."\" is not writable. Backup set skipped.");
+        return -2;
+    }
+    return 0;
+}
+
+sub finishBackup {
+    my $self= shift;
+
+    # unmount all target mounts
+    $self->unmountAll();
+    return 0;
 }
 
 sub sort_show_key_order {

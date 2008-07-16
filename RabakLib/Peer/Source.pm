@@ -67,36 +67,22 @@ sub getPathExtension {
     return ".$sName";
 }
 
-sub prepareBackup { 1 }
-sub finishBackup { 1 }
+sub prepareBackup { 0 }
+sub finishBackup { 0 }
 
 # TODO: is there a better way to call parallel objects?
 sub sort_show_key_order {
     my $self= shift;
-    my $fSuper= shift;
-    
-    my @sSuperResult= ();
-    if ($fSuper) {
-        @sSuperResult= $fSuper->();
-    }
-    else {
-        @sSuperResult= $self->SUPER::sort_show_key_order();
-    }
+
+    my @sSuperResult= $self->SUPER::sort_show_key_order();
     ("type", @sSuperResult, "keep");
 }
 
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
-    my $fSuper= shift;
     
-    my @sSuperResult= ();
-    if ($fSuper) {
-        @sSuperResult= @{$fSuper->($hConfShowCache)};
-    }
-    else {
-        @sSuperResult= @{$self->SUPER::show($hConfShowCache)};
-    }
+    my @sSuperResult= @{$self->SUPER::show($hConfShowCache)};
 
     return [] unless @sSuperResult;
 

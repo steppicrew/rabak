@@ -6,7 +6,6 @@ use warnings;
 use strict;
 
 use RabakLib::Log;
-use RabakLib::Peer::Mountable;
 use RabakLib::Peer::Source;
 use RabakLib::Peer::Target;
 
@@ -349,34 +348,11 @@ sub backup {
     logger->info("Command line: " . $self->get_switch("commandline"));
     logger->info("Configuration read from: '" . $self->get_switch("configfile") . "'");
 
+    my $oTargetPeer= $self->get_targetPeer();
     my @oSources= $self->get_sourcePeers();
 
-    # mount all target mount objects
-    my @sMountMessage= ();
-    my $oTargetPeer= $self->get_targetPeer();
-    my $iMountResult= $oTargetPeer->mountAll(\@sMountMessage);
-
-    unless ($iMountResult) { # fatal mount error
-        logger->error("There was at least one fatal mount error on target. Backup set skipped.");
-        logger->error(@sMountMessage);
-        $iResult= -3;
-        goto cleanup;
-    }
-    logger->log(@sMountMessage);
-
-    # check target dir
-    unless ($oTargetPeer->isDir) {
-        logger->error(@sMountMessage);
-        logger->error("Target \"".$oTargetPeer->get_value("path")."\" is not a directory. Backup set skipped.");
-        $iResult= -1;
-        goto cleanup;
-    }
-    unless ($oTargetPeer->isWritable) {
-        logger->error(@sMountMessage);
-        logger->error("Target \"".$oTargetPeer->get_value("path")."\" is not writable. Backup set skipped.");
-        $iResult= -2;
-        goto cleanup;
-    }
+    $iResult= $oTargetPeer->prepareBackup();
+    goto cleanup if $iResult;
 
     my $sBakMonth= strftime("%Y-%m", localtime);
     my $sBakDay= strftime("%Y-%m-%d", localtime);
@@ -440,6 +416,7 @@ sub backup {
     $iResult= scalar(@oSources) - $iSuccessCount;
 
 cleanup:
+    # TODO: move to target->finishBackup
     $oTargetPeer->cleanupTempfiles();
     my $aDf = $oTargetPeer->checkDf();
     if (defined $aDf) {
@@ -450,8 +427,7 @@ cleanup:
     # stop logging
     logger->close();
     
-    # unmount all target mounts
-    $oTargetPeer->unmountAll;
+    $oTargetPeer->finishBackup();
 
     my $sSubject= "successfully finished";
     $sSubject= "$iSuccessCount of " . scalar(@oSources) . " backups $sSubject" if $iResult;
@@ -475,7 +451,7 @@ sub _backup_setup {
     my @sBakDir= ();
     my $oTarget= $hBackupData->{target};
 
-    return 1 unless $oSource->prepareBackup();
+    return 1 if $oSource->prepareBackup();
 
     my $sBakSetExt= $self->getPathExtension();
     my $sBakSourceExt= $oSource->getPathExtension();
