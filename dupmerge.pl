@@ -18,7 +18,7 @@ getopts("hdpotvnzi:x:w:qb:m:a:", \%opts) or die HELP_MESSAGE();
 
 my @sDirectories= @ARGV;
 my $dm= RabakLib::DupMerge->new({
-	dirs			=> \@sDirectories,
+    dirs            => \@sDirectories,
 
     temp_dir        => $opts{w},
     base_dir        => $opts{a},

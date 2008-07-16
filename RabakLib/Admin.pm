@@ -59,7 +59,7 @@ sub _get_set {
     my $self= shift;
     my $sSet= shift;
 
-    my $oSet= RabakLib::Set->new($self->{CONF}, $sSet, 1);
+    my $oSet= RabakLib::Set->new($sSet, $self->{CONF});
     if ($oSet->{ERROR}) {
         print $oSet->{ERROR} . ".\n";
         return undef;
@@ -133,7 +133,7 @@ sub do_bakdirs {
     _no_arg(shift) or return;
 
     my $oSet= $self->_need_set() or return;
-    my @sDirs= $oSet->collect_bakdirs();
+    my @sDirs= $oSet->collect_bakdirs([ '.' . $oSet->get_value('name') ], [ '' ]);
 
     map { print "$_\n"; } @sDirs;
 }
@@ -190,8 +190,11 @@ sub loop() {
     while (1) {
         my $sPrompt= $self->{CONF_FILE}->filename();
         if ($self->{SET}) {
-            $sPrompt .= '/' . $self->{SET}{NAME};
-            my $iMounts= scalar @{ $self->{SET}->get_mounts() };
+            $sPrompt .= '/' . $self->{SET}->get_value('name');
+
+            # my $iMounts= scalar @{ $self->{SET}->get_mounts() };
+            my $iMounts= 0;
+
             $sPrompt .= ':' . $iMounts if $iMounts;
         }
         $sPrompt .= '> ';
