@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package RabakLib::Admin;
+package RabakLib::Cmd::Admin;
 
 use warnings;
 use strict;
