@@ -259,9 +259,9 @@ sub getPathExtension {
     return ".$sExt";
 }
 
-sub getAllPathExtensions {
-    my $self= shift;
-    my $obj= shift || $self;
+sub GetAllPathExtensions {
+    my $class= shift;
+    my $obj= shift;
     
     return [
         $obj->getPathExtension(),
@@ -284,42 +284,38 @@ sub backup {
     logger->info("Configuration read from: '" . $self->get_switch("configfile") . "'");
 
     my $oTargetPeer= $self->get_targetPeer();
-    my @oSources= $self->get_sourcePeers();
+    my @oSourcePeers= $self->get_sourcePeers();
 
-    my $sBakSetExt= $self->getPathExtension();
-
-    $iResult= $oTargetPeer->prepareBackup($self->getPathExtension($sBakSetExt), $self->get_switch('pretend'));
+    $iResult= $oTargetPeer->prepareBackup(
+        $self->GetAllPathExtensions($self),
+        $self->get_switch('pretend'),
+    );
     goto cleanup if $iResult;
 
     $oTargetPeer->prepareLogging($self->get_switch('pretend')) if $self->get_switch('logging');
 
     # now try backing up every source 
     my %sNames= ();
-    for my $oSource (@oSources) {
-        my $sName= $oSource->get_value("name", "");
-        $oSource->set_value("name", "") if $sName=~ s/^\*//;
+    for my $oSourcePeer (@oSourcePeers) {
+        my $sName= $oSourcePeer->get_value("name", "");
+        $oSourcePeer->set_value("name", "") if $sName=~ s/^\*//;
         if ($sNames{$sName}) {
             logger->error("Name '$sName' of Source Object has already been used. Skipping backup of source.");
             next;
         }
         $sNames{$sName}= 1;
         eval {
-            my $hBackupData= {
-                source => $oSource,
-                target => $oTargetPeer,
-                target_dir => $sTarget,
-                bak_day => $sBakDay,
-            };
-            if ($self->_backup_setup($hBackupData) == 0) {
-                $iSuccessCount++ unless $self->_backup_run($hBackupData);
+            my $iBackupResult= $self->_backup_setup($oSourcePeer, $oTargetPeer);
+            unless ($iBackupResult) {
+                $iBackupResult= $self->_backup_run($oSourcePeer, $oTargetPeer);
+                $iSuccessCount++ unless $iBackupResult;
             }
-            $self->_backup_cleanup($hBackupData);
+            $self->_backup_cleanup($oSourcePeer, $oTargetPeer, $iBackupResult);
         };
         logger->error("An error occured during backup: '$@'") if $@;
-        $oSource->cleanupTempfiles();
     }
 
-    $iResult= scalar(@oSources) - $iSuccessCount;
+    $iResult= scalar(@oSourcePeers) - $iSuccessCount;
 
 cleanup:
     # TODO: move _mail* to logger and do df-check in Traget.pm
@@ -333,7 +329,7 @@ cleanup:
     $oTargetPeer->finishBackup();
 
     my $sSubject= "successfully finished";
-    $sSubject= "$iSuccessCount of " . scalar(@oSources) . " backups $sSubject" if $iResult;
+    $sSubject= "$iSuccessCount of " . scalar(@oSourcePeers) . " backups $sSubject" if $iResult;
     $sSubject= "ERROR: all backups failed" unless $iSuccessCount;
     $sSubject= "*PRETENDED* $sSubject" if $self->get_switch("pretend");
 
@@ -346,100 +342,58 @@ cleanup:
 
 sub _backup_setup {
     my $self= shift;
-    my $hBackupData= shift;
+    my $oSourcePeer= shift;
+    my $oTargetPeer= shift;
     
-    my $oSource= $hBackupData->{source};
-
-    my $sSubSet= "";
-    my @sBakDirs= ();
-    my $oTarget= $hBackupData->{target};
-
-    my $iResult = $oSource->prepareBackup();
-    return $iResult if $iResult;
-
-    my $sBakSetExt= $self->getPathExtension();
-    my $sBakSourceExt= $oSource->getPathExtension();
-    my $sBakSourceName= $oSource->get_value("name");
-    
-    my $sBakDay= $hBackupData->{bak_day};
-    ($sSubSet, @sBakDirs)= $oTarget->collectSetBakdirs(
-        $self->getAllPathExtensions(),
-        $self->getAllPathExtensions($oSource),
-        $sBakDay,
+    $oTargetPeer->prepareSourceBackup(
+        $oSourcePeer,
+        $self->get_switch('pretend'),
     );
 
-    my $sUniqueTarget= "$sBakDay$sSubSet$sBakSourceExt";
-    $hBackupData->{unique_name}= $sUniqueTarget;
-    my $sTarget= "$hBackupData->{target_dir}/$sUniqueTarget";
-    $hBackupData->{full_target}= $oTarget->getPath($sTarget);
+    logger->info("Backup start at " . strftime("%F %X", localtime) . ": "
+        . $oSourcePeer->getName() . ", "
+        . $oTargetPeer->getSourceSet() . ", "
+        . $self->get_value("title")
+    );
 
-    $self->_mkdir($sTarget);
-
-    logger->info("Backup $sBakDay exists, using subset.") if $sSubSet;
-    logger->info("Backup start at " . strftime("%F %X", localtime) . ": $sBakSourceName, $sBakDay$sSubSet, " . $self->get_value("title"));
-    logger->info("Source: " . $oSource->getFullPath());
-
-    $hBackupData->{bak_dir_list}= \@sBakDirs;
-    $hBackupData->{sub_set}= $sSubSet;
-    $hBackupData->{rel_target}= $sTarget;
-
-    return 0;
+    return $oSourcePeer->prepareBackup();
 }
 
 sub _backup_run {
     my $self= shift;
-    my $hBackupData= shift;
+    my $oSourcePeer= shift;
+    my $oTargetPeer= shift;
     
-    my $oSource= $hBackupData->{source};
-    my $oTarget= $hBackupData->{target};
-    my @sBakDir= @{ $hBackupData->{bak_dir_list} };
-    my $sBakSetSourceExt= $self->getPathExtension();
-
-    my $sSourceName= $oSource->get_value("name");
-    $sBakSetSourceExt .= "-$sSourceName" if $sSourceName;
-
-    my $sTarget= $hBackupData->{rel_target};
-
-    my $iErrorCode= 0;
-    logger->set_prefix($oSource->get_value("type"));
-    $iErrorCode= $oSource->run(
-        $oTarget,
-        $hBackupData->{full_target},
-        $hBackupData->{unique_name},
+    return $oSourcePeer->run(
+        $oTargetPeer,
         $self->get_switch('pretend'),
-        @sBakDir
     );
-    logger->set_prefix();
-
-    if (!$iErrorCode) {
-        logger->info("Done!");
-    }
-    else {
-        logger->error("Backup failed: " . $oSource->get_last_error);
-        $iErrorCode= 9;
-    }
-
-    unless ($self->get_switch('pretend')) {
-        $oTarget->remove_old($oSource->get_value("keep"), @sBakDir) unless $iErrorCode;    # only remove old if backup was done
-        $oTarget->unlink("current$sBakSetSourceExt");
-        $oTarget->symlink("$sTarget", "current$sBakSetSourceExt");
-    }
-
-    return $iErrorCode;
 }
 
 sub _backup_cleanup {
     my $self= shift;
-    my $hBackupData= shift;
+    my $oSourcePeer= shift;
+    my $oTargetPeer= shift;
+    my $iBackupResult= shift;
     
-    my $oSource= $hBackupData->{source};
-    $oSource->finishBackup();
+    if ($iBackupResult) {
+        logger->error("Backup failed: " . $oSourcePeer->get_last_error);
+        $iBackupResult= 9;
+    }
+    else {
+        logger->info("Done!");
+    }
 
-    my $sBakSource= $oSource->get_value("name");
-    my $sBakDay= $hBackupData->{bak_day};
-    my $sSubSet= $hBackupData->{sub_set};
+    my $sSourceSet= $oTargetPeer->getSourceSet();
 
-    logger->info("Backup done at " . strftime("%F %X", localtime) . ": $sBakSource, $sBakDay$sSubSet") if $sBakSource && $sBakDay && $sSubSet;
+    $oTargetPeer->finishSourceBackup($iBackupResult, $self->get_switch('pretend'));
+    $oSourcePeer->finishBackup();
+
+    logger->info("Backup done at "
+        . strftime("%F %X", localtime) . ": "
+        . $oSourcePeer->getName() . ", "
+        . $sSourceSet
+    );
 }
 
 # -----------------------------------------------------------------------------

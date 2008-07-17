@@ -7,6 +7,7 @@ use strict;
 
 use RabakLib::Log;
 use RabakLib::ConfFile;
+use POSIX qw(strftime);
 
 use vars qw(@ISA);
 
@@ -142,26 +143,16 @@ sub remove_old {
     }
 }
 
-sub getBaksetExt {
-    my $self= shift;
-    $self->{BAKSET_DATA}{BAKSETEXT};
-}
-sub getBaksetDir {
-    my $self= shift;
-    $self->{BAKSET_DATA}{BAKSETDIR};
-}
-sub getBaksetMonth {
-    my $self= shift;
-    $self->{BAKSET_DATA}{BAKSETMONTH};
-}
-sub getBaksetDay {
-    my $self= shift;
-    $self->{BAKSET_DATA}{BAKSETDAY};
-}
+sub getBaksetExt    { shift()->{BAKSET_DATA}{BAKSETEXT} }
+sub getBaksetExts   { shift()->{BAKSET_DATA}{BAKSETEXTS} }
+sub getBaksetDir    { shift()->{BAKSET_DATA}{BAKSETDIR} }
+sub getBaksetMonth  { shift()->{BAKSET_DATA}{BAKSETMONTH} }
+sub getBaksetDay    { shift()->{BAKSET_DATA}{BAKSETDAY} }
+sub getBakDirs      { shift()->{BAKSET_DATA}{BAKDIRS} }
 
 sub prepareBackup {
     my $self= shift;
-    my $sBakSetExt= shift;
+    my $asBaksetExts= shift;
     my $bPretend= shift;
 
     my $mountable= $self->mountable();
@@ -189,12 +180,15 @@ sub prepareBackup {
         return -2;
     }
 
-    my $sBakSetMonth= strftime("%Y-%m", localtime);
+    my $sBaksetExt= $asBaksetExts->[0];
+    my $sBaksetMonth= strftime("%Y-%m", localtime);
     $self->{BAKSET_DATA} = {
-        BAKSETEXT => $sBakSetExt,
-        BAKSETDIR => "$sBakSetMonth$sBakSetExt",
-        BAKSETMONTH => $sBakSetMonth;
-        BAKSETDAY => strftime("%Y-%m-%d", localtime);
+        BAKSETEXT => $sBaksetExt,
+        BAKSETEXTS => $asBaksetExts,
+        BAKSETDIR => "$sBaksetMonth$sBaksetExt",
+        BAKSETMONTH => $sBaksetMonth,
+        BAKSETDAY => strftime("%Y-%m-%d", localtime),
+        BAKDIRS => $self->getAllBakdirs(),
     };
 
     $self->mkdir($self->getBaksetDir()) unless $bPretend;
@@ -229,21 +223,21 @@ sub prepareLogging {
 
     unless ($bPretend) {
         $self->mkdir($sLogDir);
-        my $sLogLink= "$sBaksetDir/$sBakDay$sBakSetExt.log";
+        my $sLogLink= "$sBaksetDir/$sBaksetDay$sBaksetExt.log";
 
 
-        my $sError= logger->open($sLogFileName, $self);
+        my $sError= logger->open($sLogFilePath, $self);
         if ($sError) {
-            logger->warn("Can't open log file \"$sLogFileName\" ($sError). Going on without...");
+            logger->warn("Can't open log file \"$sLogFilePath\" ($sError). Going on without...");
         }
         else {
             $self->symlink("../$sLogFile", "$sLogLink");
-            my $sCurrentLogFileName= "current-log$sBakSetExt";
+            my $sCurrentLogFileName= "current-log$sBaksetExt";
             $self->unlink($sCurrentLogFileName);
             $self->symlink($sLogFile, $sCurrentLogFileName);
         }
     }
-    logger->info("Logging to: $sLogFileName");
+    logger->info("Logging to: $sLogFilePath");
     logger->info("", "**** Only pretending, no changes are made! ****", "") if $bPretend;
 }
 
@@ -253,46 +247,38 @@ sub finishLogging {
     logger->close();
 }
 
+sub getOldBakDirs   { shift()->{SOURCE_DATA}{OLD_BAKDIRS} }
+sub getSubset       { shift()->{SOURCE_DATA}{SUBSET} }
+sub getSourceSubdir { shift()->{SOURCE_DATA}{SOURCESUBDIR} }
+sub getSourceSet    { shift()->{SOURCE_DATA}{SOURCESET} }
+sub getSourceExt    { shift()->{SOURCE_DATA}{SOURCEEXT} }
+sub getSourceKeep   { shift()->{SOURCE_DATA}{SOURCEKEEP} }
+sub getBakDir       { shift()->{SOURCE_DATA}{BAKDIR} }
+sub getAbsBakDir {
+    my $self= shift;
+    $self->getPath($self->getBakDir());
+}
+
 sub prepareSourceBackup {
     my $self= shift;
-    my $asSetExts= shift;
-    my $asSourceExts= shift;
+    my $oSourcePeer= shift;
     my $bPretend= shift;
 
-    my $sBakDay= $self->{BAKSET_DATA}{BAKSETDAY};
+    my $asSourceExts= RabakLib::Set->GetAllPathExtensions($oSourcePeer);
+    my $sBakDay= $self->getBaksetDay();
 
-    my $hDirs= $self->getAllBakdirs();
+    my $hDirs= $self->getBakDirs();
 
-    my %hSetExts;
-    my %hSetSourceExts;
-
-    my $i= 1;
-    map { $hSetExts{$_}= $i++ } @$asSetExts;
-    map { $hSourceExts{$_}= $i++ } @$asSourceExts;
-
-    my @sBakDirs= ();
-
-    my $cmp= sub {
-        my $ad= $hDirs->{$a};
-        my $bd= $hDirs->{$b};
-        return
-            $bd->{date} cmp $ad->{date}
-            || $hSetExts{$ad->{set_ext}} cmp $hSetExts{$bd->{set_ext}}
-            || $hSourceExts{$ad->{source_ext}} cmp $hSourceExts{$bd->{source_ext}}
-            || $bd->{subset} cmp $ad->{subset}
-        ;
-    };
-
-    # go away if you don't grok this:
-    @sBakDirs= sort $cmp grep {
-        my $hDir= $hDirs->{$_};
-        exists $hSetExts{$hDir->{set_ext}} && exists $hSourceExts{$hDir->{source_ext}}
-    } keys %{ $self->{DIRS} };
-
+    my @sBakDirs= $self->getBakdirsByExts(
+        $self->getBaksetExts(),
+        $asSourceExts,
+        $hDirs,
+    );
 
     my $sSubSet= '';
-    if (scalar @sBakDirs && $hDirs->{$sBakDirs[0]}{date} eq $sBakDay) {
-        $sSubSet= $hDirs->{$sBakDirs[0]}{subset};
+    my $aLastBakDir= $sBakDirs[0];
+    if (scalar @sBakDirs && $hDirs->{$aLastBakDir}{date} eq $sBakDay) {
+        $sSubSet= $hDirs->{$aLastBakDir}{subset};
 
         die "Maximum of 1000 backups reached!" if $sSubSet eq '_999';
         if (!$sSubSet) {
@@ -304,15 +290,40 @@ sub prepareSourceBackup {
         }
     }
 
-    my $sSourceDir= "$sBakDay$sSubSet".$sBakSourceExts[0];
-    my $sBakDir= $self->{BAKSET_DATA}{BAKSETDIR} . "/$sSourceDir";
+    my $sSourceExt= $asSourceExts->[0];
+    my $sSourceSet= "$sBakDay$sSubSet";
+    my $sSourceSubdir= "$sSourceSet$sSourceExt";
+    my $sBakDir= $self->getBaksetDir() . "/$sSourceSubdir";
     $self->{SOURCE_DATA}= {
         OLD_BAKDIRS => \@sBakDirs,
+        SOURCEEXT => $sSourceExt,
         SUBSET => $sSubSet,
-        BAKDAY => $sBakDay,
-        SOURCEDIR => $sSourceDir,
+        SOURCESUBDIR => $sSourceSubdir,
+        SOURCESET => $sSourceSet,
+        SOURCEKEEP => $oSourcePeer->get_value("keep"),
         BAKDIR => $sBakDir,
     };
+    
+    logger->info("Backup $sBakDay exists, using subset.") if $sSubSet;
+
+    $self->mkdir($sBakDir) unless $bPretend;
+}
+
+sub finishSourceBackup {
+    my $self= shift;
+    my $iBackupResult= shift;
+    my $bPretend= shift;
+    
+    unless ($bPretend) {
+        $self->remove_old($self->getSourceKeep()) unless $iBackupResult;    # only remove old if backup was done
+
+        my $sSourceExt= $self->getSourceExt();
+        $sSourceExt=~ s/^\./\-/;
+        my $sCurrentLink= "current" . $self->getBaksetExt() . $sSourceExt;
+        $self->unlink($sCurrentLink);
+        $self->symlink($self->getBakDir(), $sCurrentLink);
+    }
+    $self->{SOURCE_DATA}= undef;
 }
 
 sub sort_show_key_order {
@@ -344,7 +355,7 @@ sub show {
 
 sub getPath {
     my $self= shift;
-    return $self->mountable()->getPath();
+    return $self->mountable()->getPath(@_);
 }
 
 sub getAllBakdirs {
@@ -368,7 +379,7 @@ sub getAllBakdirs {
                 year => $4,
                 month => $5,
                 day => $6,
-                subset => "_$8",
+                subset => $8 ? "_$8" : '',
                 source_ext => (defined $9 ? $9 : ''),
             } if /(.*)\/\d{4}-\d\d(\..+)\/((\d{4})\-(\d\d)\-(\d\d))([\-_](\d{3,4}))?(\..+)?$/;
         } grep { ref $$hDir{$_} eq 'HASH' } keys %$hDir;
@@ -379,8 +390,38 @@ sub getAllBakdirs {
     return \%hResult;
 }
 
-sub getBackdirsFromSetSource {
-    return @sBakDirs;
+sub getBakdirsByExts {
+    my $self= shift;
+    my $asSetExts= shift;
+    my $asSourceExts= shift;
+    my $hDirs= shift || $self->getAllBakdirs();
+    
+    my %hSetExts;
+    my %hSourceExts;
+
+    my $i= 1;
+    map { $hSetExts{$_}= $i++ } @$asSetExts;
+    map { $hSourceExts{$_}= $i++ } @$asSourceExts;
+
+    my @sBakDirs= ();
+
+    my $cmp= sub {
+        my $ad= $hDirs->{$a};
+        my $bd= $hDirs->{$b};
+        return
+            $bd->{date} cmp $ad->{date}
+            || $hSetExts{$ad->{set_ext}} cmp $hSetExts{$bd->{set_ext}}
+            || $hSourceExts{$ad->{source_ext}} cmp $hSourceExts{$bd->{source_ext}}
+            || $bd->{subset} cmp $ad->{subset}
+        ;
+    };
+
+    # go away if you don't grok this:
+    @sBakDirs= sort $cmp grep {
+        my $hDir= $hDirs->{$_};
+        exists $hSetExts{$hDir->{set_ext}} && exists $hSourceExts{$hDir->{source_ext}}
+    } keys %{ $self->{DIRS} };
+
 }
 
 1;
