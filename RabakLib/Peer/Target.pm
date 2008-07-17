@@ -8,6 +8,7 @@ use strict;
 use RabakLib::Log;
 use RabakLib::ConfFile;
 use POSIX qw(strftime);
+use Data::Dumper;
 
 use vars qw(@ISA);
 
@@ -118,12 +119,13 @@ sub checkDf {
 
 sub remove_old {
     my $self= shift;
-    my $iKeep= shift;
-    my @sBakDir= @_;
+    my $iKeep= $self->getSourceKeep();
     
     return unless $iKeep;
 
     logger->info("Keeping last $iKeep versions");
+
+    my @sBakDir= @{$self->getOldBakDirs()};
     my $sqPath= quotemeta $self->getPath();
     foreach my $sDir (@sBakDir) {
         $sDir= $self->getPath($sDir);
@@ -315,7 +317,8 @@ sub finishSourceBackup {
     my $bPretend= shift;
     
     unless ($bPretend) {
-        $self->remove_old($self->getSourceKeep()) unless $iBackupResult;    # only remove old if backup was done
+        # remove old dirs if backup was successfully done
+        $self->remove_old() unless $iBackupResult;
 
         my $sSourceExt= $self->getSourceExt();
         $sSourceExt=~ s/^\./\-/;
@@ -395,7 +398,7 @@ sub getBakdirsByExts {
     my $asSetExts= shift;
     my $asSourceExts= shift;
     my $hDirs= shift || $self->getAllBakdirs();
-    
+
     my %hSetExts;
     my %hSourceExts;
 
@@ -420,8 +423,9 @@ sub getBakdirsByExts {
     @sBakDirs= sort $cmp grep {
         my $hDir= $hDirs->{$_};
         exists $hSetExts{$hDir->{set_ext}} && exists $hSourceExts{$hDir->{source_ext}}
-    } keys %{ $self->{DIRS} };
+    } keys %$hDirs;
 
+    return @sBakDirs;
 }
 
 1;

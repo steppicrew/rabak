@@ -356,7 +356,7 @@ sub _backup_setup {
         . $self->get_value("title")
     );
 
-    return $oSourcePeer->prepareBackup();
+    return $oSourcePeer->prepareBackup($self->get_switch('pretend'));
 }
 
 sub _backup_run {
@@ -386,8 +386,8 @@ sub _backup_cleanup {
 
     my $sSourceSet= $oTargetPeer->getSourceSet();
 
+    $oSourcePeer->finishBackup($iBackupResult, $self->get_switch('pretend'));
     $oTargetPeer->finishSourceBackup($iBackupResult, $self->get_switch('pretend'));
-    $oSourcePeer->finishBackup();
 
     logger->info("Backup done at "
         . strftime("%F %X", localtime) . ": "
