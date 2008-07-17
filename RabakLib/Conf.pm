@@ -540,6 +540,11 @@ sub showUncachedReferences {
     return @{$self->simplifyShow(\@sResult)};
 }
 
+sub getName {
+    my $self= shift;
+    return $self->get_value('name');
+}
+
 sub getShowName {
     my $self= shift;
     my $sName= $self->{NAME};

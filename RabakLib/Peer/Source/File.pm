@@ -398,16 +398,20 @@ sub _run_rsync {
 sub prepareBackup {
     my $self= shift;
     
+    $self->SUPER::prepareBackup();
+    
     my @sMountMessage;
     my $iMountResult= $self->mountable()->mountAll(\@sMountMessage);
 
     logger->log(@sMountMessage);
-    # returns undef if source path is not a readable directory
+
     return $self->valid_source_dir() ? 0 : 1;
 }
 
 sub finishBackup {
     my $self= shift;
+    
+    $self->SUPER::finishBackup();
     
     $self->mountable()->unmountAll();
     return 0;
@@ -415,11 +419,8 @@ sub finishBackup {
 
 sub run {
     my $self= shift;
-    my $oTarget= shift;
-    my $sTargetDir= shift;
-    my $sUniqueName= shift;
+    my $oTargetPeer= shift;
     my $bPretend= shift;
-    my @sBakDir= @_;
 
     # print Dumper($self); die;
 
@@ -432,14 +433,14 @@ sub run {
     # Write filter rules to temp file:
     my ($fhwRules, $sRulesFile)= $self->local_tempfile();
 
-    my @sFilter= $self->_get_filter(undef, $oTarget);
+    my @sFilter= $self->_get_filter(undef, $oTargetPeer);
     # print join("\n", @sFilter), "\n"; #die;
 
     print $fhwRules join("\n", @sFilter), "\n";
     close $fhwRules;
 
     # copy filter rules to source if target AND source and remote
-    if ($oTarget->is_remote() && $self->is_remote()) {
+    if ($oTargetPeer->is_remote() && $self->is_remote()) {
         my $sRemRulesFile= $self->tempfile;
         $self->copyLocalFileToRemote($sRulesFile, $sRemRulesFile);
         $sRulesFile = $sRemRulesFile;
@@ -469,17 +470,17 @@ sub run {
     my $oRsyncPeer = $self;
     my $sSourceDirPref = "";
     my $sTargetDirPref = "";
-    if ($oTarget->is_remote()) {
+    if ($oTargetPeer->is_remote()) {
         # unless target and source on same host/user/port
-        unless ($oTarget->getUserHostPort() eq $self->getUserHostPort()) {
-            $oSshPeer = $oTarget;
-            $sTargetDirPref= $oTarget->getUserHost(":");
+        unless ($oTargetPeer->getUserHostPort() eq $self->getUserHostPort()) {
+            $oSshPeer = $oTargetPeer;
+            $sTargetDirPref= $oTargetPeer->getUserHost(":");
         }
     }
     elsif ($self->is_remote()) {
         $oSshPeer= $self;
         $sSourceDirPref= $self->getUserHost(":");
-        $oRsyncPeer = $oTarget;
+        $oRsyncPeer = $oTargetPeer;
     }
     if ($oSshPeer) {
         my $sPort= $oSshPeer->get_value("port") || 22;
@@ -492,7 +493,7 @@ sub run {
             logger->warn("--bandwidth in 'rsync_opts' is deprecated. Please use 'bandwidth' option (see Doc)!");
         }
         if ($sRsyncOpts=~ s/\-\-timeout\=(\d+)//) {
-            $sTimeout= $1 unless $oTarget->get_value("timeout");
+            $sTimeout= $1 unless $oTargetPeer->get_value("timeout");
             logger->warn("--timeout in 'rsync_opts' is deprecated. Please use 'timeout' option (see Doc)!");
         }
 
@@ -508,6 +509,7 @@ sub run {
 
     my $iScanBakDirs= $self->get_value('scan_bak_dirs', 4);
 
+    my @sBakDir= @{$oTargetPeer->getOldBakDirs()};
     splice @sBakDir, $iScanBakDirs if $#sBakDir >= $iScanBakDirs;
     my $sLinkFlags = "";
     map { $sLinkFlags .= " --link-dest=" . $self->shell_quote($_); } @sBakDir;
@@ -520,6 +522,7 @@ sub run {
     # prepare handles for stdout/stderr
     my $sStdOutStat= 0;
     my @sLinkErrors= ();
+    my $sTargetDir= $oTargetPeer->getAbsBakDir();
     my $sqTargetDir= quotemeta $sTargetDir;
     my %Handles= (
         STDOUT => sub {
@@ -598,7 +601,7 @@ sub run {
 
 sub getPath {
     my $self= shift;
-    return $self->mountable()->getPath();
+    return $self->mountable()->getPath(@_);
 }
 
 1;

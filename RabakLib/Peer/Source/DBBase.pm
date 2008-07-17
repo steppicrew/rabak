@@ -62,12 +62,8 @@ sub sort_show_key_order {
 # TODO: support large objects (pg_dump -Fc)
 sub run {
     my $self= shift;
-    my $oTarget= shift;
-    my $sFullTarget= shift;
-    my $sUniqueName= shift;
+    my $oTargetPeer= shift;
     my $bPretend= shift;
-    my @sBakDir= @_;
-
 
     my %sValidDb= ();
     my @sDb= ();
@@ -100,7 +96,10 @@ sub run {
     my $sZipExt= $self->{PACKER}{ext};
 
     foreach (@sDb) {
-        my $sDestFile= "$sFullTarget/$_.$sUniqueName.$sZipExt";
+        my $sDestFile= $oTargetPeer->getAbsBakDir()
+            . "/$_."
+            . $oTargetPeer->getSourceSubdir()
+            . ".$sZipExt";
         my $sProbeCmd= $self->get_probe_cmd($_);
 
         unless ($bPretend) {
@@ -119,14 +118,14 @@ sub run {
         # pipe stdout/stderr to final target file
         # therefore we have to build a ssh command, if either target or source
         # is remote
-        if ($oTarget->is_remote() || $self->is_remote()) {
+        if ($oTargetPeer->is_remote() || $self->is_remote()) {
             # TODO: check if target and source are the same users on the same host
             $sDumpCmd= $self->build_ssh_cmd($sDumpCmd);
         }
 
         # now execute dump command on target
         unless ($bPretend) {
-            $oTarget->run_cmd("$sDumpCmd > $sDestFile");
+            $oTargetPeer->run_cmd("$sDumpCmd > $sDestFile");
             if ($self->get_last_exit) {
                 my $sError= $self->get_last_error;
                 chomp $sError;

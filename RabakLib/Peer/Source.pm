@@ -67,8 +67,22 @@ sub getPathExtension {
     return ".$sName";
 }
 
-sub prepareBackup { 0 }
-sub finishBackup { 0 }
+sub prepareBackup {
+    my $self= shift;
+    my $bPretend= shift;
+
+    logger->info("Source: " . $self->getFullPath());
+    logger->set_prefix($self->get_value("type"));
+    return 0;
+}
+sub finishBackup {
+    my $self= shift;
+    my $iBackupResult= shift;
+    my $bPretend= shift;
+    
+    logger->set_prefix();
+    $self->cleanupTempfiles();
+}
 
 # TODO: is there a better way to call parallel objects?
 sub sort_show_key_order {
