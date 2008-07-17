@@ -17,7 +17,9 @@ sub new {
 
     my $self= $class->SUPER::new(@_);
     $self->{MOUNTABLE}= RabakLib::Mountable->new($self);
-    
+    $self->{SOURCE_DATA}= undef;    
+    $self->{BAKSET_DATA}= undef;    
+
     return $self;
 }
 
@@ -140,8 +142,27 @@ sub remove_old {
     }
 }
 
+sub getBaksetExt {
+    my $self= shift;
+    $self->{BAKSET_DATA}{BAKSETEXT};
+}
+sub getBaksetDir {
+    my $self= shift;
+    $self->{BAKSET_DATA}{BAKSETDIR};
+}
+sub getBaksetMonth {
+    my $self= shift;
+    $self->{BAKSET_DATA}{BAKSETMONTH};
+}
+sub getBaksetDay {
+    my $self= shift;
+    $self->{BAKSET_DATA}{BAKSETDAY};
+}
+
 sub prepareBackup {
     my $self= shift;
+    my $sBakSetExt= shift;
+    my $bPretend= shift;
 
     my $mountable= $self->mountable();
 
@@ -167,17 +188,131 @@ sub prepareBackup {
         logger->error("Target \"".$self->get_value("path")."\" is not writable. Backup set skipped.");
         return -2;
     }
+
+    my $sBakSetMonth= strftime("%Y-%m", localtime);
+    $self->{BAKSET_DATA} = {
+        BAKSETEXT => $sBakSetExt,
+        BAKSETDIR => "$sBakSetMonth$sBakSetExt",
+        BAKSETMONTH => $sBakSetMonth;
+        BAKSETDAY => strftime("%Y-%m-%d", localtime);
+    };
+
+    $self->mkdir($self->getBaksetDir()) unless $bPretend;
     return 0;
 }
 
 sub finishBackup {
     my $self= shift;
 
+    $self->cleanupTempfiles();
+
     my $mountable= $self->mountable();
 
     # unmount all target mounts
     $mountable->unmountAll();
+    $self->{BAKSET_DATA}= undef;
     return 0;
+}
+
+sub prepareLogging {
+    my $self= shift;
+    my $bPretend= shift;
+
+    my $sBaksetDay= $self->getBaksetDay();
+    my $sBaksetMonth= $self->getBaksetMonth();
+    my $sBaksetDir= $self->getBaksetDir();
+    my $sBaksetExt= $self->getBaksetExt();
+
+    my $sLogDir= "$sBaksetMonth-log";
+    my $sLogFile= "$sLogDir/$sBaksetDay$sBaksetExt.log";
+    my $sLogFilePath= $self->getPath($sLogFile);
+
+    unless ($bPretend) {
+        $self->mkdir($sLogDir);
+        my $sLogLink= "$sBaksetDir/$sBakDay$sBakSetExt.log";
+
+
+        my $sError= logger->open($sLogFileName, $self);
+        if ($sError) {
+            logger->warn("Can't open log file \"$sLogFileName\" ($sError). Going on without...");
+        }
+        else {
+            $self->symlink("../$sLogFile", "$sLogLink");
+            my $sCurrentLogFileName= "current-log$sBakSetExt";
+            $self->unlink($sCurrentLogFileName);
+            $self->symlink($sLogFile, $sCurrentLogFileName);
+        }
+    }
+    logger->info("Logging to: $sLogFileName");
+    logger->info("", "**** Only pretending, no changes are made! ****", "") if $bPretend;
+}
+
+sub finishLogging {
+    my $self= shift;
+
+    logger->close();
+}
+
+sub prepareSourceBackup {
+    my $self= shift;
+    my $asSetExts= shift;
+    my $asSourceExts= shift;
+    my $bPretend= shift;
+
+    my $sBakDay= $self->{BAKSET_DATA}{BAKSETDAY};
+
+    my $hDirs= $self->getAllBakdirs();
+
+    my %hSetExts;
+    my %hSetSourceExts;
+
+    my $i= 1;
+    map { $hSetExts{$_}= $i++ } @$asSetExts;
+    map { $hSourceExts{$_}= $i++ } @$asSourceExts;
+
+    my @sBakDirs= ();
+
+    my $cmp= sub {
+        my $ad= $hDirs->{$a};
+        my $bd= $hDirs->{$b};
+        return
+            $bd->{date} cmp $ad->{date}
+            || $hSetExts{$ad->{set_ext}} cmp $hSetExts{$bd->{set_ext}}
+            || $hSourceExts{$ad->{source_ext}} cmp $hSourceExts{$bd->{source_ext}}
+            || $bd->{subset} cmp $ad->{subset}
+        ;
+    };
+
+    # go away if you don't grok this:
+    @sBakDirs= sort $cmp grep {
+        my $hDir= $hDirs->{$_};
+        exists $hSetExts{$hDir->{set_ext}} && exists $hSourceExts{$hDir->{source_ext}}
+    } keys %{ $self->{DIRS} };
+
+
+    my $sSubSet= '';
+    if (scalar @sBakDirs && $hDirs->{$sBakDirs[0]}{date} eq $sBakDay) {
+        $sSubSet= $hDirs->{$sBakDirs[0]}{subset};
+
+        die "Maximum of 1000 backups reached!" if $sSubSet eq '_999';
+        if (!$sSubSet) {
+            $sSubSet= '_001';
+        }
+        else {
+            $sSubSet=~ s/^_0*//;
+            $sSubSet= sprintf("_%03d", $sSubSet + 1);
+        }
+    }
+
+    my $sSourceDir= "$sBakDay$sSubSet".$sBakSourceExts[0];
+    my $sBakDir= $self->{BAKSET_DATA}{BAKSETDIR} . "/$sSourceDir";
+    $self->{SOURCE_DATA}= {
+        OLD_BAKDIRS => \@sBakDirs,
+        SUBSET => $sSubSet,
+        BAKDAY => $sBakDay,
+        SOURCEDIR => $sSourceDir,
+        BAKDIR => $sBakDir,
+    };
 }
 
 sub sort_show_key_order {
@@ -212,7 +347,7 @@ sub getPath {
     return $self->mountable()->getPath();
 }
 
-sub collectBakdirs {
+sub getAllBakdirs {
     my $self= shift;
 
     # get recursive file listing for 1 extra level
@@ -244,55 +379,8 @@ sub collectBakdirs {
     return \%hResult;
 }
 
-sub collectSetBackdirs {
-    my $self= shift;
-    my $asSetExts= shift;
-    my $asSourceExts= shift;
-    my $sBakDay= shift;         # default to today?
-
-    my $hDirs= $self->collectBakdirs();
-
-    my %hSetExts;
-    my %hSetSourceExts;
-
-    my $i= 1;
-    map { $hSetExts{$_}= $i++ } @$asSetExts;
-    map { $hSourceExts{$_}= $i++ } @$asSourceExts;
-
-    my @sBakDirs= ();
-
-    my $cmp= sub {
-        my $ad= $hDirs->{$a};
-        my $bd= $hDirs->{$b};
-        return
-            $bd->{date} cmp $ad->{date}
-            || $hSetExts{$ad->{set_ext}} cmp $hSetExts{$bd->{set_ext}}
-            || $hSourceExts{$ad->{source_ext}} cmp $hSourceExts{$bd->{source_ext}}
-            || $bd->{subset} cmp $ad->{subset}
-        ;
-    };
-
-    # go away if you don't grok this:
-    @sBakDirs= sort $cmp grep {
-        my $hDir= $hDirs->{$_};
-        exists $hSetExts{$hDir->{set_ext}} && exists $hSourceExts{$hDir->{source_ext}}
-    } keys %{ $self->{DIRS} };
-
-    my $sSubSet= '';
-    if (scalar @sBakDirs && $hDirs->{$sBakDirs[0]}{date} eq $sBakDay) {
-        $sSubSet= $hDirs->{$sBakDirs[0]}{subset};
-
-        die "Maximum of 1000 backups reached!" if $sSubSet eq '_999';
-        if (!$sSubSet) {
-            $sSubSet= '_001';
-        }
-        else {
-            $sSubSet=~ s/^_0*//;
-            $sSubSet= sprintf("_%03d", $sSubSet + 1);
-        }
-    }
-
-    return ($sSubSet, @sBakDirs);
+sub getBackdirsFromSetSource {
+    return @sBakDirs;
 }
 
 1;

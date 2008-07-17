@@ -212,71 +212,6 @@ sub get_targetPeer {
     return $self->{_TARGET_OBJECT};
 }
 
-# collect all backup dirs
-sub collect_bakdirs {
-    my $self= shift;
-    my @sqBakSet= map {$_ eq '' ? '.{0}' : quotemeta $_} @{shift @_};
-    my @sqBakSource= map {$_ eq '' ? '.{0}' : quotemeta $_} @{shift @_};
-    my $sSubSetBakDay= shift || 0;
-
-    my $sqBakSet= "(" . join(")|(", @sqBakSet) . ")";
-    my $sqBakSource= "(" . join(")|(", @sqBakSource) . ")";
-
-    my $oTargetPeer= $self->get_targetPeer();
-    my %sBakDirs= ();
-    my $sSubSet= '';
-
-    my %hBakDirs = $oTargetPeer->getDirRecursive('', 1); # get recursive file listing for 2 levels
-
-    print Dumper(\%hBakDirs);
-
-    for my $sMonthDir (keys %hBakDirs) {
-        # skip all non-dirs
-        next unless ref $hBakDirs{$sMonthDir};
-        # skip all dirs not containing any bak set extension
-        next unless $sMonthDir =~ /\/\d\d\d\d\-\d\d($sqBakSet)$/;
-
-        for my $sDayDir (keys %{$hBakDirs{$sMonthDir}}) {
-            # skip all non-dirs
-            next unless ref $hBakDirs{$sMonthDir}->{$sDayDir};
-            # [a-z] for backward compatibility
-            next unless $sDayDir =~ /\/(\d\d\d\d\-\d\d\-\d\d)[a-z]?([\-_]\d{3})?($sqBakSource)$/;
-            my $sCurSubSetBakDay= $1;
-            my $sCurSubSet= $2 || '';
-            if ($sSubSetBakDay eq $sCurSubSetBakDay) {
-                die "Maximum of 1000 backups reached!" if $sCurSubSet eq '_999';
-                if (!$sCurSubSet) {
-                    $sSubSet= '_001' if $sSubSet eq '';
-                }
-                elsif ($sSubSet le $sCurSubSet) {
-                    $sCurSubSet=~ s/^[\-_]0*//;
-                    $sSubSet= sprintf("_%03d", $sCurSubSet + 1);
-                }
-            }
-            $sBakDirs{$sCurSubSetBakDay}= [] unless $sBakDirs{$sCurSubSetBakDay};
-            push @{$sBakDirs{$sCurSubSetBakDay}}, $sDayDir;
-            # print "$sDayDir\n";
-        }
-    }
-
-    my @sResult = ();
-    for my $sBakDay (sort {$b cmp $a} keys %sBakDirs) {
-        my @sBakDirs= @{$sBakDirs{$sBakDay}};
-        for $sqBakSet (@sqBakSet) {
-            for $sqBakSource (@sqBakSource) {
-                my $regExp= qr/\/\d\d\d\d\-\d\d$sqBakSet\/\d\d\d\d\-\d\d\-\d\d[a-z]?([\-_]\d{3})?$sqBakSource$/;
-                push @sResult, sort {$b cmp $a} grep {/$regExp/} @sBakDirs;
-                # remove found dirs to prevent duplicate result strings
-                @sBakDirs = grep {!/$regExp/} @sBakDirs;
-            }
-        }
-    }
-
-    unshift @sResult, $sSubSet if $sSubSetBakDay;
-
-    return @sResult;
-}
-
 # -----------------------------------------------------------------------------
 #  Little Helpers
 # -----------------------------------------------------------------------------
@@ -351,41 +286,12 @@ sub backup {
     my $oTargetPeer= $self->get_targetPeer();
     my @oSources= $self->get_sourcePeers();
 
-    $iResult= $oTargetPeer->prepareBackup();
-    goto cleanup if $iResult;
-
-    my $sBakMonth= strftime("%Y-%m", localtime);
-    my $sBakDay= strftime("%Y-%m-%d", localtime);
-
     my $sBakSetExt= $self->getPathExtension();
 
-    # create target month dir
-    my $sTarget= "$sBakMonth$sBakSetExt";
-    $self->_mkdir($sTarget);
+    $iResult= $oTargetPeer->prepareBackup($self->getPathExtension($sBakSetExt), $self->get_switch('pretend'));
+    goto cleanup if $iResult;
 
-    # start logging
-    my $sLogDir= "$sBakMonth-log";
-    my $sLogFile= "$sLogDir/$sBakDay$sBakSetExt.log";
-    my $sLogFileName= $oTargetPeer->getPath() . "/$sLogFile";
-
-    if (!$self->get_switch('pretend') && $self->get_switch('logging')) {
-        $self->_mkdir($sLogDir);
-        my $sLogLink= "$sTarget/$sBakDay$sBakSetExt.log";
-
-
-        my $sError= logger->open($sLogFileName, $oTargetPeer);
-        if ($sError) {
-            logger->warn("Can't open log file \"$sLogFileName\" ($sError). Going on without...");
-        }
-        else {
-            $oTargetPeer->symlink("../$sLogFile", "$sLogLink");
-            my $sCurrentLogFileName= "current-log$sBakSetExt";
-            $oTargetPeer->unlink($sCurrentLogFileName);
-            $oTargetPeer->symlink($sLogFile, $sCurrentLogFileName);
-        }
-    }
-    logger->info("Logging to: $sLogFileName") if $self->get_switch('logging');
-    $self->logPretending();
+    $oTargetPeer->prepareLogging($self->get_switch('pretend')) if $self->get_switch('logging');
 
     # now try backing up every source 
     my %sNames= ();
@@ -416,17 +322,14 @@ sub backup {
     $iResult= scalar(@oSources) - $iSuccessCount;
 
 cleanup:
-    # TODO: move to target->finishBackup
-    $oTargetPeer->cleanupTempfiles();
+    # TODO: move _mail* to logger and do df-check in Traget.pm
     my $aDf = $oTargetPeer->checkDf();
     if (defined $aDf) {
         logger->warn(join " ", @$aDf);
         $self->_mail_warning("disc space too low", @$aDf);
     }
 
-    # stop logging
-    logger->close();
-    
+    $oTargetPeer->finishLogging();
     $oTargetPeer->finishBackup();
 
     my $sSubject= "successfully finished";
@@ -448,17 +351,18 @@ sub _backup_setup {
     my $oSource= $hBackupData->{source};
 
     my $sSubSet= "";
-    my @sBakDir= ();
+    my @sBakDirs= ();
     my $oTarget= $hBackupData->{target};
 
-    return 1 if $oSource->prepareBackup();
+    my $iResult = $oSource->prepareBackup();
+    return $iResult if $iResult;
 
     my $sBakSetExt= $self->getPathExtension();
     my $sBakSourceExt= $oSource->getPathExtension();
     my $sBakSourceName= $oSource->get_value("name");
     
     my $sBakDay= $hBackupData->{bak_day};
-    ($sSubSet, @sBakDir)= $self->collect_bakdirs(
+    ($sSubSet, @sBakDirs)= $oTarget->collectSetBakdirs(
         $self->getAllPathExtensions(),
         $self->getAllPathExtensions($oSource),
         $sBakDay,
@@ -475,7 +379,7 @@ sub _backup_setup {
     logger->info("Backup start at " . strftime("%F %X", localtime) . ": $sBakSourceName, $sBakDay$sSubSet, " . $self->get_value("title"));
     logger->info("Source: " . $oSource->getFullPath());
 
-    $hBackupData->{bak_dir_list}= \@sBakDir;
+    $hBackupData->{bak_dir_list}= \@sBakDirs;
     $hBackupData->{sub_set}= $sSubSet;
     $hBackupData->{rel_target}= $sTarget;
 
