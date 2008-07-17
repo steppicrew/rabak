@@ -18,10 +18,14 @@ use Getopt::Std;
 
 use RabakLib::Cmd;
 
-my $VERSION= "1.0_rc4";
+my $VERSION= "1.0_rc5";
 my $DEBUG= 0;
 
-my $oCmd= RabakLib::Cmd->new(\@ARGV);
+my $oCmd= RabakLib::Cmd::Build(\@ARGV);
+print $oCmd->error() unless $oCmd->run();
 
+# if ($oCmd->{ERROR}) {
+#     print "Error: " . $oCmd->{ERROR} . "\n";
+# }
 
 1;

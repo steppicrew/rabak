@@ -7,6 +7,9 @@ use strict;
 
 use RabakLib::Conf;
 use RabakLib::Log;
+
+use RabakLib::Set;      # benoetigt in print_set_list
+
 use Data::Dumper;
 use Storable qw(dclone);
 
@@ -39,7 +42,7 @@ sub new {
     my @sFiles= @_;
 
     my $self= {
-        FILE => undef,
+        FILE => '',
         SEARCHPATHS => [map {/(.*)\/[^\/]+$/ ? $1 : '.'} grep { defined } @sFiles],
         CONF => RabakLib::Conf->new('*'),
     };

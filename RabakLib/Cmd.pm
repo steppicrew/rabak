@@ -6,87 +6,231 @@ use Cwd;
 use Data::Dumper;
 use Getopt::Long qw(GetOptionsFromArray);
 
-# use RabakLib::ConfFile;
+use RabakLib::ConfFile;
 # use RabakLib::Set;
 # use RabakLib::Admin;
-# use RabakLib::Log;
+
+use RabakLib::Log;
 
 use strict;
 use warnings;
 
-sub new {
-    my $class= shift;
+sub Build {
     my $asArgs= shift;
 
     my @sqArgs= map {/\s/ ? "'$_'" : $_} $0, $asArgs;
     my $sCommandLine= join " ", @sqArgs;
 
     my %hOptDefs= (
-        "conf" =>           [ "",  "s", "<file>",   "Use <file> for configuration" ],
-        "targetgroup" =>    [ "i", "s", "<value>",  "Save on device with targetgroup value <value>" ],
-        "log" =>            [ "",  "",  "",         "Log to file" ],
-        "pretend" =>        [ "",  "",  "",         "Pretend (don't do anything, just tell what would happen)" ],
-        "quiet" =>          [ "",  "",  "",         "Be quiet" ],
-        "verbose" =>        [ "",  "",  "",         "Be verbose" ],
-        "version" =>        [ "",  "",  "",         "Show version" ],
-        "help" =>           [ "",  "",  "",         "Show (this) help" ],
+        "conf" =>               [ "",  "s", "<file>",   "Use <file> for configuration" ],
+        "i" =>                  [ "",  "s", "<value>",  "Save on device with targetgroup value <value> (Backward Compatibility. Don't use!)" ],
+        "log" =>                [ "",  "",  "",         "Log to file" ],
+        "pretend" =>            [ "",  "",  "",         "Pretend (don't do anything, just tell what would happen)" ],
+        "quiet" =>              [ "",  "",  "",         "Be quiet" ],
+        "verbose" =>            [ "",  "",  "",         "Be verbose" ],
+        "version" =>            [ "",  "",  "",         "Show version" ],
+        "help" =>               [ "",  "",  "",         "Show (this) help" ],
     );
 
-    my %hOpts= ();
-
-    my @sOptArgs= ();
-    for my $sOpt (keys %hOptDefs) {
-        my $hDefs= $hOptDefs{$sOpt};
-        my $sKey= $sOpt;
-        $sKey .= '|' . $hDefs->[0] if $hDefs->[0];
-        $sKey .= '=' . $hDefs->[1] if $hDefs->[1];
-        # $hOpts{$sKey}= '';
-        push @sOptArgs, $sKey;
-    }
-
-    print Dumper($asArgs);
-    print Dumper(\@sOptArgs);
-
-    my $iResult;
+    my $oCmd;
+    my $hOpts= {};
+    my @sOptArgs;
     my $sError;
-    eval {
-        local $SIG{'__WARN__'} = sub { chomp($sError= $_[0]); };
-        $iResult= GetOptionsFromArray($asArgs, \%hOpts, @sOptArgs);
-        1;
+
+    my $calcOptArgs= sub {
+        my %hOptDefs= @_;
+
+        @sOptArgs= ();
+        for my $sOpt (keys %hOptDefs) {
+            my $hDefs= $hOptDefs{$sOpt};
+            my $sKey= $sOpt;
+            $sKey .= '|' . $hDefs->[0] if $hDefs->[0];
+            $sKey .= '=' . $hDefs->[1] if $hDefs->[1];
+            push @sOptArgs, $sKey;
+        }
     };
+    $calcOptArgs->(%hOptDefs);
 
-    if ($iResult) {
+# print Dumper($asArgs);
+# print Dumper(\@sOptArgs);
 
-        # print Dumper($asArgs);
-
-        if (scalar @$asArgs) {
-            my $sCmd= lc pop @$asArgs;
+    Getopt::Long::Configure("pass_through");
+    GetOptionsFromArray($asArgs, $hOpts, @sOptArgs);
+    if (scalar @$asArgs) {
+        my $sCmd= lc shift @$asArgs;
+        eval {
+            local $SIG{'__WARN__'} = sub { chomp($sError= $_[0]); };
+            require "RabakLib/Cmd/" . ucfirst($sCmd) . ".pm";
+            my $sClass= "RabakLib::Cmd::" . ucfirst($sCmd);
+            $oCmd= $sClass->new();
+            1;
+        };
+        if ($@) {
+            die $@ if $@ !~ /^Can\'t locate \S+\.pm/;
+            $sError= "Unknown command: $sCmd";
+        }
+        else {
+            $calcOptArgs->(%hOptDefs, %{ $oCmd->GetOptions() });
             eval {
                 local $SIG{'__WARN__'} = sub { chomp($sError= $_[0]); };
-
-                require "RabakLib/Cmd/" . ucfirst($sCmd) . ".pm";
-                my $sClass= "RabakLib::Cmd::" . ucfirst($sCmd);
-                my $oCmd= $sClass->new($asArgs);
+                Getopt::Long::Configure("no_pass_through");
+                GetOptionsFromArray($asArgs, $hOpts, @sOptArgs);
                 1;
             };
-            if ($@) {
-                die $@ if $@ !~ /^Can\'t locate/;
-                $iResult= 0;
-                $sError= "Unknown command: $sCmd";
-            }
+            die $@ if $@;
         }
     }
 
-    if (!$iResult) {
-        print "$sError\n"; exit 1;
-    }
+    $oCmd= RabakLib::Cmd::Error->new($sError) if $sError;
 
-    my $self= {};
-    # $self->{OPTS}= $hOptions;
-    # $self->{INODE_CACHE}= RabakLib::InodeCache->new($hOptions);
+    $oCmd->setup($hOpts, $asArgs, $sCommandLine);
+
+# print Dumper($asArgs);
+# print Dumper(\%hOpts);
+    return $oCmd;
+}
+
+sub new {
+    my $class= shift;
+    my $self= { OPTS => {}, ARGS => [], ERROR => undef, COMMAND_LINE => undef };
+    bless $self, $class;
+}
+
+sub setup {
+    my $self= shift;
+    my $hOpts= shift;
+    my $hArgs= shift;
+    my $sCommandLine= shift;
+
+    $self->{OPTS}= $hOpts;
+    $self->{ARGS}= $hArgs;
+    $self->{COMMAND_LINE}= $sCommandLine;
+}
+
+sub want_args {
+    my $self= shift;
+
+    return unless scalar @{$self->{ARGS}} > 1;
+    $self->{ERROR}= 'Zero or one Argument expected, got "' . join('", "', @{$self->{ARGS}}) . '"' . $/;
+}
+
+sub error {
+    return shift->{ERROR};
+}
+
+sub readConf {
+    my $self= shift;
+
+    my @sConfFiles = (
+        "$ENV{HOME}/.rabak/rabak.cf",
+        "/etc/rabak/rabak.cf",
+        "/etc/rabak.cf",
+        "/usr/local/rabak/rabak.cf",
+        "./rabak.cf",
+    );
+    @sConfFiles= $self->{OPTS}{conf} if $self->{OPTS}{conf};
+    my $oConfFile= RabakLib::ConfFile->new(@sConfFiles);
+    my $oConf= $oConfFile->conf();
+
+    # overwrite values with comand line switches
+    my $sHostname= `hostname -f 2>/dev/null` || `hostname`;
+    chomp $sHostname;
+    $oConf->preset_values({
+        '*.switch.pretend'      => $self->{OPTS}{pretend},
+        '*.switch.verbose'      => $self->{OPTS}{verbose} ? LOG_VERBOSE_LEVEL : undef,
+        '*.switch.logging'      => $self->{OPTS}{log},
+        '*.switch.quiet'        => $self->{OPTS}{quiet},
+        '*.switch.targetvalue'  => $self->{OPTS}{i},    # deprecate?
+        '*.switch.version'      => 0, # $VERSION,
+        '*.switch.hostname'     => $sHostname,
+        '*.switch.commandline'  => $self->{COMMAND_LINE},
+        '*.switch.configfile'   => $oConfFile->filename(),
+    });
+    # print Dumper($oConf->get_node("switch")->{VALUES});
+    return $oConfFile;
+}
+
+package RabakLib::Cmd::Error;
+
+use vars qw(@ISA);
+
+@ISA= qw( RabakLib::Cmd );
+
+sub new {
+    my $class= shift;
+    my $sError= shift;
+
+    my $self= $class->SUPER::new();
+    $self->{ERROR}= $sError;
 
     bless $self, $class;
 }
+
+sub run {
+    print "Error: " . shift->{ERROR} . "\n";
+}
+
+1;
+
+__END__
+
+
+
+sub _conf_read {
+    my @sConfFiles = (
+        "$ENV{HOME}/.rabak/rabak.cf",
+        "/etc/rabak/rabak.cf",
+        "/etc/rabak.cf",
+        "/usr/local/rabak/rabak.cf",
+        "./rabak.cf",
+    );
+    @sConfFiles= ($sOpts{c}) if defined $sOpts{c};
+    $oConfFile= RabakLib::ConfFile->new(@sConfFiles);
+    $oConf= $oConfFile->conf();
+    # overwrite values with comand line switches
+    my $sHostname= `hostname -f 2>/dev/null` || `hostname`;
+    chomp $sHostname;
+    $oConf->preset_values({
+        '*.switch.pretend' => $sOpts{p},
+        '*.switch.verbose' => $sOpts{v} ? LOG_VERBOSE_LEVEL : undef,
+        '*.switch.logging' => $sOpts{l},
+        '*.switch.quiet' => $sOpts{q},
+        '*.switch.targetvalue' => $sOpts{i},
+        '*.switch.version' => $VERSION,
+        '*.switch.hostname' => $sHostname,
+        '*.switch.commandline' => $sCommandLine,
+        '*.switch.configfile' => $oConfFile->filename(),
+    });
+    # print Dumper($oConf->get_node("switch")->{VALUES});
+    return $oConfFile;
+}
+
+sub _cmd_setup {
+    my $sBakSet= shift || '';
+
+    _conf_read();
+    my $hSetConf= $oConf->get_node($sBakSet);
+
+    unless ($hSetConf) {
+    	print "# Backup Set '$sBakSet' does not exist!\n";
+    	_exit(3);
+    }
+
+    # Build a Set from Hash
+    my $oSet= RabakLib::Set->newFromConf($hSetConf);
+    my $sError= $oSet->get_validation_message();
+
+    if ($sError) {
+    	print "# Backup Set '$sBakSet' is not properly defined:\n";
+        print "# $sError\n";
+        print "# The following values were found in the configuration:\n";
+        $hSetConf->show();
+    	_exit(3);
+    }
+
+    return $oSet;
+}
+
 
 1;
 
