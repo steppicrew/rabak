@@ -241,53 +241,23 @@ sub prepareBackup {
 sub finishBackup {
     my $self= shift;
 
+    my $aDf = $self->checkDf();
+    if (defined $aDf) {
+        logger->warn(join " ", @$aDf);
+        logger->mailWarning("disc space too low", @$aDf);
+    }
+
+    $self->closeLogging();
+    
     $self->cleanupTempfiles();
 
     my $mountable= $self->mountable();
 
     # unmount all target mounts
     $mountable->unmountAll();
+
     $self->{BAKSET_DATA}= undef;
     return 0;
-}
-
-sub prepareLogging {
-    my $self= shift;
-    my $bPretend= shift;
-
-    my $sBaksetDay= $self->getBaksetDay();
-    my $sBaksetMonth= $self->getBaksetMonth();
-    my $sBaksetDir= $self->getBaksetDir();
-    my $sBaksetExt= $self->getBaksetExt();
-
-    my $sLogDir= "$sBaksetMonth-log";
-    my $sLogFile= "$sLogDir/$sBaksetDay$sBaksetExt.log";
-    my $sLogFilePath= $self->getPath($sLogFile);
-
-    unless ($bPretend) {
-        $self->mkdir($sLogDir);
-        my $sLogLink= "$sBaksetDir/$sBaksetDay$sBaksetExt.log";
-
-
-        my $sError= logger->open($sLogFilePath, $self);
-        if ($sError) {
-            logger->warn("Can't open log file \"$sLogFilePath\" ($sError). Going on without...");
-        }
-        else {
-            $self->symlink("../$sLogFile", "$sLogLink");
-            my $sCurrentLogFileName= "current-log$sBaksetExt";
-            $self->unlink($sCurrentLogFileName);
-            $self->symlink($sLogFile, $sCurrentLogFileName);
-        }
-    }
-    logger->info("Logging to: $sLogFilePath");
-    logger->info("", "**** Only pretending, no changes are made! ****", "") if $bPretend;
-}
-
-sub finishLogging {
-    my $self= shift;
-
-    logger->close();
 }
 
 sub prepareSourceBackup {
@@ -356,6 +326,45 @@ sub finishSourceBackup {
         $self->symlink($self->getBakDir(), $sCurrentLink);
     }
     $self->{SOURCE_DATA}= undef;
+}
+
+sub initLogging {
+    my $self= shift;
+    my $bPretend= shift;
+
+    my $sBaksetDay= $self->getBaksetDay();
+    my $sBaksetMonth= $self->getBaksetMonth();
+    my $sBaksetDir= $self->getBaksetDir();
+    my $sBaksetExt= $self->getBaksetExt();
+
+    my $sLogDir= "$sBaksetMonth-log";
+    my $sLogFile= "$sLogDir/$sBaksetDay$sBaksetExt.log";
+    my $sLogFilePath= $self->getPath($sLogFile);
+
+    unless ($bPretend) {
+        $self->mkdir($sLogDir);
+        my $sLogLink= "$sBaksetDir/$sBaksetDay$sBaksetExt.log";
+
+
+        my $sError= logger->open($sLogFilePath, $self);
+        if ($sError) {
+            logger->warn("Can't open log file \"$sLogFilePath\" ($sError). Going on without...");
+        }
+        else {
+            $self->symlink("../$sLogFile", "$sLogLink");
+            my $sCurrentLogFileName= "current-log$sBaksetExt";
+            $self->unlink($sCurrentLogFileName);
+            $self->symlink($sLogFile, $sCurrentLogFileName);
+        }
+    }
+    logger->info("Logging to: $sLogFilePath");
+    logger->info("", "**** Only pretending, no changes are made! ****", "") if $bPretend;
+}
+
+sub closeLogging {
+    my $self= shift;
+
+    logger->close();
 }
 
 sub sort_show_key_order {

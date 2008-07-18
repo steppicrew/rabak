@@ -61,7 +61,7 @@ sub Factory {
 
 sub getPathExtension {
     my $self= shift;
-    my $sName= $self->get_value("path_extension", $self->get_value("name", ""));
+    my $sName= $self->get_value("path_extension", $self->getName());
     $sName=~ s/^\*/source/;
     return "" if $sName eq "";
     return ".$sName";

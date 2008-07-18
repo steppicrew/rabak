@@ -542,7 +542,7 @@ sub showUncachedReferences {
 
 sub getName {
     my $self= shift;
-    return $self->get_value('name');
+    return $self->get_value('name', '');
 }
 
 sub getShowName {

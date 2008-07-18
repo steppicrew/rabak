@@ -12,7 +12,6 @@ use RabakLib::Peer::Target;
 
 use Data::Dumper;
 use File::Spec ();
-use Mail::Send;
 use POSIX qw(strftime);
 
 # use URI;
@@ -55,20 +54,6 @@ sub get_validation_message {
         || $self->get_value_required_message("source")
         || $self->get_value_required_message("target");
 }
-
-# sub _need_value {
-#     my $self= shift;
-#     my $sField= shift;
-#
-#     return "Required value \"" . $self->get_value("name") . ".$sField\" missing." unless defined $self->{VALUES}{$sField};
-#     return undef;
-# }
-
-# sub _validate {
-#     my $self= shift;
-#
-#     return $self->_need_value('title') || $self->_need_value('source') || $self->_need_value('target');
-# }
 
 sub sort_show_key_order {
     my $self= shift;
@@ -114,83 +99,6 @@ sub show {
 }
 
 # -----------------------------------------------------------------------------
-#  Messages
-# -----------------------------------------------------------------------------
-
-sub _timestr {
-    return strftime("%Y-%m-%d %H:%M:%S", localtime);
-}
-
-sub logPretending {
-    my $self= shift;
-    return unless $self->get_switch('pretend');
-
-    logger->info("", "**** Only pretending, no changes are made! ****", "");
-}
-
-sub _mail {
-    my $self= shift;
-    my ($sSubject, $fBody) = @_;
-    
-    my $sMailAddress= $self->get_value('email'); 
-
-    return 0 if $self->get_switch('pretend'); 
-    return 0 unless $sMailAddress;
-
-    my $oMail = new Mail::Send Subject => $sSubject, To => $sMailAddress;
-    # $msg->cc('user@host');
-    my $fh = $oMail->open;
-    my $sLine;
-    my $fChompNL= sub {
-        my $sLine= $fBody->();
-        return undef unless defined $sLine;
-        chomp $sLine;
-        return "$sLine\n";
-    };
-    print $fh $sLine while defined ($sLine = $fChompNL->());
-    $fh->close;
-
-    return 1;
-}
-
-sub _mail_log {
-    my $self= shift;
-    my $sSubject= shift;
-
-    my $iErrors= logger->get_errorCount;
-    my $iWarns= logger->get_warnCount;
-    my $sErrWarn;
-    $sErrWarn= "$iErrors error" if $iErrors; 
-    $sErrWarn.= "s" if $iErrors > 1; 
-    $sErrWarn.= ", " if $iErrors && $iWarns; 
-    $sErrWarn.= "$iWarns warning" if $iWarns; 
-    $sErrWarn.= "s" if $iWarns > 1; 
-    $sSubject.= " ($sErrWarn)" if $sErrWarn;
-    
-    $sSubject= "RABAK '" . $self->get_value("name") . "': $sSubject";
-
-    my $sFileName= logger->get_messages_file();
-    my $fh;
-    open $fh, "<$sFileName" or $fh= undef;
-    my $fBody = sub {<$fh>};
-    unless (defined $fh) {
-        my @sBody= ("Error openening file '$sFileName'");
-        $fBody = sub {shift @sBody};
-    }
-
-    my $result = $self->_mail($sSubject, $fBody);
-    close $fh if defined $fh;
-    return $result;
-}
-
-sub _mail_warning {
-    my $self= shift;
-    my ($sSubject, @sBody) = @_;
-
-    return $self->_mail("RABAK WARNING: $sSubject", sub {shift @sBody});
-}
-
-# -----------------------------------------------------------------------------
 #  ...
 # -----------------------------------------------------------------------------
 
@@ -211,25 +119,6 @@ sub get_targetPeer {
         ## $self->{_TARGET_OBJECT}->set_value("switch.warn_on_remote_access", );
     }
     return $self->{_TARGET_OBJECT};
-}
-
-# -----------------------------------------------------------------------------
-#  Little Helpers
-# -----------------------------------------------------------------------------
-
-sub _mkdir {
-    my $self= shift;
-    my $sDir= shift;
-
-    return 1 if $self->get_switch('pretend');
-
-    # TODO: set MASK ?
-    # return 1 if $self->{_TARGET_OBJECT}->mkdir($sDir);
-
-    return 1 if $self->get_targetPeer()->mkdir($sDir);
-
-    logger->warn("Mkdir '$sDir' failed: $!");
-    return 0;
 }
 
 # -----------------------------------------------------------------------------
@@ -255,7 +144,7 @@ sub get_sourcePeers {
 
 sub getPathExtension {
     my $self= shift;
-    my $sExt = $self->get_value("path_extension", $self->get_value("name", ""));
+    my $sExt = $self->get_value("path_extension", $self->getName());
     return "" if $sExt eq "";
     return ".$sExt";
 }
@@ -278,7 +167,7 @@ sub backup {
     my $iResult= 0; 
     
     logger->init($self);
-    logger->set_category($self->get_value("name"));
+    logger->set_category($self->getName());
     
     logger->info("Rabak Version " . $self->get_switch("version"). " on \"" . $self->get_switch("hostname") . "\" as user \"" . getpwuid($>) . "\"");
     logger->info("Command line: " . $self->get_switch("commandline"));
@@ -293,12 +182,12 @@ sub backup {
     );
     goto cleanup if $iResult;
 
-    $oTargetPeer->prepareLogging($self->get_switch('pretend')) if $self->get_switch('logging');
+    $oTargetPeer->initLogging($self->get_switch('pretend')) if $self->get_switch('logging');
 
     # now try backing up every source 
     my %sNames= ();
     for my $oSourcePeer (@oSourcePeers) {
-        my $sName= $oSourcePeer->get_value("name", "");
+        my $sName= $oSourcePeer->getName();
         $oSourcePeer->set_value("name", "") if $sName=~ s/^\*//;
         if ($sNames{$sName}) {
             logger->error("Name '$sName' of Source Object has already been used. Skipping backup of source.");
@@ -319,14 +208,6 @@ sub backup {
     $iResult= scalar(@oSourcePeers) - $iSuccessCount;
 
 cleanup:
-    # TODO: move _mail* to logger and do df-check in Traget.pm
-    my $aDf = $oTargetPeer->checkDf();
-    if (defined $aDf) {
-        logger->warn(join " ", @$aDf);
-        $self->_mail_warning("disc space too low", @$aDf);
-    }
-
-    $oTargetPeer->finishLogging();
     $oTargetPeer->finishBackup();
 
     my $sSubject= "successfully finished";
@@ -335,7 +216,7 @@ cleanup:
     $sSubject= "*PRETENDED* $sSubject" if $self->get_switch("pretend");
 
     # send admin mail
-    $self->_mail_log($sSubject);
+   logger->mailLog($sSubject);
     
     # return number of failed backups or error code (negative)
     return $iResult;
@@ -423,9 +304,10 @@ sub rm_file {
     my %aFiles= ();
     my %iFoundMask= ();
 
-    my $sBakSet= $self->get_value("name");
+    my $sBakSet= $self->getName();
     my $sBakSetDay= $sBakSet;
-    $sBakSetDay.= "-" . $oSource->get_value("name") if $oSource->get_value("name");
+    my $sSourceName= $oSource->getName();
+    $sBakSetDay.= "-$sSourceName"  if $sSourceName;
     my $oTargetPeer= $self->get_targetPeer();
 
     # TODO: Make a better check!

@@ -10,6 +10,7 @@ use Data::Dumper;
 use RabakLib::Conf;
 use RabakLib::Peer;
 use RabakLib::Mountable;
+use Mail::Send;
 
 # use File::Spec ();
 use POSIX qw(strftime);
@@ -65,7 +66,7 @@ BEGIN {
     ($oLog->{MSG_FH}, $oLog->{MSG_FILE_NAME}) =
         RabakLib::Peer->local_tempfile();
 
-    bless $oLog, "RabakLib::Log";
+    bless $oLog, __PACKAGE__;
 }
 
 sub new {
@@ -87,6 +88,8 @@ sub init {
     $oLog->{SWITCH_VERBOSITY}= $oLog->LOG_DEFAULT_LEVEL unless defined $oLog->{SWITCH_VERBOSITY};
     $oLog->{SWITCH_QUIET}= $hConf->get_switch('quiet');
 
+    $oLog->{SET_NAME}= $hConf->getName();
+    $oLog->{EMAIL}= $hConf->get_value('email');
 }
 
 # -----------------------------------------------------------------------------
@@ -198,6 +201,67 @@ sub close {
         logger->error($self->{TARGET}->get_error()) unless ($self->{TARGET}->copyLocalFileToRemote($self->{REAL_LOG_FILE_NAME}, $self->{LOG_FILE_NAME}, 1));
     }
     $self->{TARGET}= undef;
+}
+
+sub _mail {
+    my $self= shift;
+    my ($sSubject, $fBody) = @_;
+    
+    my $sMailAddress= $self->{EMAIL}; 
+
+    return 0 unless $sMailAddress;
+
+    my $oMail = new Mail::Send Subject => $sSubject, To => $sMailAddress;
+    # $msg->cc('user@host');
+    my $fh = $oMail->open;
+    my $sLine;
+    my $fChompNL= sub {
+        my $sLine= $fBody->();
+        return undef unless defined $sLine;
+        chomp $sLine;
+        return "$sLine\n";
+    };
+    print $fh $sLine while defined ($sLine = $fChompNL->());
+    $fh->close;
+
+    return 1;
+}
+
+sub mailLog {
+    my $self= shift;
+    my $sSubject= shift;
+
+    my $iErrors= $self->get_errorCount;
+    my $iWarns= $self->get_warnCount;
+    my $sErrWarn;
+    $sErrWarn= "$iErrors error" if $iErrors; 
+    $sErrWarn.= "s" if $iErrors > 1; 
+    $sErrWarn.= ", " if $iErrors && $iWarns; 
+    $sErrWarn.= "$iWarns warning" if $iWarns; 
+    $sErrWarn.= "s" if $iWarns > 1; 
+    $sSubject.= " ($sErrWarn)" if $sErrWarn;
+    
+    $sSubject= "RABAK '$self->{SET_NAME}': $sSubject";
+
+    my $sFileName= $self->get_messages_file();
+    my $fh;
+    CORE::open $fh, "<$sFileName" or $fh= undef;
+    my $fBody = sub {<$fh>};
+    unless (defined $fh) {
+        my @sBody= ("Error openening file '$sFileName'");
+        $fBody = sub {shift @sBody};
+    }
+
+    my $result = $self->_mail($sSubject, $fBody);
+    CORE::close $fh if defined $fh;
+    return $result;
+}
+
+sub mailWarning {
+    my $self= shift;
+    my ($sSubject, @sBody) = @_;
+
+    return $self->_mail("RABAK WARNING: $sSubject", sub {shift @sBody});
 }
 
 sub get_filename() {
