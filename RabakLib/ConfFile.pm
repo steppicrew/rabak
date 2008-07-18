@@ -4,6 +4,7 @@ package RabakLib::ConfFile;
 
 use warnings;
 use strict;
+no warnings 'redefine';
 
 use RabakLib::Conf;
 use RabakLib::Log;

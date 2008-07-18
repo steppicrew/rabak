@@ -4,6 +4,7 @@ package RabakLib::Peer::Target;
 
 use warnings;
 use strict;
+no warnings 'redefine';
 
 use RabakLib::Log;
 use RabakLib::ConfFile;
@@ -125,8 +126,10 @@ sub remove_old {
 
     logger->info("Keeping last $iKeep versions");
 
+    logger->incIndent();
     my @sBakDir= @{$self->getOldBakDirs()};
     my $sqPath= quotemeta $self->getPath();
+    my $iCount= 0;
     foreach my $sDir (@sBakDir) {
         $sDir= $self->getPath($sDir);
         unless ($sDir=~ /^$sqPath/) {
@@ -139,18 +142,56 @@ sub remove_old {
         if ($self->glob("$sDir/*")) {
             next if $iKeep-- > 0;
         }
-        logger->info("Removing \"$sDir\"");
+        logger->verbose("Removing \"$sDir\"");
         $self->rmtree($sDir);
-        logger->error($self->get_last_error()) if $self->get_last_exit();
+        if ($self->get_last_exit()) {
+            logger->error($self->get_last_error()) ;
+        }
+        else {
+            $iCount++;
+        }
     }
+    logger->decIndent();
+    logger->info("Number of removed backups: $iCount");
 }
 
-sub getBaksetExt    { shift()->{BAKSET_DATA}{BAKSETEXT} }
-sub getBaksetExts   { shift()->{BAKSET_DATA}{BAKSETEXTS} }
-sub getBaksetDir    { shift()->{BAKSET_DATA}{BAKSETDIR} }
-sub getBaksetMonth  { shift()->{BAKSET_DATA}{BAKSETMONTH} }
-sub getBaksetDay    { shift()->{BAKSET_DATA}{BAKSETDAY} }
-sub getBakDirs      { shift()->{BAKSET_DATA}{BAKDIRS} }
+sub getBackupData {
+    my $self= shift;
+    my $sKey= shift;
+    my $sProperty= shift;
+    die "Internal error: {$sKey} is not set! Please file a bug report!" unless defined $self->{$sKey};
+    die "Internal error: {$sKey}{$sProperty} is not set! Please file a bug report!" unless defined $self->{$sKey}{$sProperty};
+    return $self->{$sKey}{$sProperty};
+}
+
+sub getBaksetData { 
+    my $self= shift;
+    my $sProperty= shift;
+    return $self->getBackupData("BAKSET_DATA", $sProperty);
+}
+sub getBaksetExt    { shift()->getBaksetData("BAKSETEXT") }
+sub getBaksetExts   { shift()->getBaksetData("BAKSETEXTS") }
+sub getBaksetDir    { shift()->getBaksetData("BAKSETDIR") }
+sub getBaksetMonth  { shift()->getBaksetData("BAKSETMONTH") }
+sub getBaksetDay    { shift()->getBaksetData("BAKSETDAY") }
+sub getBakDirs      { shift()->getBaksetData("BAKDIRS") }
+
+sub getSourceData {
+    my $self= shift;
+    my $sProperty= shift;
+    return $self->getBackupData("SOURCE_DATA", $sProperty);
+}
+sub getOldBakDirs   { shift()->getSourceData("OLD_BAKDIRS") }
+sub getSubset       { shift()->getSourceData("SUBSET") }
+sub getSourceSubdir { shift()->getSourceData("SOURCESUBDIR") }
+sub getSourceSet    { shift()->getSourceData("SOURCESET") }
+sub getSourceExt    { shift()->getSourceData("SOURCEEXT") }
+sub getSourceKeep   { shift()->getSourceData("SOURCEKEEP") }
+sub getBakDir       { shift()->getSourceData("BAKDIR") }
+sub getAbsBakDir {
+    my $self= shift;
+    $self->getPath($self->getBakDir());
+}
 
 sub prepareBackup {
     my $self= shift;
@@ -249,18 +290,6 @@ sub finishLogging {
     logger->close();
 }
 
-sub getOldBakDirs   { shift()->{SOURCE_DATA}{OLD_BAKDIRS} }
-sub getSubset       { shift()->{SOURCE_DATA}{SUBSET} }
-sub getSourceSubdir { shift()->{SOURCE_DATA}{SOURCESUBDIR} }
-sub getSourceSet    { shift()->{SOURCE_DATA}{SOURCESET} }
-sub getSourceExt    { shift()->{SOURCE_DATA}{SOURCEEXT} }
-sub getSourceKeep   { shift()->{SOURCE_DATA}{SOURCEKEEP} }
-sub getBakDir       { shift()->{SOURCE_DATA}{BAKDIR} }
-sub getAbsBakDir {
-    my $self= shift;
-    $self->getPath($self->getBakDir());
-}
-
 sub prepareSourceBackup {
     my $self= shift;
     my $oSourcePeer= shift;
@@ -306,7 +335,7 @@ sub prepareSourceBackup {
         BAKDIR => $sBakDir,
     };
     
-    logger->info("Backup $sBakDay exists, using subset.") if $sSubSet;
+    logger->info("Backup \"$sBakDay$sSourceExt\" exists, using subset \"$sSourceSubdir\".") if $sSubSet;
 
     $self->mkdir($sBakDir) unless $bPretend;
 }

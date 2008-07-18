@@ -51,7 +51,8 @@ BEGIN {
         ERRORCOUNT => 0,
         WARNCOUNT => 0,
         
-        INDENT => 0,            # indenting for message grouping
+        INDENT1 => 0,            # indenting for message grouping (before prefix)
+        INDENT2 => 0,            # indenting for message grouping (after prefix)
 
         TARGET => undef,
 
@@ -102,12 +103,13 @@ sub LOG_DEFAULT_LEVEL { LOG_INFO_LEVEL() }
 
 sub incIndent {
     my $self= shift;
-    $self->{INDENT}++;
+    $self->{PREFIX} ? $self->{INDENT2}++ : $self->{INDENT1}++;
 }
 
 sub decIndent {
     my $self= shift;
-    $self->{INDENT}-- if $self->{INDENT};
+    return $self->{INDENT2}-- if $self->{INDENT2};
+    $self->{INDENT1}-- if $self->{INDENT1};
 }
 
 sub _timestr {
@@ -336,8 +338,9 @@ sub _levelLog {
             next;
         }
         chomp $sMessage;
-        $sMessage = "  " x $self->{INDENT} . $sMessage;
+        $sMessage = "  " x $self->{INDENT2} . $sMessage;
         $sMessage = '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
+        $sMessage = "  " x $self->{INDENT1} . $sMessage;
         # print message to stdout
         print "$self->{STDOUT_PREFIX}$sMsgPref$sMessage\n" unless $self->{SWITCH_QUIET} || $iLevel > $self->{SWITCH_VERBOSITY};
 

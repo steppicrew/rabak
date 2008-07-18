@@ -4,6 +4,7 @@ package RabakLib::Set;
 
 use warnings;
 use strict;
+no warnings 'redefine';
 
 use RabakLib::Log;
 use RabakLib::Peer::Source;
@@ -345,15 +346,15 @@ sub _backup_setup {
     my $oSourcePeer= shift;
     my $oTargetPeer= shift;
     
+    logger->info("Backup start at " . strftime("%F %X", localtime) . ": "
+        . ($oSourcePeer->getName() || $oSourcePeer->getFullPath()) . ", "
+        . $self->get_value("title")
+    );
+    logger->incIndent();
+
     $oTargetPeer->prepareSourceBackup(
         $oSourcePeer,
         $self->get_switch('pretend'),
-    );
-
-    logger->info("Backup start at " . strftime("%F %X", localtime) . ": "
-        . $oSourcePeer->getName() . ", "
-        . $oTargetPeer->getSourceSet() . ", "
-        . $self->get_value("title")
     );
 
     return $oSourcePeer->prepareBackup($self->get_switch('pretend'));
@@ -376,6 +377,10 @@ sub _backup_cleanup {
     my $oTargetPeer= shift;
     my $iBackupResult= shift;
     
+    my $sSourceSet= $oTargetPeer->getSourceSubdir();
+
+    $oSourcePeer->finishBackup($iBackupResult, $self->get_switch('pretend'));
+
     if ($iBackupResult) {
         logger->error("Backup failed: " . $oSourcePeer->get_last_error);
         $iBackupResult= 9;
@@ -384,14 +389,12 @@ sub _backup_cleanup {
         logger->info("Done!");
     }
 
-    my $sSourceSet= $oTargetPeer->getSourceSet();
-
-    $oSourcePeer->finishBackup($iBackupResult, $self->get_switch('pretend'));
     $oTargetPeer->finishSourceBackup($iBackupResult, $self->get_switch('pretend'));
 
+    logger->decIndent();
     logger->info("Backup done at "
         . strftime("%F %X", localtime) . ": "
-        . $oSourcePeer->getName() . ", "
+        . ($oSourcePeer->getName() || $oSourcePeer->getFullPath()) . ", "
         . $sSourceSet
     );
 }

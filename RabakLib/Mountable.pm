@@ -2,8 +2,6 @@
 
 package RabakLib::Mountable;
 
-# wrapper class to exceute commands remotely or locally
-
 use warnings;
 use strict;
 no warnings 'redefine';
