@@ -112,7 +112,7 @@ sub cmd_doc {
 
 sub cmd_admin {
     # TODO: use command line switches
-    my $oAdmin= RabakLib::Admin->new(_conf_read());
+    my $oAdmin= RabakLib::Cmd::Admin->new(_conf_read());
     # print Dumper($oAdmin); die;
     _exit($oAdmin->loop());
 }
