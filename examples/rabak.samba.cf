@@ -47,7 +47,7 @@ unmount= 1
 
 [mount_smb_server]
 
-device= //smb_server/e$
+device= //smb_server/e\$
 directory= $smb_dir
 type= cifs
 opts= "username=$smb_user,password=$smb_password,ro"

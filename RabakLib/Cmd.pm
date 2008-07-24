@@ -15,23 +15,24 @@ use RabakLib::Log;
 use strict;
 use warnings;
 
+sub GetGlobalOptions {
+    return {
+        "conf" =>               [ "",  "s", "<file>",   "Use <file> for configuration" ],
+        "i" =>                  [ "",  "s", "<value>",  "Save on device with targetgroup value <value> (Backward compatibility. Don't use!)" ],
+        "log" =>                [ "",  "",  "",         "Log to file" ],
+        "pretend" =>            [ "",  "",  "",         "Pretend (don't do anything, just tell what would happen)" ],
+        "quiet" =>              [ "",  "",  "",         "Be quiet" ],
+        "verbose" =>            [ "",  "",  "",         "Be verbose" ],
+        "version" =>            [ "V", "",  "",         "Show version" ],
+        "help" =>               [ "",  "",  "",         "Show (this) help" ],
+    };
+}
+
 sub Build {
     my $asArgs= shift;
 
     my @sqArgs= map {/\s/ ? "'$_'" : $_} $0, $asArgs;
     my $sCommandLine= join " ", @sqArgs;
-
-    my %hOptDefs= (
-        "conf" =>               [ "",  "s", "<file>",   "Use <file> for configuration" ],
-        "i" =>                  [ "",  "s", "<value>",  "Save on device with targetgroup value <value> (Backward Compatibility. Don't use!)" ],
-        "log" =>                [ "",  "",  "",         "Log to file" ],
-        "pretend" =>            [ "",  "",  "",         "Pretend (don't do anything, just tell what would happen)" ],
-        "quiet" =>              [ "",  "",  "",         "Be quiet" ],
-        "verbose" =>            [ "",  "",  "",         "Be verbose" ],
-        "version" =>            [ "",  "",  "",         "Show version" ],
-        "help" =>               [ "",  "",  "",         "Show (this) help" ],
-    );
-
     my $oCmd;
     my $hOpts= {};
     my @sOptArgs;
@@ -49,36 +50,41 @@ sub Build {
             push @sOptArgs, $sKey;
         }
     };
-    $calcOptArgs->(%hOptDefs);
 
-# print Dumper($asArgs);
-# print Dumper(\@sOptArgs);
+    $calcOptArgs->(%{ GetGlobalOptions() });
 
     Getopt::Long::Configure("pass_through");
     GetOptionsFromArray($asArgs, $hOpts, @sOptArgs);
-    if (scalar @$asArgs) {
-        my $sCmd= lc shift @$asArgs;
+
+    if ($hOpts->{help}) {
+        unshift @$asArgs, 'help';
+        delete $hOpts->{help};
+    }
+
+    $asArgs= [ 'help' ] unless scalar @$asArgs;
+
+    my $sCmd= lc shift @$asArgs;
+    eval {
+        local $SIG{'__WARN__'} = sub { chomp($sError= $_[0]); };
+        require "RabakLib/Cmd/" . ucfirst($sCmd) . ".pm";
+        my $sClass= "RabakLib::Cmd::" . ucfirst($sCmd);
+        $oCmd= $sClass->new();
+        1;
+    };
+    if ($@) {
+        die $@ if $@ !~ /^Can\'t locate \S+\.pm/;
+        $sError= "Unknown command: $sCmd";
+    }
+    else {
+        $calcOptArgs->(%{ GetGlobalOptions() }, %{ $oCmd->getOptions() });
         eval {
             local $SIG{'__WARN__'} = sub { chomp($sError= $_[0]); };
-            require "RabakLib/Cmd/" . ucfirst($sCmd) . ".pm";
-            my $sClass= "RabakLib::Cmd::" . ucfirst($sCmd);
-            $oCmd= $sClass->new();
+            Getopt::Long::Configure("no_pass_through");
+            GetOptionsFromArray($asArgs, $hOpts, @sOptArgs);
+            delete $hOpts->{help};
             1;
         };
-        if ($@) {
-            die $@ if $@ !~ /^Can\'t locate \S+\.pm/;
-            $sError= "Unknown command: $sCmd";
-        }
-        else {
-            $calcOptArgs->(%hOptDefs, %{ $oCmd->GetOptions() });
-            eval {
-                local $SIG{'__WARN__'} = sub { chomp($sError= $_[0]); };
-                Getopt::Long::Configure("no_pass_through");
-                GetOptionsFromArray($asArgs, $hOpts, @sOptArgs);
-                1;
-            };
-            die $@ if $@;
-        }
+        die $@ if $@;
     }
 
     $oCmd= RabakLib::Cmd::Error->new($sError) if $sError;
@@ -107,18 +113,29 @@ sub setup {
     $self->{COMMAND_LINE}= $sCommandLine;
 }
 
-sub want_args {
+sub wantArgs {
     my $self= shift;
+    my @aOk= @_;
 
-    return unless scalar @{$self->{ARGS}} > 1;
-    $self->{ERROR}= 'Zero or one Argument expected, got "' . join('", "', @{$self->{ARGS}}) . '"' . $/;
+    my %hOk= ();
+    map { $hOk{$_}= 1 } @aOk;
+    return 1 if $hOk{scalar @{$self->{ARGS}}};
+
+    # overkill, but fun writing: :-)
+    my @aNumbers= ("zero", "one", "two", "three", "four");
+    my $sNs= $#aOk == 0 ? ($aOk[0] == 1 ? 'one argument' : $aNumbers[$aOk[0]] . " arguments") : 'or ' . $aNumbers[$aOk[-1]] . ' arguments';
+    pop @aOk;
+    my $sDelim= $#aOk ? ',' : '';
+    map { $sNs = $aNumbers[$_] . "$sDelim $sNs"; $sDelim= ',' } reverse(@aOk);
+    $self->{ERROR}= ucfirst($sNs) . ' expected, got "' . join('", "', @{$self->{ARGS}}) . '"' . $/;
+    return 0;
 }
 
 sub error {
     return shift->{ERROR};
 }
 
-sub readConf {
+sub readConfFile {
     my $self= shift;
 
     my @sConfFiles = (
@@ -148,6 +165,72 @@ sub readConf {
     });
     # print Dumper($oConf->get_node("switch")->{VALUES});
     return $oConfFile;
+}
+
+sub getBakset {
+    my $self= shift;
+    my $sBakSet= shift || '';
+
+    my $oConf= $self->readConfFile->conf();
+    my $hSetConf= $oConf->get_node($sBakSet);
+
+    unless ($hSetConf) {
+    	$self->{ERROR}= "Backup Set '$sBakSet' does not exist!";
+    	return;
+    }
+
+    # Build a Set from Hash
+    my $oSet= RabakLib::Set->newFromConf($hSetConf);
+    my $sError= $oSet->get_validation_message();
+
+    if ($sError) {
+    	$self->{ERROR}= "Backup Set '$sBakSet' is not properly defined!";
+
+    	print "# Backup Set '$sBakSet' is not properly defined:\n";
+        print "# $sError\n";
+        print "# The following values were found in the configuration:\n";
+        $hSetConf->show();
+    	return undef;
+    }
+
+    return $oSet;
+}
+
+sub getOptionsHelp {
+    my $self= shift;
+    my $hGlobalOptions= shift;
+    my $hLocalOptions= shift;
+
+    my $add= sub {
+        my $sTitle= shift;
+        my $hOptions= shift;
+        my $sResult= '';
+        foreach my $sKey (sort keys %$hOptions) {    
+            $sResult .= sprintf("    \-\-%-15s  %s\n", sprintf("%s %s", $sKey, $hOptions->{$sKey}[2]), $hOptions->{$sKey}[3]);
+        }
+        $sResult= "\n$sTitle:\n$sResult" if $sResult;
+        return $sResult;
+    };
+    return $add->('Command options', $hLocalOptions) . $add->('General options', $hGlobalOptions);
+}
+
+sub warnOptions {
+    my $self= shift;
+    my $aUsed= shift || [];
+    my %hUsed= ();
+
+    map { $hUsed{$_}= 1 } @$aUsed;
+    my %hOpts= %{ $self->{OPTS} };
+    map { delete $hOpts{$_} } keys %hUsed;
+    map { print "WARNING: Option '--$_' ignored!\n"; } keys %hOpts;
+}
+
+sub getOptions {
+    return {};
+}
+
+sub help {
+    return "Sorry, no help available.\n";
 }
 
 package RabakLib::Cmd::Error;
