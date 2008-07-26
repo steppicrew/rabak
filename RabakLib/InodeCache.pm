@@ -154,7 +154,9 @@ sub collect {
 
 	$self->_init();
 
-    my $oTrap= RabakLib::Trap->new();
+    my $fTrapCB= undef;
+    
+    my $oTrap= RabakLib::Trap->new(sub {$fTrapCB->() if $fTrapCB});
 
     logger()->info("Preparing information store...");
     $self->{DS}->beginWork();
@@ -172,6 +174,10 @@ sub collect {
             logger()->warn("'$sRelDir' is not a directory. Skipping.");
             next;
         }
+        if (-l $sDir) {
+            logger()->warn("'$sRelDir' is a symlink. Skipping.");
+            next;
+        }
         if (exists $hDirsDone{$sDir}) {
             logger()->warn("Directory '$sDir' has already been scanned. Skipping.");
             next;
@@ -180,6 +186,7 @@ sub collect {
         logger()->incIndent();
         logger()->info("Processing directory '$sDir'...");
         if ($self->{DS}->newDirectory($sDir)) {
+            $fTrapCB= sub{$self->{DS}->invalidate()};
             find({
                 wanted => sub { $self->_processFiles($oTrap); },
                 no_chdir => 1,
@@ -190,6 +197,7 @@ sub collect {
             logger()->info("(cached)");
         }
         $self->{DS}->finishDirectory();
+        $fTrapCB= undef;
         logger()->info("done");
         logger()->decIndent();
     }

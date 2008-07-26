@@ -60,6 +60,12 @@ sub finishDirectory {
     $self->SUPER::finishDirectory();
 }
 
+sub invalidate {
+    my $self= shift;
+    return unless $self->{current_db};
+    $self->{current_db}->invalidate();
+}
+
 sub addInodeFile {
     my $self= shift;
     my $iInode= shift;

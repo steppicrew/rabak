@@ -34,6 +34,7 @@ sub new {
         dbh=> undef,
         db_engine=> $sDbEngine,
         is_new=> undef,
+        is_valid=> 1,
         
         _data=> $hData,
         
@@ -415,26 +416,41 @@ sub endWork {
     my $buildIndex= shift;
     
     if ($self->{dbh}) {
-        
+        my ($sFileName, $sRealFileName)= ($self->getFileName(), $self->getRealFileName());
+
+        $self->{cached_queries}= undef unless $self->{is_valid};
+
         $self->endCached();
         # finish statements before commit
         $self->finishStatements();
-
+    
         $self->commitTransaction($buildIndex);
     
         for my $sth (@{$self->getHandle()->{ChildHandles}}) {
             next unless defined $sth;
             print "unresolved statement: '$sth->{Statement}' ($self->{dbfn})\n";
         }
-
+    
         $self->getHandle()->disconnect();
         $self->{dbh}= undef;
-        my ($sFileName, $sRealFileName)= ($self->getFileName(), $self->getRealFileName());
-        unless ($sFileName eq $sRealFileName) {
-            copy($sRealFileName, $sFileName) or print "Could not update database file '$sFileName'\n";
+        if ($self->{is_valid}) {
+            unless ($sFileName eq $sRealFileName) {
+                copy($sRealFileName, $sFileName) or print "Could not update database file '$sFileName'\n";
+            }
+        }
+        else {
+            print "Database file '$sFileName' is invalid. Deleting.\n";
+            -f $sFileName && unlink $sFileName;
+            -f $sRealFileName && unlink $sRealFileName;
         }
     }
     return undef;
+}
+
+sub invalidate {
+    my $self= shift;
+    
+    $self->{is_valid}= 0;
 }
 
 sub beginCached {

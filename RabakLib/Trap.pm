@@ -9,6 +9,7 @@ use RabakLib::Log;
 
 sub new {
     my $class= shift;
+    my $fCallBack= shift;
 
     my $self= {
     	signals => {},
@@ -22,6 +23,7 @@ sub new {
 	    );
 	    $self->restore();
 	    $self->{terminated}= 1;
+	    $fCallBack->() if $fCallBack;
     };
 
     for my $sSig ("INT", "TERM", "QUIT", "KILL") {
