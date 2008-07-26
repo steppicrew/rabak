@@ -95,7 +95,7 @@ sub addInode {
     my $iMode= shift;
     my $sOwner= shift;
     my $iMtime= shift;
-    
+
     return $self->{inode_db}->addInode($iInode, $iSize, $iMode, $sOwner, $iMtime);
 }
 

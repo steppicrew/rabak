@@ -17,7 +17,8 @@ sub new {
     
     my $sRealFileName= $sFileName;
     if ($sTempDir) {
-        (undef, $sRealFileName)= File::Temp::tempfile('XXXXXX',
+        $sRealFileName =~ s/.*\///;
+        (undef, $sRealFileName)= File::Temp::tempfile("${sRealFileName}XXXXXX",
             SUFFIX => ".db",
             DIR => $sTempDir,
             UNLINK => 1,

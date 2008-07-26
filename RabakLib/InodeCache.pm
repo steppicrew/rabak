@@ -73,7 +73,7 @@ sub _processFiles {
         $atime, $mtime, $ctime, $bsize, $blocks)= lstat;
 
     # ignore all but regular files
-    return if $mode & S_IFLNK;
+    return if ($mode & S_IFLNK) == S_IFLNK;
     return unless $mode & S_IFREG;
 
     $self->{dev}= $dev unless defined $self->{dev};
