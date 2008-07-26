@@ -90,6 +90,13 @@ sub checkMount {
     return $sMountPath;
 }
 
+sub mountErrorIsFatal {
+    my $self= shift;
+    my $iMountResult= shift;
+
+    return $iMountResult;
+}
+
 sub checkDf {
     my $self= shift;
 
@@ -160,7 +167,7 @@ sub getBackupData {
     my $sKey= shift;
     my $sProperty= shift;
     die "Internal error: {$sKey} is not set! Please file a bug report!" unless defined $self->{$sKey};
-    die "Internal error: {$sKey}{$sProperty} is not set! Please file a bug report!" unless defined $self->{$sKey}{$sProperty};
+    die "Internal error: {$sKey}{$sProperty} is not set! Please file a bug report!" unless exists $self->{$sKey}{$sProperty};
     return $self->{$sKey}{$sProperty};
 }
 
