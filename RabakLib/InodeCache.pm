@@ -47,8 +47,8 @@ sub _init {
     if (1) { 
         $self->{OPTS}{base_dir}= "." unless $self->{OPTS}{base_dir};
         $self->{OPTS}{multi_db_postfix}= ".file_inode.db" unless $self->{OPTS}{multi_db_postfix};
-        logger()->info("Using '$self->{OPTS}{base_dir}' as working directory.");
-        logger()->info("Using '$self->{OPTS}{multi_db_postfix}' as postfix for multi db.");
+        logger()->debug("Using '$self->{OPTS}{base_dir}' as working directory.");
+        logger()->debug("Using '$self->{OPTS}{multi_db_postfix}' as postfix for multi db.");
         $self->{DS}= RabakLib::InodeStore->Factory(
             type => 'multidb',
             base_dir => $self->{OPTS}{base_dir},

@@ -172,7 +172,7 @@ sub inodeInventory {
     
     return 1 unless $self->getSourceInventory();
     if ($self->is_remote()) {
-        logger->warn('Inode inventory is supported only at local targets!');
+        logger->error('Inode inventory is supported only at local targets!');
         return 1;
     }
     my $inodeCache= new RabakLib::InodeCache(
