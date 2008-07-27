@@ -8,6 +8,7 @@ no warnings 'redefine';
 
 use RabakLib::Log;
 use RabakLib::ConfFile;
+use RabakLib::InodeCache;
 use POSIX qw(strftime);
 use Data::Dumper;
 
@@ -157,9 +158,35 @@ sub remove_old {
         else {
             $iCount++;
         }
+        my $sInodeDb= $sDir;
+        $sInodeDb=~ s/\/+$//;
+        $sInodeDb.= ".file_inode.db";
+        $self->unlink($sInodeDb) if $self->isFile($sInodeDb);
     }
     logger->decIndent();
     logger->info("Number of removed backups: $iCount");
+}
+
+sub inodeInventory {
+    my $self= shift;
+    
+    return 1 unless $self->getSourceInventory();
+    if ($self->is_remote()) {
+        logger->warn('Inode inventory is supported only at local targets!');
+        return 1;
+    }
+    my $inodeCache= new RabakLib::InodeCache(
+        {
+            dirs => [$self->getPath($self->getBakDir())],
+            base_dir => $self->getPath(),
+        }
+    );
+    logger->info("Collecting inode information");
+    logger->incIndent();
+    my $iResult= $inodeCache->collect();
+    logger->decIndent();
+    logger->info("done");
+    return $iResult;
 }
 
 sub getBackupData {
@@ -194,6 +221,7 @@ sub getSourceSubdir { shift()->getSourceData("SOURCESUBDIR") }
 sub getSourceSet    { shift()->getSourceData("SOURCESET") }
 sub getSourceExt    { shift()->getSourceData("SOURCEEXT") }
 sub getSourceKeep   { shift()->getSourceData("SOURCEKEEP") }
+sub getSourceInventory { shift()->getSourceData("SOURCEINVENTORY") }
 sub getBakDir       { shift()->getSourceData("BAKDIR") }
 sub getAbsBakDir {
     my $self= shift;
@@ -309,6 +337,7 @@ sub prepareSourceBackup {
         SOURCESUBDIR => $sSourceSubdir,
         SOURCESET => $sSourceSet,
         SOURCEKEEP => $oSourcePeer->get_value("keep"),
+        SOURCEINVENTORY => $oSourcePeer->get_value("inode_inventory"),
         BAKDIR => $sBakDir,
     };
     
@@ -323,8 +352,11 @@ sub finishSourceBackup {
     my $bPretend= shift;
     
     unless ($bPretend) {
-        # remove old dirs if backup was successfully done
-        $self->remove_old() unless $iBackupResult;
+        unless ($iBackupResult) {
+            $self->inodeInventory();
+            # remove old dirs if backup was successfully done
+            $self->remove_old();
+        }
 
         my $sSourceExt= $self->getSourceExt();
         $sSourceExt=~ s/^\./\-/;
