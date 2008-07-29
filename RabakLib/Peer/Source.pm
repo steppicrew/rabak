@@ -89,7 +89,7 @@ sub sort_show_key_order {
     my $self= shift;
 
     my @sSuperResult= $self->SUPER::sort_show_key_order();
-    ("type", @sSuperResult, "keep");
+    return ("type", @sSuperResult, "keep");
 }
 
 sub show {

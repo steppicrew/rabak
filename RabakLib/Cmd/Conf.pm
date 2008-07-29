@@ -27,7 +27,7 @@ sub help {
     shift;
     my $sOptions= shift;
     return <<__EOT__;
-rabak [options] conf [<backup set>]
+rabak conf [options] [<backup set>]
 
 Displays the effective configuration.
 

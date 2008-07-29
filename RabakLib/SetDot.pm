@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package RabakLib::Set;
+package RabakLib::SetDot;
 
 use warnings;
 use strict;
@@ -16,7 +16,7 @@ sub new {
     my $class= shift;
     my $oSet= shift;
 
-	my $self= {};
+    my $self= {};
     $self->{SET}= $oSet;
     $self->{_BOX_ADDED}= $oSet;
     bless $self, $class;
@@ -144,7 +144,7 @@ sub toDot {
         $sResult .= $self->_dotAddBox('source', $oSource, $self->{SET});
     }
 
-    my $oTarget= $self->get_targetPeer();
+    my $oTarget= $self->{SET}->get_targetPeer();
     $sResult .= $self->_dotAddBox('target', $oTarget, $self->{SET});
 
     my $sTitle= dotify(_dotConfTitle('set', $self->{SET}));
@@ -177,3 +177,5 @@ sub toDot {
 
     return $sResult;
 }
+
+1;

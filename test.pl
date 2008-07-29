@@ -24,8 +24,4 @@ my $DEBUG= 0;
 my $oCmd= RabakLib::Cmd::Build(\@ARGV);
 print $oCmd->error() . $/ unless $oCmd->run();
 
-# if ($oCmd->{ERROR}) {
-#     print "Error: " . $oCmd->{ERROR} . "\n";
-# }
-
 1;

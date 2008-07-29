@@ -1,29 +1,73 @@
 #!/usr/bin/perl
 
+# Badly broken! Must get a complete renovation or be thrown away.
+
 package RabakLib::Cmd::Admin;
 
 use warnings;
 use strict;
 
-use Term::ReadLine;
+BEGIN {
+    # Have to do this because Term::ReadLine signals warnings.
+    # FIXME: Is there a better solution?
+
+    local $SIG{'__WARN__'} = sub {};
+    eval 'use Term::ReadLine; 1';
+}
+
 use Data::Dumper;
 
 use RabakLib::ConfFile;
 use RabakLib::Set;
 
+use vars qw(@ISA);
+
+@ISA= qw( RabakLib::Cmd );
+
+################################################################################
+#       Public
+################################################################################
+
 sub new {
     my $class = shift;
     my $oConfFile= shift || {};
-    my $self= {
-        CONF_FILE => $oConfFile,
-        CONF => $oConfFile->conf(),
-        SET => undef,
-        TERM => Term::ReadLine->new('RabakLib::Admin'),
-        RANGE_FROM => undef,
-        RANGE_UNTIL => undef,
-    };
+
+    my $self= $class->SUPER::new();
+    $self->{CONF_FILE}= undef;
+    $self->{CONF}= undef;
+    $self->{SET}= undef;
+    $self->{TERM}= Term::ReadLine->new('RabakLib::Cmd::Admin');
+    $self->{RANGE_FROM}= undef;
+    $self->{RANGE_UNTIL}= undef;
+
     bless $self, $class;
 }
+
+sub help {
+    shift;
+    my $sOptions= shift;
+    return <<__EOT__;
+rabak admin [options] [<backup set>]
+
+one liner
+
+description
+$sOptions
+__EOT__
+}
+
+sub run {
+    my $self= shift;
+
+    $self->{CONF_FILE}= $self->readConfFile();
+    $self->{CONF}= $self->{CONF_FILE}->conf();
+
+    $self->loop();
+}
+
+################################################################################
+#       Private
+################################################################################
 
 sub _no_arg {
     return 1 unless defined shift;
@@ -239,9 +283,3 @@ sub loop() {
 }
 
 1;
-
-__END__
-
-set
-set bla
-

@@ -32,7 +32,8 @@ our $sregIdent0= "[a-z_][a-z_0-9]*";
 our $sregIdent= "$sregIdent0(\\.$sregIdent0)*";
 our $sregIdentDef= "(\\*\\.)?$sregIdent";
 our $sregIdentRef= "\\/?\\.*$sregIdent";
-# ...and publish them to other classes
+
+# ...and make them public
 sub REGIDENT0   { $sregIdent0 }
 sub REGIDENT    { $sregIdent };
 sub REGIDENTDEF { $sregIdentDef };

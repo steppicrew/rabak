@@ -22,7 +22,7 @@ sub help {
     shift;
     my $sOptions= shift;
     return <<__EOT__;
-rabak [options] backup <backup set>
+rabak backup [options] <backup set>
 
 Takes the given <backup set> and makes a backup.
 
@@ -35,10 +35,13 @@ __EOT__
 sub run {
     my $self= shift;
 
-    return unless $self->wantArgs(0, 1);
+    return unless $self->wantArgs(1);
 
-    print "TBD!\n";
+    my $sBakset= $self->{ARGS}[0];
+    my $oBakset= $self->getBakset($sBakset);
+    return 0 unless $oBakset;
 
+    $oBakset->backup();
     return 1;
 }
 

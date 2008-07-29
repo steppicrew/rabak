@@ -7,6 +7,7 @@ use strict;
 use vars qw(@ISA);
 
 use Data::Dumper;
+use RabakLib::Version;
 
 @ISA= qw( RabakLib::Cmd );
 
@@ -30,25 +31,29 @@ sub help {
     shift;
     my $sOptions= shift;
 
-    my $sCmds= ShortHelp('conf') . ShortHelp('backup') . ShortHelp('doc');
+    my $sCmds= ShortHelp('conf')
+        . ShortHelp('backup')
+        . ShortHelp('doc')
+        . ShortHelp('dupmerge')
+    ;
     # TODO: tutorial dupesearch archive
 
     return <<__EOT__;
 Available commands:
 
-    rabak [options] help [<command>]
+    rabak help [options] [<command>]
     Displays more information about a given command.
 $sCmds$sOptions
 __EOT__
 
 }
 
-sub Version {
-    return "\nThis is Rabak, v0.0001 (FIXME!!)\nRabak is your powerful and reliable rsync based backup system.\n";
+sub VersionMsg {
+    return "\nThis is Rabak, v" . VERSION() . "\nRabak is your powerful and reliable rsync based backup system.\n";
 }
 
 sub PrintLongVersion {
-    my $version= Version();
+    my $version= VersionMsg();
     print <<__EOT__;
 $version
 Copyright 2007-2008, Stephan Hantigk & Dietrich Raisin
@@ -72,13 +77,14 @@ sub run {
         if ($self->{OPTS}{version}) {
             $self->warnOptions([ 'version' ]);
             PrintLongVersion();
+            print "\n";
             return 1;
         }
 #        if ($self->{OPTS}{help}) {
 #            $self->{ARGS}[0] }, 
 #        }
         $self->warnOptions();
-        print Version();
+        print VersionMsg();
     }
     else {
         $self->warnOptions();

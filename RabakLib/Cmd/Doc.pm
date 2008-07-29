@@ -16,7 +16,7 @@ sub help {
     shift;
     my $sOptions= shift;
     return <<__EOT__;
-rabak [options] doc
+rabak doc [options]
 
 Displays the documentation included in the Rabak package.
 
