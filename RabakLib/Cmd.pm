@@ -28,7 +28,7 @@ sub GetGlobalOptions {
 sub Build {
     my $asArgs= shift;
 
-    my @sqArgs= map {/\s/ ? "'$_'" : $_} $0, $asArgs;
+    my @sqArgs= map {/\s/ ? "'$_'" : $_} $0, @$asArgs;
     my $sCommandLine= join " ", @sqArgs;
     my $oCmd;
     my $hOpts= {};
