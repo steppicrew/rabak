@@ -181,7 +181,7 @@ sub inodeInventory {
             base_dir => $self->getPath(),
         }
     );
-    logger->info("Collecting inode information");
+    logger->info("Collecting inode information in '" . $self->getPath($self->getBakDir()) . "'");
     logger->incIndent();
     my $iResult= $inodeCache->collect();
     logger->decIndent();

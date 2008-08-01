@@ -411,9 +411,9 @@ sub prepareBackup {
 sub finishBackup {
     my $self= shift;
     
-    $self->SUPER::finishBackup();
-    
     $self->mountable()->unmountAll();
+
+    $self->SUPER::finishBackup();
     return 0;
 }
 
