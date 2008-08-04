@@ -19,7 +19,7 @@ sub GetGlobalOptions {
         "log" =>                [ "",  "",  "",         "Log to file" ],
         "pretend" =>            [ "",  "",  "",         "Pretend (don't do anything, just tell what would happen)" ],
         "quiet" =>              [ "",  "",  "",         "Be quiet" ],
-        "verbose" =>            [ "",  "",  "",         "Be verbose" ],
+        "verbose" =>            [ "v", "",  "",         "Be verbose" ],
         "version" =>            [ "V", "",  "",         "Show version" ],
         "help" =>               [ "",  "",  "",         "Show (this) help" ],
     };
@@ -28,7 +28,7 @@ sub GetGlobalOptions {
 sub Build {
     my $asArgs= shift;
 
-    my @sqArgs= map {/\s/ ? "'$_'" : $_} $0, $asArgs;
+    my @sqArgs= map {/\s/ ? "'$_'" : $_} $0, @$asArgs;
     my $sCommandLine= join " ", @sqArgs;
     my $oCmd;
     my $hOpts= {};
@@ -50,7 +50,7 @@ sub Build {
 
     $calcOptArgs->(%{ GetGlobalOptions() });
 
-    Getopt::Long::Configure("pass_through");
+    Getopt::Long::Configure("pass_through", "no_ignore_case");
     GetOptionsFromArray($asArgs, $hOpts, @sOptArgs);
 
     if ($hOpts->{help}) {

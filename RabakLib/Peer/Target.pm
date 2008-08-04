@@ -175,13 +175,14 @@ sub inodeInventory {
         logger->error('Inode inventory is supported only at local targets!');
         return 1;
     }
+    my $sFullTargetDir= $self->getPath($self->getBakDir());
     my $inodeCache= new RabakLib::InodeCache(
         {
-            dirs => [$self->getPath($self->getBakDir())],
+            dirs => [$sFullTargetDir],
             base_dir => $self->getPath(),
         }
     );
-    logger->info("Collecting inode information");
+    logger->info("Collecting inode information in '$sFullTargetDir'");
     logger->incIndent();
     my $iResult= $inodeCache->collect();
     logger->decIndent();
