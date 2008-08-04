@@ -189,6 +189,7 @@ sub getBakset {
     	return undef;
     }
 
+    return ($oSet, $oConf) if wantarray;
     return $oSet;
 }
 

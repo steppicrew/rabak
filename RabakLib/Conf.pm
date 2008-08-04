@@ -45,11 +45,14 @@ sub newFromConf {
     my $oOrigConf= shift;
 
     my $new= $class->new($oOrigConf->{NAME}, $oOrigConf->{PARENT_CONF});
+
     # replace reference to $oOrigConf with $new
     # TODO: is this safe???
     $oOrigConf->{PARENT_CONF}{VALUES}{$oOrigConf->{NAME}}= $new;
     $new->{VALUES}= $oOrigConf->{VALUES};
+
 #    $new->{VALUES}= dclone($oOrigConf->{VALUES});
+
     for my $oValue (values %{$new->{VALUES}}) {
         $oValue->{PARENT_CONF}= $new if ref $oValue && $oValue->isa('RabakLib::Conf');
     }
@@ -74,7 +77,7 @@ sub splitValue {
 }
 
 # joins array of value parts with spaces
-# returns undef if there were an object or array is empty
+# returns undef if there was an object or array is empty
 sub joinValue {
     my $self = shift;
     my $aValue= shift;
@@ -233,10 +236,12 @@ sub find_property {
     my $sName= shift;
  
     return undef unless defined $sName;
+
     # first look in '*'-scope
     unless ($sName =~ /\*/) {
         my $sStarName= $sName;
         $sStarName=~ s/^[\.\/]*//;
+
         # search for existing values in '/*'-scope ('*.zuppi' overwrites '*.zappi.zuppi')
         my $oRootScope= $self->find_scope("/*.$sStarName");
         my @sStarName= split(/\./, $sStarName);
@@ -250,13 +255,14 @@ sub find_property {
             }
         }
     }
-    return $self->_find_property($sName);   
-}
-    
-# find property and return it as it is (scalar, object etc.)
-sub _find_property {
-    my $self= shift;
-    my $sName= shift;
+
+##     return $self->_find_property($sName);   
+## }
+##    
+## # find property and return it as it is (scalar, object etc.)
+## sub _find_property {
+##     my $self= shift;
+##     my $sName= shift;
     
     return undef unless defined $sName;
     return undef if $sName eq '.' || $sName eq '';
@@ -266,8 +272,7 @@ sub _find_property {
     
     $sName= lc $sName;
 
-    while (1) {
-        return undef unless defined $oScope;
+    while (defined $oScope) {
         my ($oProp, $oParentConf, $sKey)= $oScope->get_property($sName);
         if (defined $oProp) {
             return ($oProp, $oParentConf, $sKey) if wantarray;
@@ -275,6 +280,7 @@ sub _find_property {
         }
         $oScope= $oScope->{PARENT_CONF};
     }
+    return undef;
 }
 
 # finds proper scope
@@ -307,11 +313,13 @@ sub get_property {
     
     my $oScope= $self;
     my @sName= split(/\./, $sName);
+
     # get last key
     my $sPropKey= pop @sName;
     while (my $sKey= shift @sName) {
         unless (ref $oScope->{VALUES}{$sKey}) {
-            #                       build key relative from last scope
+
+            # the join builds a key relative from last scope
             return (undef, $oScope, join('.', $sKey, @sName, $sPropKey)) if wantarray;
             return undef;
         }
@@ -376,14 +384,14 @@ sub set_value {
 # expand macro given in $sMacroName
 # returns hashref with expanded macro
 # calls $fExpand->() for expanding macro's content
-# calls $fPrePars-() for preparsing macros content
+# calls $fPrePars->() for preparsing macros content
 sub expandMacro {
     my $self= shift;
     my $sMacroName= shift;
     my $oScope= shift || $self;
     my $aMacroStack= shift || [];
-    my $fExpand= shift || sub {$self->_resolveObjects(@_)}; # try to expand macro as deep as possible by default
-    my $fPreParse= shift || sub {shift}; # no preparsing by default
+    my $fExpand= shift || sub { $self->_resolveObjects(@_) }; # try to expand macro as deep as possible by default
+    my $fPreParse= shift || sub { shift }; # no preparsing by default
 
     my %sResult= ();
 
@@ -393,7 +401,7 @@ sub expandMacro {
     $sMacroName=~ s/^\&//;
     my ($sMacro, $oMacroScope)= $oScope->find_property($sMacroName); 
     unless ($oMacroScope) {
-        return {ERROR => "Unknown Macro '$sMacroName'"};
+        return { ERROR => "Unknown Macro '$sMacroName'" };
     }
     # build full macro name
     $sMacroName= $oMacroScope->get_full_name($sMacroName);
@@ -402,12 +410,12 @@ sub expandMacro {
     my $sMacroPath= $aMacroStack->[0];
     my $sqMacroName= quotemeta "[$sMacroName]";
 
-    return {ERROR => "Recursion detected ('$sMacroName')."} if $sMacroPath=~ /$sqMacroName/;
-    return {ERROR => "'$sMacroName' does not exist."} unless defined $sMacro;
+    return { ERROR => "Recursion detected ('$sMacroName')." } if $sMacroPath=~ /$sqMacroName/;
+    return { ERROR => "'$sMacroName' does not exist." } unless defined $sMacro;
     $sResult{MACRO}= $sMacroName;
     if (ref $sMacro) {
         return {
-            DATA => [$sMacro],
+            DATA => [ $sMacro ],
             ERROR => "'$sMacroName' is an object.",
         };
     }
@@ -416,7 +424,7 @@ sub expandMacro {
             $self->remove_backslashes_part1($sMacro)
         )
     );
-    my $aNewMacroStack= ["${sMacroPath}[$sMacroName]"];
+    my $aNewMacroStack= [ "${sMacroPath}[$sMacroName]" ];
 # print "Macro: $sMacro\n";
     $sResult{DATA}= $fExpand->($aMacro, $oMacroScope, $aNewMacroStack);
     push @$aMacroStack, $aNewMacroStack;
@@ -441,17 +449,24 @@ sub _resolveObjects {
     my @oResult= ();
     
     for my $sValue (@$aValue) {
+
         # if value is a single macro simply resolve it
         if ($sValue=~ s/^\&($sregIdentRef)$/$1/) {
+
             # macros are expanded and result added to @oResult
+
 # print "expanding macro: '$sValue'\n";
 # print "scope: ", $self->get_full_name() , "\n";
+
             my $hResult = $self->expandMacro($sValue, $oScope, $aStack, sub{$self->_resolveObjects(@_)});
             unless (defined $hResult->{DATA}) {
+
                 # logger->error($hResult->{ERROR}) if $hResult->{ERROR};
                 next;
             }
+
 # print "got ", Dumper($hResult->{DATA}), "\n";
+
             unless (ref $hResult->{DATA} eq "ARRAY") {
                 logger->error("Internal error: expandMacro() should return an array reference! ($hResult->{DATA})");
                 return [];
@@ -476,6 +491,7 @@ sub _resolveObjects {
             $sValue=~ s/(?<!\\)\&\{($sregIdentRef)\}/$f->($1)/ge
         ) {}
         logger->warn("Unescaped '&' in '$sValue'") if $sValue=~ /(?<!\\)\&/;
+
         # ...and push scalar
         push @oResult, $sValue;
     }
@@ -528,6 +544,7 @@ sub showUncachedReferences {
 
     my @sResult= ();
     while (1) {
+
         # show all referenced objects not already shown and not anonymous
         my @sReferences= grep {
             !defined $aMacroStack->{$_} && !/\.\*\d+$/
@@ -578,7 +595,6 @@ sub show {
     return [] if $sKey=~ /\*\d*$/; # don't show anonymous objects
 
     my $bKeyInvalid= 1;    
-
     my @sResult= ();
 
     $hConfShowCache->{'.'}= [] unless $hConfShowCache->{'.'};
@@ -586,10 +602,12 @@ sub show {
     for my $sSubKey ($self->sort_show_keys(keys %{ $self->{VALUES} })) {
         next if $sSubKey =~ /^\./;
         if (ref($self->{VALUES}{$sSubKey})) {
+
             # remember referenced objects for later showing
             $self->{VALUES}{$sSubKey}->show({'.' => $hConfShowCache->{'.'}});
             next;
         }
+
         # to get all references (objects will not change $hReferences and should be handled later)
         $self->get_value($sSubKey, undef,  $hConfShowCache->{'.'});
         push @sResult, $self->showConfValue("$sKey.$sSubKey", $hConfShowCache);
@@ -605,6 +623,7 @@ sub simplifyShow {
     
 #print Dumper($sOrig);
 #return $sOrig;
+
     my $sScope= "";
     my $sOrigScope= "";
     for my $sLine (@$sOrig) {

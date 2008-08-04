@@ -45,27 +45,24 @@ sub run {
 
     return unless $self->wantArgs(0, 1);
 
-    my $sBakset= $self->{ARGS}[0] || '';
+    $self->warnOptions([ 'conf' ]);
 
-# print Dumper($self->SUPER::Options());
+    my $sBakset= $self->{ARGS}[0] || '';
 
     if ($sBakset eq '') {
         if ($self->{OPTS}{all}) {
             $self->readConfFile()->print_all();
             return 1;
         }
-        $self->warnOptions();
         $self->readConfFile()->print_set_list();
         return 1;
     }
 
-    $self->warnOptions();
-
-    my $oBakset= $self->getBakset($sBakset);
+    my ($oBakset, $oConf)= $self->getBakset($sBakset);
     return 0 unless $oBakset;
 
-# FIXME: Reintegrate this:
-#    $oConf->set_value("*.switch.warn_on_remote_access", 1);
+    ## FIXME: Muss das auch bei ($sBakset eq '') passieren??
+    $oConf->set_value("*.switch.warn_on_remote_access", 1);
 
     my @sConf= @{ $oBakset->show() };
     pop @sConf;  # remove last []. (See RabalLib::Conf::show)
