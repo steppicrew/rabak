@@ -27,7 +27,7 @@ rabak backup [options] <backup set>
 Takes the given <backup set> and makes a backup.
 
 The settings for the backup set must be in the configuration file, either the
-default one or the one defined by then "--conf" option.
+default one or the one defined by the "--conf" option.
 $sOptions
 __EOT__
 }
