@@ -18,15 +18,15 @@ sub new {
     
     my $self= $class->SUPER::new();
     $self->{dbfn_postfix}= $hParams->{db_postfix};
-    $self->{db_engine}=    $hParams->{db_engine};
+    $self->{db_backend}=   $hParams->{db_backend};
     $self->{temp_dir}=     $hParams->{temp_dir};
 
     $self->{dbs}= []; # array of db hashes
     $self->{current_db}= undef;
 
-    my $sInodeFileName= "$hParams->{base_dir}/inodes.db";
+    my $sInodeFileName= "$hParams->{db_inodes_dir}/inodes.db";
     $self->{inode_db}= RabakLib::InodeStore::DBBackend->new(
-        $sInodeFileName, $self->{db_engine}, $self->{temp_dir}
+        $sInodeFileName, $self->{db_backend}, $self->{temp_dir}
     );
 
     bless $self, $class;
@@ -42,7 +42,7 @@ sub newDirectory {
     $sFileName.= $self->{dbfn_postfix};
     my $bDbIsNew= ! -f $sFileName;
     $self->{current_db}= RabakLib::InodeStore::DBBackend->new(
-        $sFileName, $self->{db_engine}, $self->{temp_dir}, {directory=> $sDirectory}
+        $sFileName, $self->{db_backend}, $self->{temp_dir}, {directory=> $sDirectory}
     );
     push @{$self->{dbs}}, $self->{current_db};
 

@@ -16,15 +16,12 @@ use vars qw(@ISA);
 
 sub getOptions {
     return {
-        "span-devs" =>          [ "",  "", "",  "Continue when directories span multiple devices (but ignore them)\n"
-                                                . "Program dies if parameter is not given and more than one device is used"],
         "ignore-perms" =>       [ "",  "", "",  "Ignore permissions" ],
         "ignore-owner" =>       [ "o", "", "",  "Ignore ownership" ],
         "ignore-time" =>        [ "t", "", "",  "Ignore file date/time" ],
-        "zero-size" =>          [ "",  "", "",  "Include files with zero byte size" ],
+        "ignore-zero-sized" =>  [ "",  "", "",  "Include files with zero byte size" ],
 
-        # FIXME: Sollte nur "smaller than" sein!
-        "min-size" =>           [ "", "", "<min size>",         "Ignore files smaller than or equal <min size>" ],
+        "min-size" =>           [ "", "", "<min size>",         "Ignore files smaller than <min size>" ],
         "max-size" =>           [ "", "", "<max size>",         "Ignore files larger than <max size>" ],
         "temp-dir" =>           [ "", "", "<temp dir>",         "Working directory for temporary data collection (default: '/tmp')" ],
         "db-backend" =>         [ "", "", "<db engine>",        "Database engine. possible values: sqlite2, sqlite3 (default)" ],
@@ -57,26 +54,16 @@ sub run {
     }
 
     my @sDirs= @{ $self->{ARGS} };
-    my $dm= RabakLib::DupMerge->new({
-        dirs            => \@sDirs,
-        quiet           => $self->{OPTS}{'quiet'},
-        verbose         => $self->{OPTS}{'verbose'},,
-        dryrun          => $self->{OPTS}{'pretend'},
+    my $hAllowedOpts= $self->getOptions();
+    # replace '-' in options with '_'
+    my %sOpts = map {
+        my $value= $self->{OPTS}->{$_};
+        s/\-/_/g;
+        $_ => $value;
+    } grep {$hAllowedOpts->{$_}} keys %{$self->{OPTS}};
+    $sOpts{dirs} = \@sDirs;
 
-        ignore_devspans => $self->{OPTS}{'span-devs'},          # NOT ??????????
-        ignore_perms    => $self->{OPTS}{'ignore-perms'},
-        ignore_owner    => $self->{OPTS}{'ignore-owner'},
-        ignore_time     => $self->{OPTS}{'ignore-time'},
-        skip_zero       => $self->{OPTS}{'zero-size'},          # NOT ??????????
-        min_size        => $self->{OPTS}{'min-size'},
-        max_size        => $self->{OPTS}{'max-size'},
-        temp_dir        => $self->{OPTS}{'temp-dir'},
-        db_engine       => $self->{OPTS}{'db-backend'},
-        base_dir        => $self->{OPTS}{'db-inodes-dir'},
-        multi_db_postfix=> $self->{OPTS}{'db-postfix'},
-
-        cb_infoS        => sub {print join "\n", @_; STDOUT->flush();}          # ????????
-    });
+    my $dm= RabakLib::DupMerge->new(\%sOpts);
 
     $dm->run();
 

@@ -179,7 +179,7 @@ sub inodeInventory {
     my $inodeCache= new RabakLib::InodeCache(
         {
             dirs => [$sFullTargetDir],
-            base_dir => $self->getPath(),
+            db_inodes_dir => $self->getPath(),
         }
     );
     logger->info("Collecting inode information in '$sFullTargetDir'");
