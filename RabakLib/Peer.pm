@@ -336,15 +336,10 @@ sub build_ssh_cmd {
         push @sSshCmd, '-1' if $self->get_value("protocol") eq "1";
         push @sSshCmd, '-2' if $self->get_value("protocol") eq "2";
     }
-    if ($self->get_value("identity_files")) {
-        push @sSshCmd, '-i', $_ for (split(/\s+/, $self->get_value("identity_files")));
-    }
+    push @sSshCmd, '-i', $self->resolveObjects("identity_files") if $self->get_value("identity_files");
 #    push @sSshCmd, '-vvv' if $self->{DEBUG};
 
-    my $sHost= $self->get_value("user");
-    $sHost= defined $sHost ? "$sHost@" : "";
-    $sHost.= $self->get_value("host");
-    push @sSshCmd, $sHost;
+    push @sSshCmd, $self->getUserHost();
     push @sSshCmd, $sCmd;
     $_= $self->shell_quote($_) for (@sSshCmd);
     return join(" ", @sSshCmd);
@@ -503,31 +498,35 @@ sub getDirRecursive {
     my $sPerlScript= '
         # getDirRecursive()
         use Cwd;
-        local *_dirlist= sub {
-            my $sPath= shift;
-            my $iLevel= shift;
+        
+        %Dir= ();
+        my @queue= ({
+            path => Cwd::abs_path($sPath),
+            level => $iLevel,
+            result => \%Dir,
+        });
 
-            return {} if $iLevel < 0;
-            my %result = ();
-            my @dirs= ();
-            while (<$sPath/*>) {
-                if (-l) {
-                    $result{$_}= readlink;
-                }
-                elsif (-d) {
-                    push @dirs, $_;
-                }
-                else {
-                    $result{$_}= "";
-                }
+        while (my $hPath = shift @queue) {
+            my $sPath = $hPath->{path};
+            my $iLevel = $hPath->{level};
+            my $hResult = $hPath->{result};
+
+            my $hDir;
+            if (opendir($hDir, $sPath)) {
+                my @sFiles = map {"$sPath/$_"} grep {!/^\.\.?$/} readdir $hDir;
+                closedir $hDir;
+                map {
+                    $hResult->{$_}= (-l) ? readlink : (-d) ? {} : "";
+                } @sFiles;
+                unshift @queue, map {
+                    {
+                        path => $_,
+                        level => $iLevel - 1,
+                        result => $hResult->{$_},
+                    }
+                } grep {ref $hResult->{$_}} @sFiles if $iLevel > 0;
             }
-            for my $dir (@dirs) {
-                $result{$dir}= _dirlist($dir, $iLevel - 1);
-            }
-            return \%result;
-        };
-        $sPath= Cwd::abs_path($sPath);
-        %Dir= %{_dirlist($sPath, $iLevel)};
+        }
     ';
 
     return %{$self->_saveperl($sPerlScript, {
