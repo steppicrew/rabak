@@ -101,7 +101,7 @@ sub createHandle {
         sqlite2 => "SQLite2",
         sqlite3 => "SQLite",
     );
-    unless ($validDbEngines{$self->{db_backend} || ''}) {
+    unless ($validDbBackends{$self->{db_backend} || ''}) {
         warn "Invalid database engine '$self->{opts}{db_backend}'." if $self->{db_backend};
         $self->{db_backend}= "sqlite3";
     }
