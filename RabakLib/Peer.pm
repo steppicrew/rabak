@@ -512,20 +512,23 @@ sub getDirRecursive {
             my $hResult = $hPath->{result};
 
             my $hDir;
-            if (opendir($hDir, $sPath)) {
-                my @sFiles = map {"$sPath/$_"} grep {!/^\.\.?$/} readdir $hDir;
-                closedir $hDir;
-                map {
-                    $hResult->{$_}= (-l) ? readlink : (-d) ? {} : "";
-                } @sFiles;
-                unshift @queue, map {
-                    {
-                        path => $_,
-                        level => $iLevel - 1,
-                        result => $hResult->{$_},
-                    }
-                } grep {ref $hResult->{$_}} @sFiles if $iLevel > 0;
-            }
+
+            next unless opendir $hDir, $sPath;
+
+            my @sFiles = map {"$sPath/$_"} grep {!/^\.\.?$/} readdir $hDir;
+            closedir $hDir;
+
+            map {
+                $hResult->{$_}= (-l) ? readlink : (-d) ? {} : "";
+            } @sFiles;
+
+            unshift @queue, map {
+                {
+                    path => $_,
+                    level => $iLevel - 1,
+                    result => $hResult->{$_},
+                }
+            } grep {ref $hResult->{$_}} @sFiles if $iLevel > 0;
         }
     ';
 
