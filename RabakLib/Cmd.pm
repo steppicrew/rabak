@@ -138,7 +138,6 @@ sub readConfFile {
         "$ENV{HOME}/.rabak/rabak.cf",
         "/etc/rabak/rabak.cf",
         "/etc/rabak.cf",
-        "/usr/local/rabak/rabak.cf",
         "./rabak.cf",
     );
     @sConfFiles= $self->{OPTS}{conf} if $self->{OPTS}{conf};
