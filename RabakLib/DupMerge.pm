@@ -52,7 +52,7 @@ sub _run {
         next if $self->{OPTS}{min_size} && $iSize < $self->{OPTS}{min_size};
         next if $self->{OPTS}{max_size} && $iSize > $self->{OPTS}{max_size};
 
-        logger()->info("Processing file size $iSize...");
+        logger()->progress("Processing file size $iSize...");
 
         # handle files grouped by permissions etc. separately
         my $hKey= undef;
@@ -171,7 +171,7 @@ sub _run {
             }
         }
     }
-    logger()->info("...done");
+    logger()->finish_progress("Processing files...done");
     logger()->info("Finishing information store...");
 
     $oStore->endCached();

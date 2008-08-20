@@ -61,6 +61,9 @@ BEGIN {
         SWITCH_LOGGING => 0,
         SWITCH_VERBOSITY => 3,
         SWITCH_QUIET => 0,
+        
+        FORCE_NL => 0,           # force new line on next print on screen
+        LAST_PROGRESS_LENGTH => 0,# force new line on next print on screen
     };
     
     ($oLog->{MSG_FH}, $oLog->{MSG_FILE_NAME}) =
@@ -340,6 +343,32 @@ sub error {
     $self->log($self->error(@sMessage));
 }
 
+sub progress {
+    my $self= shift;
+    my $sMessage= shift;
+
+    local $|= 1;
+    return if $self->{SWITCH_QUIET} || LOG_INFO_LEVEL > $self->{SWITCH_VERBOSITY};
+
+    my $iLength= length $sMessage;
+    print "\r" if $self->{FORCE_NL};
+    print $sMessage;
+    print ' 'x($self->{LAST_PROGRESS_LENGTH} - $iLength) if $self->{LAST_PROGRESS_LENGTH} > $iLength;
+    $self->{LAST_PROGRESS_LENGTH}= $iLength;
+    $self->{FORCE_NL} = 1;
+}
+
+sub finish_progress {
+    my $self= shift;
+    my $sMessage= shift;
+
+    $self->progress($sMessage);
+    $self->progress("\n");
+    $self->progress("\r");
+    $self->{FORCE_NL} = 0;
+    $self->{LAST_PROGRESS_LENGTH}= 0;
+}
+
 sub exitError {
     my $self= shift;
     my $iExit=shift || 0;
@@ -406,6 +435,8 @@ sub _levelLog {
         $sMessage = '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
         $sMessage = "  " x $self->{INDENT1} . $sMessage;
         # print message to stdout
+        print "\n" if $self->{FORCE_NL};
+        $self->{FORCE_NL}= 0;
         print "$self->{STDOUT_PREFIX}$sMsgPref$sMessage\n" unless $self->{SWITCH_QUIET} || $iLevel > $self->{SWITCH_VERBOSITY};
 
         next if $self->{SWITCH_PRETEND};
