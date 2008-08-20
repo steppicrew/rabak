@@ -211,6 +211,16 @@ sub _getSourceData {
     return $self->_getBackupData("SOURCE_DATA", $sProperty);
 }
 
+sub getOldBakDirs {
+    my $self= shift;
+    return $self->_getSourceData('OLD_BAKDIRS');
+}
+
+sub getSourceSubdir {
+    my $self= shift;
+    return $self->_getSourceData('SUBDIR');
+}
+
 # public
 sub getAbsBakDir {
     my $self= shift;
