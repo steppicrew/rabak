@@ -4,7 +4,7 @@ package RabakLib::Cmd;
 
 use Cwd;
 use Data::Dumper;
-use Getopt::Long qw(GetOptionsFromArray);
+use Getopt::Long 2.36 qw( GetOptionsFromArray );
 
 use RabakLib::ConfFile;
 use RabakLib::Log;
