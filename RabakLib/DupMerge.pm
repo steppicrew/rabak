@@ -7,12 +7,6 @@ package RabakLib::DupMerge;
 use strict;
 use warnings;
 
-#use File::Find;
-#use Data::Dumper;
-#use Fcntl ':mode';
-#use Digest::SHA1;
-#use Cwd;
-
 use RabakLib::Trap;
 use RabakLib::Log;
 use RabakLib::InodeStore;
@@ -54,9 +48,9 @@ sub _run {
     while ($iSize= shift @$aSizes) {
         last if $oTrap->terminated();
         
-        next unless $iSize || $self->{OPTS}{skip_zero};
-        next if $self->{OPTS}{min_size} && $iSize <  $self->{OPTS}{min_size};
-        next if $self->{OPTS}{max_size} && $iSize >= $self->{OPTS}{max_size};
+        next unless $iSize || $self->{OPTS}{include_zero_sized};
+        next if $self->{OPTS}{min_size} && $iSize < $self->{OPTS}{min_size};
+        next if $self->{OPTS}{max_size} && $iSize > $self->{OPTS}{max_size};
 
         logger()->info("Processing file size $iSize...");
 
@@ -140,7 +134,7 @@ sub _run {
 				        last if $oTrap->terminated();
 
                         logger()->verbose("ln -f '$sLinkFile' '$sFile'");
-                        if ($self->{OPTS}{dryrun}) {
+                        if ($self->{OPTS}{pretend}) {
                             $self->{INODE_CACHE}{STATS}{linked_files}++;
                             next;
                         }
@@ -172,7 +166,7 @@ sub _run {
                     }
 
                     # TODO: should inode be removed if not all directories are checked??
-                    $oStore->removeInode($iInode) unless $self->{OPTS}{dryrun} || $bLinkError;
+                    $oStore->removeInode($iInode) unless $self->{OPTS}{pretend} || $bLinkError;
                 }
             }
         }
@@ -197,7 +191,7 @@ sub run {
             ? logger()->LOG_VERBOSE_LEVEL
             : logger()->LOG_INFO_LEVEL
     );
-    $oConf->set_value("switch.pretend", $self->{OPTS}{dryrun});
+    $oConf->set_value("switch.pretend", $self->{OPTS}{pretend});
     $oConf->set_value("switch.quiet", $self->{OPTS}{quiet});
     logger()->init($oConf);
 

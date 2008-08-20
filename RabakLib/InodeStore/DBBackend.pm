@@ -32,7 +32,7 @@ sub new {
         dbfn=> $sFileName,
         real_dbfn=> $sRealFileName,
         dbh=> undef,
-        db_engine=> $sDbEngine,
+        db_backend=> $sDbEngine,
         is_new=> undef,
         is_valid=> 1,
         
@@ -97,20 +97,20 @@ sub createHandle {
     my $self= shift;
     my $dbfn= shift;
     
-    my %validDbEngines= (
+    my %validDbBackends= (
         sqlite2 => "SQLite2",
         sqlite3 => "SQLite",
     );
-    unless ($validDbEngines{$self->{db_engine} || ''}) {
-        warn "Invalid database engine '$self->{opts}{db_engine}'." if $self->{db_engine};
-        $self->{db_engine}= "sqlite3";
+    unless ($validDbBackends{$self->{db_backend} || ''}) {
+        warn "Invalid database engine '$self->{opts}{db_backend}'." if $self->{db_backend};
+        $self->{db_backend}= "sqlite3";
     }
-    my $sDbEngine= $validDbEngines{$self->{db_engine}};
+    my $sDbBackend= $validDbBackends{$self->{db_backend}};
 
     $self->{is_new}= ! -f $dbfn || -z $dbfn;
     my $dbh= undef;
     eval {
-        $dbh = DBI->connect("dbi:$sDbEngine:dbname=$dbfn", "", "")
+        $dbh = DBI->connect("dbi:$sDbBackend:dbname=$dbfn", "", "")
             || die $DBI::errstr;
         if ($self->{is_new}) {
             $dbh->do("CREATE TABLE inodes (inode INTEGER PRIMARY KEY, size INTEGER, mode INTEGER, owner TEXT, mtime INTEGER, digest TEXT)");

@@ -69,7 +69,8 @@ sub Build {
         1;
     };
     if ($@) {
-        die $@ if $@ !~ /^can\'t locate rabaklib\/cmd\/$sCmd\.pm/i;
+        my $sqCmd= quotemeta $sCmd;
+        die $@ if $@ !~ /^can\'t locate rabaklib\/cmd\/$sqCmd\.pm/i;
         $sError= "Unknown command '$sCmd'. Please try 'rabak help' for further information.";
     }
     else {

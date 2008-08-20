@@ -37,28 +37,28 @@ sub _init {
         sqlite2 => "SQLite2",
         sqlite3 => "SQLite",
     );
-    unless ($validDbEngines{$self->{OPTS}{db_engine} || ''}) {
-        logger()->warn("Invalid database engine '$self->{OPTS}{db_engine}'.") if $self->{OPTS}{db_engine};
-        $self->{OPTS}{db_engine}= "sqlite3";
+    unless ($validDbEngines{$self->{OPTS}{db_backend} || ''}) {
+        logger()->warn("Invalid database engine '$self->{OPTS}{db_backend}'.") if $self->{OPTS}{db_backend};
+        $self->{OPTS}{db_backend}= "sqlite3";
     }
 
     # decide what InodeStore type will be used
     # currently the only supported type is multidb
     if (1) { 
-        $self->{OPTS}{base_dir}= "." unless $self->{OPTS}{base_dir};
-        $self->{OPTS}{multi_db_postfix}= ".file_inode.db" unless $self->{OPTS}{multi_db_postfix};
-        logger()->debug("Using '$self->{OPTS}{base_dir}' as working directory.");
-        logger()->debug("Using '$self->{OPTS}{multi_db_postfix}' as postfix for multi db.");
+        $self->{OPTS}{db_inodes_dir}= "." unless $self->{OPTS}{db_inodes_dir};
+        $self->{OPTS}{db_postfix}= ".file_inode.db" unless $self->{OPTS}{db_postfix};
+        logger()->debug("Using '$self->{OPTS}{db_inodes_dir}' as inode's db directory.");
+        logger()->debug("Using '$self->{OPTS}{db_postfix}' as postfix for multi db.");
         $self->{DS}= RabakLib::InodeStore->Factory(
             type => 'multidb',
-            base_dir => $self->{OPTS}{base_dir},
+            db_inodes_dir => $self->{OPTS}{db_inodes_dir},
             temp_dir => $self->{OPTS}{temp_dir},
-            db_postfix => $self->{OPTS}{multi_db_postfix},
-            db_engine => $self->{OPTS}{db_engine}
+            db_postfix => $self->{OPTS}{db_postfix},
+            db_backend => $self->{OPTS}{db_backend}
         );
     }
     
-    logger()->info("Skipping zero sized files.") if $self->{OPTS}{skip_zero};
+    logger()->info("Include skip zero sized files.") if $self->{OPTS}{include_zero_sized};
 }
 
 # callback function for File::Find
@@ -79,7 +79,6 @@ sub _processFiles {
     $self->{dev}= $dev unless defined $self->{dev};
     unless ($dev == $self->{dev}) {
         logger()->warn("Directories span different devices");
-        die "Specify option -d to skip directories on other devices" unless $self->{OPTS}{ignore_devspans};
         return;
     }
     $self->{STATS}{total_new_files}++;
@@ -233,6 +232,5 @@ sub printStats {
         logger()->info("    " . substr("$data->{text}:" . "." x 30, 0, 32) . $number);
     }
 }
-
 
 1;
