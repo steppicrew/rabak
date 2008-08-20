@@ -10,8 +10,6 @@ use Carp ();
 local $SIG{__WARN__} = \&Carp::cluck;
 local $SIG{__DIE__} = \&Carp::cluck;
 
-umask 0077; # make sure all tempfiles are readable only by us
-
 use RabakLib::Cmd;
 
 my $oCmd= RabakLib::Cmd::Build(\@ARGV);

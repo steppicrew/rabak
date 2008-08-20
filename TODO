@@ -15,6 +15,7 @@ Code:
 - Implement post processing with faster-dupemerge
 - Make "rabak admin" do something useful
 - Implement "rabak clean" to remove unwanted files on the backup media
+- Set mask of log files etc to 0600
 
 Docs:
 
