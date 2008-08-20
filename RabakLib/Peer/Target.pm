@@ -128,14 +128,14 @@ sub checkDf {
 
 sub remove_old {
     my $self= shift;
-    my $iKeep= $self->getSourceKeep();
+    my $iKeep= $self->_getSourceData("KEEP");
     
     return unless $iKeep;
 
     logger->info("Keeping last $iKeep versions");
 
     logger->incIndent();
-    my @sBakDir= @{$self->getOldBakDirs()};
+    my @sBakDir= @{$self->_getSourceData("OLD_BAKDIRS")};
     my $sqPath= quotemeta $self->getPath();
     my $iCount= 0;
     foreach my $sDir (@sBakDir) {
@@ -170,7 +170,7 @@ sub remove_old {
 sub inodeInventory {
     my $self= shift;
     
-    return 1 unless $self->getSourceInventory();
+    return 1 unless $self->_getSourceData("INVENTORY");
     if ($self->is_remote()) {
         logger->error('Inode inventory is supported only at local targets!');
         return 1;
@@ -190,7 +190,7 @@ sub inodeInventory {
     return $iResult;
 }
 
-sub getBackupData {
+sub _getBackupData {
     my $self= shift;
     my $sKey= shift;
     my $sProperty= shift;
@@ -199,34 +199,22 @@ sub getBackupData {
     return $self->{$sKey}{$sProperty};
 }
 
-sub getBaksetData { 
+sub _getBaksetData { 
     my $self= shift;
     my $sProperty= shift;
-    return $self->getBackupData("BAKSET_DATA", $sProperty);
+    return $self->_getBackupData("BAKSET_DATA", $sProperty);
 }
-sub getBaksetExt    { shift()->getBaksetData("BAKSETEXT") }
-sub getBaksetExts   { shift()->getBaksetData("BAKSETEXTS") }
-sub getBaksetDir    { shift()->getBaksetData("BAKSETDIR") }
-sub getBaksetMonth  { shift()->getBaksetData("BAKSETMONTH") }
-sub getBaksetDay    { shift()->getBaksetData("BAKSETDAY") }
-sub getBakDirs      { shift()->getBaksetData("BAKDIRS") }
 
-sub getSourceData {
+sub _getSourceData {
     my $self= shift;
     my $sProperty= shift;
-    return $self->getBackupData("SOURCE_DATA", $sProperty);
+    return $self->_getBackupData("SOURCE_DATA", $sProperty);
 }
-sub getOldBakDirs   { shift()->getSourceData("OLD_BAKDIRS") }
-sub getSubset       { shift()->getSourceData("SUBSET") }
-sub getSourceSubdir { shift()->getSourceData("SOURCESUBDIR") }
-sub getSourceSet    { shift()->getSourceData("SOURCESET") }
-sub getSourceExt    { shift()->getSourceData("SOURCEEXT") }
-sub getSourceKeep   { shift()->getSourceData("SOURCEKEEP") }
-sub getSourceInventory { shift()->getSourceData("SOURCEINVENTORY") }
-sub getBakDir       { shift()->getSourceData("BAKDIR") }
+
+# public
 sub getAbsBakDir {
     my $self= shift;
-    $self->getPath($self->getBakDir());
+    $self->getPath($self->_getSourceData("BAKDIR"));
 }
 
 sub prepareBackup {
@@ -260,17 +248,16 @@ sub prepareBackup {
     }
 
     my $sBaksetExt= $asBaksetExts->[0];
-    my $sBaksetMonth= strftime("%Y-%m", localtime);
+    my $sBaksetDate= strftime("%Y-%m-%d", localtime);
     $self->{BAKSET_DATA} = {
-        BAKSETEXT => $sBaksetExt,
-        BAKSETEXTS => $asBaksetExts,
-        BAKSETDIR => "$sBaksetMonth$sBaksetExt",
-        BAKSETMONTH => $sBaksetMonth,
-        BAKSETDAY => strftime("%Y-%m-%d", localtime),
+        EXT => $sBaksetExt,
+        EXTS => $asBaksetExts,
+        DIR => substr($sBaksetDate, 0, 7) . $sBaksetExt,
+        DATE => $sBaksetDate,
         BAKDIRS => $self->getAllBakdirs(),
     };
 
-    $self->mkdir($self->getBaksetDir()) unless $bPretend;
+    $self->mkdir($self->_getBaksetData("DIR")) unless $bPretend;
     return 0;
 }
 
@@ -302,12 +289,12 @@ sub prepareSourceBackup {
     my $bPretend= shift;
 
     my $asSourceExts= RabakLib::Set->GetAllPathExtensions($oSourcePeer);
-    my $sBakDay= $self->getBaksetDay();
+    my $sBakDay= $self->_getBaksetData("DATE");
 
-    my $hDirs= $self->getBakDirs();
+    my $hDirs= $self->_getBaksetData("BAKDIRS");
 
     my @sBakDirs= $self->getBakdirsByExts(
-        $self->getBaksetExts(),
+        $self->_getBaksetData("EXTS"),
         $asSourceExts,
         $hDirs,
     );
@@ -330,15 +317,15 @@ sub prepareSourceBackup {
     my $sSourceExt= $asSourceExts->[0];
     my $sSourceSet= "$sBakDay$sSubSet";
     my $sSourceSubdir= "$sSourceSet$sSourceExt";
-    my $sBakDir= $self->getBaksetDir() . "/$sSourceSubdir";
+    my $sBakDir= $self->_getBaksetData("DIR") . "/$sSourceSubdir";
     $self->{SOURCE_DATA}= {
         OLD_BAKDIRS => \@sBakDirs,
-        SOURCEEXT => $sSourceExt,
+        EXT => $sSourceExt,
         SUBSET => $sSubSet,
-        SOURCESUBDIR => $sSourceSubdir,
-        SOURCESET => $sSourceSet,
-        SOURCEKEEP => $oSourcePeer->get_value("keep"),
-        SOURCEINVENTORY => $oSourcePeer->get_value("inode_inventory"),
+        SUBDIR => $sSourceSubdir,
+        SET => $sSourceSet,
+        KEEP => $oSourcePeer->get_value("keep"),
+        INVENTORY => $oSourcePeer->get_value("inode_inventory"),
         BAKDIR => $sBakDir,
     };
     
@@ -359,32 +346,48 @@ sub finishSourceBackup {
             $self->remove_old();
         }
 
-        my $sSourceExt= $self->getSourceExt();
+        my $sSourceExt= $self->_getSourceData("EXT");
         $sSourceExt=~ s/^\./\-/;
-        my $sCurrentLink= "current" . $self->getBaksetExt() . $sSourceExt;
+        my $sCurrentLink= "current" . $self->_getBaksetData("EXT") . $sSourceExt;
         $self->unlink($sCurrentLink);
-        $self->symlink($self->getBakDir(), $sCurrentLink);
+        $self->symlink($self->_getSourceData("BAKDIR"), $sCurrentLink);
     }
     $self->{SOURCE_DATA}= undef;
+}
+
+sub getLogFileInfo {
+    my $self= shift;
+
+    my $sBaksetDate= shift;
+    my $sBaksetDir= shift;
+    my $sBaksetExt= shift;
+
+    my $sLogDir= substr($sBaksetDate, 0, 7) . "-log";
+    my $sLogFile= "$sLogDir/$sBaksetDate$sBaksetExt.log";
+
+    return {
+        DIR => $sLogDir,
+        FILE => $sLogFile,
+        FILEPATH => $self->getPath($sLogFile),
+    };
 }
 
 sub initLogging {
     my $self= shift;
     my $bPretend= shift;
 
-    my $sBaksetDay= $self->getBaksetDay();
-    my $sBaksetMonth= $self->getBaksetMonth();
-    my $sBaksetDir= $self->getBaksetDir();
-    my $sBaksetExt= $self->getBaksetExt();
+    my $sBaksetDate= $self->_getBaksetData("DATE");
+    my $sBaksetMonth= substr($sBaksetDate, 0, 7);
+    my $sBaksetDir= $self->_getBaksetData("DIR");
+    my $sBaksetExt= $self->_getBaksetData("EXT");
 
     my $sLogDir= "$sBaksetMonth-log";
-    my $sLogFile= "$sLogDir/$sBaksetDay$sBaksetExt.log";
+    my $sLogFile= "$sLogDir/$sBaksetDate$sBaksetExt.log";
     my $sLogFilePath= $self->getPath($sLogFile);
 
     unless ($bPretend) {
         $self->mkdir($sLogDir);
-        my $sLogLink= "$sBaksetDir/$sBaksetDay$sBaksetExt.log";
-
+        my $sLogLink= "$sBaksetDir/$sBaksetDate$sBaksetExt.log";
 
         my $sError= logger->open($sLogFilePath, $self);
         if ($sError) {
@@ -491,9 +494,9 @@ sub getBakdirsByExts {
         my $bd= $hDirs->{$b};
         return
             $bd->{date} cmp $ad->{date}
-            || $hSetExts{$ad->{set_ext}} cmp $hSetExts{$bd->{set_ext}}
-            || $hSourceExts{$ad->{source_ext}} cmp $hSourceExts{$bd->{source_ext}}
-            || $bd->{subset} cmp $ad->{subset}
+                || $hSetExts{$ad->{set_ext}} cmp $hSetExts{$bd->{set_ext}}
+                || $hSourceExts{$ad->{source_ext}} cmp $hSourceExts{$bd->{source_ext}}
+                || $bd->{subset} cmp $ad->{subset}
         ;
     };
 

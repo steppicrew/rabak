@@ -23,11 +23,11 @@ sub new {
 
     my $self= {};
     $self->{OPTS}= $hOptions;
-	$self->{DS}= undef;
-	$self->{STATS}= {};
+    $self->{DS}= undef;
+    $self->{STATS}= {};
     bless $self, $class;
 
- 	# print Dumper($self); die;
+    # print Dumper($self); die;
 }
 
 sub _init {
