@@ -347,13 +347,12 @@ sub progress {
     my $self= shift;
     my $sMessage= shift;
 
-    local $|= 1;
     return if $self->{SWITCH_QUIET} || LOG_INFO_LEVEL > $self->{SWITCH_VERBOSITY};
 
+    local $|= 1;
     my $iLength= length $sMessage;
-    print "\r" if $self->{FORCE_NL};
-    print $sMessage;
-    print ' 'x($self->{LAST_PROGRESS_LENGTH} - $iLength) if $self->{LAST_PROGRESS_LENGTH} > $iLength;
+    print "\r" . ' 'x$self->{LAST_PROGRESS_LENGTH} if $self->{LAST_PROGRESS_LENGTH} > $iLength;
+    print "\r$sMessage";
     $self->{LAST_PROGRESS_LENGTH}= $iLength;
     $self->{FORCE_NL} = 1;
 }
@@ -362,9 +361,7 @@ sub finish_progress {
     my $self= shift;
     my $sMessage= shift;
 
-    $self->progress($sMessage);
-    $self->progress("\n");
-    $self->progress("\r");
+    $self->progress("$sMessage\n");
     $self->{FORCE_NL} = 0;
     $self->{LAST_PROGRESS_LENGTH}= 0;
 }
