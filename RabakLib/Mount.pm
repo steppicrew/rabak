@@ -85,7 +85,7 @@ sub mount {
     my $sMountDeviceList= $self->get_value("device") || '';
     my $sMountDir= $self->get_value("directory") || '';
     my $sMountType= $self->get_value("type") || '';
-    my $sMountOpts= $self->get_value("opts") || '';
+    my $sMountOpts= $self->get_value("options") || $self->get_value("opts") || '';
     my $sUnmount= "";
 
     # parameters for mount command
