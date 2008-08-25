@@ -107,6 +107,25 @@ sub LOG_ERROR_LEVEL   { 1 }
 
 sub LOG_DEFAULT_LEVEL { LOG_INFO_LEVEL() }
 
+sub LOG_LEVEL_PREFIX  {
+    return {
+        LOG_ERROR_LEVEL()   => "ERROR",
+        LOG_WARN_LEVEL()    => "WARNING",
+        LOG_INFO_LEVEL()    => "INFO",
+        LOG_VERBOSE_LEVEL() => "VERBOSE",
+        LOG_DEBUG_LEVEL()   => "DEBUG",
+    }
+}
+
+sub getLevelPrefix {
+    my $self= shift;
+    my $iLevel= shift;
+    
+    my $sResult= $self->LOG_LEVEL_PREFIX->{$iLevel} || "LOG($iLevel)";
+    $sResult.= ":" . " "x(10 - length($sResult));
+    return $sResult;
+}
+
 sub incIndent {
     my $self= shift;
     $self->{PREFIX} ? $self->{INDENT2}++ : $self->{INDENT1}++;
@@ -395,27 +414,10 @@ sub _levelLog {
     
     return unless join "", @sMessage;
 
-    my $sMsgPref;
-    if ($iLevel == LOG_ERROR_LEVEL) {
-        $sMsgPref= "ERROR:   ";
-        $self->{ERRORCOUNT}++
-    }
-    elsif ($iLevel == LOG_WARN_LEVEL) {
-        $sMsgPref= "WARNING: ";
-        $self->{WARNCOUNT}++
-    }
-    elsif ($iLevel == LOG_INFO_LEVEL) {
-        $sMsgPref= "INFO:    ";
-    }
-    elsif ($iLevel == LOG_VERBOSE_LEVEL) {
-        $sMsgPref= "VERBOSE: ";
-    }
-    elsif ($iLevel == LOG_DEBUG_LEVEL) {
-        $sMsgPref= "DEBUG:   ";
-    }
-    else {
-        $sMsgPref= "LOG($iLevel):  ";
-    }
+    $self->{ERRORCOUNT}++ if $iLevel == LOG_ERROR_LEVEL;
+    $self->{WARNCOUNT}++ if $iLevel == LOG_WARN_LEVEL;
+
+    my $sMsgPref= $self->getLevelPrefix($iLevel);
 
     for my $sMessage (@sMessage) {
         next unless $sMessage;
