@@ -433,10 +433,12 @@ sub _levelLog {
         $sMessage = "  " x $self->{INDENT2} . $sMessage;
         $sMessage = '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
         $sMessage = "  " x $self->{INDENT1} . $sMessage;
-        # print message to stdout
-        print "\n" if $self->{FORCE_NL};
-        $self->{FORCE_NL}= 0;
-        print "$self->{STDOUT_PREFIX}$sMsgPref$sMessage\n" unless $self->{SWITCH_QUIET} || $iLevel > $self->{SWITCH_VERBOSITY};
+        unless ($self->{SWITCH_QUIET} || $iLevel > $self->{SWITCH_VERBOSITY}) {
+            # print message to stdout
+            print "\n" if $self->{FORCE_NL};
+            $self->{FORCE_NL}= 0;
+            print "$self->{STDOUT_PREFIX}$sMsgPref$sMessage\n";
+        }
 
         next if $self->{SWITCH_PRETEND};
 

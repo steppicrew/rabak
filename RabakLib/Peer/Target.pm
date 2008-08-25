@@ -9,6 +9,7 @@ no warnings 'redefine';
 use RabakLib::Log;
 use RabakLib::ConfFile;
 use RabakLib::InodeCache;
+use RabakLib::DupMerge;
 use POSIX qw(strftime);
 use Data::Dumper;
 
@@ -172,10 +173,11 @@ sub inodeInventory {
     
     return 1 unless $self->_getSourceData("INVENTORY");
     if ($self->is_remote()) {
+        # TODO: inode inventory on remote targets
         logger->error('Inode inventory is supported only at local targets!');
         return 1;
     }
-    my $sFullTargetDir= $self->getPath($self->getBakDir());
+    my $sFullTargetDir= $self->getPath($self->_getSourceData("BAKDIR"));
     my $inodeCache= new RabakLib::InodeCache(
         {
             dirs => [$sFullTargetDir],
@@ -185,6 +187,30 @@ sub inodeInventory {
     logger->info("Collecting inode information in '$sFullTargetDir'");
     logger->incIndent();
     my $iResult= $inodeCache->collect();
+    logger->decIndent();
+    logger->info("done");
+    return $iResult;
+}
+
+sub dupMerge {
+    my $self= shift;
+    
+    return 1 unless $self->_getSourceData("DUPMERGE");
+    if ($self->is_remote()) {
+        # TODO: inode inventory on remote targets
+        logger->error('Merge duplicate files is supported only at local targets!');
+        return 1;
+    }
+    my $sFullTargetDir= $self->getPath($self->_getSourceData("BAKDIR"));
+    my $dm= new RabakLib::DupMerge(
+        {
+            dirs => [$sFullTargetDir, @{$self->getOldBakDirs}],
+            db_inodes_dir => $self->getPath(),
+        }
+    );
+    logger->info("Merging duplicate files");
+    logger->incIndent();
+    my $iResult= $dm->run();
     logger->decIndent();
     logger->info("done");
     return $iResult;
@@ -336,6 +362,7 @@ sub prepareSourceBackup {
         SET => $sSourceSet,
         KEEP => $oSourcePeer->get_value("keep"),
         INVENTORY => $oSourcePeer->get_value("inode_inventory"),
+        DUPMERGE => $oSourcePeer->get_value("merge_duplicates"),
         BAKDIR => $sBakDir,
     };
     
@@ -352,6 +379,7 @@ sub finishSourceBackup {
     unless ($bPretend) {
         unless ($iBackupResult) {
             $self->inodeInventory();
+            $self->dupMerge();
             # remove old dirs if backup was successfully done
             $self->remove_old();
         }
