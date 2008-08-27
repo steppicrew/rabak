@@ -122,9 +122,6 @@ sub checkDf {
     if ($iStValue > $iDfAvail) {
         $iDfAvail= int($iDfAvail * 100) / 100;
         return [
-                "Rabak Version " . $self->get_switch("version"). " on \"" . $self->get_switch("hostname") . "\" as user \"" . getpwuid($>) . "\"",
-                "Command line: " . $self->get_switch("commandline"),
-                "#"x80,
                 "The free space on your target \"" . $self->getFullPath . "\" has dropped ",
                 "below $iStValue$sStUnit to $iDfAvail$sStUnit.",
         ];
@@ -307,8 +304,14 @@ sub finishBackup {
 
     my $aDf = $self->checkDf();
     if (defined $aDf) {
-        logger->warn(join " ", @$aDf);
-        logger->mailWarning("disc space too low", @$aDf);
+        logger->warn(join "", @$aDf);
+        my $sHostName= $self->get_value("host") || $self->get_switch("hostname");
+        logger->mailWarning("disc space too low on ${sHostName}'s target dir \"" . $self->abs_path($self->getPath()) . "\"",
+            "Rabak Version " . $self->get_switch("version"). " on \"" . $self->get_switch("hostname") . "\" as user \"" . getpwuid($>) . "\"",
+            "Command line: " . $self->get_switch("commandline"),
+            "#"x80,
+            @$aDf
+        );
     }
 
     $self->closeLogging();
