@@ -121,8 +121,13 @@ sub checkDf {
     $iDfAvail <<= 10            if $sStUnit eq 'B';
     if ($iStValue > $iDfAvail) {
         $iDfAvail= int($iDfAvail * 100) / 100;
-        return ["The free space on your target \"" . $self->getFullPath . "\" has dropped",
-                "below $iStValue$sStUnit to $iDfAvail$sStUnit."];
+        return [
+                "Rabak Version " . $self->get_switch("version"). " on \"" . $self->get_switch("hostname") . "\" as user \"" . getpwuid($>) . "\"",
+                "Command line: " . $self->get_switch("commandline"),
+                "#"x80,
+                "The free space on your target \"" . $self->getFullPath . "\" has dropped ",
+                "below $iStValue$sStUnit to $iDfAvail$sStUnit.",
+        ];
     }
     return undef;
 }
