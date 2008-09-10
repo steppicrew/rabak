@@ -170,6 +170,49 @@ sub remove_old {
     logger->info("Number of removed backups: $iCount");
 }
 
+# builds an entire RabakLib directory structure on remote site
+sub _createTempEnv {
+    my $self= shift;
+    
+    return $self->{TEMP_ENV} if defined $self->{TEMP_ENV};
+    
+    my $sTempDir= $self->tempdir();
+    my $sModuleBase= __PACKAGE__;
+    $sModuleBase=~ s/\:\:.*//;
+    my @sRabakPaths= map {$INC{$_}} grep {/^$sModuleBase\//} keys %INC;
+    unless (scalar @sRabakPaths) {
+        logger->error("Could not determine $sModuleBase's path!");
+        return 1;
+    }
+    my $sBasePath= $sRabakPaths[0];
+    $sBasePath=~ s/(\/$sModuleBase\/).*/$1/;
+    my @sFiles= ($sBasePath);
+    while (my $sFile= shift @sFiles) {
+        my $sRelPath= $sFile;
+        $sRelPath=~ s/.*\/($sModuleBase\/)/$1/;
+        if (-d $sFile) {
+            my $dh;
+            if (opendir $dh, $sFile) {
+                my @sNewFiles= map {"$sFile/$_"} grep {/\.pm$/ || (-d "$sFile/$_" && !/^\.\.?$/)} readdir $dh;
+                closedir $dh;
+                next unless scalar @sNewFiles;
+                $self->mkdir("$sTempDir/$sRelPath");
+                push @sFiles, @sNewFiles;
+            }
+            else {
+                logger->error("Could not read directory \"$sFile\"");
+                return 1;
+            }
+            next;
+        }
+        next unless -f $sFile;
+        $self->copyLocalFileToRemote($sFile, "$sTempDir/$sRelPath");
+    }
+    
+    $self->{TEMP_ENV}= $sTempDir;
+    return 0;
+}
+
 sub inodeInventory {
     my $self= shift;
     
