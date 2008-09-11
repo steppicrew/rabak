@@ -460,7 +460,7 @@ sub _buildTempRuntimeEnv {
         logger->error("Could not determine ${sModuleBase}'s path!");
         return 0;
     }
-    my $sBasePath= $sRabakPaths[0];
+    my $sBasePath= Cwd::abs_path($sRabakPaths[0]);
     $sBasePath=~ s/(\/$sModuleBase\/).*/$1/;
 
     return $sBasePath unless $self->is_remote();
@@ -490,6 +490,33 @@ sub run_rabak_script {
     my $sPerlCmd= 'perl';
     $sPerlCmd.= " -I'$sRtDir'" if $sRtDir;
     
+    unless ($hHandles->{STDOUT}) {
+        # initialize peer's logging, parse log output from peer and log here
+        $sScript= '
+        use RabakLib::Log;
+
+        my $oConf= RabakLib::Conf->new();
+        $oConf->set_value("switch.verbose", logger()->LOG_MAX_LEVEL);
+        $oConf->set_value("switch.pretend", 0);
+        $oConf->set_value("switch.quiet", 0);
+        logger()->init($oConf);
+        logger()->set_prefix("X");
+        ' . $sScript if defined $sScript;
+
+        my %logLevelPrefix= %{RabakLib::Log::logger()->LOG_LEVEL_PREFIX()};
+        my %logPrefixLevel= map {quotemeta($logLevelPrefix{$_}) => $_} keys %logLevelPrefix;
+        $hHandles->{STDOUT}= sub {
+            foreach my $sLine (@_) {
+                foreach my $sqPref (keys %logPrefixLevel) {
+                    if ($sLine=~ s/^$sqPref\:\s*.*?\]\s//) {
+                        RabakLib::Log::logger()->log([$logPrefixLevel{$sqPref}, $sLine]);
+                        last;
+                    }
+                }
+            }
+        };
+    }
+    $hHandles->{STDERR}= sub {RabakLib::Log::logger()->error(@_)} unless $hHandles->{STDERR};
     $hHandles->{STDIN}= $sScript if defined $sScript;
     
     return $self->run_cmd($sPerlCmd, $hHandles);
@@ -655,8 +682,8 @@ sub copyLocalFilesToRemote {
     my $self= shift;
     my $sLocFiles= shift;
     my $sRemDir= $self->getPath(shift);
-    my $bRecursive= shift || 0;
-    my $fAbs2Rel= shift || sub{shift};
+    my $bRecursive= shift;
+    my $fAbs2Rel= shift || sub{$_[0]=~ s/.*\///; $_[0]}; # return basename by default
 
     while (my $sFile= shift @$sLocFiles) {
         my $sRelPath= $fAbs2Rel->($sFile);

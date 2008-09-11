@@ -174,48 +174,75 @@ sub inodeInventory {
     my $self= shift;
     
     return 1 unless $self->_getSourceData("INVENTORY");
-    if ($self->is_remote()) {
-        # TODO: inode inventory on remote targets
-        logger->error('Inode inventory is supported only at local targets!');
-        return 1;
-    }
+
     my $sFullTargetDir= $self->getPath($self->_getSourceData("BAKDIR"));
-    my $inodeCache= new RabakLib::InodeCache(
-        {
-            dirs => [$sFullTargetDir],
-            db_inodes_dir => $self->getPath(),
-        }
-    );
+    my $sInodesDir= $self->getPath();
+
     logger->info("Collecting inode information in '$sFullTargetDir'");
     logger->incIndent();
-    my $iResult= $inodeCache->collect();
+
+    $sFullTargetDir=~ s/\\/\\\\/g;
+    $sFullTargetDir=~ s/\"/\\\"/g;
+    $self->run_rabak_script('
+        use RabakLib::InodeCache;
+
+        my $inodeCache= new RabakLib::InodeCache(
+            {
+                dirs => ["'.$sFullTargetDir.'"],
+                db_inodes_dir => "'.$sInodesDir.'",
+            }
+        );
+        my $iResult= $inodeCache->collect();
+    ');
+
     logger->decIndent();
     logger->info("done");
-    return $iResult;
+    return $self->get_last_error() ? 1 : 0;
+
+#    my $inodeCache= new RabakLib::InodeCache(
+#        {
+#            dirs => [$sFullTargetDir],
+#            db_inodes_dir => $sInodesDir,
+#        }
+#    );
+#    logger->info("Collecting inode information in '$sFullTargetDir'");
+#    logger->incIndent();
+#    my $iResult= $inodeCache->collect();
+#    logger->decIndent();
+#    logger->info("done");
+#    return $iResult;
+
 }
 
 sub dupMerge {
     my $self= shift;
     
     return 1 unless $self->_getSourceData("DUPMERGE");
-    if ($self->is_remote()) {
-        # TODO: inode inventory on remote targets
-        logger->error('Merge duplicate files is supported only at local targets!');
-        return 1;
-    }
+
     my $sFullTargetDir= $self->getPath($self->_getSourceData("BAKDIR"));
-    my $dm= new RabakLib::DupMerge(
-        {
-            dirs => [$sFullTargetDir, @{$self->getOldBakDirs}],
-            db_inodes_dir => $self->getPath(),
-        }
-    );
+    my $sInodesDir= $self->getPath();
+    my $sDirs= "\"" .
+        join("\",\"", map
+            {s/\\/\\\\/g;s/\"/\\\"/g;$_}
+            ($sFullTargetDir, @{$self->getOldBakDirs})
+        ) .
+        "\"";
+
     logger->info("Merging duplicate files");
     logger->incIndent();
-    my $iResult= $dm->run();
+    $self->run_rabak_script('
+        use RabakLib::DupMerge;
+        my $dm= new RabakLib::DupMerge(
+            {
+                dirs => [' . $sDirs . '],
+                db_inodes_dir => "'.$sInodesDir.'",
+            }
+        );
+        my $iResult= $dm->run();
+    ');
     logger->decIndent();
     logger->info("done");
-    return $iResult;
+    return $self->get_last_error() ? 1 : 0;
 }
 
 sub _getBackupData {

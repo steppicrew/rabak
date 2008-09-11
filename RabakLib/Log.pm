@@ -106,6 +106,7 @@ sub LOG_WARN_LEVEL    { 2 }
 sub LOG_ERROR_LEVEL   { 1 }
 
 sub LOG_DEFAULT_LEVEL { LOG_INFO_LEVEL() }
+sub LOG_MAX_LEVEL     { LOG_DEBUG_LEVEL() }
 
 sub LOG_LEVEL_PREFIX  {
     return {
