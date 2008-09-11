@@ -42,6 +42,7 @@ sub new {
         error => '',
     };
     $self->{TEMPFILES}= [];
+    $self->{TEMP_RT_ENV}= undef;
 
     bless $self, $class;
 
@@ -445,6 +446,55 @@ sub _sshperl {
     return $self->{LAST_RESULT}{exit} ? '' : $self->{LAST_RESULT}{stdout};
 }
 
+# builds an entire RabakLib directory structure on remote site
+sub _buildTempRuntimeEnv {
+    my $self= shift;
+    
+    return $self->{TEMP_RT_ENV} if defined $self->{TEMP_RT_ENV} && $self->isDir($self->{TEMP_RT_ENV});
+    
+    my $sTempDir= $self->tempdir();
+    my $sModuleBase= __PACKAGE__;
+    $sModuleBase=~ s/\:\:.*//;
+    my @sRabakPaths= map {$INC{$_}} grep {/^$sModuleBase\//} keys %INC;
+    unless (scalar @sRabakPaths) {
+        logger->error("Could not determine ${sModuleBase}'s path!");
+        return 0;
+    }
+    my $sBasePath= $sRabakPaths[0];
+    $sBasePath=~ s/(\/$sModuleBase\/).*/$1/;
+
+    return $sBasePath unless $self->is_remote();
+
+    return undef if $self->copyLocalFilesToRemote(
+        [$sBasePath],
+        $sTempDir,
+        1,
+        sub {
+            my $sVar= shift;
+            $sVar=~ s/.*\/($sModuleBase\/)/$1/;
+            $sVar;
+        },
+    );
+    
+    $self->{TEMP_RT_ENV}= $sTempDir;
+    return $self->{TEMP_RT_ENV};
+}
+
+# runs given script with rabak environment
+sub run_rabak_script {
+    my $self= shift;
+    my $sScript= shift;
+    my $hHandles= shift || {};
+    
+    my $sRtDir= $self->_buildTempRuntimeEnv();
+    my $sPerlCmd= 'perl';
+    $sPerlCmd.= " -I'$sRtDir'" if $sRtDir;
+    
+    $hHandles->{STDIN}= $sScript if defined $sScript;
+    
+    return $self->run_cmd($sPerlCmd, $hHandles);
+}
+
 # returns directory listing
 # if bFileType is set, appends file type character on every entry
 sub getDir {
@@ -597,6 +647,38 @@ sub copyLocalFileToRemote {
         return $stderr ? 0 : 1;
     }
     $self->_set_error("Could not open local file \"$sLocFile\"");
+    return 0;
+}
+
+# copies local (temp) files to the remote host (recursive optional)
+sub copyLocalFilesToRemote {
+    my $self= shift;
+    my $sLocFiles= shift;
+    my $sRemDir= $self->getPath(shift);
+    my $bRecursive= shift || 0;
+    my $fAbs2Rel= shift || sub{shift};
+
+    while (my $sFile= shift @$sLocFiles) {
+        my $sRelPath= $fAbs2Rel->($sFile);
+        if (-d $sFile) {
+            next unless $bRecursive;
+            my $dh;
+            if (opendir $dh, $sFile) {
+                my @sNewFiles= map {"$sFile/$_"} grep {/\.pm$/ || (-d "$sFile/$_" && !/^\.\.?$/)} readdir $dh;
+                closedir $dh;
+                next unless scalar @sNewFiles;
+                $self->mkdir("$sRemDir/$sRelPath");
+                push @$sLocFiles, @sNewFiles;
+            }
+            else {
+                logger->error("Could not read directory \"$sFile\"");
+                return 1;
+            }
+            next;
+        }
+        next unless -f $sFile;
+        $self->copyLocalFileToRemote($sFile, "$sRemDir/$sRelPath");
+    }
     return 0;
 }
 
