@@ -503,6 +503,7 @@ sub run_rabak_script {
         logger()->set_prefix("X");
         ' . $sScript if defined $sScript;
 
+        # TODO: log file parsing should be done in RabakLib::Log
         my %logLevelPrefix= %{RabakLib::Log::logger()->LOG_LEVEL_PREFIX()};
         my %logPrefixLevel= map {quotemeta($logLevelPrefix{$_}) => $_} keys %logLevelPrefix;
         $hHandles->{STDOUT}= sub {
