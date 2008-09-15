@@ -110,20 +110,18 @@ sub setup {
     $self->{COMMAND_LINE}= $sCommandLine;
 }
 
+# generates error string regarding expected and gotten number of arguments
 sub wantArgs {
     my $self= shift;
-    my @aOk= @_;
+    my @aOk= sort {$a <=> $b} @_;
 
-    my %hOk= ();
-    map { $hOk{$_}= 1 } @aOk;
-    return 1 if $hOk{scalar @{$self->{ARGS}}};
+    return 1 if scalar grep { $_ == scalar @{$self->{ARGS}} } @aOk;
 
     # overkill, but fun writing: :-)
-    my @aNumbers= ("zero", "one", "two", "three", "four");
-    my $sNs= $#aOk == 0 ? ($aOk[0] == 1 ? 'one argument' : $aNumbers[$aOk[0]] . " arguments") : 'or ' . $aNumbers[$aOk[-1]] . ' arguments';
-    pop @aOk;
-    my $sDelim= $#aOk ? ',' : '';
-    map { $sNs = $aNumbers[$_] . "$sDelim $sNs"; $sDelim= ',' } reverse(@aOk);
+    my $fNum= sub{("no", "one", "two", "three", "four")[$_[0]] || $_[0]};
+    my $iLast= pop @aOk;
+    my $sNs= $iLast == 1 ? 'one argument' : ($fNum->($iLast) . " arguments");
+    $sNs= join(", ", map {$fNum->($_)} @aOk) . ($#aOk ? ',' : '') . " or $sNs" if scalar @aOk;
     $self->{ERROR}= ucfirst($sNs) . ' expected, got "' . join('", "', @{$self->{ARGS}}) . '"' . $/;
     return 0;
 }
