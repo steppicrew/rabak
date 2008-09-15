@@ -219,7 +219,7 @@ sub _read_file {
             $sPrefix= '';
             next ;
         }
-        if ($sLine =~ /^\[\s*(\*|($sregIdentDef))\s*\]$/) {
+        if ($sLine =~ /^\[\s*($sregIdentDef)\s*\]$/) {
             $sPrefix= "$1.";
             next;
         }
