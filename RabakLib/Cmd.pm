@@ -154,7 +154,7 @@ sub readConfFile {
         '*.switch.logging'      => $self->{OPTS}{log},
         '*.switch.quiet'        => $self->{OPTS}{quiet},
         '*.switch.targetvalue'  => $self->{OPTS}{i},    # deprecate?
-        '*.switch.version'      => 0, # $VERSION,
+        '*.switch.version'      => VERSION(),
         '*.switch.hostname'     => $sHostname,
         '*.switch.commandline'  => $self->{COMMAND_LINE},
         '*.switch.configfile'   => $oConfFile->filename(),

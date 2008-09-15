@@ -219,7 +219,7 @@ sub get_value_required_message {
     return undef;
 }
 
-# command line switches are set in /switch
+# command line switches are set in /*.switch
 # if not it's a simple property value
 sub get_switch {
     my $self= shift;
@@ -227,9 +227,9 @@ sub get_switch {
     my $sDefault= shift;
     my $aRefStack= shift;
     
-    my $sResult= $self->get_value("/switch.$sName", undef, $aRefStack);
+    my $sResult= $self->get_value("/*.switch.$sName", undef, $aRefStack);
     return $sResult if defined $sResult;
-    return $self->get_value($sName, $sDefault, $aRefStack);
+    return $self->get_value("switch.$sName", $sDefault, $aRefStack);
 }
 
 # find property and return it as it is (scalar, object etc.)
