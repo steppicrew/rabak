@@ -30,7 +30,7 @@ sub new {
 # define some regexp
 our $sregIdent0= "[a-z_][a-z_0-9]*";
 our $sregIdent= "$sregIdent0(\\.$sregIdent0)*";
-our $sregIdentDef= "(\\*\\.)?$sregIdent";
+our $sregIdentDef= $sregIdent;
 our $sregIdentRef= "\\/?\\.*$sregIdent";
 
 # ...and make them public
