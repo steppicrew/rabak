@@ -8,6 +8,7 @@ use Getopt::Long 2.36 qw( GetOptionsFromArray );
 
 use RabakLib::ConfFile;
 use RabakLib::Log;
+use RabakLib::Version;
 
 use strict;
 use warnings;
@@ -95,7 +96,12 @@ sub Build {
 
 sub new {
     my $class= shift;
-    my $self= { OPTS => {}, ARGS => [], ERROR => undef, COMMAND_LINE => undef };
+    my $self= {
+        OPTS => {},
+        ARGS => [],
+        ERROR => undef,
+        COMMAND_LINE => undef
+    };
     bless $self, $class;
 }
 
@@ -111,6 +117,7 @@ sub setup {
 }
 
 # generates error string regarding expected and gotten number of arguments
+# if number does not match
 sub wantArgs {
     my $self= shift;
     my @aOk= sort {$a <=> $b} @_;
@@ -210,14 +217,14 @@ sub getOptionsHelp {
     return $add->('Command options', $hLocalOptions) . $add->('General options', $hGlobalOptions);
 }
 
+# prints a warning for each given but unused general option
 sub warnOptions {
     my $self= shift;
     my $aUsed= shift || [];
-    my %hUsed= ();
 
-    map { $hUsed{$_}= 1 } @$aUsed;
     my %hOpts= %{ $self->{OPTS} };
-    map { delete $hOpts{$_} } keys %hUsed;
+    # delete keys for used general options and all command specific options
+    map { delete $hOpts{$_} } (@$aUsed, keys %{ $self->getOptions() });
     map { print "WARNING: Option '--$_' ignored!\n"; } keys %hOpts;
 }
 
