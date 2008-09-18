@@ -120,7 +120,7 @@ sub wantArgs {
     # overkill, but fun writing: :-)
     my $fNum= sub{("no", "one", "two", "three", "four")[$_[0]] || $_[0]};
     my $iLast= pop @aOk;
-    my $sNs= $iLast == 1 ? 'one argument' : ($fNum->($iLast) . " arguments");
+    my $sNs= $fNum->($iLast) . " argument" . ($iLast == 1 ? '' : 's');
     $sNs= join(", ", map {$fNum->($_)} @aOk) . ($#aOk ? ',' : '') . " or $sNs" if scalar @aOk;
     $self->{ERROR}= ucfirst($sNs) . ' expected, got "' . join('", "', @{$self->{ARGS}}) . '"' . $/;
     return 0;
