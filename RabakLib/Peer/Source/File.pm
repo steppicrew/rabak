@@ -236,7 +236,7 @@ sub _expand {
         }
         elsif ($hEntries->{TYPE} eq 'mixed') {
             $hEntries= pop @arStack;
-            print "Internal Error(2) (List Expected)" unless $hEntries->{TYPE} eq 'list';
+            logger->error("Internal Error(2) (List Expected)") unless $hEntries->{TYPE} eq 'list';
         }
     }
     die "Opening bracket without closing!" if scalar @arStack;

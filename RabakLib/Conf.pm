@@ -227,8 +227,9 @@ sub get_switch {
     my $sDefault= shift;
     my $aRefStack= shift;
     
-    my $sResult= $self->get_value("/*.switch.$sName", undef, $aRefStack);
-    return $sResult if defined $sResult;
+    # lookup in /*.-scope is done by find_property
+#    my $sResult= $self->get_value("/*.switch.$sName", undef, $aRefStack);
+#    return $sResult if defined $sResult;
     return $self->get_value("switch.$sName", $sDefault, $aRefStack);
 }
 

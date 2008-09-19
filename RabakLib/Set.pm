@@ -64,7 +64,7 @@ sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
     
-    logger->set_stdout_prefix("# ");
+    logger->set_stdout_prefix("#");
     
     my $aResult= [];
     

@@ -187,10 +187,13 @@ sub getBakset {
     if ($sError) {
     	$self->{ERROR}= "Backup Set '$sBakSet' is not properly defined!";
 
-    	print "# Backup Set '$sBakSet' is not properly defined:\n";
-        print "# $sError\n";
-        print "# The following values were found in the configuration:\n";
-        $hSetConf->show();
+        logger->set_stdout_prefix("#");
+    	logger->warn("Backup Set '$sBakSet' is not properly defined:",
+            "$sError",
+            "The following values were found in the configuration:",
+        );
+        logger->set_stdout_prefix();
+        logger->print(@{ $hSetConf->show() });
     	return undef;
     }
 
@@ -225,7 +228,7 @@ sub warnOptions {
     my %hOpts= %{ $self->{OPTS} };
     # delete keys for used general options and all command specific options
     map { delete $hOpts{$_} } (@$aUsed, keys %{ $self->getOptions() });
-    map { print "WARNING: Option '--$_' ignored!\n"; } keys %hOpts;
+    map { logger->warn("Option '--$_' ignored!"); } keys %hOpts;
 }
 
 sub getOptions {
@@ -253,7 +256,7 @@ sub new {
 }
 
 sub run {
-    print "Error: " . shift->{ERROR} . "\n";
+    logger->error("Error: " . shift->{ERROR});
 }
 
 1;
