@@ -57,7 +57,11 @@ sub get_validation_message {
 
 sub sort_show_key_order {
     my $self= shift;
-    ("title", "source", "target", $self->SUPER::sort_show_key_order());
+    (
+        "title", "source", "target",
+        $self->SUPER::sort_show_key_order(),
+        "path_extension", "previous_path_extension",
+    );
 }
 
 sub show {

@@ -312,7 +312,7 @@ sub sort_show_key_order {
         # overwrite Source's SUPER class with Mountable
         $self->SUPER::sort_show_key_order(),
         $self->mountable()->sort_show_key_order(),
-        "exclude", "include", "filter", "mount"
+        "exclude", "include", "filter",
     );
 }
 

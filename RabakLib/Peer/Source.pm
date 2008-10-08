@@ -88,8 +88,11 @@ sub finishBackup {
 sub sort_show_key_order {
     my $self= shift;
 
-    my @sSuperResult= $self->SUPER::sort_show_key_order();
-    return ("type", @sSuperResult, "keep");
+    (
+        "type",
+        $self->SUPER::sort_show_key_order(),
+        "keep", "path_extension", "previous_path_extension",
+    );
 }
 
 sub show {

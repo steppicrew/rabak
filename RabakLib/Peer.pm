@@ -431,7 +431,7 @@ sub _saveperl {
     print "OUT: $result\n" if $self->{DEBUG} && $result;
 
     # extract scripts result (if everything was ok, eval($result) sets $OUT_VAR)
-    my $OUT_VAR = \undef;
+    my $OUT_VAR = undef;
     eval($result) if $result && $sOutVar;
     return $OUT_VAR;
 }
@@ -521,6 +521,15 @@ sub run_rabak_script {
     $hHandles->{STDIN}= $sScript if defined $sScript;
     
     return $self->run_cmd($sPerlCmd, $hHandles);
+}
+
+sub sort_show_key_order {
+    my $self= shift;
+
+    (
+        "host", "port", "user", "path", 
+        $self->SUPER::sort_show_key_order(),
+    );
 }
 
 # returns directory listing

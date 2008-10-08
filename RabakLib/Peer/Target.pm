@@ -489,7 +489,7 @@ sub sort_show_key_order {
     (
         $self->SUPER::sort_show_key_order(),
         $self->mountable()->sort_show_key_order(),
-        "group", "mount",
+        "group",
     );
 }
 
