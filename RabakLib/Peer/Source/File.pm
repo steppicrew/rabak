@@ -30,14 +30,14 @@ sub mountable {
 sub _get_filter {
     my $self= shift;
     my $aMacroStack= shift || [];
-    my $oTarget= shift;
+    my $oTargetPeer= shift;
 
     my $sFilter= $self->get_raw_value('filter'); 
     
     # target path is always excluded
     my $aFilter= [];
-    if ($oTarget) {
-        push @$aFilter, "-" . $oTarget->getPath() . "/";
+    if ($oTargetPeer && $oTargetPeer->getUserHostPort() eq $self->getUserHostPort()) {
+        push @$aFilter, "-" . $oTargetPeer->getPath() . "/";
     }
     if (defined $sFilter) {
         push @$aFilter, "&filter";
