@@ -921,7 +921,7 @@ sub rmtree {
     return ${$self->_saveperl('
             # rmtree
             use File::Path;
-            $result= rmtree($sTree, $bDebug);
+            $result= rmtree([$sTree], $bDebug);
         ', { sTree => $sTree, bDebug => $self->{DEBUG} }, '$result',
     )};
 }

@@ -84,7 +84,6 @@ sub finishBackup {
     $self->cleanupTempfiles();
 }
 
-# TODO: is there a better way to call parallel objects?
 sub sort_show_key_order {
     my $self= shift;
 
