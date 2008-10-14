@@ -34,7 +34,7 @@ sub help {
     shift;
     my $sOptions= shift;
     return <<__EOT__;
-rabak dupemerge [options] <dir> [<dir>...]
+rabak dupmerge [options] <dir> [<dir>...]
 
 Hardlinks identical files in the specified directories.
 

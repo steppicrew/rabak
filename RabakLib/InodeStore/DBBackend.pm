@@ -7,6 +7,7 @@ use DBI;
 use Data::Dumper;
 use File::Temp;
 use File::Copy;
+use RabakLib::Log;
 
 sub new {
     my $class= shift;
@@ -428,18 +429,18 @@ sub endWork {
     
         for my $sth (@{$self->getHandle()->{ChildHandles}}) {
             next unless defined $sth;
-            print "unresolved statement: '$sth->{Statement}' ($self->{dbfn})\n";
+            logger->error("unresolved statement: '$sth->{Statement}' ($self->{dbfn})");
         }
     
         $self->getHandle()->disconnect();
         $self->{dbh}= undef;
         if ($self->{is_valid}) {
             unless ($sFileName eq $sRealFileName) {
-                copy($sRealFileName, $sFileName) or print "Could not update database file '$sFileName'\n";
+                copy($sRealFileName, $sFileName) or logger->error("Could not update database file '$sFileName'");
             }
         }
         else {
-            print "Database file '$sFileName' is invalid. Deleting.\n";
+            logger->error("Database file '$sFileName' is invalid. Deleting.");
             -f $sFileName && unlink $sFileName;
             -f $sRealFileName && unlink $sRealFileName;
         }
