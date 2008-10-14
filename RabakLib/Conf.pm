@@ -28,7 +28,7 @@ sub new {
 }
 
 # define some regexp
-our $sregIdent0= "[a-z_][a-z_0-9]*";
+our $sregIdent0= "[a-zA_Z_][a-zA-Z_0-9]*";
 our $sregIdent= "$sregIdent0(\\.$sregIdent0)*";
 our $sregIdentDef= $sregIdent;
 our $sregIdentRef= "\\/?\\.*$sregIdent";
@@ -390,7 +390,7 @@ sub set_value {
 # calls $fPrePars->() for preparsing macros content
 sub expandMacro {
     my $self= shift;
-    my $sMacroName= shift;
+    my $sMacroName= lc shift;
     my $oScope= shift || $self;
     my $aMacroStack= shift || [];
     my $fExpand= shift || sub { $self->_resolveObjects(@_) }; # try to expand macro as deep as possible by default
