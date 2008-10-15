@@ -18,10 +18,11 @@ ok ref $oRootConf, 'RabakLib::Conf', 'Checking base config';
 my $oTargetConf= $oRootConf->get_node("testtarget");
 ok ref $oTargetConf, 'RabakLib::Conf', 'Checking target config';
 ok -d $oTargetConf->get_value("path"), 1, 'Path value is a directory';
+# we have to instanciate RabakLib::Peer::Target to get a mountable Peer (getPath() behaves differently)
 my $oPeer= RabakLib::Peer::Target->newFromConf($oTargetConf);
 ok ref $oPeer, 'RabakLib::Peer::Target', 'Creating Target Peer from Conf';
 
-my $sOrigPath= $oPeer->get_value("path");
+my $sOrigPath= $oPeer->getPath();
 # check getPath()
 ok $oPeer->getPath("test"), $oPeer->getPath("$sOrigPath///./test"), 'Checking getPath()';
 ok $oPeer->getFullPath(), $oPeer->getPath(), 'Checking if getFullPath() equals getPath() on local paths';
@@ -56,7 +57,7 @@ ok !!$oPeer->isReadable(), 1, 'Checking isReadable()';
 ok !!$oPeer->isReadable("/"), 1, 'Checking isReadable("/")';
 ok !!$oPeer->isReadable("test"), 1, 'Checking isReadable() on file';
 ok !!$oPeer->isWritable(), 1, 'Checking isWritable()';
-ok !!$oPeer->isWritable("/"), 1, 'Checking isWritable("/")';
+ok !!$oPeer->isWritable("/"), $> ? '' : 1, 'Checking isWritable("/")';
 ok !!$oPeer->isWritable("test"), 1, 'Checking isWritable() on file';
 chmod 0000, "$sOrigPath/test2";
 skip $> ? '' : 'isReadable cannot be checked as user root', !!$oPeer->isReadable("test2"), '', 'Checking isReadable() on file without rights';

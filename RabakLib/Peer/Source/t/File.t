@@ -162,7 +162,7 @@ ok -d $oTarget->get_value("path"), 1, 'Target path is a directory';
 
 ####################################################
 # test moutning
-my @oSourceMountObjects= $oSource->getMountObjects();
+my @oSourceMountObjects= $oSource->mountable()->getMountObjects();
 ok @oSourceMountObjects, 1, 'Getting Mount objects from Source';
 ok -d $oSourceMountObjects[0]->get_value("directory"), 1, 'Source Mount directory is a directory';
 
@@ -171,7 +171,7 @@ skip (
     sub{$oSourceMountObjects[0]->mount($oSource);}, 1, "Checking Source mounting"
 );
 
-my @oTargetMountObjects= $oTarget->getMountObjects();
+my @oTargetMountObjects= $oTarget->mountable()->getMountObjects();
 ok @oTargetMountObjects, 1, 'Getting Mount objects from Target';
 ok -d $oTargetMountObjects[0]->get_value("directory"), 1, 'Target Mount directory is a directory';
 
@@ -210,7 +210,9 @@ my $sFullTarget= $oTarget->getPath() . "/setdir/daydir/";
 $oTarget->mkdir('setdir');
 $oTarget->mkdir('setdir/daydir');
 ok $oTarget->isDir($sFullTarget), 1, "Creating dir '$sFullTarget' in target";
-my $iRunResult= $oSource->run($oTarget, $sFullTarget, $sFullTarget, );
+$oTarget->{SOURCE_DATA}{OLD_BAKDIRS}= [];
+$oTarget->{SOURCE_DATA}{BAKDIR}= $sFullTarget;
+my $iRunResult= $oSource->run($oTarget);
 ok $iRunResult, 0, 'Running backup';
 
 ####################################################
