@@ -195,7 +195,7 @@ sub _expand {
             $hEntries= $hMixed;
         }
         if ($sEntry =~ /^\&/) {
-            my $hMacro= $self->expandMacro($sEntry, $oScope, $aMacroStack,
+            my $hMacro= $self->expandMacroHash($sEntry, $oScope, $aMacroStack,
                 sub {$self->_expand(@_)}, # function to expand macro's content
                 sub{ # function to modify macro's text before splitting
                     my $sEntry= shift;
