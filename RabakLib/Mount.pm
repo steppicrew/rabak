@@ -82,7 +82,7 @@ sub mount {
     
     $self->{PEER_OBJECT}= $oPeer;
 
-    my $sMountDeviceList= $self->get_value("device") || '';
+    my @aMountDeviceList= $self->resolveObjects("device");
     my $sMountDir= $self->get_value("directory") || '';
     my $sMountType= $self->get_value("type") || '';
     my $sMountOpts= $self->get_value("options") || $self->get_value("opts") || '';
@@ -97,7 +97,7 @@ sub mount {
 
     my @sMountDevices= ();
 
-    for my $sMountDevice (split(/\s+/, $sMountDeviceList)) {
+    for my $sMountDevice (@aMountDeviceList) {
         push @sMountDevices, $oPeer->glob($sMountDevice);
     }
 
