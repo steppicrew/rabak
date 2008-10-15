@@ -249,7 +249,7 @@ sub _getBackupData {
     my $self= shift;
     my $sKey= shift;
     my $sProperty= shift;
-    die "Internal error: {$sKey} is not set! Please file a bug report!" unless defined $self->{$sKey};
+    die "Internal error: {$sKey} is not set to get {$sProperty}! Please file a bug report!" unless defined $self->{$sKey};
     die "Internal error: {$sKey}{$sProperty} is not set! Please file a bug report!" unless exists $self->{$sKey}{$sProperty};
     return $self->{$sKey}{$sProperty};
 }
