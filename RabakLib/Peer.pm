@@ -504,16 +504,11 @@ sub run_rabak_script {
         ' . $sScript if defined $sScript;
 
         # TODO: log file parsing should be done in RabakLib::Log
-        my %logLevelPrefix= %{RabakLib::Log::logger()->LOG_LEVEL_PREFIX()};
-        my %logPrefixLevel= map {quotemeta($logLevelPrefix{$_}) => $_} keys %logLevelPrefix;
+        my $fLogParser= RabakLib::Log::logger()->factLogReparser();
         $hHandles->{STDOUT}= sub {
-            foreach my $sLine (@_) {
-                foreach my $sqPref (keys %logPrefixLevel) {
-                    if ($sLine=~ s/^$sqPref\:\s*.*?\]\s//) {
-                        RabakLib::Log::logger()->log([$logPrefixLevel{$sqPref}, $sLine]);
-                        last;
-                    }
-                }
+            my $aLogEntries= $fLogParser->(@_);
+            foreach my $hEntry (@$aLogEntries) {
+                RabakLib::Log::logger()->log($hEntry->{logrecord});
             }
         };
     }

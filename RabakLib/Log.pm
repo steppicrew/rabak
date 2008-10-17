@@ -138,6 +138,35 @@ sub decIndent {
     $self->{INDENT1}-- if $self->{INDENT1};
 }
 
+sub factLogReparser {
+    my $self= shift;
+    
+    my %logLevelPrefix= %{LOG_LEVEL_PREFIX()};
+    my %logPrefixLevel= map {quotemeta($logLevelPrefix{$_}) => $_} keys %logLevelPrefix;
+    return sub {
+        my $aResult= [];
+        foreach my $sLine (@_) {
+            foreach my $sqPref (keys %logPrefixLevel) {
+                if ($sLine=~ s/^$sqPref\:\s*//) {
+                    my $sCategory= $1 if $sLine=~ s/^\[(.*?)\] //;
+                    my $iInc= 0;
+                    $iInc= length($1) / 2 if $sLine=~ s/^((  )+)//;
+                    my $iLogLevel= $logPrefixLevel{$sqPref};
+                    push @$aResult, {
+                        loglevel => $iLogLevel,
+                        category => $sCategory,
+                        inc      => $iInc,
+                        line     => $sLine,
+                        logrecord=> [$iLogLevel, "  "x$iInc . $sLine],
+                    };
+                    last;
+                }
+            }
+        }
+        return $aResult;
+    };
+}
+
 sub _timestr {
     return strftime("%Y-%m-%d %H:%M:%S", localtime);
 }
