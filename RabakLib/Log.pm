@@ -104,12 +104,14 @@ sub LOG_VERBOSE_LEVEL { 4 }
 sub LOG_INFO_LEVEL    { 3 }
 sub LOG_WARN_LEVEL    { 2 }
 sub LOG_ERROR_LEVEL   { 1 }
+sub LOG_PRINT_LEVEL   { 0 }
 
 sub LOG_DEFAULT_LEVEL { LOG_INFO_LEVEL() }
 sub LOG_MAX_LEVEL     { LOG_DEBUG_LEVEL() }
 
 sub LOG_LEVEL_PREFIX  {
     return {
+        LOG_PRINT_LEVEL()   => "OUTPUT",
         LOG_ERROR_LEVEL()   => "ERROR",
         LOG_WARN_LEVEL()    => "WARNING",
         LOG_INFO_LEVEL()    => "INFO",
@@ -333,9 +335,9 @@ sub get_warnCount {
 
 sub set_stdout_prefix {
     my $self= shift;
-    my $sPrefix= shift || '';
+    my $sPrefix= shift;
     
-    $self->{STDOUT_PREFIX}= $sPrefix;
+    $self->{STDOUT_PREFIX}= defined $sPrefix ? "$sPrefix " : "";
 }
 
 sub set_prefix {
@@ -390,6 +392,14 @@ sub error {
 
     return [ LOG_ERROR_LEVEL, @sMessage ] if wantarray;
     $self->log($self->error(@sMessage));
+}
+
+sub print {
+    my $self= shift;
+    my @sMessage= @_;
+
+    return [ LOG_PRINT_LEVEL, @sMessage ] if wantarray;
+    $self->log($self->print(@sMessage));
 }
 
 sub progress {
@@ -447,10 +457,10 @@ sub _levelLog {
     $self->{ERRORCOUNT}++ if $iLevel == LOG_ERROR_LEVEL;
     $self->{WARNCOUNT}++ if $iLevel == LOG_WARN_LEVEL;
 
-    my $sMsgPref= $self->getLevelPrefix($iLevel);
+    my $sPref= $self->getLevelPrefix($iLevel);
 
     for my $sMessage (@sMessage) {
-        next unless $sMessage;
+        next unless defined $sMessage;
         if (ref $sMessage eq "ARRAY") { # call recursive for nested arrays
             my $iMyLevel = shift @{ $sMessage };
             $iMyLevel= $iLevel if $iMyLevel > $iLevel; # use highest log level TODO: does that make sense?
@@ -460,20 +470,21 @@ sub _levelLog {
             next;
         }
         chomp $sMessage;
-        $sMessage = "  " x $self->{INDENT2} . $sMessage;
-        $sMessage = '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
-        $sMessage = "  " x $self->{INDENT1} . $sMessage;
+        my $sMsgPref= "  " x $self->{INDENT1};
+        $sMsgPref.= "[$self->{PREFIX}] " if $self->{PREFIX};
+        $sMsgPref.= "  " x $self->{INDENT2};
         unless ($self->{SWITCH_QUIET} || $iLevel > $self->{SWITCH_VERBOSITY}) {
             # print message to stdout
             print "\n" if $self->{FORCE_NL};
             $self->{FORCE_NL}= 0;
-            print "$self->{STDOUT_PREFIX}$sMsgPref$sMessage\n";
+            print "$self->{STDOUT_PREFIX}$sPref$sMsgPref" unless $iLevel == LOG_PRINT_LEVEL;
+            print $sMessage, "\n";
         }
 
         next if $self->{SWITCH_PRETEND};
 
-        $sMessage= $self->{CATEGORY} . "\t$sMessage" if $self->{CATEGORY};
-        $sMessage= _timestr() . "\t$sMsgPref$sMessage\n";
+        $sMsgPref= "$self->{CATEGORY}\t$sMsgPref" if $self->{CATEGORY};
+        $sMessage= _timestr() . "\t$sPref$sMsgPref$sMessage\n";
 
         $self->{LOG_MESSAGES} .= $sMessage if $self->{SWITCH_LOGGING} && $iLevel <= LOG_VERBOSE_LEVEL;
         $self->{MESSAGES} .= $sMessage if $iLevel <= $self->{SWITCH_VERBOSITY};

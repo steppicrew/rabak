@@ -25,6 +25,8 @@ function mk_target {
     mount "$BASEDIR/dev.$DEVN" "$BASEDIR/mnt_$DEVN"
 }
 
+test -d "$BASEDIR" || mkdir -p "$BASEDIR"
+
 mk_target "0" "loop0"
 mkdir "$BASEDIR/mnt_loop0/rabak"
 echo "targetvalues = dayofweek.Mon dayofweek.Wed dayofweek.Fri" >  "$BASEDIR/mnt_loop0/rabak.dev.cf"

@@ -23,7 +23,7 @@ verbose = 3
 
 # switch.dev_conf_file:
 #    The name of the file that has to exist in the root directory on any target device.
-#    A target device is a mount target with the "istarget" flag set to 1.
+#    A target device is a target's mount device.
 #
 #    Default value: rabak.dev.cf
 #
@@ -132,9 +132,12 @@ filter=
 #       GLOBAL VARIABLES
 # =======================================================================================
 
+# Root directory of Windows system (may be overwritten in rabak.cf)
+
+win_root_dir = /(cygdrive, cygwin)/*
+
 # redefine standard objects for backward compatibility
 exclude_std_linux = &default.exclude_linux
-win_root_dir = /(cygdrive, cygwin)/*
 exclude_sys_win = &default.exclude_sys_win
 exclude_profile_win = &default.exclude_profile_win
 exclude_std_win = &default.exclude_win

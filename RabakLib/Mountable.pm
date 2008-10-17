@@ -42,7 +42,7 @@ sub getPeer {
 
 sub sort_show_key_order {
     my $self= shift;
-    ("host", "user", "path", );
+    ("mount");
 }
 
 sub show {

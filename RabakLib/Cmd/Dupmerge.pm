@@ -34,11 +34,13 @@ sub help {
     shift;
     my $sOptions= shift;
     return <<__EOT__;
-rabak dupemerge [options] <dir> [<dir>...]
+rabak dupmerge [options] <dir> [<dir>...]
 
 Hardlinks identical files in the specified directories.
 
-description
+Use this command to eliminate identical files not already hard linked by rsync.
+This may be useful after renaming or moving files to save disk space after backing up your data.
+It creates an inode database and one database per given directory for later use and faster inode location.
 $sOptions
 __EOT__
 }

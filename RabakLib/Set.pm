@@ -57,14 +57,18 @@ sub get_validation_message {
 
 sub sort_show_key_order {
     my $self= shift;
-    ("title", "source", "target", $self->SUPER::sort_show_key_order());
+    (
+        "title", "source", "target",
+        $self->SUPER::sort_show_key_order(),
+        "path_extension", "previous_path_extension",
+    );
 }
 
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
     
-    logger->set_stdout_prefix("# ");
+    logger->set_stdout_prefix("#");
     
     my $aResult= [];
     

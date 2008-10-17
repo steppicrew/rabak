@@ -53,9 +53,9 @@ sub new {
     my $sFile= (grep {defined && -f} @sFiles)[0];
 
     if (!defined $sFile && scalar @sFiles) {
-        print "Error: No configuration found in '",
+        logger->error("No configuration found in '",
             join("', '", grep(defined, @sFiles)),
-            "'!\n";
+            "'!");
         return $self;
     }
 
@@ -89,7 +89,7 @@ sub print_set_list {
     
     return unless defined $self->filename();
 
-    print "Available backup sets in \"" . $self->filename() . "\":\n";
+    logger->print("Available backup sets in \"" . $self->filename() . "\":");
     my $bFound= 0;
     my $oConf= $self->{CONF};
     for my $sBakSet (sort keys %{ $oConf->{VALUES} }) {
@@ -107,12 +107,12 @@ sub print_set_list {
             push @aSources, $_->getFullPath();
         }
         my $sSources= join '", "', @aSources;
-        print "  $sBakSet - " . $oConf->{VALUES}{$sBakSet}->get_value("title")
-            . ", backs up \"" . $sSources
-            . "\" to \"" . $oTarget->getFullPath() . "\"\n";
+        logger->print("  $sBakSet - " . $oConf->{VALUES}{$sBakSet}->get_value("title")
+            . ", backs up \"$sSources\" to \""
+            . $oTarget->getFullPath() . "\"");
         $bFound= 1;
     }
-    print "None.\n" unless $bFound;
+    logger->print("None.") unless $bFound;
 }
 
 =item print_all
@@ -136,7 +136,7 @@ sub print_all {
     push @sResult, $self->{CONF}->showUncachedReferences($hConfShowCache);
     # pop last "[]"
     pop @sResult;
-    print join "\n", @sResult, "", "";
+    logger->print(@sResult);
 }
 
 sub _error {
@@ -147,7 +147,7 @@ sub _error {
     $sError .= ", line $iLine" if $iLine;
     $sError .= ": $sMsg.";
     $sError .= " ($sLine)" if $sLine;
-    print "$sError\n";
+    logger->error($sError);
     exit 3;
 }
 
@@ -219,7 +219,7 @@ sub _read_file {
             $sPrefix= '';
             next ;
         }
-        if ($sLine =~ /^\[\s*(\*|($sregIdentDef))\s*\]$/) {
+        if ($sLine =~ /^\[\s*($sregIdentDef)\s*\]$/) {
             $sPrefix= "$1.";
             next;
         }

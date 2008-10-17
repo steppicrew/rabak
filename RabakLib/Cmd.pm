@@ -8,6 +8,7 @@ use Getopt::Long 2.36 qw( GetOptionsFromArray );
 
 use RabakLib::ConfFile;
 use RabakLib::Log;
+use RabakLib::Version;
 
 use strict;
 use warnings;
@@ -95,7 +96,12 @@ sub Build {
 
 sub new {
     my $class= shift;
-    my $self= { OPTS => {}, ARGS => [], ERROR => undef, COMMAND_LINE => undef };
+    my $self= {
+        OPTS => {},
+        ARGS => [],
+        ERROR => undef,
+        COMMAND_LINE => undef
+    };
     bless $self, $class;
 }
 
@@ -110,20 +116,19 @@ sub setup {
     $self->{COMMAND_LINE}= $sCommandLine;
 }
 
+# generates error string regarding expected and gotten number of arguments
+# if number does not match
 sub wantArgs {
     my $self= shift;
-    my @aOk= @_;
+    my @aOk= sort {$a <=> $b} @_;
 
-    my %hOk= ();
-    map { $hOk{$_}= 1 } @aOk;
-    return 1 if $hOk{scalar @{$self->{ARGS}}};
+    return 1 if scalar grep { $_ == scalar @{$self->{ARGS}} } @aOk;
 
     # overkill, but fun writing: :-)
-    my @aNumbers= ("zero", "one", "two", "three", "four");
-    my $sNs= $#aOk == 0 ? ($aOk[0] == 1 ? 'one argument' : $aNumbers[$aOk[0]] . " arguments") : 'or ' . $aNumbers[$aOk[-1]] . ' arguments';
-    pop @aOk;
-    my $sDelim= $#aOk ? ',' : '';
-    map { $sNs = $aNumbers[$_] . "$sDelim $sNs"; $sDelim= ',' } reverse(@aOk);
+    my $fNum= sub{("no", "one", "two", "three", "four")[$_[0]] || $_[0]};
+    my $iLast= pop @aOk;
+    my $sNs= $fNum->($iLast) . " argument" . ($iLast == 1 ? '' : 's');
+    $sNs= join(", ", map {$fNum->($_)} @aOk) . ($#aOk ? ',' : '') . " or $sNs" if scalar @aOk;
     $self->{ERROR}= ucfirst($sNs) . ' expected, got "' . join('", "', @{$self->{ARGS}}) . '"' . $/;
     return 0;
 }
@@ -154,7 +159,7 @@ sub readConfFile {
         '*.switch.logging'      => $self->{OPTS}{log},
         '*.switch.quiet'        => $self->{OPTS}{quiet},
         '*.switch.targetvalue'  => $self->{OPTS}{i},    # deprecate?
-        '*.switch.version'      => 0, # $VERSION,
+        '*.switch.version'      => VERSION(),
         '*.switch.hostname'     => $sHostname,
         '*.switch.commandline'  => $self->{COMMAND_LINE},
         '*.switch.configfile'   => $oConfFile->filename(),
@@ -182,10 +187,13 @@ sub getBakset {
     if ($sError) {
     	$self->{ERROR}= "Backup Set '$sBakSet' is not properly defined!";
 
-    	print "# Backup Set '$sBakSet' is not properly defined:\n";
-        print "# $sError\n";
-        print "# The following values were found in the configuration:\n";
-        $hSetConf->show();
+        logger->set_stdout_prefix("#");
+    	logger->warn("Backup Set '$sBakSet' is not properly defined:",
+            "$sError",
+            "The following values were found in the configuration:",
+        );
+        logger->set_stdout_prefix();
+        logger->print(@{ $hSetConf->show() });
     	return undef;
     }
 
@@ -212,15 +220,15 @@ sub getOptionsHelp {
     return $add->('Command options', $hLocalOptions) . $add->('General options', $hGlobalOptions);
 }
 
+# prints a warning for each given but unused general option
 sub warnOptions {
     my $self= shift;
     my $aUsed= shift || [];
-    my %hUsed= ();
 
-    map { $hUsed{$_}= 1 } @$aUsed;
     my %hOpts= %{ $self->{OPTS} };
-    map { delete $hOpts{$_} } keys %hUsed;
-    map { print "WARNING: Option '--$_' ignored!\n"; } keys %hOpts;
+    # delete keys for used general options and all command specific options
+    map { delete $hOpts{$_} } (@$aUsed, keys %{ $self->getOptions() });
+    map { logger->warn("Option '--$_' ignored!"); } keys %hOpts;
 }
 
 sub getOptions {
@@ -248,7 +256,7 @@ sub new {
 }
 
 sub run {
-    print "Error: " . shift->{ERROR} . "\n";
+    logger->error("Error: " . shift->{ERROR});
 }
 
 1;

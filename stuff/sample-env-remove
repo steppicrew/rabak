@@ -26,3 +26,4 @@ rm_target "1" "loop1"
 rm_target "2" "source"
 
 rmdir "$BASEDIR/mnt_target"
+rmdir "$BASEDIR"

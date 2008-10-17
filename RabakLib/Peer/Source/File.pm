@@ -30,14 +30,14 @@ sub mountable {
 sub _get_filter {
     my $self= shift;
     my $aMacroStack= shift || [];
-    my $oTarget= shift;
+    my $oTargetPeer= shift;
 
     my $sFilter= $self->get_raw_value('filter'); 
     
     # target path is always excluded
     my $aFilter= [];
-    if ($oTarget) {
-        push @$aFilter, "-" . $oTarget->getPath() . "/";
+    if ($oTargetPeer && $oTargetPeer->getUserHostPort() eq $self->getUserHostPort()) {
+        push @$aFilter, "-" . $oTargetPeer->getPath() . "/";
     }
     if (defined $sFilter) {
         push @$aFilter, "&filter";
@@ -195,7 +195,7 @@ sub _expand {
             $hEntries= $hMixed;
         }
         if ($sEntry =~ /^\&/) {
-            my $hMacro= $self->expandMacro($sEntry, $oScope, $aMacroStack,
+            my $hMacro= $self->expandMacroHash($sEntry, $oScope, $aMacroStack,
                 sub {$self->_expand(@_)}, # function to expand macro's content
                 sub{ # function to modify macro's text before splitting
                     my $sEntry= shift;
@@ -236,7 +236,7 @@ sub _expand {
         }
         elsif ($hEntries->{TYPE} eq 'mixed') {
             $hEntries= pop @arStack;
-            print "Internal Error(2) (List Expected)" unless $hEntries->{TYPE} eq 'list';
+            logger->error("Internal Error(2) (List Expected)") unless $hEntries->{TYPE} eq 'list';
         }
     }
     die "Opening bracket without closing!" if scalar @arStack;
@@ -312,7 +312,7 @@ sub sort_show_key_order {
         # overwrite Source's SUPER class with Mountable
         $self->SUPER::sort_show_key_order(),
         $self->mountable()->sort_show_key_order(),
-        "exclude", "include", "filter", "mount"
+        "exclude", "include", "filter",
     );
 }
 

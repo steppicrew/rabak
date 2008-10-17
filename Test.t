@@ -15,8 +15,8 @@ $verbose= 1;
 
 runtests(
     "RabakLib/t/Conf.t",
-    "RabakLib/t/Path.t",
-    "RabakLib/Path/t/Target.t",
-    "RabakLib/SourceType/t/File.t",
+    "RabakLib/t/Peer.t",
+    "RabakLib/Peer/t/Target.t",
+    "RabakLib/Peer/Source/t/File.t",
 );
 

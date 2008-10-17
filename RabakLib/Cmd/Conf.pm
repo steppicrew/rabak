@@ -7,6 +7,8 @@ use strict;
 
 use Data::Dumper;
 
+use RabakLib::Log;
+
 use vars qw(@ISA);
 
 @ISA= qw( RabakLib::Cmd );
@@ -66,7 +68,7 @@ sub run {
 
     my @sConf= @{ $oBakset->show() };
     pop @sConf;  # remove last []. (See RabalLib::Conf::show)
-    print join "\n", @sConf, "";
+    logger->print(@sConf);
 
     return 1;
 }

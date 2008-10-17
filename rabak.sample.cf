@@ -20,7 +20,7 @@
 email = root
 
 target_base = /tmp/rabak-example-backup
-target_dir = $target_base/rabak
+target_dir = &target_base/rabak
 
 smb_dir = /mnt/samba/e
 smb_user = backup
@@ -36,15 +36,16 @@ INCLUDE rabak.std.cf
 #       SAMBA STUFF
 # =======================================================================================
 
+win_root_dir = &smb_dir
 exclude_smb =
-    $smb_dir/( &exclude_std_win )
-    $smb_dir/backup/
+    &exclude_std_win
+    &smb_dir/backup/
 
 # =======================================================================================
 #       SET UP EXCLUDE
 # =======================================================================================
 
-exclude = $exclude_std, $exclude_smb, test-bak, test-data, stuff
+exclude = &exclude_std, &exclude_smb, test-bak, test-data, stuff
 
 # =======================================================================================
 #       EXAMPLE: example rabak configuration
@@ -58,32 +59,28 @@ exclude = $exclude_std, $exclude_smb, test-bak, test-data, stuff
 [mount_external]
 
 device= /dev/sd?1
-directory= $target_base
-istarget= 1
-unmount= 1
+directory= &target_base
 
 # Mount point "/boot"
 
 [mount_boot]
 
 directory= /boot
-unmount= 1
 
 # Mount point "//smb_server/e$" (Samba mount point)
 
 [mount_smb_server]
 
-device= //smb_server/e$
-directory= $smb_dir
+device= '//smb_server/e$'
+directory= &smb_dir
 type= cifs
 opts= "username=$smb_user,password=$smb_password,ro"
-unmount= 1
 
 # Target to back up to
 
 [example_target]
 
-path = $target_dir
+path = &target_dir
 mount = &mount_external
 group = example
 # send mail if free space on target drops below this value (possible units: 'B'yte, 'K' (default), 'M'ega, 'G'iga or '%')
@@ -93,12 +90,11 @@ discfree_threshold = 10%
 
 [example_remotetarget]
 
-path = $target_dir
+path = &target_dir
 host = some.host.name
 user = username.on.host
 mount.device = /dev/dev.on.remote.host
-mount.device = /mnt/path/on.remote.host
-mount.umount = 1
+mount.directory = /mnt/path/on.remote.host
 # specify a LOCAL directory to temporarily store files for the remote system (eg. database dumps)
 tempdir = /path/for/temporary/files/on.local.host
 group = example
@@ -111,7 +107,7 @@ discfree_threshold = 10%
 title = Gesamtsystem
 source = /
 target = &example_target
-exclude = $exclude
+exclude = &exclude
 
 # =======================================================================================
 #       EXAMPLE: POSTGRESQL BACKUP
@@ -123,8 +119,8 @@ title = Databases of example
 source.path = pgsql://vbulletin,postnuke
 source.dbuser = *default*
 source.keep = 3
-target = $example_target
-target.path = $target_base/postgres
+target = &example_target
+target.path = &target_base/postgres
 switch.logging = 1
 
 # =======================================================================================
@@ -135,12 +131,12 @@ switch.logging = 1
 
 title = Mysql-DBs
 source.path = mysql://*
-source.dbuser = $mysql_user
+source.dbuser = &mysql_user
 # $mysql_password is secret -> look in rabak.secret.cf
-source.dbpassword = $mysql_password
+source.dbpassword = &mysql_password
 source.keep = 3
-target = $example_target
-target.path = $target_base/mysql
+target = &example_target
+target.path = &target_base/mysql
 switch.logging = 1
 
 # =======================================================================================
@@ -153,7 +149,7 @@ title = Very simple example
 switch.verbose = 1
 switch.logging = 1
 source = .
-target = $target_dir
+target = &target_dir
 
 # =======================================================================================
 #       TEST SHARED RESOURCES
@@ -163,13 +159,11 @@ target = $target_dir
 
 device= /dev/WONT_WORK[12] /tmp/rabak-example-data/dev.loop[01]
 directory= /tmp/rabak-example-data/mnt_target
-unmount= 1
 
 [mount_example_boot]
 
 device= /tmp/rabak-example-data/dev.boot
 directory= /tmp/rabak-example-data/mnt_boot
-unmount= 1
 
 [example_target]
 
@@ -186,10 +180,10 @@ title = Sample of the "firstof" Mount Option
 switch.verbose = 1
 switch.logging = 1
 source.path = .
-source.exclude = $exclude, test-bak,
+source.exclude = &exclude, test-bak,
     test-data, stuff
 source.mount= &mount_test_boot
-target = $example_target
+target = &example_target
 
 # =======================================================================================
 #       TEST TARGETGROUP OPTION
@@ -198,9 +192,9 @@ target = $example_target
 [example_targetgroup]
 
 title = Sample of the "targetgroup" Option
-source = $example_firstof.source
-target = $example_firstof.target
+source = &example_firstof.source
+target = &example_firstof.target
 target.group = dayofweek
-exclude = $example_firstof.source.exclude
+exclude = &example_firstof.source.exclude
 
 # EOF
