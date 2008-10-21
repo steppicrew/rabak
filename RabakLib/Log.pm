@@ -15,7 +15,7 @@ use Mail::Send;
 # use File::Spec ();
 use POSIX qw(strftime);
 
-use vars qw( $VERSION @ISA @EXPORT @EXPORT_OK );
+use vars qw( @ISA @EXPORT @EXPORT_OK );
 
 use Exporter;
 

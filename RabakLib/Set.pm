@@ -9,6 +9,7 @@ no warnings 'redefine';
 use RabakLib::Log;
 use RabakLib::Peer::Source;
 use RabakLib::Peer::Target;
+use RabakLib::Version;
 
 use Data::Dumper;
 use File::Spec ();
@@ -173,7 +174,7 @@ sub backup {
     logger->init($self);
     logger->set_category($self->getName());
     
-    logger->info("Rabak Version " . $self->get_switch("version"). " on \"" . $self->get_switch("hostname") . "\" as user \"" . getpwuid($>) . "\"");
+    logger->info("Rabak Version " . VERSION() . " on \"" . $self->get_switch("hostname") . "\" as user \"" . getpwuid($>) . "\"");
     logger->info("Command line: " . $self->get_switch("commandline"));
     logger->info("Configuration read from: '" . $self->get_switch("configfile") . "'");
 
