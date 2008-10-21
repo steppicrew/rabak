@@ -182,25 +182,21 @@ sub _flush {
 
     # flush messages to mail log file
     unless (defined $self->{MSG_FH}) {
-        # reopen file if file was closed (get_message_file)
+        # reopen file if file was closed (via get_message_file)
         if ($self->{MSG_FILE_NAME}) {
             $self->{MSG_FH}= undef unless CORE::open ($self->{MSG_FH}, ">>$self->{MSG_FILE_NAME}");
         }
     }
-    my $fh= $self->{MSG_FH};
-    if (defined $fh) {
-        $fh->printflush($self->{MESSAGES});
+    if (defined $self->{MSG_FH}) {
+        $self->{MSG_FH}->printflush($self->{MESSAGES});
         $self->{MESSAGES}= '';
     }
     
     # flush messages to log file
-    return unless $self->{TARGET} && $self->{LOG_MESSAGES};
+    return unless $self->{TARGET} && defined $self->{LOG_FH};
 
-    $fh= $self->{LOG_FH};
-    if (defined $fh) {
-        $fh->printflush($self->{LOG_MESSAGES});
-        $self->{LOG_MESSAGES}= '';
-    }
+    $self->{LOG_FH}->printflush($self->{LOG_MESSAGES});
+    $self->{LOG_MESSAGES}= '';
 }
 
 sub clear {
