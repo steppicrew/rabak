@@ -189,7 +189,7 @@ sub _flush {
     }
     my $fh= $self->{MSG_FH};
     if (defined $fh) {
-        print $fh $self->{MESSAGES};
+        $fh->printflush($self->{MESSAGES});
         $self->{MESSAGES}= '';
     }
     
@@ -198,7 +198,7 @@ sub _flush {
 
     $fh= $self->{LOG_FH};
     if (defined $fh) {
-        print $fh $self->{LOG_MESSAGES};
+        $fh->printflush($self->{LOG_MESSAGES});
         $self->{LOG_MESSAGES}= '';
     }
 }
