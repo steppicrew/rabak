@@ -135,7 +135,7 @@ sub remove_old {
     
     return unless $iKeep;
 
-    logger->info("Keeping last $iKeep versions");
+    logger->info("Keeping last " . ($iKeep == 1 ? "version": "$iKeep versions"));
 
     logger->incIndent();
     my @sBakDir= @{$self->_getSourceData("OLD_BAKDIRS")};
