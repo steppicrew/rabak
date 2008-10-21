@@ -133,7 +133,7 @@ sub _run {
                     for my $sFile (@{$FilesByInode{$iInode}}) {
 				        last if $oTrap->terminated();
 
-                        logger()->verbose("ln -f '$sLinkFile' '$sFile'");
+                        logger()->debug("ln -f '$sLinkFile' '$sFile'");
                         if ($self->{OPTS}{pretend}) {
                             $self->{INODE_CACHE}{STATS}{linked_files}++;
                             next;
@@ -172,12 +172,13 @@ sub _run {
         }
     }
     logger()->finish_progress("Processing files...done");
-    logger()->info("Finishing information store...");
+    logger()->info("done");
+    logger()->verbose("Finishing information store...");
 
     $oStore->endCached();
     $oStore->endWork();
 
-    logger()->info("done");
+    logger()->verbose("done");
 
     return !$oTrap->restore();
 }
@@ -185,16 +186,6 @@ sub _run {
 sub run {
     my $self= shift;
     
-    my $oConf= RabakLib::Conf->new();
-    $oConf->set_value("switch.verbose",
-        $self->{OPTS}{verbose}
-            ? logger()->LOG_VERBOSE_LEVEL
-            : logger()->LOG_INFO_LEVEL
-    );
-    $oConf->set_value("switch.pretend", $self->{OPTS}{pretend});
-    $oConf->set_value("switch.quiet", $self->{OPTS}{quiet});
-    logger()->init($oConf);
-
     return unless $self->{INODE_CACHE}->collect();
 
     $self->_run();

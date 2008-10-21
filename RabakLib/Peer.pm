@@ -496,9 +496,11 @@ sub run_rabak_script {
         use RabakLib::Log;
 
         my $oConf= RabakLib::Conf->new();
-        $oConf->set_value("switch.verbose", logger()->LOG_MAX_LEVEL);
-        $oConf->set_value("switch.pretend", 0);
-        $oConf->set_value("switch.quiet", 0);
+        $oConf->preset_values({
+            "*.switch.verbose" => ' . RabakLib::Log::logger()->LOG_MAX_LEVEL() . ',
+            "*.switch.pretend" => 0,
+            "*.switch.quiet" => 0,
+        });
         logger()->init($oConf);
         logger()->set_prefix("X");
         ' . $sScript if defined $sScript;

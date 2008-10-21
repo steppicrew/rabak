@@ -127,7 +127,7 @@ sub getDigest {
         my $sFileName= $self->{DS}->getOneFileByInode($iInode);
         return () unless $sFileName;
         
-        logger()->verbose("Calculating digest for '$sFileName'");
+        logger()->debug("Calculating digest for '$sFileName'");
         $sDigest= $self->_calcDigest($sFileName);
     }
 
@@ -157,10 +157,10 @@ sub collect {
     
     my $oTrap= RabakLib::Trap->new(sub {$fTrapCB->() if $fTrapCB});
 
-    logger()->info("Preparing information store...");
+    logger()->verbose("Preparing information store...");
     $self->{DS}->beginWork();
     $self->{DS}->registerInodes($self->{DS}->getInodes());
-    logger()->info("done");
+    logger()->verbose("done");
     logger()->info("Collecting file information...");
 
     my $aDirs= $self->{OPTS}{dirs};
@@ -183,27 +183,29 @@ sub collect {
         }
         $hDirsDone{$sDir}= undef;
         logger()->incIndent();
-        logger()->info("Processing directory '$sDir'...");
+        my $sInfo= "Processing directory '$sDir'";
         if ($self->{DS}->newDirectory($sDir)) {
+            logger()->info("$sInfo...");
             $fTrapCB= sub{$self->{DS}->invalidate()};
             find({
                 wanted => sub { $self->_processFiles($oTrap); },
                 no_chdir => 1,
             }, $sDir);
+            $sInfo= "done";
         }
         else {
-##            $self->{STATS}{total_cached_files}+= $self->{DS}->getCurrentFileCount();
-            logger()->info("(cached)");
+            $sInfo.= " (cached)";
         }
         $self->{DS}->finishDirectory();
         $fTrapCB= undef;
-        logger()->info("done");
+        logger()->info($sInfo);
         logger()->decIndent();
     }
     $self->{STATS}{total_inodes}= $self->{DS}->getInodeCount();
-    logger()->info("done", "Finishing information store...");
-    $self->{DS}->commitTransaction();
     logger()->info("done");
+    logger()->verbose("Finishing information store...");
+    $self->{DS}->commitTransaction();
+    logger()->verbose("done");
 
     return !$oTrap->restore();
 }
