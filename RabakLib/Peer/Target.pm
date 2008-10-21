@@ -10,6 +10,7 @@ use RabakLib::Log;
 use RabakLib::ConfFile;
 use RabakLib::InodeCache;
 use RabakLib::DupMerge;
+use RabakLib::Version;
 use POSIX qw(strftime);
 use Data::Dumper;
 
@@ -135,7 +136,9 @@ sub remove_old {
     
     return unless $iKeep;
 
-    logger->info("Keeping last " . ($iKeep == 1 ? "version": "$iKeep versions"));
+    logger->info(
+        "Keeping last " . ($iKeep == 1 ? "version" : "$iKeep versions")
+    );
 
     logger->incIndent();
     my @sBakDir= @{$self->_getSourceData("OLD_BAKDIRS")};
@@ -334,7 +337,7 @@ sub finishBackup {
         logger->warn(join "", @$aDf);
         my $sHostName= $self->get_value("host") || $self->get_switch("hostname");
         logger->mailWarning("disc space too low on ${sHostName}'s target dir \"" . $self->abs_path($self->getPath()) . "\"",
-            "Rabak Version " . $self->get_switch("version"). " on \"" . $self->get_switch("hostname") . "\" as user \"" . getpwuid($>) . "\"",
+            "Rabak Version " . VERSION() . " on \"" . $self->get_switch("hostname") . "\" as user \"" . getpwuid($>) . "\"",
             "Command line: " . $self->get_switch("commandline"),
             "#"x80,
             @$aDf
