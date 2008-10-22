@@ -66,13 +66,16 @@ sub setCmdData {
     $self->{CMD_DATA}= shift;
 }
 
+# returns cmd data of $sParam (if given) or copy of CMD_DATA
+# searches in parent confs if not set via setCmdData
 sub cmdData {
     my $self= shift;
     my $sParam= shift;
 
-    return $self->{PARENT_CONF}->cmdData($sParam) if defined($self->{PARENT_CONF}) && !defined($self->{CMD_DATA});
-    return $self->{CMD_DATA} unless defined $sParam;
-    return $self->{CMD_DATA}{uc $sParam};
+    return $self->{PARENT_CONF}->cmdData($sParam) if !defined($self->{CMD_DATA}) && defined($self->{PARENT_CONF});
+    my $hData= $self->{CMD_DATA} || {};
+    return \(%$hData) unless defined $sParam;
+    return $hData->{uc $sParam};
 }
 
 # Stub to override. A RabakLib::Conf is always valid.
