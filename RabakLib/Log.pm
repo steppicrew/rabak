@@ -63,8 +63,7 @@ BEGIN {
         SWITCH_EMAIL   => undef,
         SWITCH_NAME    => undef,
         
-        FORCE_NL => 0,           # force new line on next print on screen
-        LAST_PROGRESS_LENGTH => 0,# force new line on next print on screen
+        LAST_PROGRESS  => undef, # force new line on next print on screen
     };
     
     ($oLog->{MSG_FH}, $oLog->{MSG_FILE_NAME}) =
@@ -108,17 +107,18 @@ sub verbosity {
 #  Messages
 # -----------------------------------------------------------------------------
 
-sub LOG_DEBUG_LEVEL   { 5 }
-sub LOG_VERBOSE_LEVEL { 4 }
-sub LOG_INFO_LEVEL    { 3 }
-sub LOG_WARN_LEVEL    { 2 }
-sub LOG_ERROR_LEVEL   { 1 }
-sub LOG_PRINT_LEVEL   { 0 }
+sub LOG_DEBUG_LEVEL    { 5 }
+sub LOG_VERBOSE_LEVEL  { 4 }
+sub LOG_INFO_LEVEL     { 3 }
+sub LOG_WARN_LEVEL     { 2 }
+sub LOG_ERROR_LEVEL    { 1 }
+sub LOG_PRINT_LEVEL    { 0 }
 
-sub LOG_DEFAULT_LEVEL { LOG_INFO_LEVEL() }
-sub LOG_MAX_LEVEL     { LOG_DEBUG_LEVEL() }
+sub LOG_DEFAULT_LEVEL  { LOG_INFO_LEVEL()    }
+sub LOG_PROGRESS_LEVEL { LOG_DEFAULT_LEVEL() }
+sub LOG_MAX_LEVEL      { LOG_DEBUG_LEVEL()   }
 
-sub LOG_LEVEL_PREFIX  {
+sub LOG_LEVEL_PREFIX {
     return {
         LOG_PRINT_LEVEL()   => "OUTPUT",
         LOG_ERROR_LEVEL()   => "ERROR",
@@ -133,9 +133,8 @@ sub getLevelPrefix {
     my $self= shift;
     my $iLevel= shift;
     
-    my $sResult= $self->LOG_LEVEL_PREFIX->{$iLevel} || "LOG($iLevel)";
-    $sResult.= ":" . " "x(10 - length($sResult));
-    return $sResult;
+    my $sPrefix= $self->LOG_LEVEL_PREFIX->{$iLevel} || "LOG($iLevel)";
+    return sprintf '%-10s', "$sPrefix:";
 }
 
 sub incIndent {
@@ -153,16 +152,17 @@ sub factLogReparser {
     my $self= shift;
     
     my %logLevelPrefix= %{LOG_LEVEL_PREFIX()};
-    my %logPrefixLevel= map {quotemeta($logLevelPrefix{$_}) => $_} keys %logLevelPrefix;
+    my %qLogPrefixLevel= map {quotemeta($logLevelPrefix{$_}) => $_} keys %logLevelPrefix;
     return sub {
         my $aResult= [];
         foreach my $sLine (@_) {
-            foreach my $sqPref (keys %logPrefixLevel) {
+            $sLine =~ s/.*\r//;
+            foreach my $sqPref (keys %qLogPrefixLevel) {
                 if ($sLine=~ s/^$sqPref\:\s*//) {
                     my $sCategory= $1 if $sLine=~ s/^\[(.*?)\] //;
                     my $iInc= 0;
                     $iInc= length($1) / 2 if $sLine=~ s/^((  )+)//;
-                    my $iLogLevel= $logPrefixLevel{$sqPref};
+                    my $iLogLevel= $qLogPrefixLevel{$sqPref};
                     push @$aResult, {
                         loglevel => $iLogLevel,
                         category => $sCategory,
@@ -413,23 +413,27 @@ sub progress {
     my $self= shift;
     my $sMessage= shift;
 
-    return if $self->{SWITCH_QUIET} || LOG_INFO_LEVEL > $self->verbosity();
+    return if $self->{SWITCH_QUIET} || LOG_PROGRESS_LEVEL > $self->verbosity();
 
     local $|= 1;
+    my %sPrefixes= $self->_buildLogPrefixes($self->getLevelPrefix(LOG_PROGRESS_LEVEL));
+    $sMessage= $sPrefixes{"STDOUT"} . $sMessage;
     my $iLength= length $sMessage;
-    print "\r" . ' 'x$self->{LAST_PROGRESS_LENGTH} if $self->{LAST_PROGRESS_LENGTH} > $iLength;
+    if (defined $self->{LAST_PROGRESS}) {
+        my $sLastLength= length $self->{LAST_PROGRESS};
+        printf "\r", ' 'x$sLastLength if $sLastLength > $iLength;
+    }
     print "\r$sMessage";
-    $self->{LAST_PROGRESS_LENGTH}= $iLength;
-    $self->{FORCE_NL} = 1;
+    $self->{LAST_PROGRESS}= $sMessage;
 }
 
 sub finish_progress {
     my $self= shift;
     my $sMessage= shift;
 
-    $self->progress("$sMessage\n");
-    $self->{FORCE_NL} = 0;
-    $self->{LAST_PROGRESS_LENGTH}= 0;
+    $self->{LAST_PROGRESS}= '';
+    $self->log([LOG_PROGRESS_LEVEL, $sMessage]);
+    $self->{LAST_PROGRESS}= undef;
 }
 
 sub exitError {
@@ -454,6 +458,21 @@ sub log {
     }
 }
 
+sub _buildLogPrefixes {
+    my $self= shift;
+    my $sLogLevelPrefix= shift;
+    
+    my $sMsgPref= "  " x $self->{INDENT1};
+    $sMsgPref.= "[$self->{PREFIX}] " if $self->{PREFIX};
+    $sMsgPref.= "  " x $self->{INDENT2};
+    
+    my $sLogPref= $self->{CATEGORY} ? "$self->{CATEGORY}\t" : "";
+    return (
+        "STDOUT" => "$self->{STDOUT_PREFIX}$sLogLevelPrefix$sMsgPref",
+        "LOG" => _timestr() . "\t$sLogLevelPrefix$sLogPref$sMsgPref",
+    );
+}
+
 sub _levelLog {
     my $self= shift;
     my $iLevel= shift;
@@ -464,7 +483,7 @@ sub _levelLog {
     $self->{ERRORCOUNT}++ if $iLevel == LOG_ERROR_LEVEL;
     $self->{WARNCOUNT}++ if $iLevel == LOG_WARN_LEVEL;
 
-    my $sPref= $self->getLevelPrefix($iLevel);
+    my $sLogLevelPref= $self->getLevelPrefix($iLevel);
 
     for my $sMessage (@sMessage) {
         next unless defined $sMessage;
@@ -477,21 +496,19 @@ sub _levelLog {
             next;
         }
         chomp $sMessage;
-        my $sMsgPref= "  " x $self->{INDENT1};
-        $sMsgPref.= "[$self->{PREFIX}] " if $self->{PREFIX};
-        $sMsgPref.= "  " x $self->{INDENT2};
+        $sMessage.= "\n";
+        my %sPrefixes= $self->_buildLogPrefixes($sLogLevelPref);
         unless ($self->{SWITCH_QUIET} || $iLevel > $self->verbosity()) {
             # print message to stdout
-            print "\n" if $self->{FORCE_NL};
-            $self->{FORCE_NL}= 0;
-            print "$self->{STDOUT_PREFIX}$sPref$sMsgPref" unless $iLevel == LOG_PRINT_LEVEL;
-            print $sMessage, "\n";
+            print "\r", ' 'x(length $self->{LAST_PROGRESS}), "\r" if defined $self->{LAST_PROGRESS};
+            print $sPrefixes{"STDOUT"} unless $iLevel == LOG_PRINT_LEVEL;
+            print $sMessage;
+            print $self->{LAST_PROGRESS} if defined $self->{LAST_PROGRESS};
         }
 
         next if $self->{SWITCH_PRETEND};
 
-        $sMsgPref= "$self->{CATEGORY}\t$sMsgPref" if $self->{CATEGORY};
-        $sMessage= _timestr() . "\t$sPref$sMsgPref$sMessage\n";
+        $sMessage= $sPrefixes{LOG} . $sMessage;
 
         $self->{LOG_MESSAGES} .= $sMessage if $self->{SWITCH_LOGGING} && $iLevel <= LOG_VERBOSE_LEVEL;
         $self->{MESSAGES} .= $sMessage if $iLevel <= $self->verbosity();

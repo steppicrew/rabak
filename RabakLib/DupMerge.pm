@@ -30,6 +30,7 @@ sub _run {
     my $oTrap= RabakLib::Trap->new();
 
     logger()->info("Searching for duplicates...");
+    logger()->incIndent();
     
     # build array of relevant properties
     my $aQueryKey= [];
@@ -172,6 +173,7 @@ sub _run {
         }
     }
     logger()->finish_progress("Processing files...done");
+    logger()->decIndent();
     logger()->info("done");
     logger()->verbose("Finishing information store...");
 
