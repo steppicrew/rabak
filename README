@@ -29,13 +29,11 @@ Maybe even a newer one is requires. The newer the better.
 
 You need Perl, I don't know which version. Probably >= 5.8
 
-You need the Mail::Send and IPC::Run perl module. Fetch it from CPAN:
+You need the Mail::Send, Digest::SHA1, Getopt::Long(>= 2.36), and IPC::Run perl module. Fetch it from CPAN:
 cpan -i Mail::Send (or cpan -i MailTools)
 cpan -i IPC::Run
-
-To use faster-dupemerge, you will need the Perl module Digest::SHA1.
-To install it do:
 cpan -i Digest::SHA1
+cpan -i Getopt::Long
 
 
 Installation

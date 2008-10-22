@@ -148,10 +148,12 @@ Example from above in ini style:
 
   []
   value = some value
+  
   [object1]
   prop = some other value
   prop2 = another value
   subobject.prop1 = subobject's value
+  
   []
   object2.something_other = object2's value
 
@@ -199,26 +201,35 @@ You can have multiple backup sets in your configuration file and use variables:
   target = $my_target
   switch.logging = 1
 
-Setting C<switch.logging> overrides the command line option C<-l>.
+Setting C<switch.logging> can be overridden by the command line option C<-l>.
 Possible C<switch>es are C<pretend> and C<logging>.
 C<$my_target> is replaced by C</mnt/sda1/rabak>.
 
-Now lets add a mount point:
+Now lets add a mount point. You have to replace C<target> in the previous
+example with an object.
+Here is the new C<[full]>-section:
 
   [full]
-  mount.device= /dev/sda1
-  mount.directory= /mnt/sda1
-  mount.unmount= 1
+  title = Full server backup
+  source = /
+  target.path = $my_target
+  target.mount.device= /dev/sda1
+  target.mount.directory= /mnt/sda1
+  target.mount.unmount= 1
+  switch.logging = 1
 
 This tells B<rabak> to mount F</dev/sda1> before starting backing up C<full>, and
 to unmount it when done (true by default, set it to "0" to suppress unmounting).
+
+To prevent mounting of wrong target devices, B<rabak> uses it only if
+there is a file named C<rabak.dev.cf> in the device's root directory.
 
 You may specify a list of devices to try more than one device and use the first successfully
 mounted one.
 That's useful for usb-devices as backup targets when you don't know the exact device name.
 
   [full]
-  mount.device= /dev/sd?1 /dev/hd[cd]1
+  target.mount.device= /dev/sd?1 /dev/hd[cd]1
 
 This tells B<rabak> to mount the first available (and mountable) device of
 F</dev/sda1>, F</dev/sdb1>..., F</dev/hdc1>, and F</dev/hdd1>
@@ -244,7 +255,7 @@ Replace the last addition by this code:
   unmount= 1
   []
   ..
-  full.mount = &mount1
+  full.target.mount = &mount1
 
 To exclude files from being backed up, add this:
 
@@ -289,10 +300,10 @@ If you want to mount backup devices, you can define a "L<Target Object|Target Ob
 This would mount the device specified in I<$mount1> to back up your data.
 
 To make sure only desired devices are used to store your backup data,
-devices mounted in a "L<Target Object|Target Objects>" have to be a file named F<rabak.dev.cf>
+devices mounted in a "L<Target Object|Target Objects>" have to have a file named F<rabak.dev.cf>
 (or any other name specified by switch.dev_conf_file) in the root directory.
 If this file could not be found, this device will not be used for backup (and
-even not unmounted if already mounted anywhere else).
+not even unmounted if already mounted anywhere else).
 If you specified multiple devices (like in our example) the next device is tried.
 
 The syntax of F<rabak.dev.cf> follows the one for other rabak conf files.
@@ -902,9 +913,9 @@ Not many. Can't make coffee.
 
 =head1 AUTHOR
 
-Written by Stephan Hantigk <steppi@steppicrew.de> and Dietrich Raisin <info1@raisin.de>!
+Written by Stephan Hantigk <rabak@steppicrew.de> and Dietrich Raisin <info1@raisin.de>!
 
-LICENSE
+=head1 LICENSE
 
 Copyrights 2007-2008 by Stephan Hantigk & Dietrich Raisin. For other contributors see CHANGELOG.
 
