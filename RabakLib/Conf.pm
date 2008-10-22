@@ -22,6 +22,7 @@ sub new {
         PARENT_CONF=> $oParentConf,
         NAME=> $sName,
         ERRORCODE=> undef,
+        CMD_DATA=> undef,
     };
 
     bless $self, $class;
@@ -58,6 +59,20 @@ sub newFromConf {
     }
 
     return $new;
+}
+
+sub setCmdData {
+    my $self= shift;
+    $self->{CMD_DATA}= shift;
+}
+
+sub cmdData {
+    my $self= shift;
+    my $sParam= shift;
+
+    return $self->{PARENT_CONF}->cmdData($sParam) if defined($self->{PARENT_CONF}) && !defined($self->{CMD_DATA});
+    return $self->{CMD_DATA} unless defined $sParam;
+    return $self->{CMD_DATA}{uc $sParam};
 }
 
 # Stub to override. A RabakLib::Conf is always valid.

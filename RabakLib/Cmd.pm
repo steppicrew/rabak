@@ -100,9 +100,20 @@ sub new {
         OPTS => {},
         ARGS => [],
         ERROR => undef,
-        COMMAND_LINE => undef
+        DATA => {
+            COMMAND_LINE => undef,
+            HOSTNAME => $class->hostname(),
+            CONFIG_FILE => undef,
+            USER => getpwuid($>),
+        },
     };
     bless $self, $class;
+}
+
+sub hostname {
+    my $sHostname= `hostname -f 2>/dev/null` || `hostname 2>/dev/null` || '(unknown)';
+    chomp $sHostname;
+    return $sHostname;
 }
 
 sub setup {
@@ -113,7 +124,7 @@ sub setup {
 
     $self->{OPTS}= $hOpts;
     $self->{ARGS}= $hArgs;
-    $self->{COMMAND_LINE}= $sCommandLine;
+    $self->{DATA}{COMMAND_LINE}= $sCommandLine;
     logger->setOpts({
         verbose   => $hOpts->{'verbose'} ? logger->LOG_VERBOSE_LEVEL : undef,
         quiet     => $hOpts->{'quiet'},
@@ -156,16 +167,14 @@ sub readConfFile {
     @sConfFiles= $self->{OPTS}{conf} if $self->{OPTS}{conf};
     my $oConfFile= RabakLib::ConfFile->new(@sConfFiles);
     my $oConf= $oConfFile->conf();
+    $oConf->setCmdData($self->{DATA});
+
+    $self->{DATA}{CONFIG_FILE}= $oConfFile->filename();
 
     # overwrite values with comand line switches
-    my $sHostname= `hostname -f 2>/dev/null` || `hostname`;
-    chomp $sHostname;
     $oConf->preset_values({
         '*.switch.pretend'      => $self->{OPTS}{pretend},
         '*.switch.targetvalue'  => $self->{OPTS}{i},    # deprecate?
-        '*.switch.hostname'     => $sHostname,
-        '*.switch.commandline'  => $self->{COMMAND_LINE},
-        '*.switch.configfile'   => $oConfFile->filename(),
     });
     # print Dumper($oConf->get_node("switch")->{VALUES});
     return $oConfFile;

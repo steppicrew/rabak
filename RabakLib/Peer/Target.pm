@@ -335,10 +335,10 @@ sub finishBackup {
     my $aDf = $self->checkDf();
     if (defined $aDf) {
         logger->warn(join "", @$aDf);
-        my $sHostName= $self->get_value("host") || $self->get_switch("hostname");
+        my $sHostName= $self->get_value("host") || $self->cmdData("hostname");
         logger->mailWarning("disc space too low on ${sHostName}'s target dir \"" . $self->abs_path($self->getPath()) . "\"",
-            "Rabak Version " . VERSION() . " on \"" . $self->get_switch("hostname") . "\" as user \"" . getpwuid($>) . "\"",
-            "Command line: " . $self->get_switch("commandline"),
+            "Rabak Version " . VERSION() . " on \"" . $self->cmdData("hostname") . "\" as user \"" . $self->cmdData("user") . "\"",
+            "Command line: " . $self->cmdData("command_line"),
             "#"x80,
             @$aDf
         );

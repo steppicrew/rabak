@@ -181,9 +181,9 @@ sub backup {
 
     logger->set_category($self->getName());
     
-    logger->info("Rabak Version " . VERSION() . " on \"" . $self->get_switch("hostname") . "\" as user \"" . getpwuid($>) . "\"");
-    logger->info("Command line: " . $self->get_switch("commandline"));
-    logger->info("Configuration read from: '" . $self->get_switch("configfile") . "'");
+    logger->info("Rabak Version " . VERSION() . " on \"" . $self->cmdData("hostname") . "\" as user \"" . $self->cmdData("user") . "\"");
+    logger->info("Command line: " . $self->cmdData("command_line"));
+    logger->info("Configuration read from: '" . $self->cmdData("config_file") . "'");
 
     my $oTargetPeer= $self->get_targetPeer();
     my @oSourcePeers= $self->get_sourcePeers();
