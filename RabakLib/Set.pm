@@ -171,7 +171,14 @@ sub backup {
     my $iSuccessCount= 0;
     my $iResult= 0; 
     
-    logger->init($self);
+    my %LogOpts= ();
+    for my $sLogOpt ('pretend', 'logging', 'verbose', 'quiet') {
+        $LogOpts{ucfirst $sLogOpt} = $self->get_switch($sLogOpt);
+    }
+    $LogOpts{"Email"} = $self->get_value("email");
+    $LogOpts{"Name"} = $self->getName();
+    logger->setOpts(\%LogOpts);
+
     logger->set_category($self->getName());
     
     logger->info("Rabak Version " . VERSION() . " on \"" . $self->get_switch("hostname") . "\" as user \"" . getpwuid($>) . "\"");

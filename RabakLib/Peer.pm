@@ -6,8 +6,11 @@ package RabakLib::Peer;
 
 use warnings;
 use strict;
+no warnings 'redefine';
 
 use vars qw(@ISA);
+
+use RabakLib::Conf;
 
 @ISA = qw(RabakLib::Conf);
 
@@ -495,13 +498,11 @@ sub run_rabak_script {
         $sScript= '
         use RabakLib::Log;
 
-        my $oConf= RabakLib::Conf->new();
-        $oConf->preset_values({
-            "*.switch.verbose" => ' . RabakLib::Log::logger()->LOG_MAX_LEVEL() . ',
-            "*.switch.pretend" => 0,
-            "*.switch.quiet" => 0,
+        logger()->setOpts({
+            "verbose" => logger()->LOG_MAX_LEVEL(),
+            "pretend" => 0,
+            "quiet" => 0,
         });
-        logger()->init($oConf);
         logger()->set_prefix("X");
         ' . $sScript if defined $sScript;
 

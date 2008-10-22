@@ -6,6 +6,7 @@ use warnings;
 use strict;
 
 use RabakLib::Log;
+use RabakLib::Peer;
 
 use vars qw(@ISA);
 

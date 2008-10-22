@@ -11,6 +11,7 @@ use RabakLib::ConfFile;
 use RabakLib::InodeCache;
 use RabakLib::DupMerge;
 use RabakLib::Version;
+use RabakLib::Peer;
 use POSIX qw(strftime);
 use Data::Dumper;
 
@@ -188,7 +189,6 @@ sub inodeInventory {
     $sFullTargetDir=~ s/\"/\\\"/g;
     $self->run_rabak_script('
         use RabakLib::InodeCache;
-
         my $inodeCache= new RabakLib::InodeCache(
             {
                 dirs => ["'.$sFullTargetDir.'"],

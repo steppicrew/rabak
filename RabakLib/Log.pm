@@ -7,7 +7,6 @@ use strict;
 no warnings 'redefine';
 
 use Data::Dumper;
-use RabakLib::Conf;
 use RabakLib::Peer;
 use RabakLib::Mountable;
 use Mail::Send;
@@ -57,10 +56,12 @@ BEGIN {
 
         TARGET => undef,
 
-        SWITCH_PRETEND => 0,
-        SWITCH_LOGGING => 0,
-        SWITCH_VERBOSITY => 3,
-        SWITCH_QUIET => 0,
+        SWITCH_PRETEND => undef,
+        SWITCH_LOGGING => undef,
+        SWITCH_VERBOSE => undef,
+        SWITCH_QUIET   => undef,
+        SWITCH_EMAIL   => undef,
+        SWITCH_NAME    => undef,
         
         FORCE_NL => 0,           # force new line on next print on screen
         LAST_PROGRESS_LENGTH => 0,# force new line on next print on screen
@@ -81,18 +82,26 @@ sub logger {
     return RabakLib::Log->new();
 }
 
-sub init {
+# set various options
+# if option's name is ucfirst, option is only set if undef
+sub setOpts {
     my $class= shift;
-    my $hConf= shift;
+    my $hOpts= shift;
 
-    $oLog->{SWITCH_PRETEND}= $hConf->get_switch('pretend');
-    $oLog->{SWITCH_LOGGING}= $hConf->get_switch('logging');
-    $oLog->{SWITCH_VERBOSITY}= $hConf->get_switch('verbose');
-    $oLog->{SWITCH_VERBOSITY}= $oLog->LOG_DEFAULT_LEVEL unless defined $oLog->{SWITCH_VERBOSITY};
-    $oLog->{SWITCH_QUIET}= $hConf->get_switch('quiet');
+    for my $sParam ('pretend', 'logging', 'verbose', 'quiet', 'name', 'email') {
+        my $sSwitch= 'SWITCH_' . uc($sParam);
+        my $sKey= $sParam;
+        
+        $sKey= ucfirst $sParam if exists $hOpts->{ucfirst $sParam} && !defined $oLog->{$sSwitch};
+        $oLog->{$sSwitch}= $hOpts->{$sKey} if exists $hOpts->{$sKey};
+    }
+}
 
-    $oLog->{SET_NAME}= $hConf->getName();
-    $oLog->{EMAIL}= $hConf->get_value('email');
+sub verbosity {
+    my $self= shift;
+    
+    return $self->{SWITCH_VERBOSE} if defined $self->{SWITCH_VERBOSE};
+    return LOG_DEFAULT_LEVEL();
 }
 
 # -----------------------------------------------------------------------------
@@ -257,7 +266,7 @@ sub _mail {
     my $self= shift;
     my ($sSubject, $fBody) = @_;
     
-    my $sMailAddress= $self->{EMAIL}; 
+    my $sMailAddress= $self->{SWITCH_EMAIL}; 
 
     return 0 unless $sMailAddress;
 
@@ -291,7 +300,9 @@ sub mailLog {
     $sErrWarn.= "s" if $iWarns > 1; 
     $sSubject.= " ($sErrWarn)" if $sErrWarn;
     
-    $sSubject= "RABAK '$self->{SET_NAME}': $sSubject";
+    $sSubject= defined $self->{SWITCH_NAME}
+        ? "RABAK '$self->{SWITCH_NAME}': $sSubject"
+        : "RABAK: $sSubject";
 
     my $sFileName= $self->get_messages_file();
     my $fh;
@@ -402,7 +413,7 @@ sub progress {
     my $self= shift;
     my $sMessage= shift;
 
-    return if $self->{SWITCH_QUIET} || LOG_INFO_LEVEL > $self->{SWITCH_VERBOSITY};
+    return if $self->{SWITCH_QUIET} || LOG_INFO_LEVEL > $self->verbosity();
 
     local $|= 1;
     my $iLength= length $sMessage;
@@ -469,7 +480,7 @@ sub _levelLog {
         my $sMsgPref= "  " x $self->{INDENT1};
         $sMsgPref.= "[$self->{PREFIX}] " if $self->{PREFIX};
         $sMsgPref.= "  " x $self->{INDENT2};
-        unless ($self->{SWITCH_QUIET} || $iLevel > $self->{SWITCH_VERBOSITY}) {
+        unless ($self->{SWITCH_QUIET} || $iLevel > $self->verbosity()) {
             # print message to stdout
             print "\n" if $self->{FORCE_NL};
             $self->{FORCE_NL}= 0;
@@ -483,7 +494,7 @@ sub _levelLog {
         $sMessage= _timestr() . "\t$sPref$sMsgPref$sMessage\n";
 
         $self->{LOG_MESSAGES} .= $sMessage if $self->{SWITCH_LOGGING} && $iLevel <= LOG_VERBOSE_LEVEL;
-        $self->{MESSAGES} .= $sMessage if $iLevel <= $self->{SWITCH_VERBOSITY};
+        $self->{MESSAGES} .= $sMessage if $iLevel <= $self->verbosity();
     }
     $self->_flush();
 }

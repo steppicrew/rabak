@@ -17,7 +17,7 @@ sub GetGlobalOptions {
     return {
         "conf" =>               [ "",  "s", "<file>",   "Use <file> for configuration" ],
         "i" =>                  [ "",  "s", "<value>",  "Save on device with targetgroup value <value> (Backward compatibility. Don't use!)" ],
-        "log" =>                [ "",  "",  "",         "Log to file" ],
+        "logging" =>            [ "",  "",  "",         "Log to file" ],
         "pretend" =>            [ "",  "",  "",         "Pretend (don't do anything, just tell what would happen)" ],
         "quiet" =>              [ "",  "",  "",         "Be quiet" ],
         "verbose" =>            [ "v", "",  "",         "Be verbose" ],
@@ -114,6 +114,13 @@ sub setup {
     $self->{OPTS}= $hOpts;
     $self->{ARGS}= $hArgs;
     $self->{COMMAND_LINE}= $sCommandLine;
+    logger->setOpts({
+        verbose   => $hOpts->{'verbose'} ? logger->LOG_VERBOSE_LEVEL : undef,
+        quiet     => $hOpts->{'quiet'},
+        logging   => $hOpts->{'logging'},
+        pretend   => $hOpts->{'pretend'},
+    });
+    
 }
 
 # generates error string regarding expected and gotten number of arguments
@@ -155,9 +162,6 @@ sub readConfFile {
     chomp $sHostname;
     $oConf->preset_values({
         '*.switch.pretend'      => $self->{OPTS}{pretend},
-        '*.switch.verbose'      => $self->{OPTS}{verbose} ? LOG_VERBOSE_LEVEL : undef,
-        '*.switch.logging'      => $self->{OPTS}{log},
-        '*.switch.quiet'        => $self->{OPTS}{quiet},
         '*.switch.targetvalue'  => $self->{OPTS}{i},    # deprecate?
         '*.switch.hostname'     => $sHostname,
         '*.switch.commandline'  => $self->{COMMAND_LINE},
@@ -241,6 +245,7 @@ sub help {
 package RabakLib::Cmd::Error;
 
 use vars qw(@ISA);
+use RabakLib::Log;
 
 @ISA= qw( RabakLib::Cmd );
 
