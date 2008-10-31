@@ -13,8 +13,7 @@ use vars qw(@ISA);
 
 sub getOptions {
     return {
-        # "targetgroup-value" =>  [ "",  "s", "<value>",   "Save on device with targetgroup value <value>" ],
-        # "ha" =>                 [ "",  "",  "",          "HA" ],
+        "targetgroup-value" =>  [ "",  "s", "<value>",   "Save on device with targetgroup value <value>" ],
     };
 }
 
@@ -40,6 +39,8 @@ sub run {
     my $sBakset= $self->{ARGS}[0];
     my $oBakset= $self->getBakset($sBakset);
     return 0 unless $oBakset;
+    
+    $oBakset->set_value('/*.switch.targetvalue', $self->{OPTS}{"targetgroup-value"}) if $self->{OPTS}{"targetgroup-value"};
 
     $oBakset->backup();
     return 1;
