@@ -7,8 +7,7 @@ use strict;
 no warnings 'redefine';
 
 use Data::Dumper;
-use RabakLib::Peer;
-use RabakLib::Mountable;
+use File::Temp;
 use Mail::Send;
 
 # use File::Spec ();
@@ -67,7 +66,7 @@ BEGIN {
     };
     
     ($oLog->{MSG_FH}, $oLog->{MSG_FILE_NAME}) =
-        RabakLib::Peer->local_tempfile();
+        File::Temp->tempfile("rabaklog-XXXXXX", UNLINK => 1, TMPDIR => 1);
 
     bless $oLog, __PACKAGE__;
 }
@@ -225,7 +224,9 @@ sub get_messages_file {
 sub open {
     my $self= shift;
     my $sFileName= shift;
-    my $oTarget= shift || RabakLib::Peer::Mountable->new();
+    my $oTarget= shift;
+
+    return "Internal Error: No target object given. Pleas file bug report!" unless $oTarget;
 
     $self->close() if $self->{TARGET};
 

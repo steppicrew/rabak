@@ -11,11 +11,11 @@ no warnings 'redefine';
 use vars qw(@ISA);
 
 use RabakLib::Conf;
+use RabakLib::Log;
 
 @ISA = qw(RabakLib::Conf);
 
 use Data::Dumper;
-use File::Spec ();
 use File::Temp ();
 use IPC::Run qw(start pump finish);
 
@@ -101,18 +101,16 @@ sub local_tempfile {
     my $self= shift;
 
 #    $self= $self->new() unless ref $self;
-    my $sDir= File::Spec->tmpdir;
 #    $sDir = $self->get_value("tempdir");
 
-    return @_= File::Temp->tempfile("rabak-XXXXXX", UNLINK => 1, DIR => $sDir);
+    return @_= File::Temp->tempfile("rabak-XXXXXX", UNLINK => 1, TMPDIR => 1);
 }
 
 sub local_tempdir {
     my $self= shift;
     
-    my $sDir= File::Spec->tmpdir;
 #    my $sDir= $self->get_value("tempdir");
-    my $sDirName= File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 1, DIR => $sDir);
+    my $sDirName= File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 1, TMPDIR => 1);
 
     return $sDirName;
 }
@@ -506,16 +504,15 @@ sub run_rabak_script {
         logger()->set_prefix("X");
         ' . $sScript if defined $sScript;
 
-        # TODO: log file parsing should be done in RabakLib::Log
-        my $fLogParser= RabakLib::Log::logger()->factLogReparser();
+        my $fLogParser= logger()->factLogReparser();
         $hHandles->{STDOUT}= sub {
             my $aLogEntries= $fLogParser->(@_);
             foreach my $hEntry (@$aLogEntries) {
-                RabakLib::Log::logger()->log($hEntry->{logrecord});
+                logger()->log($hEntry->{logrecord});
             }
         };
     }
-    $hHandles->{STDERR}= sub {RabakLib::Log::logger()->error(@_)} unless $hHandles->{STDERR};
+    $hHandles->{STDERR}= sub {logger()->error(@_)} unless $hHandles->{STDERR};
     $hHandles->{STDIN}= $sScript if defined $sScript;
     
     return $self->run_cmd($sPerlCmd, $hHandles);

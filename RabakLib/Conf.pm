@@ -412,14 +412,14 @@ sub expandMacro {
     my $bRaiseError= shift;
     my $hResult = $self->expandMacroHash($sMacroName, $oScope, $aStack, sub{$self->_resolveObjects(@_)});
     unless (defined $hResult->{DATA}) {
-        RabakLib::Log::logger()->error("$hResult->{ERROR} in scope \""
+        logger()->error("$hResult->{ERROR} in scope \""
             . $oScope->get_full_name()
             . "\"") if $hResult->{ERROR} && $bRaiseError;
         return ();
     }
 # print "got ", Dumper($hResult->{DATA}), "\n";
     return @{$hResult->{DATA}} if ref $hResult->{DATA} eq "ARRAY";
-    RabakLib::Log::logger->error(
+    logger->error(
         "Internal error: expandMacro(\"$sMacroName\") in scope \""
         . $oScope->get_full_name()
         . "\" should return an array reference! (got $hResult->{DATA})",
