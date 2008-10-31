@@ -17,7 +17,7 @@ sub GetGlobalOptions {
     return {
         "conf" =>               [ "",  "s", "<file>",   "Use <file> for configuration" ],
         "i" =>                  [ "",  "s", "<value>",  "Save on device with targetgroup value <value> (Backward compatibility. Don't use!)" ],
-        "logging" =>            [ "",  "",  "",         "Log to file" ],
+#        "logging" =>            [ "",  "s", "<file>",   "Log to <file>" ],
         "pretend" =>            [ "",  "",  "",         "Pretend (don't do anything, just tell what would happen)" ],
         "quiet" =>              [ "",  "",  "",         "Be quiet" ],
         "verbose" =>            [ "v", "",  "",         "Be verbose" ],
@@ -128,7 +128,7 @@ sub setup {
     logger->setOpts({
         verbose   => $hOpts->{'verbose'} ? logger->LOG_VERBOSE_LEVEL : undef,
         quiet     => $hOpts->{'quiet'},
-        logging   => $hOpts->{'logging'},
+#        logging   => $hOpts->{'logging'},
         pretend   => $hOpts->{'pretend'},
     });
     
