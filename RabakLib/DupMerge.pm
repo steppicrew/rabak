@@ -9,9 +9,7 @@ use warnings;
 
 use RabakLib::Trap;
 use RabakLib::Log;
-use RabakLib::InodeStore;
 use RabakLib::InodeCache;
-use RabakLib::Conf;
 
 sub new {
     my $class= shift;
