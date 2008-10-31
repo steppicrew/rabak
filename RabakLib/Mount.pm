@@ -10,6 +10,7 @@ use Data::Dumper;
 
 use vars qw(@ISA);
 
+use RabakLib::Conf;
 use RabakLib::Log;
 
 @ISA = qw(RabakLib::Conf);

@@ -11,6 +11,7 @@ use vars qw(@ISA);
 use Data::Dumper;
 use File::Spec;
 use RabakLib::Log;
+use RabakLib::Mountable;
 
 sub new {
     my $class= shift;

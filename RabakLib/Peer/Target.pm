@@ -7,6 +7,7 @@ use strict;
 no warnings 'redefine';
 
 use RabakLib::Log;
+use RabakLib::Mountable;
 use RabakLib::ConfFile;
 use RabakLib::InodeCache;
 use RabakLib::DupMerge;
