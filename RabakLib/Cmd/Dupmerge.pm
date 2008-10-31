@@ -48,7 +48,8 @@ __EOT__
 sub run {
     my $self= shift;
 
-    $self->warnOptions([ 'quiet', 'verbose', 'pretend' ]);
+    #TODO: implement option pretend (i.e. do not cache inodes but print possible hard links)
+    $self->warnOptions([ 'pretend' ]);
 
     if (scalar @{ $self->{ARGS} } == 0) {
         $self->{ERROR}= "Please provide one or more directory paths!\n";
