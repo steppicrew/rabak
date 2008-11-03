@@ -15,14 +15,14 @@ use warnings;
 
 sub GetGlobalOptions {
     return {
-        "conf" =>               [ "",  "s", "<file>",   "Use <file> for configuration" ],
-        "i" =>                  [ "",  "s", "<value>",  "Save on device with targetgroup value <value> (Backward compatibility. Don't use!)" ],
-#        "logging" =>            [ "",  "s", "<file>",   "Log to <file>" ],
-        "pretend" =>            [ "",  "",  "",         "Pretend (don't do anything, just tell what would happen)" ],
-        "quiet" =>              [ "",  "",  "",         "Be quiet" ],
-        "verbose" =>            [ "v", "",  "",         "Be verbose" ],
+        "conf" =>               [ "c", "=s", "<file>",  "Use <file> for configuration" ],
+        "i" =>                  [ "",  "=s", "<value>", "Save on device with targetgroup value <value> (Depricated. Don't use!)" ],
+#        "logging" =>            [ "",  "=s", "<file>",  "Log to <file>" ],
+        "pretend" =>            [ "p", "",  "",         "Pretend (don't do anything, just tell what would happen)" ],
+        "quiet" =>              [ "q", "",  "",         "Be quiet" ],
+        "verbose" =>            [ "v", "+",  "",        "Be verbose (may specified more than once to be more verbose)" ],
         "version" =>            [ "V", "",  "",         "Show version" ],
-        "help" =>               [ "",  "",  "",         "Show (this) help" ],
+        "help" =>               [ "h", "",  "",         "Show (this) help" ],
     };
 }
 
@@ -44,7 +44,7 @@ sub Build {
             my $hDefs= $hOptDefs{$sOpt};
             my $sKey= $sOpt;
             $sKey .= '|' . $hDefs->[0] if $hDefs->[0];
-            $sKey .= '=' . $hDefs->[1] if $hDefs->[1];
+            $sKey .= $hDefs->[1] if $hDefs->[1];
             push @sOptArgs, $sKey;
         }
     };
@@ -126,7 +126,7 @@ sub setup {
     $self->{ARGS}= $hArgs;
     $self->{DATA}{COMMAND_LINE}= $sCommandLine;
     logger->setOpts({
-        verbose   => $hOpts->{'verbose'} ? logger->LOG_VERBOSE_LEVEL : undef,
+        verbose   => $hOpts->{'verbose'} ? $hOpts->{'verbose'} + LOG_DEFAULT_LEVEL : undef,
         quiet     => $hOpts->{'quiet'},
 #        logging   => $hOpts->{'logging'},
         pretend   => $hOpts->{'pretend'},
@@ -223,8 +223,15 @@ sub getOptionsHelp {
         my $hOptions= shift;
         my $sResult= '';
         foreach my $sKey (sort keys %$hOptions) {
-            my $sDescr= join("\n" . (' ' x 23), split(/\n/, $hOptions->{$sKey}[3]));
-            $sResult .= sprintf("    \-\-%-15s  %s\n", sprintf("%s %s", $sKey, $hOptions->{$sKey}[2]), $sDescr);
+            my $sDescr= join("\n" . (' ' x 26), split(/\n/, $hOptions->{$sKey}[3]));
+            my $sLongOption= "--$sKey";
+            my $sShortOption= $hOptions->{$sKey}[0] ? "-$hOptions->{$sKey}[0] | " : "     ";
+            $sResult .= sprintf("    %-20s  %s\n",
+                sprintf("%s%s %s",
+                    $sShortOption, $sLongOption, $hOptions->{$sKey}[2]
+                ), $sDescr
+             );
+#            $sResult .= sprintf("    \-\-%-15s  %s\n", sprintf("%s %s", $sKey, $hOptions->{$sKey}[2]), $sDescr);
         }
         $sResult= "\n$sTitle:\n$sResult" if $sResult;
         return $sResult;

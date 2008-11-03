@@ -21,12 +21,12 @@ sub getOptions {
         "ignore-time" =>        [ "t", "", "",  "Ignore file date/time" ],
         "ignore-zero-sized" =>  [ "",  "", "",  "Include files with zero byte size" ],
 
-        "min-size" =>           [ "", "", "<min size>",         "Ignore files smaller than <min size>" ],
-        "max-size" =>           [ "", "", "<max size>",         "Ignore files larger than <max size>" ],
-        "temp-dir" =>           [ "", "", "<temp dir>",         "Working directory for temporary data collection (default: '/tmp')" ],
-        "db-backend" =>         [ "", "", "<db engine>",        "Database engine. possible values: sqlite2, sqlite3 (default)" ],
-        "db-inodes-dir" =>      [ "", "", "",                   "Directory for inodes.db (default: current dir)" ],
-        "db-postfix" =>         [ "", "", "<multi db postfix>", "Enables db for each directory. Specifies postfix for db name" ],
+        "min-size" =>           [ "", "=i", "<min size>",         "Ignore files smaller than <min size>" ],
+        "max-size" =>           [ "", "=i", "<max size>",         "Ignore files larger than <max size>" ],
+        "temp-dir" =>           [ "", "=s", "<temp dir>",         "Working directory for temporary data collection (default: '/tmp')" ],
+        "db-backend" =>         [ "", "=s", "<db engine>",        "Database engine. possible values: sqlite2, sqlite3 (default)" ],
+        "db-inodes-dir" =>      [ "", "=s", "<dir>",              "Directory for inodes.db (default: current dir)" ],
+        "db-postfix" =>         [ "", "=s", "<multi db postfix>", "Enables db for each directory. Specifies postfix for db name" ],
     };
 }
 

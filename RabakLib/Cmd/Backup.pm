@@ -13,7 +13,7 @@ use vars qw(@ISA);
 
 sub getOptions {
     return {
-        "targetgroup-value" =>  [ "",  "s", "<value>",   "Save on device with targetgroup value <value>" ],
+        "targetgroup-value" =>  [ "i",  "=s", "<value>",   "Save on device with targetgroup value <value>" ],
     };
 }
 
