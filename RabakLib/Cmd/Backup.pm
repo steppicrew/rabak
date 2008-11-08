@@ -13,7 +13,8 @@ use vars qw(@ISA);
 
 sub getOptions {
     return {
-        "targetgroup-value" =>  [ "i",  "=s", "<value>",   "Save on device with targetgroup value <value>" ],
+        "targetgroup-value" =>  [ "i", "=s", "<value>",   "Save on device with targetgroup value <value>" ],
+        "logging" =>            [ "l", "!",  "",          "Use '--logging' to log even if not set in config file\nUse '--nologging' to prevent logging." ],
     };
 }
 
@@ -40,7 +41,8 @@ sub run {
     my $oBakset= $self->getBakset($sBakset);
     return 0 unless $oBakset;
     
-    $oBakset->set_value('/*.switch.targetvalue', $self->{OPTS}{"targetgroup-value"}) if $self->{OPTS}{"targetgroup-value"};
+    $oBakset->set_value('/*.switch.targetvalue', $self->{OPTS}{"targetgroup-value"}) if defined $self->{OPTS}{"targetgroup-value"};
+    $oBakset->set_value('/*.switch.logging', $self->{OPTS}{logging}) if defined $self->{OPTS}{logging};
 
     $oBakset->backup();
     return 1;

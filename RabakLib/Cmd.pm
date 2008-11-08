@@ -17,11 +17,10 @@ sub GetGlobalOptions {
     return {
         "conf" =>               [ "c", "=s", "<file>",  "Use <file> for configuration" ],
         "i" =>                  [ "",  "=s", "<value>", "Save on device with targetgroup value <value> (Depricated. Don't use!)" ],
-#        "logging" =>            [ "",  "=s", "<file>",  "Log to <file>" ],
         "pretend" =>            [ "p", "",  "",         "Pretend (don't do anything, just tell what would happen)" ],
         "quiet" =>              [ "q", "",  "",         "Be quiet" ],
-        "verbose" =>            [ "v", "+",  "",        "Be verbose (may specified more than once to be more verbose)" ],
-        "version" =>            [ "V", "",  "",         "Show version" ],
+        "verbose" =>            [ "v", "+",  "",        "Be verbose (May be specified more than once to be more verbose)" ],
+        "color" =>              [ "",  "!",  "",        "Enable colored output" ],
         "help" =>               [ "h", "",  "",         "Show (this) help" ],
     };
 }
@@ -128,8 +127,8 @@ sub setup {
     logger->setOpts({
         verbose   => $hOpts->{'verbose'} ? $hOpts->{'verbose'} + LOG_DEFAULT_LEVEL : undef,
         quiet     => $hOpts->{'quiet'},
-#        logging   => $hOpts->{'logging'},
         pretend   => $hOpts->{'pretend'},
+        color     => $hOpts->{'color'},
     });
     
 }
@@ -240,14 +239,16 @@ sub getOptionsHelp {
 }
 
 # prints a warning for each given but unused general option
+# gets array of used general options
 sub warnOptions {
     my $self= shift;
     my $aUsed= shift || [];
 
     my %hOpts= %{ $self->{OPTS} };
     # delete keys for used general options and all command specific options
-    map { delete $hOpts{$_} } (@$aUsed, keys %{ $self->getOptions() });
-    map { logger->warn("Option '--$_' ignored!"); } keys %hOpts;
+    map { delete $hOpts{$_} } (@$aUsed, 'color', keys %{ $self->getOptions() });
+    # use scalar to make logger log (returns array otherwise)
+    map { scalar logger->warn("Option '--$_' ignored!"); } keys %hOpts;
 }
 
 sub getOptions {

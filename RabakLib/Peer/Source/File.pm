@@ -47,6 +47,7 @@ sub _get_filter {
         push @$aFilter, "-(", "&exclude", ")" if defined $self->get_raw_value('exclude');
         push @$aFilter, "+(", "&include", ")" if defined $self->get_raw_value('include');
     }
+#print Dumper($aFilter);
     return $self->_parseFilter($aFilter, $self->getPath(), $aMacroStack);
 }
 
@@ -321,7 +322,7 @@ sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
     my $oTarget= shift;
-    
+
     # overwrite Source's SUPER class with Mountable
     my $aResult = $self->SUPER::show($hConfShowCache);
     push @$aResult, @{$self->mountable()->show($hConfShowCache)};
@@ -340,7 +341,7 @@ sub show {
     shift @$aMacroStack if scalar @$aMacroStack;
     push @{$hConfShowCache->{'.'}}, @$aMacroStack;
     
-    return $aResult unless $self->get_switch("verbose", 0) >= LOG_VERBOSE_LEVEL;
+    return $aResult unless $self->get_switch("show_filter", 0);
 
     my $sBaseDir= $self->getFullPath();
     push @$aResult, "", "# Expanded rsync filter (relative to '$sBaseDir'):", map {"#\t$_"} @sFilter;

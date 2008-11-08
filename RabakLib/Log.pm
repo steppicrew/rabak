@@ -9,6 +9,7 @@ no warnings 'redefine';
 use Data::Dumper;
 use File::Temp;
 use Mail::Send;
+use Term::ANSIColor;
 
 # use File::Spec ();
 use POSIX qw(strftime);
@@ -61,6 +62,7 @@ BEGIN {
         SWITCH_QUIET   => undef,
         SWITCH_EMAIL   => undef,
         SWITCH_NAME    => undef,
+        SWITCH_COLOR   => undef,
         
         LAST_PROGRESS  => undef, # force new line on next print on screen
     };
@@ -86,7 +88,7 @@ sub setOpts {
     my $class= shift;
     my $hOpts= shift;
 
-    for my $sParam ('pretend', 'logging', 'verbose', 'quiet', 'name', 'email') {
+    for my $sParam ('pretend', 'logging', 'verbose', 'quiet', 'name', 'email', 'color') {
         my $sSwitch= 'SWITCH_' . uc($sParam);
         my $sKey= $sParam;
         
@@ -134,6 +136,19 @@ sub getLevelPrefix {
     
     my $sPrefix= $self->LOG_LEVEL_PREFIX->{$iLevel} || "LOG($iLevel)";
     return sprintf '%-10s', "$sPrefix:";
+}
+
+sub getColoredLevelPrefix {
+    my $self= shift;
+    my $iLevel= shift;
+    my $sPrefix= $self->getLevelPrefix($iLevel);
+    
+    return $sPrefix unless $self->{SWITCH_COLOR};
+    return colored($sPrefix, 'bold red')    if $iLevel == LOG_ERROR_LEVEL;
+    return colored($sPrefix, 'bold yellow') if $iLevel == LOG_WARN_LEVEL;
+    return colored($sPrefix, 'bold')        if $iLevel == LOG_INFO_LEVEL;
+    return colored($sPrefix, 'bold white')  if $iLevel == LOG_DEBUG_LEVEL;
+    return $sPrefix;
 }
 
 sub incIndent {
@@ -417,7 +432,7 @@ sub progress {
     return if $self->{SWITCH_QUIET} || LOG_PROGRESS_LEVEL > $self->verbosity();
 
     local $|= 1;
-    my %sPrefixes= $self->_buildLogPrefixes($self->getLevelPrefix(LOG_PROGRESS_LEVEL));
+    my %sPrefixes= $self->_buildLogPrefixes(LOG_PROGRESS_LEVEL);
     $sMessage= $sPrefixes{"STDOUT"} . $sMessage;
     my $iLength= length $sMessage;
     if (defined $self->{LAST_PROGRESS}) {
@@ -461,7 +476,8 @@ sub log {
 
 sub _buildLogPrefixes {
     my $self= shift;
-    my $sLogLevelPrefix= shift;
+    my $iLogLevel= shift;
+    my $sLogLevelPrefix= $self->getLevelPrefix($iLogLevel);
     
     my $sMsgPref= "  " x $self->{INDENT1};
     $sMsgPref.= "[$self->{PREFIX}] " if $self->{PREFIX};
@@ -469,7 +485,9 @@ sub _buildLogPrefixes {
     
     my $sLogPref= $self->{CATEGORY} ? "$self->{CATEGORY}\t" : "";
     return (
-        "STDOUT" => "$self->{STDOUT_PREFIX}$sLogLevelPrefix$sMsgPref",
+        "STDOUT" => "$self->{STDOUT_PREFIX}"
+            . $self->getColoredLevelPrefix($iLogLevel)
+            . "$sMsgPref",
         "LOG" => _timestr() . "\t$sLogLevelPrefix$sLogPref$sMsgPref",
     );
 }
@@ -484,7 +502,7 @@ sub _levelLog {
     $self->{ERRORCOUNT}++ if $iLevel == LOG_ERROR_LEVEL;
     $self->{WARNCOUNT}++ if $iLevel == LOG_WARN_LEVEL;
 
-    my $sLogLevelPref= $self->getLevelPrefix($iLevel);
+    my %sPrefixes= $self->_buildLogPrefixes($iLevel);
 
     for my $sMessage (@sMessage) {
         next unless defined $sMessage;
@@ -498,7 +516,6 @@ sub _levelLog {
         }
         chomp $sMessage;
         $sMessage.= "\n";
-        my %sPrefixes= $self->_buildLogPrefixes($sLogLevelPref);
         unless ($self->{SWITCH_QUIET} || $iLevel > $self->verbosity()) {
             # print message to stdout
             print "\r", ' 'x(length $self->{LAST_PROGRESS}), "\r" if defined $self->{LAST_PROGRESS};

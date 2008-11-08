@@ -16,12 +16,12 @@ sub help {
     shift;
     my $sOptions= shift;
     return <<__EOT__;
-rabak doc [options]
+rabak doc
 
 Displays the documentation included in the Rabak package.
 
 This is basicly an alias for "perldoc RabakLib::Doc".
-$sOptions
+
 __EOT__
 }
 

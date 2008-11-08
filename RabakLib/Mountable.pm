@@ -72,8 +72,10 @@ sub getPath {
     # path may contain symlinks and should be expanded once
     unless ($self->{PATH_IS_ABSOLUTE}) {
         $sBasePath= $peer->abs_path($sBasePath);
-        $peer->set_value("path", $sBasePath);
-        $self->{PATH_IS_ABSOLUTE}= 1;
+        if (defined $sBasePath) {
+            $peer->set_value("path", $sBasePath);
+            $self->{PATH_IS_ABSOLUTE}= 1;
+        }
     }
 
     $sPath= File::Spec->canonpath($sPath); # simplify path
