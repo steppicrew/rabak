@@ -47,7 +47,7 @@ sub _get_filter {
         push @$aFilter, "-(", "&exclude", ")" if defined $self->get_raw_value('exclude');
         push @$aFilter, "+(", "&include", ")" if defined $self->get_raw_value('include');
     }
-#print Dumper($aFilter);
+
     return $self->_parseFilter($aFilter, $self->getPath(), $aMacroStack);
 }
 
