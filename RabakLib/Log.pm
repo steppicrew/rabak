@@ -166,7 +166,7 @@ sub IsColoredTerm {
 sub Uncolor {
     shift;
     my @sStrings= @_;
-    s/\e\[[\d\;]+m// foreach (@sStrings);
+    s/\e\[[\d\;]+m//g foreach (@sStrings);
     return @sStrings if wantarray;
     return join '', @sStrings;
 }
