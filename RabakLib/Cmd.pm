@@ -128,7 +128,7 @@ sub setup {
         verbose   => $hOpts->{'verbose'} ? $hOpts->{'verbose'} + LOG_DEFAULT_LEVEL : undef,
         quiet     => $hOpts->{'quiet'},
         pretend   => $hOpts->{'pretend'},
-        color     => $hOpts->{'color'},
+        color     => defined $hOpts->{'color'} ? $hOpts->{'color'} : logger->IsColoredTerm() ,
     });
     
 }

@@ -8,8 +8,13 @@ use vars qw(@ISA);
 
 use Data::Dumper;
 use RabakLib::Version;
+use RabakLib::Log;
+use Term::ANSIColor;
 
 @ISA= qw( RabakLib::Cmd );
+
+our $sColorHi= color "bold";
+our $sColorReset= color "reset";
 
 sub getOptions {
     return {
@@ -40,7 +45,7 @@ sub help {
     return <<__EOT__;
 Available commands:
 
-    rabak help [options] [<command>]
+    ${sColorHi}rabak help [options] [<command>]${sColorReset}
     Displays more information about a given command.
 $sCmds$sOptions
 __EOT__
@@ -58,7 +63,7 @@ sub run {
     my $sCmd= $self->{ARGS}[0] || 'help';
     my $oCmd= RabakLib::Cmd::Build([ $sCmd ]);
 
-    print $/ . $oCmd->help($self->getOptionsHelp($self->GetGlobalOptions(), $oCmd->getOptions()));
+    logger->print("", $oCmd->help($self->getOptionsHelp($self->GetGlobalOptions(), $oCmd->getOptions())));
 
     return 1;
 }

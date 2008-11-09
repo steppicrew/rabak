@@ -143,12 +143,45 @@ sub getColoredLevelPrefix {
     my $iLevel= shift;
     my $sPrefix= $self->getLevelPrefix($iLevel);
     
-    return $sPrefix unless $self->{SWITCH_COLOR};
     return colored($sPrefix, 'bold red')    if $iLevel == LOG_ERROR_LEVEL;
     return colored($sPrefix, 'bold yellow') if $iLevel == LOG_WARN_LEVEL;
-    return colored($sPrefix, 'bold')        if $iLevel == LOG_INFO_LEVEL;
+    return colored($sPrefix, 'bold blue')   if $iLevel == LOG_INFO_LEVEL;
+    return colored($sPrefix, 'bold cyan')   if $iLevel == LOG_VERBOSE_LEVEL;
     return colored($sPrefix, 'bold white')  if $iLevel == LOG_DEBUG_LEVEL;
     return $sPrefix;
+}
+
+sub IsColoredTerm {
+    return 0 unless -t STDOUT;
+    my $sTerm= $ENV{TERM};
+    foreach my $sCTerm (
+        'xterm', 'linux', 'rxvt', 'dtterm', 'teraterm', 'aixterm',
+        'PuTTY', 'Cygwin SSH', 'Mac Terminal',
+    ) {
+         return 1 if $sTerm eq $sCTerm;
+    };
+    return 0;
+}
+
+sub Uncolor {
+    shift;
+    my @sStrings= @_;
+    s/\e\[[\d\;]+m// foreach (@sStrings);
+    return @sStrings if wantarray;
+    return join '', @sStrings;
+}
+
+sub fixupColors {
+    my $self= shift;
+    my @sStrings= @_;
+    return $self->Uncolor(@sStrings) unless $self->{SWITCH_COLOR};
+    return @sStrings if wantarray;
+    return join '', @sStrings;
+}
+
+sub _print {
+    my $self= shift;
+    print $self->fixupColors(@_);
 }
 
 sub incIndent {
@@ -439,7 +472,7 @@ sub progress {
         my $sLastLength= length $self->{LAST_PROGRESS};
         printf "\r", ' 'x$sLastLength if $sLastLength > $iLength;
     }
-    print "\r$sMessage";
+    $self->_print("\r", $sMessage);
     $self->{LAST_PROGRESS}= $sMessage;
 }
 
@@ -518,15 +551,15 @@ sub _levelLog {
         $sMessage.= "\n";
         unless ($self->{SWITCH_QUIET} || $iLevel > $self->verbosity()) {
             # print message to stdout
-            print "\r", ' 'x(length $self->{LAST_PROGRESS}), "\r" if defined $self->{LAST_PROGRESS};
-            print $sPrefixes{"STDOUT"} unless $iLevel == LOG_PRINT_LEVEL;
-            print $sMessage;
-            print $self->{LAST_PROGRESS} if defined $self->{LAST_PROGRESS};
+            $self->_print("\r", ' 'x(length $self->{LAST_PROGRESS}), "\r") if defined $self->{LAST_PROGRESS};
+            $self->_print($sPrefixes{"STDOUT"}) unless $iLevel == LOG_PRINT_LEVEL;
+            $self->_print($sMessage);
+            $self->_print($self->{LAST_PROGRESS}) if defined $self->{LAST_PROGRESS};
         }
 
         next if $self->{SWITCH_PRETEND};
 
-        $sMessage= $sPrefixes{LOG} . $sMessage;
+        $sMessage= $self->Uncolor($sPrefixes{LOG}, $sMessage);
 
         $self->{LOG_MESSAGES} .= $sMessage if $self->{SWITCH_LOGGING} && $iLevel <= LOG_VERBOSE_LEVEL;
         $self->{MESSAGES} .= $sMessage if $iLevel <= $self->verbosity();

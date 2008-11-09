@@ -500,6 +500,7 @@ sub run_rabak_script {
             "verbose" => logger()->LOG_MAX_LEVEL(),
             "pretend" => 0,
             "quiet" => 0,
+            "color" => 0,
         });
         logger()->set_prefix("X");
         ' . $sScript if defined $sScript;
