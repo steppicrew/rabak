@@ -26,21 +26,17 @@ sub getOptions {
     };
 }
 
-sub help {
-    shift;
-    my $sOptions= shift;
-    return <<__EOT__;
-rabak conf [options] [<backup set>]
-
-Displays the effective configuration.
-
-If no argument is given, prints the available backup sets defined in the default
-configuration file or in the configuration file specified by the "--conf" option.
-
-If a backup set name is given as a argument, prints the details of that confi-
-guration. Note that the output itself is a valid configuration file.
-$sOptions
-__EOT__
+sub Help {
+    my $self= shift;
+    return $self->SUPER::Help(
+        'rabak conf [options] [<backup set>]',
+        'Displays the effective configuration.',
+        'If no argument is given, prints the available backup sets defined in the default',
+        'configuration file or in the configuration file specified by the "--conf" option.',
+        '',
+        'If a backup set name is given as a argument, prints the details of that confi-',
+        'guration. Note that the output itself is a valid configuration file.',
+    );
 }
 
 sub run {

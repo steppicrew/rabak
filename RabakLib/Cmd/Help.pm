@@ -9,47 +9,49 @@ use vars qw(@ISA);
 use Data::Dumper;
 use RabakLib::Version;
 use RabakLib::Log;
-use Term::ANSIColor;
 
 @ISA= qw( RabakLib::Cmd );
-
-our $sColorHi= color "bold";
-our $sColorReset= color "reset";
 
 sub getOptions {
     return {
     };
 }
 
-sub ShortHelp {
+sub GetAllCommands {
+    return sort(
+#        'admin',
+        'backup',
+        'conf',
+        'doc',
+#        'dot',
+        'dupmerge',
+        'help',
+        'version',
+    );
+}
+
+sub Help {
+    my $self= shift;
+    return $self->SUPER::Help(
+        'rabak help [options] [<command>]',
+        'Displays more information about a given command.',
+        'Used with a command, help prints detailed information and options for this command.',
+        'Used without a command, help prints an overview of all available commands.',
+    );
+}
+
+sub getHelp {
+    my $self= shift;
     my $sCmd= shift;
 
     my $oCmd= RabakLib::Cmd::Build([ $sCmd ]);
-    my $sHelp= $oCmd->help("");
-    return "\n    $1\n    $2\n" if $sHelp =~ /^([^\n]+)\n\n([^\n]+)\n/;
-    die "\n\nText in RabakLib::Cmd::" . ucfirst($sCmd) . "::help formatted badly!!\n\n";
-}
-
-sub help {
-    shift;
-    my $sOptions= shift;
-
-    my $sCmds= ShortHelp('conf')
-        . ShortHelp('backup')
-        . ShortHelp('dupmerge')
-        . ShortHelp('doc')
-        . ShortHelp('version')
-    ;
-    # TODO: tutorial dupesearch archive
-
-    return <<__EOT__;
-Available commands:
-
-    ${sColorHi}rabak help [options] [<command>]${sColorReset}
-    Displays more information about a given command.
-$sCmds$sOptions
-__EOT__
-
+    my @sHelp= $oCmd->Help();
+    my @sOptions= $self->getOptionsHelp($self->GetGlobalOptions(), $oCmd->getOptions());
+    shift @sOptions unless defined $sHelp[2];
+    return (
+        @sHelp,
+        @sOptions,
+    );
 }
 
 sub run {
@@ -58,13 +60,23 @@ sub run {
     return unless $self->wantArgs(0, 1);
 
     $self->warnOptions();
-    print RabakLib::Version::VersionMsg() unless $self->{ARGS}[0];
-
-    my $sCmd= $self->{ARGS}[0] || 'help';
-    my $oCmd= RabakLib::Cmd::Build([ $sCmd ]);
-
-    logger->print("", $oCmd->help($self->getOptionsHelp($self->GetGlobalOptions(), $oCmd->getOptions())));
-
+    
+    if ($self->{ARGS}[0]) {
+        my @sHelp= $self->getHelp($self->{ARGS}[0]);
+        logger->print('', shift(@sHelp));
+        logger->print('', shift(@sHelp)) if scalar @sHelp;
+        logger->print('', @sHelp, '') if scalar @sHelp;
+    }
+    else {
+        logger->print(RabakLib::Version::VersionMsg());
+        logger->print('', 'Available commands:');
+        for my $sCmd ($self->GetAllCommands()) {
+            my @sHelp= $self->getHelp($sCmd);
+            logger->print('', '    ' . shift(@sHelp));
+            logger->print('    ' . shift(@sHelp)) if scalar @sHelp;
+        }
+        logger->print($self->getOptionsHelp($self->GetGlobalOptions()), '');
+    }
     return 1;
 }
 

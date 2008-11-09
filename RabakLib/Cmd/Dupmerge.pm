@@ -30,19 +30,14 @@ sub getOptions {
     };
 }
 
-sub help {
-    shift;
-    my $sOptions= shift;
-    return <<__EOT__;
-rabak dupmerge [options] <dir> [<dir>...]
-
-Hardlinks identical files in the specified directories.
-
-Use this command to eliminate identical files not already hard linked by rsync.
-This may be useful after renaming or moving files to save disk space after backing up your data.
-It creates an inode database and one database per given directory for later use and faster inode location.
-$sOptions
-__EOT__
+sub Help {
+    my $self= shift;
+    return $self->SUPER::Help(
+        'rabak dupmerge [options] <dir> [<dir>...]',
+        'Hardlinks identical files in the specified directories.',
+        'Use this command to eliminate identical files not already hard linked by rsync.',
+        'This may be useful after renaming or moving files to save disk space after backing up your data.',
+    );
 }
 
 sub run {

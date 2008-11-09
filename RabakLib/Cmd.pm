@@ -5,6 +5,7 @@ package RabakLib::Cmd;
 use Cwd;
 use Data::Dumper;
 use Getopt::Long 2.36 qw( GetOptionsFromArray );
+use Term::ANSIColor;
 
 use RabakLib::ConfFile;
 use RabakLib::Log;
@@ -220,22 +221,26 @@ sub getOptionsHelp {
     my $add= sub {
         my $sTitle= shift;
         my $hOptions= shift;
-        my $sResult= '';
+        my @sResult= ();
         foreach my $sKey (sort keys %$hOptions) {
-            my $sDescr= join("\n" . (' ' x 26), split(/\n/, $hOptions->{$sKey}[3]));
-            my $sLongOption= "--$sKey";
-            my $sShortOption= $hOptions->{$sKey}[0] ? "-$hOptions->{$sKey}[0] | " : "     ";
-            $sResult .= sprintf("    %-20s  %s\n",
-                sprintf("%s%s %s",
-                    $sShortOption, $sLongOption, $hOptions->{$sKey}[2]
-                ), $sDescr
-             );
-#            $sResult .= sprintf("    \-\-%-15s  %s\n", sprintf("%s %s", $sKey, $hOptions->{$sKey}[2]), $sDescr);
+            my @sDescr= split(/\n/, $hOptions->{$sKey}[3]);
+            my $sLongOption= colored("--$sKey", 'bold');
+
+            my $sLine= '    ';
+            $sLine.= $hOptions->{$sKey}[0]
+                ? (colored("-$hOptions->{$sKey}[0]", 'bold') . " | ")
+                : "     ";
+            $sLine.= colored("--$sKey", 'bold');
+            $sLine.= " $hOptions->{$sKey}[2]";
+            my $iLength= length(logger()->Uncolor($sLine));
+            $sLine.= ' 'x(26 - $iLength) if $iLength < 26;
+            $sLine.= shift @sDescr;
+            push @sResult, $sLine, map { ' 'x26 . $_} @sDescr;
         }
-        $sResult= "\n$sTitle:\n$sResult" if $sResult;
-        return $sResult;
+        unshift @sResult, '', "$sTitle:", '' if scalar @sResult; 
+        return @sResult;
     };
-    return $add->('Command options', $hLocalOptions) . $add->('General options', $hGlobalOptions);
+    return $add->('Command options', $hLocalOptions), $add->('General options', $hGlobalOptions);
 }
 
 # prints a warning for each given but unused general option
@@ -255,8 +260,12 @@ sub getOptions {
     return {};
 }
 
-sub help {
-    return "Sorry, no help available.\n";
+sub Help {
+    my $self= shift;
+    my @sHelp= @_;
+    @sHelp= ('Sorry, no help available!') unless scalar @sHelp;
+    $sHelp[0]= colored($sHelp[0], 'bold');
+    return @sHelp;
 }
 
 package RabakLib::Cmd::Error;
