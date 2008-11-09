@@ -28,6 +28,8 @@ sub run {
 
     return unless $self->wantArgs(0);
 
+    $self->warnOptions();
+    
     print RabakLib::Version::LongVersionMsg(), $/;
     return 1;
 }
