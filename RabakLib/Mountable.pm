@@ -71,8 +71,9 @@ sub getPath {
 
     # path may contain symlinks and should be expanded once
     unless ($self->{PATH_IS_ABSOLUTE}) {
-        $sBasePath= $peer->abs_path($sBasePath);
-        if (defined $sBasePath) {
+        my $sAbsPath= $peer->abs_path($sBasePath);
+        if (defined $sAbsPath) {
+            $sBasePath= $sAbsPath;
             $peer->set_value("path", $sBasePath);
             $self->{PATH_IS_ABSOLUTE}= 1;
         }
