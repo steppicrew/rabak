@@ -30,7 +30,7 @@
 index: Home
 intro: Introduction
 requirements: System Requirements
-installation: Install Rabak
+installation: Installation
 quickstart: Quick Start
 featuretests: Feature Tests
 documentation: Docs
@@ -103,7 +103,7 @@ You need Linux or Cygwin (Notice: On Cygwin pathes may not exceed 260 characters
 Other plattforms may work too. We didn't try.
 
 You need rsync. I know rabak does't work before version 2.6.4.
-Maybe even a newer one is requires. The newer the better.
+Maybe even a newer one is required. The newer the better.
 
 You need Perl, I don't know which version. Probably >= 5.8
 
@@ -117,7 +117,7 @@ cpan -i Digest::SHA1
 cpan -i Getopt::Long
 ##end
 
-To use dupemerge, you will need the Perl module *Digest::SHA1*.
+To use dupemerge, you will need the *Digest::SHA1* perl module.
 To install it do:
 ##code
 cpan -i Digest::SHA1
@@ -126,10 +126,10 @@ cpan -i Digest::SHA1
 
 ==installation: Install Rabak
 
-##h1 Installation
+##h1 Install Rabak
 
-Extract the files of rabak's archive to a temporary directory and
-install Rabak's perl Library.
+Extract the files in rabak's archive to a temporary directory and
+install Rabak's perl library.
 ##code
 cd rabak-<version>
 perl Makefile.PL
@@ -138,7 +138,7 @@ make install
 ##end
 
 Now you may copy the rabak script itself into your execution path
-and dstributed config files to @/etc@.
+and sample config files to @/etc@.
 ##code
 cp -p bin/rabak /usr/local/bin/
 mkdir /etc/rabak
@@ -214,7 +214,7 @@ rabak doc
 ##end
 
 The most recent version and complete docs are available at:
-"www.raisin.de/rabak":http://www.raisin.de/rabak
+www.raisin.de/rabak
 
 
 ==developers: Developer Notes
@@ -222,7 +222,7 @@ The most recent version and complete docs are available at:
 ##h1 Developers
 
 You can extend Rabak and add backup types. Have a look into
-the @RabakLib/Path/Source@ directory.
+the @RabakLib/Peer/Source@ directory.
 
 
 Have fun!
