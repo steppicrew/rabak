@@ -280,15 +280,10 @@ sub getSourceSubdir {
     return $self->_getSourceData('SUBDIR');
 }
 
-sub getBakDir {
-    my $self= shift;
-    my $sBakDir= $self->_getBaksetData("DIR") . "/" . $self->_getSourceData("SUBDIR");
-}
-
 # public
 sub getAbsBakDir {
     my $self= shift;
-    $self->getPath($self->getBakDir());
+    $self->getPath($self->_getSourceData("BAKDIR"));
 }
 
 sub prepareBackup {
@@ -397,6 +392,7 @@ sub prepareSourceBackup {
     my $sSourceExt= $asSourceExts->[0];
     my $sSourceSet= "$sBakDay$sSubSet";
     my $sSourceSubdir= "$sSourceSet$sSourceExt";
+    my $sBakDir= $self->_getBaksetData("DIR") . "/$sSourceSubdir";
     $self->{SOURCE_DATA}= {
         OLD_BAKDIRS => \@sBakDirs,
         EXT => $sSourceExt,
@@ -411,7 +407,7 @@ sub prepareSourceBackup {
     
     logger->info("Backup \"$sBakDay$sSourceExt\" exists, using subset \"$sSourceSubdir\".") if $sSubSet;
 
-    $self->mkdir($self->getBakDir()) unless $bPretend;
+    $self->mkdir($sBakDir) unless $bPretend;
 }
 
 sub finishSourceBackup {
@@ -431,7 +427,7 @@ sub finishSourceBackup {
         $sSourceExt=~ s/^\./\-/;
         my $sCurrentLink= "current" . $self->_getBaksetData("EXT") . $sSourceExt;
         $self->unlink($sCurrentLink);
-        $self->symlink($self->getBakDir(), $sCurrentLink);
+        $self->symlink($self->_getSourceData("BAKDIR"), $sCurrentLink);
     }
     $self->{SOURCE_DATA}= undef;
 }
