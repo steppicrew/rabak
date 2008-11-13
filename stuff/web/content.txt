@@ -107,7 +107,6 @@ Maybe even a newer one is requires. The newer the better.
 
 You need Perl, I don't know which version. Probably >= 5.8
 
-You need the *Mail::Send* and *IPC::Run* perl module. Fetch it from CPAN:
 You need the *Mail::Send*, *Digest::SHA1*, *Getopt::Long*(>= 2.36), and *IPC::Run*
 perl modules. Fetch it from CPAN:
 
