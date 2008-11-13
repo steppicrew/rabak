@@ -156,7 +156,7 @@ sub IsColoredTerm {
     return 0 unless -t STDOUT;
     my $sTerm= $ENV{TERM};
     foreach my $sCTerm (
-        'xterm', 'linux', 'rxvt', 'dtterm', 'teraterm', 'aixterm',
+        'xterm', 'linux', 'rxvt', 'dtterm', 'teraterm',
         'PuTTY', 'Cygwin SSH', 'Mac Terminal', 'screen',
     ) {
          return 1 if $sTerm eq $sCTerm;
