@@ -1,3 +1,16 @@
+rabak-1.0rc6
+- better macro expansion
+- new filter handling for rsync
+- refactored dupmerge and inode caching
+- introducing commands - refactoring
+- implementing dupmerge into rabak
+- new command line argument handling
+- colored output
+
+rabak-1.0rc3
+- New examples
+- target path is always excluded from backup
+- better macro expansion
 
 rabak-1.0rc2
 - Cleaning up RabakLib by renaming and moving several files
