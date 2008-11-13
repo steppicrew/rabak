@@ -29,17 +29,15 @@
 
 index: Home
 intro: Introduction
+requirements: System Requirements
+installation: Install Rabak
+quickstart: Quick Start
+featuretests: Feature Tests
+documentation: Docs
+developers: Developer Notes
+license: License
 download: Downloads
 links: Links
-
-==angebot: Besondere Angebote
-##h1 Sauna
-nur 1 euro fufzig
-
-==sonderangebote: Besonders billllich
-##image assets/uhr1.jpg Ditte is ne Uhr
-im mai keine
-
 
 ; ----------------------------------------------------------------------------
 ; SPIELWIESE
@@ -74,7 +72,7 @@ Wir bieten Ihnen Ruhe und Entspannung
 ; STARTSEITE
 ; ----------------------------------------------------------------------------
 
-==index: Willkommen an Bord!
+==index: Welcome to Rabak!
 
 ;##image Maya/500340MayavorCeuta.jpg
 
@@ -106,9 +104,13 @@ It's simple to configure different, multiple sources for one backup set.
 There's support for file filters that hide the complexity of the rsync filters
 (and make them actually usable).
 
+
+==requirements: Rabak's system requirements
+
 ##h2 Requirements
 
-You need Linux or Cygwin. Other plattforms may work too. We didn't try.
+You need Linux or Cygwin (Notice: On Cygwin pathes may not exceed 260 characters).
+Other plattforms may work too. We didn't try.
 
 You need rsync. I know rabak does't work before version 2.6.4.
 Maybe even a newer one is requires. The newer the better.
@@ -116,39 +118,57 @@ Maybe even a newer one is requires. The newer the better.
 You need Perl, I don't know which version. Probably >= 5.8
 
 You need the *Mail::Send* and *IPC::Run* perl module. Fetch it from CPAN:
+You need the *Mail::Send*, *Digest::SHA1*, *Getopt::Long*(>= 2.36), and *IPC::Run*
+perl modules. Fetch it from CPAN:
 
 ##code
-cpan -i Mail::Send
+cpan -i Mail::Send (or cpan -i MailTools)
 cpan -i IPC::Run
+cpan -i Digest::SHA1
+cpan -i Getopt::Long
 ##end
 
-To use faster-dupemerge, you will need the Perl module *Digest::SHA1*.
+To use dupemerge, you will need the Perl module *Digest::SHA1*.
 To install it do:
 ##code
 cpan -i Digest::SHA1
 ##end
 
+
+==installation: Install Rabak
+
 ##h2 Installation
 
-Make a directory @/usr/local/rabak@ and copy the contents of this
-directory there.
+Extract the files of rabak's archive to a temporary directory and
+install Rabak's perl Library.
+##code
+cd rabak-<version>
+perl Makefile.PL
+make
+make install
+##end
 
+Now you may copy the rabak script itself into your execution path
+and dstributed config files to @/etc@.
+##code
+cp -p bin/rabak /usr/local/bin/
+mkdir /etc/rabak
+cp -p etc/* /etc/rabak/
+##end
+
+
+==quickstart: Quick Start
 
 ##h2 Quick Start
 
-Change to the installation directory:
+Look at rabak's help:
 ##code
-cd /usr/local/rabak
-##end
-
-Look at the documentation:
-##code
-./rabak doc
+rabak help
 ##end
 
 Make a test backup:
 ##code
-./rabak -c rabak.sample.cf backup sample
+rabak backup -c rabak.sample.cf sample
 ##end
 
 Have a look at the result:
@@ -163,49 +183,52 @@ perldoc RabakLib::Doc
 
 Configure Rabak:
 ##code
-cp rabak.sample.cf rabak.cf
-nano -w rabak.cf
+cp /etc/rabak/rabak.sample.cf /etc/rabak/rabak.cf
+nano -w /etc/rabak/rabak.cf
 ##end
 
-The 'cd' is a bit awkward, I know. I'll find a trick to let
-Rabak find it's libraries later.
 
+==featuretests: Feature Tests
 
 ##h2 Feature Tests
 
 If you have the right to run @mount@ and @mknod@, you can test more
 features by doing:
 ##code
-./stuff/sample-env-make
+sh ./stuff/sample-env-make
 ##end
 
 This produces a test environment in @/tmp/rabak-sample-data@. Data will be
 backed up into @/tmp/rabak-sample-backup@. You can run the sample configurations
 provided in @rabak.sample.cf@:
 ##code
-./rabak -c rabak.sample.cf backup sample_firstof
-./rabak -c rabak.sample.cf -i Tue backup sample_targetgroup
-./rabak -c rabak.sample.cf -i Tue2 backup sample_targetgroup
+rabak -c rabak.sample.cf backup sample_firstof
+rabak -c rabak.sample.cf -i Tue backup sample_targetgroup
+rabak -c rabak.sample.cf -i Tue2 backup sample_targetgroup
 ##end
 
 When you're done, you can remove the test environment:
 ##code
-./stuff/sample-env-remove
+sh ./stuff/sample-env-remove
 ##end
 
 Check out the docs and the @*.cf@ files for more insight.
 
 
+==documentation: Docs
+
 ##h2 Further reading
 
 Documentation is available through rabak itself:
 ##code
-./rabak doc
+rabak doc
 ##end
 
 The most recent version and complete docs are available at:
 "www.raisin.de/rabak":http://www.raisin.de/rabak
 
+
+==developers: Developer Notes
 
 ##h2 Developers
 
@@ -218,10 +241,16 @@ Have fun!
 Stephan Hantigk rabak@steppicrew.de (Main developer)
 Dietrich Raisin info1@raisin.de (Initial developer)
 
+
+==license: Rabak's License
+
 ##h2 License
 
 See the LICENSE file.
 
+; -----------------------------------------------------------------
+; ENDE
+; -----------------------------------------------------------------
 
 
 
@@ -240,7 +269,7 @@ See the LICENSE file.
 
 
 
-
+==not_available
 
 ##h1 Unsere Öffnungszeiten
 ; ##rightimage assets/uhr1.jpg

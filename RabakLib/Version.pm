@@ -3,6 +3,7 @@ package RabakLib::Version;
 
 use Exporter;
 use vars(@ISA);
+use Term::ANSIColor;
 
 @ISA= qw( Exporter );
 @EXPORT= qw( &VERSION );
@@ -10,7 +11,7 @@ use vars(@ISA);
 sub VERSION { "1.0_rc6" }
 
 sub VersionMsg {
-    return "\nThis is Rabak, version " . VERSION() . "\nRabak is your powerful and reliable rsync based backup system.\n";
+    return "\n" . colored("This is Rabak, version " . VERSION(), 'bold') . "\nRabak is your powerful and reliable rsync based backup system.\n";
 }
 
 sub LongVersionMsg {
