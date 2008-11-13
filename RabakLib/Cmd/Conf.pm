@@ -7,6 +7,8 @@ use strict;
 
 use Data::Dumper;
 
+use RabakLib::Log;
+
 use vars qw(@ISA);
 
 @ISA= qw( RabakLib::Cmd );
@@ -19,25 +21,22 @@ use vars qw(@ISA);
 
 sub getOptions {
     return {
-         "all" => [ "", "", "", "Prints the complete configuration" ],
+         "all"    => [ "", "", "", "Prints the complete configuration" ],
+         "filter" => [ "", "", "", "Prints rsync's filter rules" ],
     };
 }
 
-sub help {
-    shift;
-    my $sOptions= shift;
-    return <<__EOT__;
-rabak conf [options] [<backup set>]
-
-Displays the effective configuration.
-
-If no argument is given, prints the available backup sets defined in the default
-configuration file or in the configuration file specified by the "--conf" option.
-
-If a backup set name is given as a argument, prints the details of that confi-
-guration. Note that the output itself is a valid configuration file.
-$sOptions
-__EOT__
+sub Help {
+    my $self= shift;
+    return $self->SUPER::Help(
+        'rabak conf [options] [<backup set>]',
+        'Displays the effective configuration.',
+        'If no argument is given, prints the available backup sets defined in the default',
+        'configuration file or in the configuration file specified by the "--conf" option.',
+        '',
+        'If a backup set name is given as a argument, prints the details of that confi-',
+        'guration. Note that the output itself is a valid configuration file.',
+    );
 }
 
 sub run {
@@ -61,12 +60,13 @@ sub run {
     my ($oBakset, $oConf)= $self->getBakset($sBakset);
     return 0 unless $oBakset;
 
-    ## FIXME: Muss das auch bei ($sBakset eq '') passieren??
+    ## FIXME: Muss das auch bei ($sBakset eq '') passieren?? Nee!
     $oConf->set_value("*.switch.warn_on_remote_access", 1);
 
+    $oBakset->set_value('/*.switch.show_filter', $self->{OPTS}{filter});
     my @sConf= @{ $oBakset->show() };
     pop @sConf;  # remove last []. (See RabalLib::Conf::show)
-    print join "\n", @sConf, "";
+    logger->print(@sConf);
 
     return 1;
 }

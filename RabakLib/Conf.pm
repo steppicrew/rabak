@@ -22,15 +22,16 @@ sub new {
         PARENT_CONF=> $oParentConf,
         NAME=> $sName,
         ERRORCODE=> undef,
+        CMD_DATA=> undef,
     };
 
     bless $self, $class;
 }
 
 # define some regexp
-our $sregIdent0= "[a-z_][a-z_0-9]*";
+our $sregIdent0= "[a-zA_Z_][a-zA-Z_0-9]*";
 our $sregIdent= "$sregIdent0(\\.$sregIdent0)*";
-our $sregIdentDef= "(\\*\\.)?$sregIdent";
+our $sregIdentDef= $sregIdent;
 our $sregIdentRef= "\\/?\\.*$sregIdent";
 
 # ...and make them public
@@ -58,6 +59,23 @@ sub newFromConf {
     }
 
     return $new;
+}
+
+sub setCmdData {
+    my $self= shift;
+    $self->{CMD_DATA}= shift;
+}
+
+# returns cmd data of $sParam (if given) or copy of CMD_DATA
+# searches in parent confs if not set via setCmdData
+sub cmdData {
+    my $self= shift;
+    my $sParam= shift;
+
+    return $self->{PARENT_CONF}->cmdData($sParam) if !defined($self->{CMD_DATA}) && defined($self->{PARENT_CONF});
+    my $hData= $self->{CMD_DATA} || {};
+    return \(%$hData) unless defined $sParam;
+    return $hData->{uc $sParam};
 }
 
 # Stub to override. A RabakLib::Conf is always valid.
@@ -219,7 +237,7 @@ sub get_value_required_message {
     return undef;
 }
 
-# command line switches are set in /switch
+# command line switches are set in /*.switch
 # if not it's a simple property value
 sub get_switch {
     my $self= shift;
@@ -227,6 +245,9 @@ sub get_switch {
     my $sDefault= shift;
     my $aRefStack= shift;
     
+    # lookup in /*.-scope is done by find_property
+#    my $sResult= $self->get_value("/*.switch.$sName", undef, $aRefStack);
+#    return $sResult if defined $sResult;
     return $self->get_value("switch.$sName", $sDefault, $aRefStack);
 }
 
@@ -382,12 +403,38 @@ sub set_value {
 }
 
 # expand macro given in $sMacroName
-# returns hashref with expanded macro
-# calls $fExpand->() for expanding macro's content
-# calls $fPrePars->() for preparsing macros content
+# returns array with expanded macro's content
 sub expandMacro {
     my $self= shift;
     my $sMacroName= shift;
+    my $oScope= shift || $self;
+    my $aStack= shift || [];
+    my $bRaiseError= shift;
+    my $hResult = $self->expandMacroHash($sMacroName, $oScope, $aStack, sub{$self->_resolveObjects(@_)});
+    unless (defined $hResult->{DATA}) {
+        logger()->error("$hResult->{ERROR} in scope \""
+            . $oScope->get_full_name()
+            . "\"") if $hResult->{ERROR} && $bRaiseError;
+        return ();
+    }
+# print "got ", Dumper($hResult->{DATA}), "\n";
+    return @{$hResult->{DATA}} if ref $hResult->{DATA} eq "ARRAY";
+    logger->error(
+        "Internal error: expandMacro(\"$sMacroName\") in scope \""
+        . $oScope->get_full_name()
+        . "\" should return an array reference! (got $hResult->{DATA})",
+        "Please file bug report!"
+    );
+    return ();
+}
+
+# expand macro given in $sMacroName
+# returns hashref with expanded macro
+# calls $fExpand->() for expanding macro's content
+# calls $fPrePars->() for preparsing macros content
+sub expandMacroHash {
+    my $self= shift;
+    my $sMacroName= lc shift;
     my $oScope= shift || $self;
     my $aMacroStack= shift || [];
     my $fExpand= shift || sub { $self->_resolveObjects(@_) }; # try to expand macro as deep as possible by default
@@ -401,7 +448,7 @@ sub expandMacro {
     $sMacroName=~ s/^\&//;
     my ($sMacro, $oMacroScope)= $oScope->find_property($sMacroName); 
     unless ($oMacroScope) {
-        return { ERROR => "Unknown Macro '$sMacroName'" };
+        return { ERROR => "Could not resolve Macro \"$sMacroName\"" };
     }
     # build full macro name
     $sMacroName= $oMacroScope->get_full_name($sMacroName);
@@ -410,13 +457,13 @@ sub expandMacro {
     my $sMacroPath= $aMacroStack->[0];
     my $sqMacroName= quotemeta "[$sMacroName]";
 
-    return { ERROR => "Recursion detected ('$sMacroName')." } if $sMacroPath=~ /$sqMacroName/;
-    return { ERROR => "'$sMacroName' does not exist." } unless defined $sMacro;
+    return { ERROR => "Recursion detected (\"$sMacroName\")" } if $sMacroPath=~ /$sqMacroName/;
+    return { ERROR => "\"$sMacroName\" does not exist" } unless defined $sMacro;
     $sResult{MACRO}= $sMacroName;
     if (ref $sMacro) {
         return {
             DATA => [ $sMacro ],
-            ERROR => "'$sMacroName' is an object.",
+            ERROR => "\"$sMacroName\" is an object",
         };
     }
     my $aMacro= $self->splitValue(
@@ -437,7 +484,7 @@ sub resolveObjects {
     my $sProperty= shift;
     my $aStack= shift || [];
     
-    return map {$self->remove_backslashes_part2($_)} @{$self->_resolveObjects(["&$sProperty"], $self, $aStack)};
+    return map {$self->remove_backslashes_part2($_)} $self->expandMacro($sProperty, $self, $aStack);
 }
 
 sub _resolveObjects {
@@ -454,24 +501,7 @@ sub _resolveObjects {
         if ($sValue=~ s/^\&($sregIdentRef)$/$1/) {
 
             # macros are expanded and result added to @oResult
-
-# print "expanding macro: '$sValue'\n";
-# print "scope: ", $self->get_full_name() , "\n";
-
-            my $hResult = $self->expandMacro($sValue, $oScope, $aStack, sub{$self->_resolveObjects(@_)});
-            unless (defined $hResult->{DATA}) {
-
-                # logger->error($hResult->{ERROR}) if $hResult->{ERROR};
-                next;
-            }
-
-# print "got ", Dumper($hResult->{DATA}), "\n";
-
-            unless (ref $hResult->{DATA} eq "ARRAY") {
-                logger->error("Internal error: expandMacro() should return an array reference! ($hResult->{DATA})");
-                return [];
-            }
-            push @oResult, @{$hResult->{DATA}};
+            push @oResult, $self->expandMacro($sValue, $oScope, $aStack, 'raise error if macro is not found');
             next;
         }
         

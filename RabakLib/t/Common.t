@@ -9,8 +9,8 @@ use FindBin qw($Bin);
 # does not run any tests (cause "plan" can called only once)
 
 # create and remove test devices for every test script
-BEGIN {`sh $Bin/stuff/testdev-make 2>/dev/null`;}
-END {`sh $Bin/stuff/testdev-remove 2>/dev/null`;}
+BEGIN {`sh $Bin/stuff/sample-env-make 2>/dev/null`;}
+END {`sh $Bin/stuff/sample-env-remove 2>/dev/null`;}
 
 my $sSourceDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );
 my $sTargetDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );
@@ -62,7 +62,7 @@ $oSourceMountConf->preset_values({
 my $oTargetMountConf= RabakLib::Conf->new('testtarget_mount', $oRootConf);
 $oRootConf->set_value('testtarget_mount', $oTargetMountConf);
 $oTargetMountConf->preset_values({
-    device => "/tmp/rabak-sample-data/test-data/dev.loop?",
+    device => "/tmp/rabak-sample-data/dev.loop?",
     directory => $sTargetDir,
 });
 

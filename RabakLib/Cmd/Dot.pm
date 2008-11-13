@@ -12,17 +12,13 @@ use vars qw(@ISA);
 
 @ISA= qw( RabakLib::Cmd );
 
-sub help {
-    shift;
-    my $sOptions= shift;
-    return <<__EOT__;
-rabak dot [options] <backup set>
-
-one liner
-
-description
-$sOptions
-__EOT__
+sub Help {
+    my $self= shift;
+    return $self->SUPER::Help(
+        'rabak dot [options] <backup set>',
+        'one liner',
+        'description',
+    );
 }
 
 sub run {

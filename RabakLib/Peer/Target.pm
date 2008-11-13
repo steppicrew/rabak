@@ -7,8 +7,12 @@ use strict;
 no warnings 'redefine';
 
 use RabakLib::Log;
+use RabakLib::Mountable;
 use RabakLib::ConfFile;
 use RabakLib::InodeCache;
+use RabakLib::DupMerge;
+use RabakLib::Version;
+use RabakLib::Peer;
 use POSIX qw(strftime);
 use Data::Dumper;
 
@@ -109,7 +113,7 @@ sub checkDf {
     $sStUnit = uc($1) if $sSpaceThreshold =~ /$iStValue\s*([gmkb\%])/i;
     my $sDfResult = $self->df(undef, "-k");
 
-    unless ($sDfResult =~ /^\S+\s+(\d+)\s+\d+\s+(\d+)\s+/m) {
+    unless ($sDfResult =~ /^\S+\s+(\d+)\s+\d+\s+(\d+)\s+/m && $1 > 100) {
         logger->error("Could not get free disc space!", $sDfResult);
         return undef;
     }
@@ -120,8 +124,10 @@ sub checkDf {
     $iDfAvail <<= 10            if $sStUnit eq 'B';
     if ($iStValue > $iDfAvail) {
         $iDfAvail= int($iDfAvail * 100) / 100;
-        return ["The free space on your target \"" . $self->getFullPath . "\" has dropped",
-                "below $iStValue$sStUnit to $iDfAvail$sStUnit."];
+        return [
+                "The free space on your target \"" . $self->getFullPath . "\" has dropped ",
+                "below $iStValue$sStUnit to $iDfAvail$sStUnit.",
+        ];
     }
     return undef;
 }
@@ -132,7 +138,9 @@ sub remove_old {
     
     return unless $iKeep;
 
-    logger->info("Keeping last $iKeep versions");
+    logger->info(
+        "Keeping last " . ($iKeep == 1 ? "version" : "$iKeep versions")
+    );
 
     logger->incIndent();
     my @sBakDir= @{$self->_getSourceData("OLD_BAKDIRS")};
@@ -171,30 +179,81 @@ sub inodeInventory {
     my $self= shift;
     
     return 1 unless $self->_getSourceData("INVENTORY");
-    if ($self->is_remote()) {
-        logger->error('Inode inventory is supported only at local targets!');
-        return 1;
-    }
-    my $sFullTargetDir= $self->getPath($self->getBakDir());
-    my $inodeCache= new RabakLib::InodeCache(
-        {
-            dirs => [$sFullTargetDir],
-            db_inodes_dir => $self->getPath(),
-        }
-    );
+
+    my $sFullTargetDir= $self->getPath($self->_getSourceData("BAKDIR"));
+    my $sInodesDir= $self->getPath();
+
     logger->info("Collecting inode information in '$sFullTargetDir'");
     logger->incIndent();
-    my $iResult= $inodeCache->collect();
+
+    $sFullTargetDir=~ s/\\/\\\\/g;
+    $sFullTargetDir=~ s/\"/\\\"/g;
+    $self->run_rabak_script('
+        use RabakLib::InodeCache;
+        my $inodeCache= new RabakLib::InodeCache(
+            {
+                dirs => ["'.$sFullTargetDir.'"],
+                db_inodes_dir => "'.$sInodesDir.'",
+            }
+        );
+        my $iResult= $inodeCache->collect();
+    ');
+
     logger->decIndent();
     logger->info("done");
-    return $iResult;
+    return $self->get_last_error() ? 1 : 0;
+
+#    my $inodeCache= new RabakLib::InodeCache(
+#        {
+#            dirs => [$sFullTargetDir],
+#            db_inodes_dir => $sInodesDir,
+#        }
+#    );
+#    logger->info("Collecting inode information in '$sFullTargetDir'");
+#    logger->incIndent();
+#    my $iResult= $inodeCache->collect();
+#    logger->decIndent();
+#    logger->info("done");
+#    return $iResult;
+
+}
+
+sub dupMerge {
+    my $self= shift;
+    
+    return 1 unless $self->_getSourceData("DUPMERGE");
+
+    my $sFullTargetDir= $self->getPath($self->_getSourceData("BAKDIR"));
+    my $sInodesDir= $self->getPath();
+    my $sDirs= "\"" .
+        join("\",\"", map
+            {s/\\/\\\\/g;s/\"/\\\"/g;$_}
+            ($sFullTargetDir, @{$self->getOldBakDirs})
+        ) .
+        "\"";
+
+    logger->info("Merging duplicate files");
+    logger->incIndent();
+    $self->run_rabak_script('
+        use RabakLib::DupMerge;
+        my $dm= new RabakLib::DupMerge(
+            {
+                dirs => [' . $sDirs . '],
+                db_inodes_dir => "'.$sInodesDir.'",
+            }
+        );
+        my $iResult= $dm->run();
+    ');
+    logger->decIndent();
+    logger->info("done");
+    return $self->get_last_error() ? 1 : 0;
 }
 
 sub _getBackupData {
     my $self= shift;
     my $sKey= shift;
     my $sProperty= shift;
-    die "Internal error: {$sKey} is not set! Please file a bug report!" unless defined $self->{$sKey};
+    die "Internal error: {$sKey} is not set to get {$sProperty}! Please file a bug report!" unless defined $self->{$sKey};
     die "Internal error: {$sKey}{$sProperty} is not set! Please file a bug report!" unless exists $self->{$sKey}{$sProperty};
     return $self->{$sKey}{$sProperty};
 }
@@ -281,8 +340,14 @@ sub finishBackup {
 
     my $aDf = $self->checkDf();
     if (defined $aDf) {
-        logger->warn(join " ", @$aDf);
-        logger->mailWarning("disc space too low", @$aDf);
+        logger->warn(join "", @$aDf);
+        my $sHostName= $self->get_value("host") || $self->cmdData("hostname");
+        logger->mailWarning("disc space too low on ${sHostName}'s target dir \"" . $self->abs_path($self->getPath()) . "\"",
+            "Rabak Version " . VERSION() . " on \"" . $self->cmdData("hostname") . "\" as user \"" . $self->cmdData("user") . "\"",
+            "Command line: " . $self->cmdData("command_line"),
+            "#"x80,
+            @$aDf
+        );
     }
 
     $self->closeLogging();
@@ -340,6 +405,8 @@ sub prepareSourceBackup {
         SET => $sSourceSet,
         KEEP => $oSourcePeer->get_value("keep"),
         INVENTORY => $oSourcePeer->get_value("inode_inventory"),
+        DUPMERGE => $oSourcePeer->get_value("merge_duplicates"),
+        BAKDIR => $sBakDir,
     };
     
     logger->info("Backup \"$sBakDay$sSourceExt\" exists, using subset \"$sSourceSubdir\".") if $sSubSet;
@@ -355,6 +422,7 @@ sub finishSourceBackup {
     unless ($bPretend) {
         unless ($iBackupResult) {
             $self->inodeInventory();
+            $self->dupMerge();
             # remove old dirs if backup was successfully done
             $self->remove_old();
         }
@@ -432,7 +500,7 @@ sub sort_show_key_order {
     (
         $self->SUPER::sort_show_key_order(),
         $self->mountable()->sort_show_key_order(),
-        "group", "mount",
+        "group",
     );
 }
 

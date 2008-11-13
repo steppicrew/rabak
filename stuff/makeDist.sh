@@ -1,16 +1,17 @@
 #!/bin/bash
 
-ver="$1"
-
+srcdir=".."
+ver=`perl -I$srcdir -e 'use RabakLib::Version; print VERSION;'`
 vname="rabak-$ver"
 basedir="../../dist/$vname"
-srcdir=".."
+
+echo "Building distribution for $vname"
 
 ROOT_FILES="CHANGELOG LICENSE README TODO"
-BIN_FILES="rabak faster-dupemerge"
+BIN_FILES="rabak"
 ETC_FILES="rabak.sample.cf rabak.std.cf rabak.secret.cf"
 SHARE_FILES="tutorial stuff"
-MODULES="RabakLib DupMerge"
+MODULES="RabakLib"
 
 function copyFiles {
   local destdir="$1"

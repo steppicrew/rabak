@@ -42,7 +42,7 @@ sub getPeer {
 
 sub sort_show_key_order {
     my $self= shift;
-    ("host", "user", "path", );
+    ("mount");
 }
 
 sub show {
@@ -71,9 +71,12 @@ sub getPath {
 
     # path may contain symlinks and should be expanded once
     unless ($self->{PATH_IS_ABSOLUTE}) {
-        $sBasePath= $peer->abs_path($sBasePath);
-        $peer->set_value("path", $sBasePath);
-        $self->{PATH_IS_ABSOLUTE}= 1;
+        my $sAbsPath= $peer->abs_path($sBasePath);
+        if (defined $sAbsPath) {
+            $sBasePath= $sAbsPath;
+            $peer->set_value("path", $sBasePath);
+            $self->{PATH_IS_ABSOLUTE}= 1;
+        }
     }
 
     $sPath= File::Spec->canonpath($sPath); # simplify path

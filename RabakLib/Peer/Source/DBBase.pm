@@ -114,20 +114,25 @@ sub run {
 
         my $sDumpCmd= $self->get_dump_cmd($_) . " | $sZipCmd";
 
-        # target executes $sDumpCmd on source (may be remote from targets view) to
-        # pipe stdout/stderr to final target file
-        # therefore we have to build a ssh command, if either target or source
-        # is remote
-        if ($oTargetPeer->is_remote() || $self->is_remote()) {
+        my $oDumpPeer= $self;
+        my $sPipeCmd= "cat > '$sDestFile'";
+
+        if ($oTargetPeer->is_remote()) {
+            # if target is remote, dump on source peer and write output remotely to target
             # TODO: check if target and source are the same users on the same host
+            $sPipeCmd= $oTargetPeer->build_ssh_cmd($sPipeCmd);
+        }
+        elsif ($self->is_remote()) {
+            # if target is local and soure is remote, dump over ssh and write directly to file
+            $oDumpPeer= $oTargetPeer;
             $sDumpCmd= $self->build_ssh_cmd($sDumpCmd);
         }
 
         # now execute dump command on target
         unless ($bPretend) {
-            $oTargetPeer->run_cmd("$sDumpCmd > $sDestFile");
-            if ($self->get_last_exit) {
-                my $sError= $self->get_last_error;
+            $oDumpPeer->run_cmd("$sDumpCmd | $sPipeCmd");
+            if ($oDumpPeer->get_last_exit) {
+                my $sError= $oDumpPeer->get_last_error;
                 chomp $sError;
                 logger->error("Dump failed. Skipping dump of \"$_\": $sError");
                 next;

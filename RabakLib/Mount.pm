@@ -10,6 +10,7 @@ use Data::Dumper;
 
 use vars qw(@ISA);
 
+use RabakLib::Conf;
 use RabakLib::Log;
 
 @ISA = qw(RabakLib::Conf);
@@ -82,10 +83,10 @@ sub mount {
     
     $self->{PEER_OBJECT}= $oPeer;
 
-    my $sMountDeviceList= $self->get_value("device") || '';
+    my @aMountDeviceList= $self->resolveObjects("device");
     my $sMountDir= $self->get_value("directory") || '';
     my $sMountType= $self->get_value("type") || '';
-    my $sMountOpts= $self->get_value("opts") || '';
+    my $sMountOpts= $self->get_value("options") || $self->get_value("opts") || '';
     my $sUnmount= "";
 
     # parameters for mount command
@@ -97,7 +98,7 @@ sub mount {
 
     my @sMountDevices= ();
 
-    for my $sMountDevice (split(/\s+/, $sMountDeviceList)) {
+    for my $sMountDevice (@aMountDeviceList) {
         push @sMountDevices, $oPeer->glob($sMountDevice);
     }
 

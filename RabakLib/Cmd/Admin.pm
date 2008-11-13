@@ -43,17 +43,13 @@ sub new {
     bless $self, $class;
 }
 
-sub help {
-    shift;
-    my $sOptions= shift;
-    return <<__EOT__;
-rabak admin [options] [<backup set>]
-
-one liner
-
-description
-$sOptions
-__EOT__
+sub Help {
+    my $self= shift;
+    return $self->SUPER::Help(
+        'rabak admin [options] [<backup set>]',
+        'one liner',
+        'description',
+    );
 }
 
 sub run {

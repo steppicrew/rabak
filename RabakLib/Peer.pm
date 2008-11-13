@@ -6,13 +6,16 @@ package RabakLib::Peer;
 
 use warnings;
 use strict;
+no warnings 'redefine';
 
 use vars qw(@ISA);
+
+use RabakLib::Conf;
+use RabakLib::Log;
 
 @ISA = qw(RabakLib::Conf);
 
 use Data::Dumper;
-use File::Spec ();
 use File::Temp ();
 use IPC::Run qw(start pump finish);
 
@@ -42,6 +45,7 @@ sub new {
         error => '',
     };
     $self->{TEMPFILES}= [];
+    $self->{TEMP_RT_ENV}= undef;
 
     bless $self, $class;
 
@@ -97,18 +101,16 @@ sub local_tempfile {
     my $self= shift;
 
 #    $self= $self->new() unless ref $self;
-    my $sDir= File::Spec->tmpdir;
 #    $sDir = $self->get_value("tempdir");
 
-    return @_= File::Temp->tempfile("rabak-XXXXXX", UNLINK => 1, DIR => $sDir);
+    return @_= File::Temp->tempfile("rabak-XXXXXX", UNLINK => 1, TMPDIR => 1);
 }
 
 sub local_tempdir {
     my $self= shift;
     
-    my $sDir= File::Spec->tmpdir;
 #    my $sDir= $self->get_value("tempdir");
-    my $sDirName= File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 1, DIR => $sDir);
+    my $sDirName= File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 1, TMPDIR => 1);
 
     return $sDirName;
 }
@@ -430,7 +432,7 @@ sub _saveperl {
     print "OUT: $result\n" if $self->{DEBUG} && $result;
 
     # extract scripts result (if everything was ok, eval($result) sets $OUT_VAR)
-    my $OUT_VAR = \undef;
+    my $OUT_VAR = undef;
     eval($result) if $result && $sOutVar;
     return $OUT_VAR;
 }
@@ -443,6 +445,87 @@ sub _sshperl {
     $self->_set_error($self->{LAST_RESULT}{stderr});
     print "ERR: " . $self->{LAST_RESULT}{stderr} . "\n" if $self->{DEBUG} && $self->{LAST_RESULT}{stderr};
     return $self->{LAST_RESULT}{exit} ? '' : $self->{LAST_RESULT}{stdout};
+}
+
+# builds an entire RabakLib directory structure on remote site
+sub _buildTempRuntimeEnv {
+    my $self= shift;
+    
+    return $self->{TEMP_RT_ENV} if defined $self->{TEMP_RT_ENV} && $self->isDir($self->{TEMP_RT_ENV});
+    
+    my $sTempDir= $self->tempdir();
+    my $sModuleBase= __PACKAGE__;
+    $sModuleBase=~ s/\:\:.*//;
+    my @sRabakPaths= map {$INC{$_}} grep {/^$sModuleBase\//} keys %INC;
+    unless (scalar @sRabakPaths) {
+        logger->error("Could not determine ${sModuleBase}'s path!");
+        return 0;
+    }
+    my $sBasePath= Cwd::abs_path($sRabakPaths[0]);
+    $sBasePath=~ s/(\/$sModuleBase\/).*/$1/;
+
+    return $sBasePath unless $self->is_remote();
+
+    return undef if $self->copyLocalFilesToRemote(
+        [$sBasePath],
+        $sTempDir,
+        1,
+        sub {
+            my $sVar= shift;
+            $sVar=~ s/.*\/($sModuleBase\/)/$1/;
+            $sVar;
+        },
+    );
+    
+    $self->{TEMP_RT_ENV}= $sTempDir;
+    return $self->{TEMP_RT_ENV};
+}
+
+# runs given script with rabak environment
+sub run_rabak_script {
+    my $self= shift;
+    my $sScript= shift;
+    my $hHandles= shift || {};
+    
+    my $sRtDir= $self->_buildTempRuntimeEnv();
+    my $sPerlCmd= 'perl';
+    $sPerlCmd.= " -I'$sRtDir'" if $sRtDir;
+    
+    unless ($hHandles->{STDOUT}) {
+        # initialize peer's logging, parse log output from peer and log here
+        $sScript= '
+        use RabakLib::Log;
+
+        logger()->setOpts({
+            "verbose" => logger()->LOG_MAX_LEVEL(),
+            "pretend" => 0,
+            "quiet" => 0,
+            "color" => 0,
+        });
+        logger()->set_prefix("X");
+        ' . $sScript if defined $sScript;
+
+        my $fLogParser= logger()->factLogReparser();
+        $hHandles->{STDOUT}= sub {
+            my $aLogEntries= $fLogParser->(@_);
+            foreach my $hEntry (@$aLogEntries) {
+                logger()->log($hEntry->{logrecord});
+            }
+        };
+    }
+    $hHandles->{STDERR}= sub {logger()->error(@_)} unless $hHandles->{STDERR};
+    $hHandles->{STDIN}= $sScript if defined $sScript;
+    
+    return $self->run_cmd($sPerlCmd, $hHandles);
+}
+
+sub sort_show_key_order {
+    my $self= shift;
+
+    (
+        "host", "port", "user", "path", 
+        $self->SUPER::sort_show_key_order(),
+    );
 }
 
 # returns directory listing
@@ -597,6 +680,38 @@ sub copyLocalFileToRemote {
         return $stderr ? 0 : 1;
     }
     $self->_set_error("Could not open local file \"$sLocFile\"");
+    return 0;
+}
+
+# copies local (temp) files to the remote host (recursive optional)
+sub copyLocalFilesToRemote {
+    my $self= shift;
+    my $sLocFiles= shift;
+    my $sRemDir= $self->getPath(shift);
+    my $bRecursive= shift;
+    my $fAbs2Rel= shift || sub{$_[0]=~ s/.*\///; $_[0]}; # return basename by default
+
+    while (my $sFile= shift @$sLocFiles) {
+        my $sRelPath= $fAbs2Rel->($sFile);
+        if (-d $sFile) {
+            next unless $bRecursive;
+            my $dh;
+            if (opendir $dh, $sFile) {
+                my @sNewFiles= map {"$sFile/$_"} grep {/\.pm$/ || (-d "$sFile/$_" && !/^\.\.?$/)} readdir $dh;
+                closedir $dh;
+                next unless scalar @sNewFiles;
+                $self->mkdir("$sRemDir/$sRelPath");
+                push @$sLocFiles, @sNewFiles;
+            }
+            else {
+                logger->error("Could not read directory \"$sFile\"");
+                return 1;
+            }
+            next;
+        }
+        next unless -f $sFile;
+        $self->copyLocalFileToRemote($sFile, "$sRemDir/$sRelPath");
+    }
     return 0;
 }
 
@@ -802,7 +917,7 @@ sub rmtree {
     return ${$self->_saveperl('
             # rmtree
             use File::Path;
-            $result= rmtree($sTree, $bDebug);
+            $result= rmtree([$sTree], $bDebug);
         ', { sTree => $sTree, bDebug => $self->{DEBUG} }, '$result',
     )};
 }

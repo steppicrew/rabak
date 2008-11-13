@@ -9,6 +9,7 @@ no warnings 'redefine';
 use RabakLib::Log;
 use RabakLib::Peer::Source;
 use RabakLib::Peer::Target;
+use RabakLib::Version;
 
 use Data::Dumper;
 use File::Spec ();
@@ -57,14 +58,18 @@ sub get_validation_message {
 
 sub sort_show_key_order {
     my $self= shift;
-    ("title", "source", "target", $self->SUPER::sort_show_key_order());
+    (
+        "title", "source", "target",
+        $self->SUPER::sort_show_key_order(),
+        "path_extension", "previous_path_extension",
+    );
 }
 
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
     
-    logger->set_stdout_prefix("# ");
+    logger->set_stdout_prefix("#");
     
     my $aResult= [];
     
@@ -78,9 +83,7 @@ sub show {
 
     push @$aResult, @{$self->SUPER::show($hConfShowCache)};
 
-    for my $oSource (@oSources) {
-        push @$aResult, @{$oSource->show($hConfShowCache, $oTarget)};
-    }
+    push @$aResult, map { @{$_->show($hConfShowCache, $oTarget)} } @oSources;
     
     push @$aResult, @{$oTarget->show($hConfShowCache)};
     
@@ -166,12 +169,19 @@ sub backup {
     my $iSuccessCount= 0;
     my $iResult= 0; 
     
-    logger->init($self);
+    my %LogOpts= ();
+    for my $sLogOpt ('pretend', 'logging', 'verbose', 'quiet') {
+        $LogOpts{ucfirst $sLogOpt} = $self->get_switch($sLogOpt);
+    }
+    $LogOpts{"Email"} = $self->get_value("email");
+    $LogOpts{"Name"} = $self->getName();
+    logger->setOpts(\%LogOpts);
+
     logger->set_category($self->getName());
     
-    logger->info("Rabak Version " . $self->get_switch("version"). " on \"" . $self->get_switch("hostname") . "\" as user \"" . getpwuid($>) . "\"");
-    logger->info("Command line: " . $self->get_switch("commandline"));
-    logger->info("Configuration read from: '" . $self->get_switch("configfile") . "'");
+    logger->info("Rabak Version " . VERSION() . " on \"" . $self->cmdData("hostname") . "\" as user \"" . $self->cmdData("user") . "\"");
+    logger->info("Command line: " . $self->cmdData("command_line"));
+    logger->info("Configuration read from: '" . $self->cmdData("config_file") . "'");
 
     my $oTargetPeer= $self->get_targetPeer();
     my @oSourcePeers= $self->get_sourcePeers();

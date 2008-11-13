@@ -9,9 +9,7 @@ use warnings;
 
 use RabakLib::Trap;
 use RabakLib::Log;
-use RabakLib::InodeStore;
 use RabakLib::InodeCache;
-use RabakLib::Conf;
 
 sub new {
     my $class= shift;
@@ -30,6 +28,7 @@ sub _run {
     my $oTrap= RabakLib::Trap->new();
 
     logger()->info("Searching for duplicates...");
+    logger()->incIndent();
     
     # build array of relevant properties
     my $aQueryKey= [];
@@ -52,7 +51,7 @@ sub _run {
         next if $self->{OPTS}{min_size} && $iSize < $self->{OPTS}{min_size};
         next if $self->{OPTS}{max_size} && $iSize > $self->{OPTS}{max_size};
 
-        logger()->info("Processing file size $iSize...");
+        logger()->progress("Processing file size $iSize...");
 
         # handle files grouped by permissions etc. separately
         my $hKey= undef;
@@ -133,7 +132,7 @@ sub _run {
                     for my $sFile (@{$FilesByInode{$iInode}}) {
 				        last if $oTrap->terminated();
 
-                        logger()->verbose("ln -f '$sLinkFile' '$sFile'");
+                        logger()->debug("ln -f '$sLinkFile' '$sFile'");
                         if ($self->{OPTS}{pretend}) {
                             $self->{INODE_CACHE}{STATS}{linked_files}++;
                             next;
@@ -171,13 +170,15 @@ sub _run {
             }
         }
     }
-    logger()->info("...done");
-    logger()->info("Finishing information store...");
+    logger()->finish_progress("Processing files...done");
+    logger()->decIndent();
+    logger()->info("done");
+    logger()->verbose("Finishing information store...");
 
     $oStore->endCached();
     $oStore->endWork();
 
-    logger()->info("done");
+    logger()->verbose("done");
 
     return !$oTrap->restore();
 }
@@ -185,16 +186,6 @@ sub _run {
 sub run {
     my $self= shift;
     
-    my $oConf= RabakLib::Conf->new();
-    $oConf->set_value("switch.verbose",
-        $self->{OPTS}{verbose}
-            ? logger()->LOG_VERBOSE_LEVEL
-            : logger()->LOG_INFO_LEVEL
-    );
-    $oConf->set_value("switch.pretend", $self->{OPTS}{pretend});
-    $oConf->set_value("switch.quiet", $self->{OPTS}{quiet});
-    logger()->init($oConf);
-
     return unless $self->{INODE_CACHE}->collect();
 
     $self->_run();

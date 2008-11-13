@@ -7,20 +7,19 @@ use strict;
 no warnings 'redefine';
 
 use Data::Dumper;
-use RabakLib::Conf;
-use RabakLib::Peer;
-use RabakLib::Mountable;
+use File::Temp;
 use Mail::Send;
+use Term::ANSIColor;
 
 # use File::Spec ();
 use POSIX qw(strftime);
 
-use vars qw( $VERSION @ISA @EXPORT @EXPORT_OK );
+use vars qw( @ISA @EXPORT @EXPORT_OK );
 
 use Exporter;
 
 @ISA = qw( Exporter );
-@EXPORT = qw( logger LOG_DEBUG_LEVEL LOG_DEFAULT_LEVEL LOG_VERBOSE_LEVEL LOG_INFO_LEVEL LOG_WARN_LEVEL LOG_ERROR_LEVEL );
+@EXPORT = qw( logger LOG_DEBUG_LEVEL LOG_DEFAULT_LEVEL LOG_VERBOSE_LEVEL LOG_INFO_LEVEL LOG_WARN_LEVEL LOG_ERROR_LEVEL LOG_MAX_LEVEL LOG_PROGRESS_LEVEL LOG_PRINT_LEVEL );
 
 our $oLog;
 
@@ -57,14 +56,19 @@ BEGIN {
 
         TARGET => undef,
 
-        SWITCH_PRETEND => 0,
-        SWITCH_LOGGING => 0,
-        SWITCH_VERBOSITY => 3,
-        SWITCH_QUIET => 0,
+        SWITCH_PRETEND => undef,
+        SWITCH_LOGGING => undef,
+        SWITCH_VERBOSE => undef,
+        SWITCH_QUIET   => undef,
+        SWITCH_EMAIL   => undef,
+        SWITCH_NAME    => undef,
+        SWITCH_COLOR   => undef,
+        
+        LAST_PROGRESS  => undef, # force new line on next print on screen
     };
     
     ($oLog->{MSG_FH}, $oLog->{MSG_FILE_NAME}) =
-        RabakLib::Peer->local_tempfile();
+        File::Temp->tempfile("rabaklog-XXXXXX", UNLINK => 1, TMPDIR => 1);
 
     bless $oLog, __PACKAGE__;
 }
@@ -78,31 +82,107 @@ sub logger {
     return RabakLib::Log->new();
 }
 
-sub init {
+# set various options
+# if option's name is ucfirst, option is only set if undef
+sub setOpts {
     my $class= shift;
-    my $hConf= shift;
+    my $hOpts= shift;
 
-    $oLog->{SWITCH_PRETEND}= $hConf->get_switch('pretend');
-    $oLog->{SWITCH_LOGGING}= $hConf->get_switch('logging');
-    $oLog->{SWITCH_VERBOSITY}= $hConf->get_switch('verbose');
-    $oLog->{SWITCH_VERBOSITY}= $oLog->LOG_DEFAULT_LEVEL unless defined $oLog->{SWITCH_VERBOSITY};
-    $oLog->{SWITCH_QUIET}= $hConf->get_switch('quiet');
+    for my $sParam ('pretend', 'logging', 'verbose', 'quiet', 'name', 'email', 'color') {
+        my $sSwitch= 'SWITCH_' . uc($sParam);
+        my $sKey= $sParam;
+        
+        $sKey= ucfirst $sParam if exists $hOpts->{ucfirst $sParam} && !defined $oLog->{$sSwitch};
+        $oLog->{$sSwitch}= $hOpts->{$sKey} if exists $hOpts->{$sKey};
+    }
+}
 
-    $oLog->{SET_NAME}= $hConf->getName();
-    $oLog->{EMAIL}= $hConf->get_value('email');
+sub verbosity {
+    my $self= shift;
+    
+    return $self->{SWITCH_VERBOSE} if defined $self->{SWITCH_VERBOSE};
+    return LOG_DEFAULT_LEVEL();
 }
 
 # -----------------------------------------------------------------------------
 #  Messages
 # -----------------------------------------------------------------------------
 
-sub LOG_DEBUG_LEVEL   { 5 }
-sub LOG_VERBOSE_LEVEL { 4 }
-sub LOG_INFO_LEVEL    { 3 }
-sub LOG_WARN_LEVEL    { 2 }
-sub LOG_ERROR_LEVEL   { 1 }
+sub LOG_DEBUG_LEVEL    { 5 }
+sub LOG_VERBOSE_LEVEL  { 4 }
+sub LOG_INFO_LEVEL     { 3 }
+sub LOG_WARN_LEVEL     { 2 }
+sub LOG_ERROR_LEVEL    { 1 }
+sub LOG_PRINT_LEVEL    { 0 }
 
-sub LOG_DEFAULT_LEVEL { LOG_INFO_LEVEL() }
+sub LOG_DEFAULT_LEVEL  { LOG_INFO_LEVEL()    }
+sub LOG_PROGRESS_LEVEL { LOG_DEFAULT_LEVEL() }
+sub LOG_MAX_LEVEL      { LOG_DEBUG_LEVEL()   }
+
+sub LOG_LEVEL_PREFIX {
+    return {
+        LOG_PRINT_LEVEL()   => "OUTPUT",
+        LOG_ERROR_LEVEL()   => "ERROR",
+        LOG_WARN_LEVEL()    => "WARNING",
+        LOG_INFO_LEVEL()    => "INFO",
+        LOG_VERBOSE_LEVEL() => "VERBOSE",
+        LOG_DEBUG_LEVEL()   => "DEBUG",
+    }
+}
+
+sub getLevelPrefix {
+    my $self= shift;
+    my $iLevel= shift;
+    
+    my $sPrefix= $self->LOG_LEVEL_PREFIX->{$iLevel} || "LOG($iLevel)";
+    return sprintf '%-10s', "$sPrefix:";
+}
+
+sub getColoredLevelPrefix {
+    my $self= shift;
+    my $iLevel= shift;
+    my $sPrefix= $self->getLevelPrefix($iLevel);
+    
+    return colored($sPrefix, 'bold red')    if $iLevel == LOG_ERROR_LEVEL;
+    return colored($sPrefix, 'bold yellow') if $iLevel == LOG_WARN_LEVEL;
+    return colored($sPrefix, 'bold blue')   if $iLevel == LOG_INFO_LEVEL;
+    return colored($sPrefix, 'bold cyan')   if $iLevel == LOG_VERBOSE_LEVEL;
+    return colored($sPrefix, 'bold white')  if $iLevel == LOG_DEBUG_LEVEL;
+    return $sPrefix;
+}
+
+sub IsColoredTerm {
+    return 0 unless -t STDOUT;
+    my $sTerm= $ENV{TERM};
+    foreach my $sCTerm (
+        'xterm', 'linux', 'rxvt', 'dtterm', 'teraterm', 'aixterm',
+        'PuTTY', 'Cygwin SSH', 'Mac Terminal',
+    ) {
+         return 1 if $sTerm eq $sCTerm;
+    };
+    return 0;
+}
+
+sub Uncolor {
+    shift;
+    my @sStrings= @_;
+    s/\e\[[\d\;]+m//g foreach (@sStrings);
+    return @sStrings if wantarray;
+    return join '', @sStrings;
+}
+
+sub fixupColors {
+    my $self= shift;
+    my @sStrings= @_;
+    return $self->Uncolor(@sStrings) unless $self->{SWITCH_COLOR};
+    return @sStrings if wantarray;
+    return join '', @sStrings;
+}
+
+sub _print {
+    my $self= shift;
+    print $self->fixupColors(@_);
+}
 
 sub incIndent {
     my $self= shift;
@@ -113,6 +193,36 @@ sub decIndent {
     my $self= shift;
     return $self->{INDENT2}-- if $self->{INDENT2};
     $self->{INDENT1}-- if $self->{INDENT1};
+}
+
+sub factLogReparser {
+    my $self= shift;
+    
+    my %logLevelPrefix= %{LOG_LEVEL_PREFIX()};
+    my %qLogPrefixLevel= map {quotemeta($logLevelPrefix{$_}) => $_} keys %logLevelPrefix;
+    return sub {
+        my $aResult= [];
+        foreach my $sLine (@_) {
+            $sLine =~ s/.*\r//;
+            foreach my $sqPref (keys %qLogPrefixLevel) {
+                if ($sLine=~ s/^$sqPref\:\s*//) {
+                    my $sCategory= $1 if $sLine=~ s/^\[(.*?)\] //;
+                    my $iInc= 0;
+                    $iInc= length($1) / 2 if $sLine=~ s/^((  )+)//;
+                    my $iLogLevel= $qLogPrefixLevel{$sqPref};
+                    push @$aResult, {
+                        loglevel => $iLogLevel,
+                        category => $sCategory,
+                        inc      => $iInc,
+                        line     => $sLine,
+                        logrecord=> [$iLogLevel, "  "x$iInc . $sLine],
+                    };
+                    last;
+                }
+            }
+        }
+        return $aResult;
+    };
 }
 
 sub _timestr {
@@ -128,25 +238,21 @@ sub _flush {
 
     # flush messages to mail log file
     unless (defined $self->{MSG_FH}) {
-        # reopen file if file was closed (get_message_file)
+        # reopen file if file was closed (via get_message_file)
         if ($self->{MSG_FILE_NAME}) {
             $self->{MSG_FH}= undef unless CORE::open ($self->{MSG_FH}, ">>$self->{MSG_FILE_NAME}");
         }
     }
-    my $fh= $self->{MSG_FH};
-    if (defined $fh) {
-        print $fh $self->{MESSAGES};
+    if (defined $self->{MSG_FH}) {
+        $self->{MSG_FH}->printflush($self->{MESSAGES});
         $self->{MESSAGES}= '';
     }
     
     # flush messages to log file
-    return unless $self->{TARGET} && $self->{LOG_MESSAGES};
+    return unless $self->{TARGET} && defined $self->{LOG_FH};
 
-    $fh= $self->{LOG_FH};
-    if (defined $fh) {
-        print $fh $self->{LOG_MESSAGES};
-        $self->{LOG_MESSAGES}= '';
-    }
+    $self->{LOG_FH}->printflush($self->{LOG_MESSAGES});
+    $self->{LOG_MESSAGES}= '';
 }
 
 sub clear {
@@ -166,7 +272,9 @@ sub get_messages_file {
 sub open {
     my $self= shift;
     my $sFileName= shift;
-    my $oTarget= shift || RabakLib::Peer::Mountable->new();
+    my $oTarget= shift;
+
+    return "Internal Error: No target object given. Pleas file bug report!" unless $oTarget;
 
     $self->close() if $self->{TARGET};
 
@@ -207,7 +315,7 @@ sub _mail {
     my $self= shift;
     my ($sSubject, $fBody) = @_;
     
-    my $sMailAddress= $self->{EMAIL}; 
+    my $sMailAddress= $self->{SWITCH_EMAIL}; 
 
     return 0 unless $sMailAddress;
 
@@ -241,7 +349,9 @@ sub mailLog {
     $sErrWarn.= "s" if $iWarns > 1; 
     $sSubject.= " ($sErrWarn)" if $sErrWarn;
     
-    $sSubject= "RABAK '$self->{SET_NAME}': $sSubject";
+    $sSubject= defined $self->{SWITCH_NAME}
+        ? "RABAK '$self->{SWITCH_NAME}': $sSubject"
+        : "RABAK: $sSubject";
 
     my $sFileName= $self->get_messages_file();
     my $fh;
@@ -281,9 +391,9 @@ sub get_warnCount {
 
 sub set_stdout_prefix {
     my $self= shift;
-    my $sPrefix= shift || '';
+    my $sPrefix= shift;
     
-    $self->{STDOUT_PREFIX}= $sPrefix;
+    $self->{STDOUT_PREFIX}= defined $sPrefix ? "$sPrefix " : "";
 }
 
 sub set_prefix {
@@ -340,6 +450,41 @@ sub error {
     $self->log($self->error(@sMessage));
 }
 
+sub print {
+    my $self= shift;
+    my @sMessage= @_;
+
+    return [ LOG_PRINT_LEVEL, @sMessage ] if wantarray;
+    $self->log($self->print(@sMessage));
+}
+
+sub progress {
+    my $self= shift;
+    my $sMessage= shift;
+
+    return if $self->{SWITCH_QUIET} || LOG_PROGRESS_LEVEL > $self->verbosity();
+
+    local $|= 1;
+    my %sPrefixes= $self->_buildLogPrefixes(LOG_PROGRESS_LEVEL);
+    $sMessage= $sPrefixes{"STDOUT"} . $sMessage;
+    my $iLength= length $sMessage;
+    if (defined $self->{LAST_PROGRESS}) {
+        my $sLastLength= length $self->{LAST_PROGRESS};
+        printf "\r", ' 'x$sLastLength if $sLastLength > $iLength;
+    }
+    $self->_print("\r", $sMessage);
+    $self->{LAST_PROGRESS}= $sMessage;
+}
+
+sub finish_progress {
+    my $self= shift;
+    my $sMessage= shift;
+
+    $self->{LAST_PROGRESS}= '';
+    $self->log([LOG_PROGRESS_LEVEL, $sMessage]);
+    $self->{LAST_PROGRESS}= undef;
+}
+
 sub exitError {
     my $self= shift;
     my $iExit=shift || 0;
@@ -362,6 +507,24 @@ sub log {
     }
 }
 
+sub _buildLogPrefixes {
+    my $self= shift;
+    my $iLogLevel= shift;
+    my $sLogLevelPrefix= $self->getLevelPrefix($iLogLevel);
+    
+    my $sMsgPref= "  " x $self->{INDENT1};
+    $sMsgPref.= "[$self->{PREFIX}] " if $self->{PREFIX};
+    $sMsgPref.= "  " x $self->{INDENT2};
+    
+    my $sLogPref= $self->{CATEGORY} ? "$self->{CATEGORY}\t" : "";
+    return (
+        "STDOUT" => "$self->{STDOUT_PREFIX}"
+            . $self->getColoredLevelPrefix($iLogLevel)
+            . "$sMsgPref",
+        "LOG" => _timestr() . "\t$sLogLevelPrefix$sLogPref$sMsgPref",
+    );
+}
+
 sub _levelLog {
     my $self= shift;
     my $iLevel= shift;
@@ -369,30 +532,13 @@ sub _levelLog {
     
     return unless join "", @sMessage;
 
-    my $sMsgPref;
-    if ($iLevel == LOG_ERROR_LEVEL) {
-        $sMsgPref= "ERROR:   ";
-        $self->{ERRORCOUNT}++
-    }
-    elsif ($iLevel == LOG_WARN_LEVEL) {
-        $sMsgPref= "WARNING: ";
-        $self->{WARNCOUNT}++
-    }
-    elsif ($iLevel == LOG_INFO_LEVEL) {
-        $sMsgPref= "INFO:    ";
-    }
-    elsif ($iLevel == LOG_VERBOSE_LEVEL) {
-        $sMsgPref= "VERBOSE: ";
-    }
-    elsif ($iLevel == LOG_DEBUG_LEVEL) {
-        $sMsgPref= "DEBUG:   ";
-    }
-    else {
-        $sMsgPref= "LOG($iLevel):  ";
-    }
+    $self->{ERRORCOUNT}++ if $iLevel == LOG_ERROR_LEVEL;
+    $self->{WARNCOUNT}++ if $iLevel == LOG_WARN_LEVEL;
+
+    my %sPrefixes= $self->_buildLogPrefixes($iLevel);
 
     for my $sMessage (@sMessage) {
-        next unless $sMessage;
+        next unless defined $sMessage;
         if (ref $sMessage eq "ARRAY") { # call recursive for nested arrays
             my $iMyLevel = shift @{ $sMessage };
             $iMyLevel= $iLevel if $iMyLevel > $iLevel; # use highest log level TODO: does that make sense?
@@ -402,19 +548,21 @@ sub _levelLog {
             next;
         }
         chomp $sMessage;
-        $sMessage = "  " x $self->{INDENT2} . $sMessage;
-        $sMessage = '[' . $self->{PREFIX} . "] $sMessage" if $self->{PREFIX};
-        $sMessage = "  " x $self->{INDENT1} . $sMessage;
-        # print message to stdout
-        print "$self->{STDOUT_PREFIX}$sMsgPref$sMessage\n" unless $self->{SWITCH_QUIET} || $iLevel > $self->{SWITCH_VERBOSITY};
+        $sMessage.= "\n";
+        unless ($self->{SWITCH_QUIET} || $iLevel > $self->verbosity()) {
+            # print message to stdout
+            $self->_print("\r", ' 'x(length $self->{LAST_PROGRESS}), "\r") if defined $self->{LAST_PROGRESS};
+            $self->_print($sPrefixes{"STDOUT"}) unless $iLevel == LOG_PRINT_LEVEL;
+            $self->_print($sMessage);
+            $self->_print($self->{LAST_PROGRESS}) if defined $self->{LAST_PROGRESS};
+        }
 
         next if $self->{SWITCH_PRETEND};
 
-        $sMessage= $self->{CATEGORY} . "\t$sMessage" if $self->{CATEGORY};
-        $sMessage= _timestr() . "\t$sMsgPref$sMessage\n";
+        $sMessage= $self->Uncolor($sPrefixes{LOG}, $sMessage);
 
         $self->{LOG_MESSAGES} .= $sMessage if $self->{SWITCH_LOGGING} && $iLevel <= LOG_VERBOSE_LEVEL;
-        $self->{MESSAGES} .= $sMessage if $iLevel <= $self->{SWITCH_VERBOSITY};
+        $self->{MESSAGES} .= $sMessage if $iLevel <= $self->verbosity();
     }
     $self->_flush();
 }

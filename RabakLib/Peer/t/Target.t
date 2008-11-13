@@ -33,66 +33,66 @@ ok ref $oTarget, 'RabakLib::Peer::Target', 'Creating Target from Conf';
 ####################################################
 # mounting and unmounting
 
-my @oMounts= $oTarget->getMountObjects();
+my @oMounts= $oTarget->mountable()->getMountObjects();
 ok @oMounts, 1, 'Getting MountObjects';
+my $aMessages= [];
 skip (
     $> ? "You have to be root to check mounting" : 0,       # >?
-    sub{$oMounts[0]->mount($oTarget);}, 1, "Checking Target mounting"
+    sub{$oMounts[0]->mount($oTarget, $aMessages);}, 1, "Checking Target mounting"
 );
 skip (
-    $> ? "You have to be root to check mounting" : 0,       # >?
-    sub{$oMounts[0]->unmount();}, 1, "Checking Target unmounting"
+    $> ? "You have to be root to check unmounting" : 0,       # >?
+    sub{$oMounts[0]->unmount(undef, $aMessages);}, 1, "Checking Target unmounting"
 );
 skip (
     $> ? "You have to be root to check mounting" : 0,       # >?
     sub{
-        my $iResult= $oTarget->mountAll();
-        $oTarget->unmountAll() if $iResult;
+        my $iResult= $oTarget->mountable()->mountAll($aMessages);
+        $oTarget->mountable()->unmountAll($aMessages) if $iResult;
         $iResult;
     }, 1, "Checking direct Target mounting"
 );
-
 ####################################################
 # targetgroup
 $oTarget->set_value('group', 'zuppi');
 skip (
     $> ? "You have to be root to check mounting" : 0,       # >?
-    sub{$oTarget->mountAll();}, 0, "Checking direct Target mounting (group 'zuppi')"
+    sub{$oTarget->mountable()->mountAll($aMessages);}, 0, "Checking direct Target mounting (group 'zuppi')"
 );
 $oTarget->set_value('group', 'dayofweek');
 skip (
     $> ? "You have to be root to check mounting" : 0,       # >?
     sub{
-        my $iResult= $oTarget->mountAll();
-        $oTarget->unmountAll() if $iResult;
+        my $iResult= $oTarget->mountable()->mountAll($aMessages);
+        $oTarget->mountable()->unmountAll($aMessages) if $iResult;
         $iResult;
     }, 1, "Checking direct Target mounting (group 'dayofweek')"
 );
 
-$oTarget->set_value('targetvalue', 'XXX');
+$oTarget->set_value('switch.targetvalue', 'XXX');
 skip (
     $> ? "You have to be root to check mounting" : 0,       # >?
     sub{
-        my $iResult= $oTarget->mountAll();
-        $oTarget->unmountAll() if $iResult;
+        my $iResult= $oTarget->mountable()->mountAll($aMessages);
+        $oTarget->mountable()->unmountAll($aMessages) if $iResult;
         $iResult;
     }, 0, "Checking direct Target mounting (group 'dayofweek' with wrong targetvalue)"
 );
-$oTarget->set_value('targetvalue', 'Mon');
+$oTarget->set_value('switch.targetvalue', 'Mon');
 skip (
     $> ? "You have to be root to check mounting" : 0,       # >?
     sub{
-        my $iResult= $oTarget->mountAll();
-        $oTarget->unmountAll() if $iResult;
+        my $iResult= $oTarget->mountable()->mountAll($aMessages);
+        $oTarget->mountable()->unmountAll($aMessages) if $iResult;
         $iResult;
     }, 1, "Checking direct Target mounting (group 'dayofweek' with targetvalue 'Mon')"
 );
-$oTarget->set_value('targetvalue', 'Tue');
+$oTarget->set_value('switch.targetvalue', 'Tue');
 skip (
     $> ? "You have to be root to check mounting" : 0,       # >?
     sub{
-        my $iResult= $oTarget->mountAll();
-        $oTarget->unmountAll() if $iResult;
+        my $iResult= $oTarget->mountable()->mountAll($aMessages);
+        $oTarget->mountable()->unmountAll($aMessages) if $iResult;
         $iResult;
     }, 1, "Checking direct Target mounting (group 'dayofweek' with targetvalue 'Tue')"
 );
@@ -103,8 +103,8 @@ $oTarget->set_value('mount', 'testsource_file_mount');
 skip (
     $> ? "You have to be root to check mounting" : 0,       # >?
     sub{
-        my $iResult= $oTarget->mountAll();
-        $oTarget->unmountAll() if $iResult;
+        my $iResult= $oTarget->mountable()->mountAll($aMessages);
+        $oTarget->mountable()->unmountAll($aMessages) if $iResult;
         $iResult;
     }, 0, "Checking direct Target mounting (not target device)"
 );
@@ -115,8 +115,8 @@ $oTarget->set_value('mount', 'non_existant');
 skip (
     $> ? "You have to be root to check mounting" : 0,       # >?
     sub{
-        my $iResult= $oTarget->mountAll();
-        $oTarget->unmountAll() if $iResult;
+        my $iResult= $oTarget->mountable()->mountAll($aMessages);
+        $oTarget->mountable()->unmountAll($aMessages) if $iResult;
         $iResult;
     }, 0, "Checking direct Target mounting (nonexistant dir/device)"
 );
@@ -125,8 +125,8 @@ $oTarget->set_value('mount', '&non_existant');
 skip (
     $> ? "You have to be root to check mounting" : 0,       # >?
     sub{
-        my $iResult= $oTarget->mountAll();
-        $oTarget->unmountAll() if $iResult;
+        my $iResult= $oTarget->mountable()->mountAll($aMessages);
+        $oTarget->mountable()->unmountAll($aMessages) if $iResult;
         $iResult;
     }, 1, "Checking direct Target mounting (nonexistant reference)"
 );
@@ -137,8 +137,8 @@ $oTarget->set_value('mount', undef);
 skip (
     $> ? "You have to be root to check mounting" : 0,       # >?
     sub{
-        my $iResult= $oTarget->mountAll();
-        $oTarget->unmountAll() if $iResult;
+        my $iResult= $oTarget->mountable()->mountAll($aMessages);
+        $oTarget->mountable()->unmountAll($aMessages) if $iResult;
         $iResult;
     }, 1, "Checking direct Target mounting (no refrence)"
 );
@@ -165,23 +165,26 @@ my $sExtDir2= $oTarget->tempdir();
 $oTarget->mkdir($sExtDir2);
 push @sBakDirs, $sExtDir2; 
 
+$oTarget->{SOURCE_DATA}{OLD_BAKDIRS}= \@sBakDirs;
 # first remove no dirs
-$oTarget->remove_old(0, @sBakDirs);
+$oTarget->{SOURCE_DATA}{KEEP}= 0;
+$oTarget->remove_old();
 # no dir should be deleted
 for my $sDir (@sBakDirs) {
-    ok $oTarget->isDir("$sDir"), 1, "$sDir should not be deleted";
+    ok $oTarget->isDir("$sDir"), 1, "'$sDir' should not have been deleted";
 }
 # now remove all but first two nonempty dirs
-$oTarget->remove_old(2, @sBakDirs);
+$oTarget->{SOURCE_DATA}{KEEP}= 2;
+$oTarget->remove_old();
 # external dirs should never be deleted
-ok $oTarget->isDir($sExtDir1), 1, "$sExtDir1 should not be deleted";
-ok $oTarget->isDir($sExtDir2), 1, "$sExtDir2 should not be deleted";
+ok $oTarget->isDir($sExtDir1), 1, "$sExtDir1 should not have been deleted";
+ok $oTarget->isDir($sExtDir2), 1, "$sExtDir2 should not have been deleted";
 # first two nonempty dirs should not be deleted
 for my $i (2, 4) {
-    ok $oTarget->isDir("dir$i"), 1, "Dir$i should not be deleted";
+    ok $oTarget->isDir("dir$i"), 1, "Dir$i should not have been deleted";
 }
 # all other dirs should be removed
 for my $i (1, 3, 5, 6) {
-    ok $oTarget->isDir("dir$i"), undef, "Dir$i should be deleted";
+    ok $oTarget->isDir("dir$i"), undef, "Dir$i should have been deleted";
 }
 

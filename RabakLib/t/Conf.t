@@ -1,7 +1,7 @@
 use strict;
 use Test;
 
-BEGIN { plan tests => 67 };
+BEGIN { plan tests => 65 };
 
 use RabakLib::Conf;
 use Data::Dumper;
@@ -70,10 +70,7 @@ ok $oSubConf11->get_value('..test_key'), 'root test value', 'Getting inherited s
 ok $oSubConf11->get_value('...test_key'), 'root test value', 'Getting inherited scalar value (SubConf11) 3';
 ok $oSubConf11->get_value('/test_key'), 'root test value', 'Getting inherited scalar value (SubConf11) 4';
 ok $oSubConf11->get_value('/.test_key'), 'root test value', 'Getting inherited scalar value (SubConf11) 5';
-ok $oSubConf11->get_value('./test_key'), 'root test value', 'Getting inherited scalar value (SubConf11) 6';
-ok $oSubConf11->get_value('./.test_key'), 'root test value', 'Getting inherited scalar value (SubConf11) 7';
-ok $oSubConf11->get_value('/./.test_key'), 'root test value', 'Getting inherited scalar value (SubConf11) 8';
-ok $oSubConf11->get_value('//test_key'), 'root test value', 'Getting inherited scalar value (SubConf11) 9';
+ok $oSubConf11->get_value('/.test_key'), 'root test value', 'Getting inherited scalar value (SubConf11) 7';
 
 # test various setting types for same named properties
 $oSubConf11->set_value('.test_key', 'sub1 test value 1');
@@ -110,12 +107,14 @@ ok $oRootConf->get_value('subconf1.subconf11.test_key'), 'sub11 test value', 'Ge
 ok $oRootConf->get_node('subconf1.subconf11'), $oSubConf11, 'Getting node SubConf11 from RootConf';
 
 # test switch setting
-ok $oSubConf11->get_switch('test_key'), 'sub11 test value', 'Getting switch from SubConf11';
-ok $oRootConf->get_switch('test_key'), 'root test value 2', 'Getting switch from RootConf';
-$oRootConf->set_value('switch.test_key', 'test switch');
-$oSubConf11->set_value('switch.test_key', 'test switch sub11');
-ok $oSubConf11->get_switch('test_key'), 'test switch', 'Getting switch from SubConf11';
-ok $oRootConf->get_switch('test_key'), 'test switch', 'Getting switch from RootConf';
+$oSubConf11->set_value('switch.test_switch', 'test switch sub11');
+ok $oSubConf11->get_switch('test_switch'), 'test switch sub11', 'Getting switch from SubConf11';
+ok $oRootConf->get_switch('test_switch'), undef, 'Getting switch from RootConf (before set)';
+$oRootConf->set_value('switch.test_switch', 'test switch');
+ok $oRootConf->get_switch('test_switch'), 'test switch', 'Getting switch from RootConf (after set)';
+$oRootConf->set_value('*.switch.test_switch', 'test switch command line');
+ok $oSubConf11->get_switch('test_switch'), 'test switch command line', 'Getting switch from SubConf11 (overridden by command line switch)';
+ok $oRootConf->get_switch('test_switch'), 'test switch command line', 'Getting switch from RootConf (overridden by command line switch)';
 
 # test preset_values and resolveObjects() with recursion check and wrong reference
 my $oSubConf2= RabakLib::Conf->new('subconf2', $oRootConf);
