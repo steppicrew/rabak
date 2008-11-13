@@ -439,9 +439,8 @@
     }
 
     function getUrl($sPageName) {
-        return $sPageName == "index" ? "/" : $_SERVER["SCRIPT_NAME"]."/$sPageName";
-        $sPageName= $sPageName == "index" ? "/" : "/$sPageName";
-        return $_SERVER["SCRIPT_NAME"].$sPageName;
+        if ($sPageName == "index") return substr($_SERVER["SCRIPT_NAME"], 0, strrpos($_SERVER["SCRIPT_NAME"], '/') + 1);
+        return $_SERVER["SCRIPT_NAME"] . "/$sPageName";
     }
 
     function getImageUrl($sImageFile) {
@@ -548,8 +547,8 @@
             if (@$aGlobalPrefs['title'] && $sPageTitle) $sPageTitle= $aGlobalPrefs['title'].": ".$sPageTitle;
         }
 
-        $aSize= @getimagesize("images/head.jpg");
-        $sImg= '<img border=0 src="'.getImageUrl('head.jpg').'" '.@$aSize[3].' alt="'.$sPageHeadImageText.'">';
+        $aSize= @getimagesize("images/head.gif");
+        $sImg= '<img border=0 src="'.getImageUrl('head.gif').'" '.@$aSize[3].' alt="'.$sPageHeadImageText.'">';
         $sHead= getLink('index', $sImg);
 ?>
 <html>
@@ -559,17 +558,16 @@
         <meta name="description" content="<?= $sPageDescription ?>">
         <link rel="stylesheet" type="text/css" href="<?= $sRelPath ?>screen.css">
         <style>
-            body {
-                background-image: url(<?= $sRelPath ?>images/background.gif);
-            }
             <?= @$sCss ?>
         </style>
     </head>
     <body class="default">
         <div id="container">
                 <div id="head"><?= $sHead ?></div>
-                <div id="menu1" class="menu"><?= $sMenu ?></div>
-                <div id="content1" class="content"><?= $sPage ?></div>
+                <div id="menu"><?= $sMenu ?></div>
+                <div id="content"><?= $sPage ?></div>
+                <br clear="all" />
+                <div id="footer"></div>
         </div>
     </body>
 </html>
