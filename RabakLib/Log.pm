@@ -195,6 +195,7 @@ sub decIndent {
     $self->{INDENT1}-- if $self->{INDENT1};
 }
 
+# TODO: make Log parser capable of log files (lines start with a date)
 sub factLogReparser {
     my $self= shift;
     
@@ -203,7 +204,10 @@ sub factLogReparser {
     return sub {
         my $aResult= [];
         foreach my $sLine (@_) {
+            # remove progress output
             $sLine =~ s/.*\r//;
+            # remove colors
+            $sLine= $self->Uncolor($sLine);
             foreach my $sqPref (keys %qLogPrefixLevel) {
                 if ($sLine=~ s/^$sqPref\:\s*//) {
                     my $sCategory= $1 if $sLine=~ s/^\[(.*?)\] //;
@@ -513,7 +517,7 @@ sub _buildLogPrefixes {
     my $sLogLevelPrefix= $self->getLevelPrefix($iLogLevel);
     
     my $sMsgPref= "  " x $self->{INDENT1};
-    $sMsgPref.= "[$self->{PREFIX}] " if $self->{PREFIX};
+    $sMsgPref.= colored("[$self->{PREFIX}] ", 'bold') if $self->{PREFIX};
     $sMsgPref.= "  " x $self->{INDENT2};
     
     my $sLogPref= $self->{CATEGORY} ? "$self->{CATEGORY}\t" : "";
