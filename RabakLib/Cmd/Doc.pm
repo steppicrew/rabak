@@ -26,6 +26,8 @@ sub run {
 
     return unless $self->wantArgs(0);
 
+    $self->warnOptions([ ]);
+
     print `perldoc RabakLib::Doc`;
     return 1;
 }

@@ -55,6 +55,8 @@ sub Help {
 sub run {
     my $self= shift;
 
+    $self->warnOptions([ ]);
+
     $self->{CONF_FILE}= $self->readConfFile();
     $self->{CONF}= $self->{CONF_FILE}->conf();
 

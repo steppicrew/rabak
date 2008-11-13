@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 
+# TODO: make verbosity levels specifyable in clear text ('error', 'warning', 'info'...)
+
 package RabakLib::Conf;
 
 use warnings;
