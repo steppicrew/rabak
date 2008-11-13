@@ -213,9 +213,6 @@ Documentation is available through rabak itself:
 rabak doc
 ##end
 
-The most recent version and complete docs are available at:
-www.raisin.de/rabak
-
 
 ==developers: Developer Notes
 
