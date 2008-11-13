@@ -102,7 +102,7 @@ There's support for file filters that hide the complexity of the rsync filters
 You need Linux or Cygwin (Notice: On Cygwin pathes may not exceed 260 characters).
 Other plattforms may work too. We didn't try.
 
-You need rsync. I know rabak does't work before version 2.6.4.
+You need rsync. I know rabak doesn't work before version 2.6.4.
 Maybe even a newer one is required. The newer the better.
 
 You need Perl, I don't know which version. Probably >= 5.8
@@ -238,6 +238,16 @@ Dietrich Raisin info1@raisin.de (Initial developer)
 
 See the LICENSE file.
 
+
+==download: Download
+
+##h1 Download Rabak
+
+{link stable/rabak-1.0.tgz Current stable release (Version 1.0)}
+
+{link stable/rabak-1.0.ebuild Current gentoo ebuild}
+
+For instructions how to install Rabak see {link installation Installation}!
 ; -----------------------------------------------------------------
 ; ENDE
 ; -----------------------------------------------------------------
