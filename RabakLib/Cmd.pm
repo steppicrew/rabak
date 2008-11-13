@@ -129,9 +129,8 @@ sub setup {
         verbose   => $hOpts->{'verbose'} ? $hOpts->{'verbose'} + LOG_DEFAULT_LEVEL : undef,
         quiet     => $hOpts->{'quiet'},
         pretend   => $hOpts->{'pretend'},
-        color     => defined $hOpts->{'color'} ? $hOpts->{'color'} : logger->IsColoredTerm() ,
+        Color     => defined $hOpts->{'color'} ? $hOpts->{'color'} : logger->IsColoredTerm() ,
     });
-    
 }
 
 # generates error string regarding expected and gotten number of arguments
