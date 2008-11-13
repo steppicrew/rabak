@@ -8,7 +8,7 @@ use Term::ANSIColor;
 @ISA= qw( Exporter );
 @EXPORT= qw( &VERSION );
 
-sub VERSION { "1.0_rc6" }
+sub VERSION { "1.0" }
 
 sub VersionMsg {
     return "\n" . colored("This is Rabak, version " . VERSION(), 'bold') . "\nRabak is your powerful and reliable rsync based backup system.\n";
