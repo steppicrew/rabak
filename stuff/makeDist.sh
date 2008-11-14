@@ -84,9 +84,9 @@ done
 
 copyFiles "" "$ROOT_FILES"
 copyFiles "bin" "$BIN_FILES"
-for file in "$srcdir/"*.pl; do
-  cp -p "$file" "$basedir/bin/"
-done
+#for file in "$srcdir/"*.pl; do
+#  cp -p "$file" "$basedir/bin/"
+#done
 
 copyFiles "etc" "$ETC_FILES"
 
