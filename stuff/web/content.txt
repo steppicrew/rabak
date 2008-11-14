@@ -170,12 +170,12 @@ rabak help
 
 Make a test backup:
 ##code
-rabak backup -c rabak.sample.cf sample
+rabak backup -c examples/rabak.simple.cf example
 ##end
 
 Have a look at the result:
 ##code
-ls -lA test-bak
+ls -lA examples/example-backup/rabak/
 ##end
 
 Read the documentation:
