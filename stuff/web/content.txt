@@ -268,7 +268,7 @@ See the {link http://www.github.com/steppicrew/rabak/tree/master/LICENSE LICENSE
 
 ##h1 Download Rabak
 
-{link stable/rabak-1.0.tgz Current stable release (Version 1.0)}
+{link stable/rabak-1.0.tgz Current stable release} (Version 1.0, released 14. Nov. 2008)
 
 {link stable/rabak-1.0.ebuild Current gentoo ebuild}
 
