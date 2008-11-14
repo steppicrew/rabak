@@ -33,7 +33,6 @@ function copyModule {
   mkdir -p "$basedir/$libdir/$moddir"
   for file in "$srcdir/$moddir/"*.pm; do
     cp -p "$file" "$basedir/$libdir/$moddir"
-    echo 
   done
   for dir in "$srcdir/$moddir/"*; do
     if [ -d "$dir" ]; then
