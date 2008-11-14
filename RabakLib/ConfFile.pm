@@ -53,9 +53,9 @@ sub new {
     my $sFile= (grep {defined && -f} @sFiles)[0];
 
     if (!defined $sFile && scalar @sFiles) {
-        logger->error("No configuration found in '",
-            join("', '", grep(defined, @sFiles)),
-            "'!");
+        logger->error("No configuration found in '"
+            . join("', '", grep(defined, @sFiles))
+            . "'!");
         return $self;
     }
 
