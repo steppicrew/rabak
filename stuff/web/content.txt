@@ -1,4 +1,4 @@
-; Texte für www.sauna-schwitzerland.de
+
 ; Zeilen, die mit Semikolon anfangen, werden übersprungen!
 
 ; ----------------------------------------------------------------------------
@@ -70,7 +70,6 @@ ein paar Stunden Erholung?
 Wir bieten Ihnen Ruhe und Entspannung
 
 
-
 ; ----------------------------------------------------------------------------
 ; STARTSEITE
 ; ----------------------------------------------------------------------------
@@ -97,10 +96,13 @@ It's simple to configure different, multiple sources for one backup set.
 There's support for file filters that hide the complexity of the rsync filters
 (and make them actually usable).
 
+; -----------------------------------------------------------------
+; SYSTEM REQUIREMENTS
+; -----------------------------------------------------------------
 
 ==requirements: Rabak's system requirements
 
-##h1 Requirements
+##h1 System Requirements
 
 You need Linux or Cygwin (Notice: On Cygwin pathes may not exceed 260 characters).
 Other plattforms may work too. We didn't try.
@@ -126,6 +128,9 @@ To install it do:
 cpan -i Digest::SHA1
 ##end
 
+; -----------------------------------------------------------------
+; INSTALL RABAK
+; -----------------------------------------------------------------
 
 ==installation: Install Rabak
 
@@ -148,6 +153,9 @@ mkdir /etc/rabak
 cp -p etc/* /etc/rabak/
 ##end
 
+; -----------------------------------------------------------------
+; QUICK START
+; -----------------------------------------------------------------
 
 ==quickstart: Quick Start
 
@@ -170,7 +178,7 @@ ls -lA test-bak
 
 Read the documentation:
 ##code
-perldoc RabakLib::Doc
+rabak doc | more
 ##end
 
 Configure Rabak:
@@ -179,6 +187,9 @@ cp /etc/rabak/rabak.sample.cf /etc/rabak/rabak.cf
 nano -w /etc/rabak/rabak.cf
 ##end
 
+; -----------------------------------------------------------------
+; FEATURE TESTS
+; -----------------------------------------------------------------
 
 ==featuretests: Feature Tests
 
@@ -206,6 +217,9 @@ sh ./stuff/sample-env-remove
 
 Check out the docs and the @*.cf@ files for more insight.
 
+; -----------------------------------------------------------------
+; DOCS
+; -----------------------------------------------------------------
 
 ==documentation: Docs
 
@@ -216,6 +230,9 @@ Documentation is available through rabak itself:
 rabak doc
 ##end
 
+; -----------------------------------------------------------------
+; DEVELOPERS
+; -----------------------------------------------------------------
 
 ==developers: Developer Notes
 
@@ -231,6 +248,9 @@ Stephan Hantigk rabak@steppicrew.de (Main developer)
 
 Dietrich Raisin info1@raisin.de (Initial developer)
 
+; -----------------------------------------------------------------
+; LICENSE
+; -----------------------------------------------------------------
 
 ==license: Rabak's License
 
@@ -238,6 +258,9 @@ Dietrich Raisin info1@raisin.de (Initial developer)
 
 See the {link http://www.github.com/steppicrew/rabak/tree/master/LICENSE LICENSE} file (on github).
 
+; -----------------------------------------------------------------
+; DOWNLOAD
+; -----------------------------------------------------------------
 
 ==download: Download
 
@@ -248,6 +271,7 @@ See the {link http://www.github.com/steppicrew/rabak/tree/master/LICENSE LICENSE
 {link stable/rabak-1.0.ebuild Current gentoo ebuild}
 
 For instructions how to install Rabak see {link installation Installation}!
+
 ; -----------------------------------------------------------------
 ; ENDE
 ; -----------------------------------------------------------------
