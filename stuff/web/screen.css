@@ -9,8 +9,8 @@ body {
     height: 100.2%;
 }
 
-body, div, p {
-    font-family: Georgia, serif;
+body, div, p, h1, h2, h3 {
+    font-family: Georgia, Times New Roman, Times, serif;
 }
 
 #container {
@@ -25,11 +25,16 @@ body, div, p {
     margin-left: 10px;
 }
 
+#head h1 {
+    position: absolute;
+    right: 10000px;
+}
+
 #content {
     float: right;
-    width: 700px;
+    width: 670px;
     line-height: 1.6em;
-    padding-right: 30px;
+    padding-right: 60px;
     padding-top: 40px;
     x-margin: 0px 10px 0px 10px;
 }
@@ -46,10 +51,6 @@ a:link, a:visited {
     text-decoration: underline;
 }
 
-div.imgtext {
-    font-size: 14px;
-}
-
 a:hover {
     color: #000;
     background-color: #D9EAEE;
@@ -63,26 +64,34 @@ a.attention:hover {
     color: #fff;
 }
 
+#menu p {
+    padding: 10px;
+    margin: 0;
+}
+
 #menu p.active {
     background-color: #A0C8E5;
 }
 
-#content p.list {
-	margin-top: 0px;
-	margin-bottom: 0px;
+#menu p.menulevel1 {
+    margin-left:15px;
 }
 
-#menu p.menulevel1 {
-	margin-left:15px;
+#content .imgtext {
+    font-size: 14px;
+}
+
+#content p.list {
+    margin-top: 0px;
+    margin-bottom: 0px;
 }
 
 #content p {
-	margin-top: 14px;
-	margin-bottom: 0px;
+    margin-top: 14px;
+    margin-bottom: 0px;
 }
 
 #content h1 {
-    font-family: Georgia, Times New Roman, Times, serif;
     margin-top: 20px;
     margin-bottom: 10px;
     line-height: 110%;
@@ -90,9 +99,16 @@ a.attention:hover {
 }
 
 #content h2 {
-    font-family: Georgia, Times New Roman, Times, serif;
     margin-top: 30px;
     margin-bottom: 0px;
     line-height: 110%;
     color: #810A00;
+}
+
+#content .code {
+    border: 1px solid #A0C8E5;
+    background-color: #D9EAEE;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    padding: 10px;
 }

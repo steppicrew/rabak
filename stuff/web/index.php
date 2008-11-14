@@ -1,5 +1,5 @@
 <?
-    // Simple CMS without name.
+    // Simple CMS without name 0.1
     // (c) Copyright by Dietrich Raisin
 
     // License: See LICENSE file
@@ -58,19 +58,25 @@
         function _endAll() {
             $this->_endList();
             $this->_endParagraph();
+            $this->_endCode();
         }
 
         function _addText($sText) {
             $sText= htmlspecialchars($sText);
  
+            // Mini Textile
+            $sText= preg_replace("/\*([^\*]+)\*/", "<b>$1</b>", $sText );
+            $sText= preg_replace("/\@([^\@\s]+)\@/", "<tt>$1</tt>", $sText );
+
             $sMaskDomain=           "[a-zA-Z][-a-zA-Z_0-9]{2,}";
             $sMaskDomainWithDot=    "[a-zA-Z][-a-zA-Z_\.0-9]+[-a-zA-Z_0-9]";    // Min 3 Buchstaben
             $sMask1stLevelDomain=   "(org|com|net|de)";
             $sMaskFile=             $sMaskDomainWithDot;
-            $sMaskPathedFile=       "($sMaskFile(\/$sMaskFile)+)";
+            $sMaskPathedFile=       "($sMaskFile(\/$sMaskFile)*)";
+            $sMaskPathedFile2=      "($sMaskFile(\/$sMaskFile)+)";
 
             $sMaskEmail= "($sMaskDomainWithDot\@$sMaskDomainWithDot\.$sMask1stLevelDomain)";
-            $sMaskUrl= "((http:\/\/)?($sMaskDomain\.$sMaskDomainWithDot\.$sMask1stLevelDomain(\/$sMaskFile)*\/?))";
+            $sMaskUrl= "((http:\/\/)?($sMaskDomain\.$sMaskDomainWithDot\.$sMask1stLevelDomain(\/$sMaskPathedFile)?\/?))";
             $sMaskIdentifier= "([a-z][a-z0-9_]*)";
 
             $sMaskParam= "\s+([^\}]+?)\s*\}";
@@ -80,18 +86,18 @@
 
             // Falls das Parameter für {link .. } waren: korrigieren
             $sText= preg_replace("/\{link\s+\{link\s+$sMaskUrl$sMaskParam$sMaskParam/",
-                "{link $3 $7}", $sText
+                "{link $3 $9}", $sText
             );
 
             // {link URL .. } ersetzen
             $sText= preg_replace("/\{link\s+$sMaskUrl$sMaskParam/",
-                "<a target=_blank href=\"http://$3\">$6</a>", $sText
+                "<a target=_blank href=\"http://$3\">$8</a>", $sText
             );
 
             global $sRelPath;
 
             // {link File .. } ersetzen
-            $sText= preg_replace("/\{link\s+$sMaskPathedFile$sMaskParam/",
+            $sText= preg_replace("/\{link\s+$sMaskPathedFile2$sMaskParam/",
                 "<a target=_blank href=\"$sRelPath$1\">$3</a>", $sText
             );
 
@@ -101,7 +107,7 @@
                 "isset(\$aPages['$1']) ? '<a href=\"'.getUrl('$1').'\">$2</a>' : '$2'", $sText
             );
 
-            // {link page .. } ersetzen
+            // {bold page .. } ersetzen
             $sText= preg_replace("/\{bold$sMaskParam/", "<b>$1</b>", $sText );
 
             // E-Mail-Adressen verlinken
@@ -113,13 +119,13 @@
         function _insideCode() {
             $this->_endAll();
             $this->bInsideCode= true;
-            $this->sPage .= "\n<code>";
+            $this->sPage .= "\n<div class='code'><code>";
         }
 
         function _endCode() {
             if (!$this->bInsideCode) return;
             $this->bInsideCode= false;
-            $this->sPage .= "\n</code>";
+            $this->sPage .= "\n</code></div>";
         }
 
         function _insideParagraph() {
@@ -415,6 +421,12 @@
                     continue;
                 }
 
+                if ($this->bInsideCode) {
+                    $this->_addText($sLine);
+                    $this->sPage .= "<br />";
+                    continue;
+                }
+
                 if ($this->_insideParagraph()) {
                     if (substr($this->sPage, -1, 1) == ':') {
                         $this->sPage .= "<br />";
@@ -531,8 +543,6 @@
 
         $sMenu= _parseMenu($sPageName, $aMenu);
 
-        # $sCss= file_get_contents("screen.css");
-
         $aPagePrefs= $oPage->getPagePrefs();
 
         $sPageKeywords= @$aPagePrefs['keywords'] ? $aPagePrefs['keywords'] : @$aGlobalPrefs['keywords'];
@@ -557,13 +567,10 @@
         <meta name="keywords" content="<?= $sPageKeywords ?>">
         <meta name="description" content="<?= $sPageDescription ?>">
         <link rel="stylesheet" type="text/css" href="<?= $sRelPath ?>screen.css">
-        <style>
-            <?= @$sCss ?>
-        </style>
     </head>
     <body class="default">
         <div id="container">
-                <div id="head"><?= $sHead ?></div>
+                <div id="head"><h1><?= $sPageTitle ?></h1><?= $sHead ?></div>
                 <div id="menu"><?= $sMenu ?></div>
                 <div id="content"><?= $sPage ?></div>
                 <br clear="all" />
