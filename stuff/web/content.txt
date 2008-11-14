@@ -136,6 +136,8 @@ cpan -i Digest::SHA1
 
 ##h1 Install Rabak
 
+{link download Download} the current release.
+
 Extract the files in rabak's archive to a temporary directory and
 install Rabak's perl library.
 ##code
@@ -215,7 +217,7 @@ When you're done, you can remove the test environment:
 sh ./stuff/sample-env-remove
 ##end
 
-Check out the docs and the @*.cf@ files for more insight.
+Check out the {link documentation docs} and the @*.cf@ files for more insight.
 
 ; -----------------------------------------------------------------
 ; DOCS
