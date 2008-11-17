@@ -513,7 +513,7 @@ sub _buildLogPrefixes {
     my $sLogLevelPrefix= $self->getLevelPrefix($iLogLevel);
     
     my $sMsgPref= "  " x $self->{INDENT1};
-    $sMsgPref.= "[$self->{PREFIX}] " if $self->{PREFIX};
+    $sMsgPref.= colored("[$self->{PREFIX}] ", 'bold') if $self->{PREFIX};
     $sMsgPref.= "  " x $self->{INDENT2};
     
     my $sLogPref= $self->{CATEGORY} ? "$self->{CATEGORY}\t" : "";
