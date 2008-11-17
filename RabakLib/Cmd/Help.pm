@@ -59,7 +59,7 @@ sub run {
 
     return unless $self->wantArgs(0, 1);
 
-    $self->warnOptions();
+    $self->warnOptions([ ]);
     
     if ($self->{ARGS}[0]) {
         my @sHelp= $self->getHelp($self->{ARGS}[0]);

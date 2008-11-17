@@ -26,19 +26,30 @@ function copyFiles {
 }
 
 function copyModule {
-  local moddir="$1"
-  local basedir="$2"
-  local libdir="$3"
+  local dir="$1"
   
-  mkdir -p "$basedir/$libdir/$moddir"
-  for file in "$srcdir/$moddir/"*.pm; do
-    cp -p "$file" "$basedir/$libdir/$moddir"
+  for file in "$srcdir/$dir/"*.pm; do
+    if [ ! -f "$file" ]; then
+        continue
+    fi
+    echo "# START of file '$file'"
+    cat "$file" | perl -e '
+        while (<>) {
+            last if /^__END__/;
+            next if /\#\!\/usr\/bin\/perl/;
+            $_= "# $_" if /use \"?RabakLib\:\:/;
+            print;
+        }
+    '
+    echo 
+    echo "# END of file '$file'"
+    echo 
   done
-  for dir in "$srcdir/$moddir/"*; do
+  for dir in "$srcdir/$dir/"*; do
     if [ -d "$dir" ]; then
       bdir=`basename "$dir"`
       if [ "$bdir" = "t" ]; then continue; fi
-      copyModule "$moddir/$bdir" "$basedir" "$libdir"
+      copyModule "$dir/$bdir"
     fi
   done
 }
@@ -78,15 +89,17 @@ fi
 
 mkdir -p "$basedir"
 
+cat "$srcdir/rabak" > out.pm
+
 for module in $MODULES; do
-  copyModule $module "$basedir" "lib"
+  copyModule "$module" >> out.pm
 done
 
 copyFiles "" "$ROOT_FILES"
 copyFiles "bin" "$BIN_FILES"
-#for file in "$srcdir/"*.pl; do
-#  cp -p "$file" "$basedir/bin/"
-#done
+for file in "$srcdir/"*.pl; do
+  cp -p "$file" "$basedir/bin/"
+done
 
 copyFiles "etc" "$ETC_FILES"
 

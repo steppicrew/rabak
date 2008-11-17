@@ -445,7 +445,7 @@ sub getLogFileInfo {
     return {
         DIR => $sLogDir,
         FILE => $sLogFile,
-        FILEPATH => $self->getPath($sLogFile),
+        FULL_FILE => $self->getPath($sLogFile),
     };
 }
 
@@ -454,13 +454,16 @@ sub initLogging {
     my $bPretend= shift;
 
     my $sBaksetDate= $self->_getBaksetData("DATE");
-    my $sBaksetMonth= substr($sBaksetDate, 0, 7);
     my $sBaksetDir= $self->_getBaksetData("DIR");
     my $sBaksetExt= $self->_getBaksetData("EXT");
 
-    my $sLogDir= "$sBaksetMonth-log";
-    my $sLogFile= "$sLogDir/$sBaksetDate$sBaksetExt.log";
-    my $sLogFilePath= $self->getPath($sLogFile);
+    my $hInfo= $self->getLogFileInfo($sBaksetDate, $sBaksetDir, $sBaksetExt);
+
+    my $sLogDir= $hInfo->{DIR};
+    my $sLogFile= $hInfo->{FILE};
+    my $sLogFilePath= $hInfo->{FULL_FILE};
+
+    my $sBaksetMonth= substr($sBaksetDate, 0, 7);
 
     unless ($bPretend) {
         $self->mkdir($sLogDir);

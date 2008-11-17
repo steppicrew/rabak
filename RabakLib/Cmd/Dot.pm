@@ -35,7 +35,7 @@ sub run {
     my $oBakset= $self->getBakset($sBakset);
     return 0 unless $oBakset;
 
-    $self->warnOptions();
+    $self->warnOptions([ ]);
 
     my $oDot= RabakLib::SetDot->new($oBakset);
     $oDot->toDot();     # FIXME: toDot should be called run

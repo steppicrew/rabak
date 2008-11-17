@@ -151,12 +151,13 @@ sub getColoredLevelPrefix {
     return $sPrefix;
 }
 
+# terminals are listed in Term::ANSIColor
 sub IsColoredTerm {
     return 0 unless -t STDOUT;
     my $sTerm= $ENV{TERM};
     foreach my $sCTerm (
-        'xterm', 'linux', 'rxvt', 'dtterm', 'teraterm', 'aixterm',
-        'PuTTY', 'Cygwin SSH', 'Mac Terminal',
+        'xterm', 'linux', 'rxvt', 'dtterm', 'teraterm',
+        'PuTTY', 'Cygwin SSH', 'Mac Terminal', 'screen',
     ) {
          return 1 if $sTerm eq $sCTerm;
     };
@@ -195,6 +196,7 @@ sub decIndent {
     $self->{INDENT1}-- if $self->{INDENT1};
 }
 
+# TODO: make Log parser capable of log files (lines start with a date)
 sub factLogReparser {
     my $self= shift;
     
@@ -203,7 +205,10 @@ sub factLogReparser {
     return sub {
         my $aResult= [];
         foreach my $sLine (@_) {
+            # remove progress output
             $sLine =~ s/.*\r//;
+            # remove colors
+            $sLine= $self->Uncolor($sLine);
             foreach my $sqPref (keys %qLogPrefixLevel) {
                 if ($sLine=~ s/^$sqPref\:\s*//) {
                     my $sCategory= $1 if $sLine=~ s/^\[(.*?)\] //;

@@ -129,9 +129,8 @@ sub setup {
         verbose   => $hOpts->{'verbose'} ? $hOpts->{'verbose'} + LOG_DEFAULT_LEVEL : undef,
         quiet     => $hOpts->{'quiet'},
         pretend   => $hOpts->{'pretend'},
-        color     => defined $hOpts->{'color'} ? $hOpts->{'color'} : logger->IsColoredTerm() ,
+        Color     => defined $hOpts->{'color'} ? $hOpts->{'color'} : logger->IsColoredTerm() ,
     });
-    
 }
 
 # generates error string regarding expected and gotten number of arguments
@@ -218,6 +217,8 @@ sub getOptionsHelp {
     my $hGlobalOptions= shift;
     my $hLocalOptions= shift;
 
+    my $iIndentDesc= 32;
+
     my $add= sub {
         my $sTitle= shift;
         my $hOptions= shift;
@@ -230,12 +231,12 @@ sub getOptionsHelp {
             $sLine.= $hOptions->{$sKey}[0]
                 ? (colored("-$hOptions->{$sKey}[0]", 'bold') . " | ")
                 : "     ";
-            $sLine.= colored("--$sKey", 'bold');
-            $sLine.= " $hOptions->{$sKey}[2]";
+            $sLine.= colored("--$sKey ", 'bold');
+            $sLine.= colored("$hOptions->{$sKey}[2]", 'underline') . '  ';
             my $iLength= length(logger()->Uncolor($sLine));
-            $sLine.= ' 'x(26 - $iLength) if $iLength < 26;
+            $sLine.= ' 'x($iIndentDesc - $iLength) if $iLength < $iIndentDesc;
             $sLine.= shift @sDescr;
-            push @sResult, $sLine, map { ' 'x26 . $_} @sDescr;
+            push @sResult, $sLine, map { ' 'x$iIndentDesc . $_} @sDescr;
         }
         unshift @sResult, '', "$sTitle:", '' if scalar @sResult; 
         return @sResult;

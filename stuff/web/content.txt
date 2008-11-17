@@ -1,0 +1,325 @@
+
+; Zeilen, die mit Semikolon anfangen, werden übersprungen!
+
+; ----------------------------------------------------------------------------
+; WEB SITE GLOBALS
+; ----------------------------------------------------------------------------
+
+==global: Festlegen der Site-Eigenschaften
+
+; Titel der Seite. Wird im Fenstertitel angezeigt.
+##title   Rabak - A backup system: powerful, simple, reliable, rsync based
+
+; Beschreibung der Seite. Nicht mehr als 100 Zeichen!
+##description   Rabak is a reliable rsync based backup system, simple to configure, simple to run, simple to restore data with.
+
+; Keywords. Nicht mehr als 100 Zeichen!
+##keywords   backup, rsync, Time machine, linux, windows, mac osx
+
+; Text, der erscheint, wenn man die Maus über die Kopfgrafik bewegt. Google-relevant!
+##headimage_text   Welcome to Rabak, your new backup tool!
+
+; ----------------------------------------------------------------------------
+; MENUE1
+; ----------------------------------------------------------------------------
+
+; Seiten, deren Name mit 'menu' beginnt, werden als Menue-Beschreibung behandelt.
+
+==menu1
+
+index: Home
+intro: Introduction
+requirements: System Requirements
+installation: Installation
+quickstart: Quick Start
+featuretests: Feature Tests
+documentation: Docs
+developers: Developer Notes
+license: License
+download: Downloads
+links: Links
+
+; ----------------------------------------------------------------------------
+; SPIELWIESE
+; ----------------------------------------------------------------------------
+
+==test: Testseite
+
+; Link tests
+- {link peter Mehr Infos zum Skipper}
+- {link peter2 Mehr Infos zum Skipper}
+- {link http://www.bla.de Mehr Infos zum Skipper}
+- {link http://www.bla.de/aaa Mehr Infos zum Skipper}
+- {link http://www.bla.de/aaa/bbb Mehr Infos zum Skipper}
+- {link http://www.bla.de/aaa/bbb/ccc Mehr Infos zum Skipper}
+- http://www.bla.de
+
+www.bla.de/skdfhsdkjf/sdf.sdf/sdfsdf
+http://www.bla.de/skdfhsdkjf/sdf.sdf/sdfsdf
+mssssss@stankus.de
+  	
+Willkommen im Schwitzerland
+
+Geht es ihnen auch so?
+Sie sind gestresst,
+haben keine Zeit,
+in den Urlaub zu fahren
+und wünschen sich
+ein paar Stunden Erholung?
+
+Wir bieten Ihnen Ruhe und Entspannung
+
+
+; ----------------------------------------------------------------------------
+; STARTSEITE
+; ----------------------------------------------------------------------------
+
+==index: Welcome to Rabak
+
+##h1 Welcome to Rabak, your new backup tool!
+
+##h2 What's Rabak?
+
+Rabak is a reliable rsync based backup system, simple to configure,
+simple to run, simple to restore data with.
+
+Rabak's strategy is to always make full backups, usually to one or more
+attached external hard drives. Using rsync's clever hard linking abilities,
+the resulting backups use up little target space. Rabak uses simple and
+flexible configuration files and supports backup to or from remote machines.
+It even supports remote to remote backup (think remote control).
+
+Rabak is very good for unattended safe remote backups, and has support
+for postgresql and mysql backups via database dump streaming.
+
+It's simple to configure different, multiple sources for one backup set.
+There's support for file filters that hide the complexity of the rsync filters
+(and make them actually usable).
+
+; -----------------------------------------------------------------
+; SYSTEM REQUIREMENTS
+; -----------------------------------------------------------------
+
+==requirements: Rabak's system requirements
+
+##h1 System Requirements
+
+You need Linux or Cygwin (Notice: On Cygwin pathes may not exceed 260 characters).
+Other plattforms may work too. We didn't try.
+
+You need rsync. I know rabak doesn't work before version 2.6.4.
+Maybe even a newer one is required. The newer the better.
+
+You need Perl, I don't know which version. Probably >= 5.8
+
+You need the *Mail::Send*, *Digest::SHA1*, *Getopt::Long*(>= 2.36), and *IPC::Run*
+perl modules. Fetch it from CPAN:
+
+##code
+cpan -i Mail::Send (or cpan -i MailTools)
+cpan -i IPC::Run
+cpan -i Digest::SHA1
+cpan -i Getopt::Long
+##end
+
+To use dupemerge, you will need the *Digest::SHA1* perl module.
+To install it do:
+##code
+cpan -i Digest::SHA1
+##end
+
+; -----------------------------------------------------------------
+; INSTALL RABAK
+; -----------------------------------------------------------------
+
+==installation: Install Rabak
+
+##h1 Install Rabak
+
+{link download Download} the current release.
+
+Extract the files in rabak's archive to a temporary directory and
+install Rabak's perl library.
+##code
+cd rabak-<version>
+perl Makefile.PL
+make
+make install
+##end
+
+Now you may copy the rabak script itself into your execution path
+and sample config files to @/etc@.
+##code
+cp -p bin/rabak /usr/local/bin/
+mkdir /etc/rabak
+cp -p etc/* /etc/rabak/
+##end
+
+; -----------------------------------------------------------------
+; QUICK START
+; -----------------------------------------------------------------
+
+==quickstart: Quick Start
+
+##h1 Quick Start
+
+Look at rabak's help:
+##code
+rabak help
+##end
+
+Make a test backup:
+##code
+rabak backup -c examples/rabak.simple.cf example
+##end
+
+Have a look at the result:
+##code
+ls -lA examples/example-backup/rabak/
+##end
+
+Read the documentation:
+##code
+rabak doc | more
+##end
+
+Configure Rabak:
+##code
+cp /etc/rabak/rabak.sample.cf /etc/rabak/rabak.cf
+nano -w /etc/rabak/rabak.cf
+##end
+
+; -----------------------------------------------------------------
+; FEATURE TESTS
+; -----------------------------------------------------------------
+
+==featuretests: Feature Tests
+
+##h1 Feature Tests
+
+If you have the right to run @mount@ and @mknod@, you can test more
+features by doing:
+##code
+sh ./stuff/sample-env-make
+##end
+
+This produces a test environment in @/tmp/rabak-sample-data@. Data will be
+backed up into @/tmp/rabak-sample-backup@. You can run the sample configurations
+provided in @rabak.sample.cf@:
+##code
+rabak -c rabak.sample.cf backup sample_firstof
+rabak -c rabak.sample.cf -i Tue backup sample_targetgroup
+rabak -c rabak.sample.cf -i Tue2 backup sample_targetgroup
+##end
+
+When you're done, you can remove the test environment:
+##code
+sh ./stuff/sample-env-remove
+##end
+
+Check out the {link documentation docs} and the @*.cf@ files for more insight.
+
+; -----------------------------------------------------------------
+; DOCS
+; -----------------------------------------------------------------
+
+==documentation: Docs
+
+##h1 Further reading
+
+Documentation is available through rabak itself:
+##code
+rabak doc
+##end
+
+; -----------------------------------------------------------------
+; DEVELOPERS
+; -----------------------------------------------------------------
+
+==developers: Developer Notes
+
+##h1 Developers
+
+You can extend Rabak and add backup types. Have a look into
+the @RabakLib/Peer/Source@ directory.
+
+
+Have fun!
+
+Stephan Hantigk rabak@steppicrew.de (Main developer)
+
+Dietrich Raisin info1@raisin.de (Initial developer)
+
+; -----------------------------------------------------------------
+; LICENSE
+; -----------------------------------------------------------------
+
+==license: Rabak's License
+
+##h1 License
+
+See the {link http://www.github.com/steppicrew/rabak/tree/master/LICENSE LICENSE} file (on github).
+
+; -----------------------------------------------------------------
+; DOWNLOAD
+; -----------------------------------------------------------------
+
+==download: Download
+
+##h1 Download Rabak
+
+{link stable/rabak-1.0.tgz Current stable release} (Version 1.0, released 14. Nov. 2008)
+
+{link stable/rabak-1.0.ebuild Current gentoo ebuild}
+
+For instructions how to install Rabak see {link installation Installation}!
+
+; -----------------------------------------------------------------
+; ENDE
+; -----------------------------------------------------------------
+
+
+; ----------------------------------------------------------------------------
+; HILFETEXTE
+; ----------------------------------------------------------------------------
+
+==hilfe: Hilfe
+
+Der Text ist in Seiten unterteilt, eine Seite fängt an mit:
+
+ ==seitenname
+
+oder
+
+ ==seitenname: Titel
+
+Wobei 'seitenname' ein eindeutiger Name sein muss. Der Titel wird im
+der Titelleiste des Fensters dargestellt.
+
+Innerhalb einer Seite können folgende Anweisungen genutzt werden:
+
+ ##h1 Text
+- Seiten-Überschrift
+
+ ##h2 Text
+- Abschnitts-Überschrift
+
+ ##image Datei Text
+- Horizontal zentriertes Bild mit Unterschrift 'Text'. Die Unterschrift ist
+  optional
+
+ ##leftimage Datei Text
+- Linksbündiges Bild mit Unterschrift 'Text'. Die Unterschrift ist optional.
+  Der folgende Text umfliesst das Bild rechts.
+
+ ##rightimage Datei Text
+- Rechtsbündiges Bild mit Unterschrift 'Text'. Die Unterschrift ist optional.
+  Der folgende Text umfliesst das Bild links.
+
+- Zeile1
+- Zeile2
+- Aufzählungen müssen mit '-' und einem Leerzeichen beginnen.
+
+- TODO: Formulare erklären
+- TODO: Links erklären {link .. }
+- TODO: Fett erklären {bold .. }
