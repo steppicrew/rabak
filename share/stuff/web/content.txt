@@ -259,7 +259,8 @@ Dietrich Raisin info1@raisin.de (Initial developer)
 
 ##h1 License
 
-See the {link http://www.github.com/steppicrew/rabak/tree/master/LICENSE LICENSE} file (on github).
+This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+See {link http://www.perl.com/perl/misc/Artistic.html Perl's Artistic License}
 
 ; -----------------------------------------------------------------
 ; DOWNLOAD
@@ -272,6 +273,8 @@ See the {link http://www.github.com/steppicrew/rabak/tree/master/LICENSE LICENSE
 {link stable/rabak-1.0.tgz Current stable release} (Version 1.0, released 14. Nov. 2008)
 
 {link stable/rabak-1.0.ebuild Current gentoo ebuild}
+
+{link http://github.com/steppicrew/rabak/tree/master Current snapshot on github.com}
 
 For instructions how to install Rabak see {link installation Installation}!
 
