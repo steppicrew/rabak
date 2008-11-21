@@ -6,7 +6,7 @@ use Test;
 BEGIN { plan tests => 45 };
 
 use FindBin qw($Bin);
-use lib "$Bin/../../../../lib";
+use lib "$Bin/../lib";
 use RabakLib::Peer::Source;
 use RabakLib::Set;
 use Data::Dumper;
@@ -15,9 +15,7 @@ print "# Testing 'RabakLib::Peer::Source::File'\n";
 
 # TODO: test remote sources (dont know how to)
 
-$Bin.= "/../..";
-
-my $oRootConf= require "$Bin/Common.t";
+my $oRootConf= require "$Bin/Common.pm";
 ok ref $oRootConf, 'RabakLib::Conf', 'Checking base config';
 
 my $oSetConf= $oRootConf->get_node("testbakset");
@@ -169,7 +167,7 @@ ok @oSourceMountObjects, 1, 'Getting Mount objects from Source';
 ok -d $oSourceMountObjects[0]->get_value("directory"), 1, 'Source Mount directory is a directory';
 
 skip (
-    $> ? "You have to be root to check mounting" : 0,       # >?
+    skipRoot("check mounting"),
     sub{$oSourceMountObjects[0]->mount($oSource);}, 1, "Checking Source mounting"
 );
 
@@ -178,7 +176,7 @@ ok @oTargetMountObjects, 1, 'Getting Mount objects from Target';
 ok -d $oTargetMountObjects[0]->get_value("directory"), 1, 'Target Mount directory is a directory';
 
 skip (
-    $> ? "You have to be root to check mounting" : 0,       # >?
+    skipRoot("check mounting"),
     sub{$oTargetMountObjects[0]->mount($oTarget);}, 1, "Checking Target mounting"
 );
 
@@ -240,12 +238,12 @@ target_testfile "zappi/dont_transfer_this", undef;
 ####################################################
 # unmounting
 skip (
-    $> ? "You have to be root to check unmounting" : 0,       # >?
+    skipRoot("check unmounting"),
     sub{$oTargetMountObjects[0]->unmount();}, 1, "Checking Target unmount"
 );
 
 skip (
-    $> ? "You have to be root to check unmounting" : 0,       # >?
+    skipRoot("check unmounting"),
     sub{$oSourceMountObjects[0]->unmount();}, 1, "Checking Source unmount"
 );
 

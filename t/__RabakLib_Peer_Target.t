@@ -6,17 +6,14 @@ use Test;
 BEGIN { plan tests => 44 };
 
 use FindBin qw($Bin);
-use lib "$Bin/../../../lib";
+use lib "$Bin/../lib";
 use RabakLib::Peer::Target;
 use RabakLib::Set;
 use Data::Dumper;
 
 print "# Testing 'RabakLib::Peer::Target'\n";
 
-# TODO: test remote sources (dont know how to)
-$Bin.= "/..";
-
-my $oRootConf= require "$Bin/Common.t";
+my $oRootConf= require "$Bin/Common.pm";
 ok ref $oRootConf, 'RabakLib::Conf', 'Checking base config';
 
 my $oSetConf= $oRootConf->get_node("testbakset");
@@ -38,15 +35,15 @@ my @oMounts= $oTarget->mountable()->getMountObjects();
 ok @oMounts, 1, 'Getting MountObjects';
 my $aMessages= [];
 skip (
-    $> ? "You have to be root to check mounting" : 0,       # >?
+    skipRoot("check mounting"),
     sub{$oMounts[0]->mount($oTarget, $aMessages);}, 1, "Checking Target mounting"
 );
 skip (
-    $> ? "You have to be root to check unmounting" : 0,       # >?
+    skipRoot("check unmounting"),
     sub{$oMounts[0]->unmount(undef, $aMessages);}, 1, "Checking Target unmounting"
 );
 skip (
-    $> ? "You have to be root to check mounting" : 0,       # >?
+    skipRoot("check mounting"),
     sub{
         my $iResult= $oTarget->mountable()->mountAll($aMessages);
         $oTarget->mountable()->unmountAll($aMessages) if $iResult;
@@ -57,12 +54,12 @@ skip (
 # targetgroup
 $oTarget->set_value('group', 'zuppi');
 skip (
-    $> ? "You have to be root to check mounting" : 0,       # >?
+    skipRoot("check mounting"),
     sub{$oTarget->mountable()->mountAll($aMessages);}, 0, "Checking direct Target mounting (group 'zuppi')"
 );
 $oTarget->set_value('group', 'dayofweek');
 skip (
-    $> ? "You have to be root to check mounting" : 0,       # >?
+    skipRoot("check mounting"),
     sub{
         my $iResult= $oTarget->mountable()->mountAll($aMessages);
         $oTarget->mountable()->unmountAll($aMessages) if $iResult;
@@ -72,7 +69,7 @@ skip (
 
 $oTarget->set_value('switch.targetvalue', 'XXX');
 skip (
-    $> ? "You have to be root to check mounting" : 0,       # >?
+    skipRoot("check mounting"),
     sub{
         my $iResult= $oTarget->mountable()->mountAll($aMessages);
         $oTarget->mountable()->unmountAll($aMessages) if $iResult;
@@ -81,7 +78,7 @@ skip (
 );
 $oTarget->set_value('switch.targetvalue', 'Mon');
 skip (
-    $> ? "You have to be root to check mounting" : 0,       # >?
+    skipRoot("check mounting"),
     sub{
         my $iResult= $oTarget->mountable()->mountAll($aMessages);
         $oTarget->mountable()->unmountAll($aMessages) if $iResult;
@@ -90,7 +87,7 @@ skip (
 );
 $oTarget->set_value('switch.targetvalue', 'Tue');
 skip (
-    $> ? "You have to be root to check mounting" : 0,       # >?
+    skipRoot("check mounting"),
     sub{
         my $iResult= $oTarget->mountable()->mountAll($aMessages);
         $oTarget->mountable()->unmountAll($aMessages) if $iResult;
@@ -102,7 +99,7 @@ skip (
 # no rabak.dev.cf
 $oTarget->set_value('mount', 'testsource_file_mount');
 skip (
-    $> ? "You have to be root to check mounting" : 0,       # >?
+    skipRoot("check mounting"),
     sub{
         my $iResult= $oTarget->mountable()->mountAll($aMessages);
         $oTarget->mountable()->unmountAll($aMessages) if $iResult;
@@ -114,7 +111,7 @@ skip (
 # wrong mount reference
 $oTarget->set_value('mount', 'non_existant');
 skip (
-    $> ? "You have to be root to check mounting" : 0,       # >?
+    skipRoot("check mounting"),
     sub{
         my $iResult= $oTarget->mountable()->mountAll($aMessages);
         $oTarget->mountable()->unmountAll($aMessages) if $iResult;
@@ -124,7 +121,7 @@ skip (
 # TODO: check error in log
 $oTarget->set_value('mount', '&non_existant');
 skip (
-    $> ? "You have to be root to check mounting" : 0,       # >?
+    skipRoot("check mounting"),
     sub{
         my $iResult= $oTarget->mountable()->mountAll($aMessages);
         $oTarget->mountable()->unmountAll($aMessages) if $iResult;
@@ -136,7 +133,7 @@ skip (
 # no mount reference
 $oTarget->set_value('mount', undef);
 skip (
-    $> ? "You have to be root to check mounting" : 0,       # >?
+    skipRoot("check mounting"),
     sub{
         my $iResult= $oTarget->mountable()->mountAll($aMessages);
         $oTarget->mountable()->unmountAll($aMessages) if $iResult;
