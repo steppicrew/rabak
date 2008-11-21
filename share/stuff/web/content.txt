@@ -28,6 +28,7 @@
 ==menu1
 
 index: Home
+download: Downloads
 intro: Introduction
 requirements: System Requirements
 installation: Installation
@@ -36,7 +37,6 @@ featuretests: Feature Tests
 documentation: Docs
 developers: Developer Notes
 license: License
-download: Downloads
 links: Links
 
 ; ----------------------------------------------------------------------------
@@ -95,6 +95,8 @@ for postgresql and mysql backups via database dump streaming.
 It's simple to configure different, multiple sources for one backup set.
 There's support for file filters that hide the complexity of the rsync filters
 (and make them actually usable).
+
+{link download Download it now!}
 
 ; -----------------------------------------------------------------
 ; SYSTEM REQUIREMENTS
@@ -260,7 +262,7 @@ Dietrich Raisin info1@raisin.de (Initial developer)
 ##h1 License
 
 This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
-See {link http://www.perl.com/perl/misc/Artistic.html Perl's Artistic License}
+See {link http://www.perl.com/perl/misc/Artistic.html Perl's Artistic License}.
 
 ; -----------------------------------------------------------------
 ; DOWNLOAD
@@ -274,7 +276,7 @@ See {link http://www.perl.com/perl/misc/Artistic.html Perl's Artistic License}
 
 {link stable/rabak-1.0.ebuild Current gentoo ebuild}
 
-{link http://github.com/steppicrew/rabak/tree/master Current snapshot on github.com}
+{link http://www.github.com/steppicrew/rabak/tree/master Current snapshot on github.com}
 
 For instructions how to install Rabak see {link installation Installation}!
 
