@@ -144,6 +144,7 @@ install Rabak's perl library.
 cd rabak-<version>
 perl Makefile.PL
 make
+make test
 make install
 ##end
 
@@ -151,8 +152,8 @@ Now you may copy the rabak script itself into your execution path
 and sample config files to @/etc@.
 ##code
 cp -p bin/rabak /usr/local/bin/
-mkdir /etc/rabak
-cp -p etc/* /etc/rabak/
+cp -rp etc/rabak /etc/
+cp -rp share /usr/share/rabak
 ##end
 
 ; -----------------------------------------------------------------
