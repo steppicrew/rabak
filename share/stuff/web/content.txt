@@ -151,7 +151,7 @@ make install
 Now you may copy the rabak script itself into your execution path
 and sample config files to @/etc@.
 ##code
-cp -p bin/rabak /usr/local/bin/
+cp -p rabak /usr/bin/
 cp -rp etc/rabak /etc/
 cp -rp share /usr/share/rabak
 ##end
