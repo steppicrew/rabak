@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script calls rabak inside it's archive's jail
+# This script calls rabak inside it's archive's directory
 
 basedir=`dirname "0"`
 
