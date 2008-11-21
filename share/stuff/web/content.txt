@@ -28,7 +28,7 @@
 ==menu1
 
 index: Home
-download: Downloads
+download: Download!
 intro: Introduction
 requirements: System Requirements
 installation: Installation
