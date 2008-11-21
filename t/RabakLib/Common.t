@@ -2,15 +2,22 @@
 
 use strict;
 use File::Temp;
-use RabakLib::Conf;
 use FindBin qw($Bin);
+use lib "$Bin/../lib";
+use RabakLib::Conf;
+use RabakLib::Log;
+
+# suppress all errors and warnings
+logger->setOpts({quiet => 1});
 
 # common include file for tests, creating base config structure
 # does not run any tests (cause "plan" can called only once)
 
 # create and remove test devices for every test script
-BEGIN {`sh $Bin/stuff/sample-env-make 2>/dev/null`;}
-END {`sh $Bin/stuff/sample-env-remove 2>/dev/null`;}
+#BEGIN {`sh $Bin/../share/stuff/sample-env-make 2>/dev/null`;}
+#END {`sh $Bin/../share/stuff/sample-env-remove 2>/dev/null`;}
+BEGIN {`sh $Bin/../../share/stuff/sample-env-make`;}
+END {`sh $Bin/../../share/stuff/sample-env-remove`;}
 
 my $sSourceDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );
 my $sTargetDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );

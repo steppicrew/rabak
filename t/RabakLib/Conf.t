@@ -1,16 +1,20 @@
+#!/usr/bin/perl
+
 use strict;
 use Test;
 
 BEGIN { plan tests => 65 };
 
-use RabakLib::Conf;
 use Data::Dumper;
 use FindBin qw($Bin);
+use lib "$Bin/../../lib";
+use RabakLib::Conf;
+use RabakLib::Log;
+
+# suppress all errors and warnings
+logger->setOpts({quiet => 1});
 
 print "# Testing 'RabakLib::Conf'\n";
-
-# modify bin directory for including
-$Bin.= "/../..";
 
 # creating root conf
 my $oRootConf= RabakLib::Conf->new('testconfig');

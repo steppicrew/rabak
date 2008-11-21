@@ -566,7 +566,7 @@ sub getDir {
             "sPath" => $sPath,
             "bFileType" => $bFileType,
         }, '@Dir'
-    )};
+    ) || []};
 }
 
 # returns cascaded hash table of the given directory
@@ -619,7 +619,7 @@ sub getDirRecursive {
             "sPath" => $sPath,
             "iLevel" => $iLevel,
         }, '%Dir'
-    )};
+    ) || []};
 }
 
 # makes sure the given file exists locally
@@ -720,9 +720,10 @@ sub mkdir {
     my $sPath= $self->getPath(shift);
 
     return ${$self->_saveperl('
-        # mkdir()
-        $result= -d $sPath || CORE::mkdir $sPath;
-    ', { "sPath" => $sPath }, '$result')};
+            # mkdir()
+            $result= -d $sPath || CORE::mkdir $sPath;
+        ', { "sPath" => $sPath }, '$result'
+    ) || \undef};
 }
 
 sub symlink {
@@ -738,7 +739,7 @@ sub symlink {
             "sOrigFile" => $sOrigFile,
             "sSymLink" => $sSymLink,
         }, '$result'
-    )};
+    ) || \undef};
 }
 
 sub unlink {
@@ -749,7 +750,7 @@ sub unlink {
             # unlink()
             $result= CORE::unlink $sFile;
         ', { "sFile" => $sFile, }, '$result'
-    )};
+    ) || \undef};
 }
 
 sub df {
@@ -768,7 +769,7 @@ sub isDir {
             # isDir()
             $result= -d $sDir;
         ', { "sDir" => $sDir, }, '$result'
-    )};
+    ) || \undef};
 }
 
 sub isReadable {
@@ -779,7 +780,7 @@ sub isReadable {
             # isReadable()
             $result= -r $sFile;
         ', { "sFile" => $sFile, }, '$result'
-    )};
+    ) || \undef};
 }
 
 sub isWritable {
@@ -790,7 +791,7 @@ sub isWritable {
             # isWritable()
             $result= -w $sFile;
         ', { "sFile" => $sFile, }, '$result'
-    )};
+    ) || \undef};
 }
 
 sub isFile {
@@ -801,7 +802,7 @@ sub isFile {
             # isFile()
             $result= -f $sFile;
         ', { "sFile" => $sFile, }, '$result'
-    )};
+    ) || \undef};
 }
 
 sub isSymlink {
@@ -812,7 +813,7 @@ sub isSymlink {
             # isSymlink()
             $result= -l $sFile;
         ', { "sFile" => $sFile, }, '$result'
-    )};
+    ) || \undef};
 }
 
 # abs_path *MUST NOT* use getPath!! would result in an infinte loop
@@ -825,7 +826,7 @@ sub abs_path {
             use Cwd;
             $result= Cwd::abs_path($sFile);
         ', { "sFile" => $sFile, }, '$result'
-    )};
+    ) || \undef};
 }
 
 sub glob {
@@ -836,7 +837,7 @@ sub glob {
             # glob()
             @result= glob($sFile);
         ', { "sFile" => $sFile, }, '@result'
-    )};
+    ) || []};
 }
 
 sub echo {
@@ -884,8 +885,8 @@ sub tempfile {
             CORE::close $result[0];
             $sFileName= $result[1];
         ', { "sDir" => $sDir, }, '$sFileName',
-    )};
-    push @{$self->{TEMPFILES}}, $sFileName;
+    ) || \undef};
+    push @{$self->{TEMPFILES}}, $sFileName if $sFileName;
     return $sFileName;
 }
 
@@ -900,8 +901,8 @@ sub tempdir {
             use File::Temp;
             $sDirName= File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 0, DIR => $sDir);
         ', { "sDir" => $sDir, }, '$sDirName',
-    )};
-    push @{$self->{TEMPFILES}}, $sDirName;
+    ) || \undef};
+    push @{$self->{TEMPFILES}}, $sDirName if $sDirName;
     return $sDirName
 }
 
@@ -919,7 +920,7 @@ sub rmtree {
             use File::Path;
             $result= rmtree([$sTree], $bDebug);
         ', { sTree => $sTree, bDebug => $self->{DEBUG} }, '$result',
-    )};
+    ) || \undef};
 }
 
 =back

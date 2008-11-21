@@ -1,4 +1,3 @@
-
 package RabakLib::Version;
 
 use Exporter;

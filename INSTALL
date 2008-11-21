@@ -1,0 +1,11 @@
+To install Rabak's libraries simply run the following commands:
+
+  perl Makefile.PL
+  make
+  make install
+
+Now you may copy the rabak script itself and some config files:
+
+  cp -p rabak /usr/bin/
+  cp -rp etc/rabak/ /etc/
+

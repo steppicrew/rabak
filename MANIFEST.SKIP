@@ -1,0 +1,12 @@
+^.git
+^MANIFEST\.
+^Makefile$
+^\.
+^blib/
+^pm_to_blib$
+
+# not yet included
+^lib/GraphViz/
+
+^rabak_sandbox.sh$
+

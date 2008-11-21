@@ -1,21 +1,23 @@
+#!/usr/bin/perl
+
 use strict;
 use Test;
 
 BEGIN { plan tests => 45 };
 
+use FindBin qw($Bin);
+use lib "$Bin/../../../../lib";
 use RabakLib::Peer::Source;
 use RabakLib::Set;
 use Data::Dumper;
-use FindBin qw($Bin);
 
 print "# Testing 'RabakLib::Peer::Source::File'\n";
 
 # TODO: test remote sources (dont know how to)
 
-# modify bin directory for including
-$Bin.= "/../../../..";
+$Bin.= "/../..";
 
-my $oRootConf= require "$Bin/RabakLib/t/Common.t";
+my $oRootConf= require "$Bin/Common.t";
 ok ref $oRootConf, 'RabakLib::Conf', 'Checking base config';
 
 my $oSetConf= $oRootConf->get_node("testbakset");

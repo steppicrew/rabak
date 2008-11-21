@@ -35,10 +35,10 @@ src_install () {
 	dodoc Licence.txt README TODO CHANGELOG
 
 	# Move rsync to bin where it belongs.
-	dobin bin/*
+	dobin rabak
 	dodir /etc/rabak
 	cp etc/* "${D}"/etc/rabak
-        chmod 0400 "${D}"/etc/rabak/rabak.secret.cf
+	chmod 0400 "${D}"/etc/rabak/rabak.secret.cf
 }
 
 pkg_postinst() {
@@ -48,7 +48,7 @@ pkg_postinst() {
 	elog "This is a template. "
 	elog "Copy, or move, the above file to: /etc/rabak/rabak.cf "
 	elog "Note that upgrading will update the template, not real config. "
-        elog
+	elog
 	elog "Please pay special attention to permissions of "
 	elog "  /etc/rabak/rabak.secret.cf"
 	elog

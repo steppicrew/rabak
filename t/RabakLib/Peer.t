@@ -1,18 +1,18 @@
+#!/usr/bin/perl
+
 use strict;
 use Test;
 
 BEGIN { plan tests => 69 };
 
+use FindBin qw($Bin);
+use lib "$Bin/../../lib";
 use RabakLib::Peer::Target;
 use Data::Dumper;
-use FindBin qw($Bin);
 
 print "# Testing 'RabakLib::Conf'\n";
 
-# modify bin directory for including
-$Bin.= "/../..";
-
-my $oRootConf= require "$Bin/RabakLib/t/Common.t";
+my $oRootConf= require "$Bin/Common.t";
 ok ref $oRootConf, 'RabakLib::Conf', 'Checking base config';
 
 my $oTargetConf= $oRootConf->get_node("testtarget");
