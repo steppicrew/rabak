@@ -15,7 +15,7 @@ use vars qw(@ISA);
 sub getOptions {
     return {
         "targetgroup-value" =>  [ "i", "=s", "<value>",   "Save on device with targetgroup value <value>" ],
-        "logging" =>            [ "l", "!",  "",          "Force or prevent logging even if specified other wise in config file." ],
+        "logging" =>            [ "l", "!",  "",          "Force or prevent logging even if specified otherwise in config file." ],
     };
 }
 
