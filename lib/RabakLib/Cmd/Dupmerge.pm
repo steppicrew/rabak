@@ -44,7 +44,8 @@ sub run {
     my $self= shift;
 
     #TODO: implement option pretend (i.e. do not cache inodes but print possible hard links)
-    $self->warnOptions([ 'pretend' ]);
+#    $self->warnOptions([ 'pretend', 'verbose' ]);
+    $self->warnOptions([ 'verbose' ]);
 
     if (scalar @{ $self->{ARGS} } == 0) {
         $self->{ERROR}= "Please provide one or more directory paths!\n";
