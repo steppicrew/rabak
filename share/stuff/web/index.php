@@ -66,7 +66,7 @@
  
             // Mini Textile
             $sText= preg_replace("/\*([^\*]+)\*/", "<b>$1</b>", $sText );
-            $sText= preg_replace("/\@([^\@\s]+)\@/", "<tt>$1</tt>", $sText );
+            $sText= preg_replace("/\@([^\@\s]+)\@/", "<code>$1</code>", $sText );
 
             $sMaskDomain=           "[a-zA-Z][-a-zA-Z_0-9]{2,}";
             $sMaskDomainWithDot=    "[a-zA-Z][-a-zA-Z_\.0-9]+[-a-zA-Z_0-9]";    // Min 3 Buchstaben

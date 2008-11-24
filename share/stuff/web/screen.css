@@ -105,10 +105,17 @@ a.attention:hover {
     color: #810A00;
 }
 
-#content .code {
+#content code {
+    font-family: monospace;
+}
+
+#content div.code,
+#content code {
     border: 1px solid #A0C8E5;
     background-color: #D9EAEE;
-    margin-top: 20px;
-    margin-bottom: 20px;
-    padding: 10px;
 }
+
+#content div code {
+    border: 0;
+}
+
