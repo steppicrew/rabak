@@ -20,8 +20,8 @@ sub GetGlobalOptions {
         "i" =>                  [ "",  "=s", "<value>", "Save on device with targetgroup value <value> (Depricated. Don't use!)" ],
         "pretend" =>            [ "p", "",  "",         "Pretend (don't do anything, just tell what would happen)" ],
         "quiet" =>              [ "q", "",  "",         "Be quiet" ],
-        "verbose" =>            [ "v", "+",  "",        "Be verbose (May be specified more than once to be more verbose)" ],
-        "color" =>              [ "",  "!",  "",        "Enable colored output" ],
+        "verbose" =>            [ "v", "+",  "",        "Be verbose (May be specified more than once to increase verbosity)" ],
+        "color" =>              [ "", "!",  "",         "Force or disable colored output." ],
         "help" =>               [ "h", "",  "",         "Show (this) help" ],
     };
 }
@@ -231,7 +231,12 @@ sub getOptionsHelp {
             $sLine.= $hOptions->{$sKey}[0]
                 ? (colored("-$hOptions->{$sKey}[0]", 'bold') . " | ")
                 : "     ";
-            $sLine.= colored("--$sKey ", 'bold');
+            if ($hOptions->{$sKey}[1] eq '!') {
+                $sLine.= colored("--[no-]$sKey ", 'bold');
+            }
+            else {
+                $sLine.= colored("--$sKey ", 'bold');
+            }
             $sLine.= colored("$hOptions->{$sKey}[2]", 'underline') . '  ';
             my $iLength= length(logger()->Uncolor($sLine));
             $sLine.= ' 'x($iIndentDesc - $iLength) if $iLength < $iIndentDesc;

@@ -6,13 +6,13 @@ use Test;
 BEGIN { plan tests => 69 };
 
 use FindBin qw($Bin);
-use lib "$Bin/../../lib";
+use lib "$Bin/../lib";
 use RabakLib::Peer::Target;
 use Data::Dumper;
 
 print "# Testing 'RabakLib::Conf'\n";
 
-my $oRootConf= require "$Bin/Common.t";
+my $oRootConf= require "$Bin/Common.pm";
 ok ref $oRootConf, 'RabakLib::Conf', 'Checking base config';
 
 my $oTargetConf= $oRootConf->get_node("testtarget");

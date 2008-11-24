@@ -6,6 +6,7 @@ use warnings;
 use strict;
 
 use Data::Dumper;
+use Term::ANSIColor;
 
 use vars qw(@ISA);
 
@@ -14,7 +15,7 @@ use vars qw(@ISA);
 sub getOptions {
     return {
         "targetgroup-value" =>  [ "i", "=s", "<value>",   "Save on device with targetgroup value <value>" ],
-        "logging" =>            [ "l", "!",  "",          "Use '--logging' to log even if not set in config file\nUse '--nologging' to prevent logging." ],
+        "logging" =>            [ "l", "!",  "",          "Force or prevent logging even if specified otherwise in config file." ],
     };
 }
 
@@ -24,7 +25,9 @@ sub Help {
         'rabak backup [options] <backup set>',
         'Takes the given <backup set> and makes a backup.',
         'The settings for the backup set must be in the configuration file, either the',
-        'default one or the one defined by the "--conf" option.'
+        'default one or the one defined by the ' . colored("--conf", "bold") . ' option.',
+        '',
+        'To list all available backup sets use ' . colored("rabak conf [--conf <file>]", "bold"),
     );
 }
 

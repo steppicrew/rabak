@@ -14,10 +14,16 @@ logger->setOpts({quiet => 1});
 # does not run any tests (cause "plan" can called only once)
 
 # create and remove test devices for every test script
-#BEGIN {`sh $Bin/../share/stuff/sample-env-make 2>/dev/null`;}
-#END {`sh $Bin/../share/stuff/sample-env-remove 2>/dev/null`;}
-BEGIN {`sh $Bin/../../share/stuff/sample-env-make`;}
-END {`sh $Bin/../../share/stuff/sample-env-remove`;}
+BEGIN {`sh $Bin/../share/stuff/sample-env-make 2>/dev/null`;}
+END {`sh $Bin/../share/stuff/sample-env-remove 2>/dev/null`;}
+
+sub skipRoot {
+    my $sMsg= shift;
+    return "You have to be root to $sMsg" if $>;
+    return "Devices don't exist. May be you are in a vserver? Could not $sMsg" unless -c "/tmp/rabak-sample-data/dev.loop0";
+    return 0;
+}
+
 
 my $sSourceDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );
 my $sTargetDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );

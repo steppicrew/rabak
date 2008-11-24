@@ -7,7 +7,7 @@ BEGIN { plan tests => 65 };
 
 use Data::Dumper;
 use FindBin qw($Bin);
-use lib "$Bin/../../lib";
+use lib "$Bin/../lib";
 use RabakLib::Conf;
 use RabakLib::Log;
 
