@@ -6,6 +6,7 @@ use warnings;
 use strict;
 
 use Data::Dumper;
+use RabakLib::Log;
 # use Cwd;
 
 use vars qw(@ISA);
@@ -28,7 +29,7 @@ sub run {
 
     $self->warnOptions([ ]);
 
-    print `perldoc RabakLib::Doc`;
+    logger->print(`perldoc RabakLib::Doc`);
     return 1;
 }
 

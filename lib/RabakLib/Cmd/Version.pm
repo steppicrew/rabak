@@ -8,6 +8,7 @@ use vars qw(@ISA);
 
 use Data::Dumper;
 use RabakLib::Version;
+use RabakLib::Log;
 
 @ISA= qw( RabakLib::Cmd );
 
@@ -30,7 +31,7 @@ sub run {
 
     $self->warnOptions([ ]);
     
-    print RabakLib::Version::LongVersionMsg(), $/;
+    logger->print(RabakLib::Version::LongVersionMsg(), $/);
     return 1;
 }
 
