@@ -189,7 +189,7 @@ PORTDIR_OVERLAY="/usr/local/portage"
 
 {link download Download} the current ebuild and copy it to @/usr/local/portage/app-backup/rabak@, create nonexistant directories.
 ##code
--d /usr/local/portage/app-backup/rabak || mkdir -p /usr/local/portage/app-backup/rabak
+test -d /usr/local/portage/app-backup/rabak || mkdir -p /usr/local/portage/app-backup/rabak
 cd /usr/local/portage/app-backup/rabak/
 wget http://raisin.de/rabak/stable/rabak-<version>.ebuild
 ##end
