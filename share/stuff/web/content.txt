@@ -108,9 +108,7 @@ There's support for file filters that hide the complexity of the rsync filters
 
 ##h2 Current Version
 
-{link stable/rabak-1.0-r1.tar.gz Version 1.0-r1}, released 24. Nov. 2008
-
-{link stable/rabak-1.0-r1.ebuild Gentoo ebuild for Version 1.0-r1}
+{link stable/rabak-1.0-r1.tar.gz Version 1.0-r1}, released 24. Nov. 2008 ({link stable/rabak-1.0-r1.ebuild Gentoo ebuild})
 
 ##h2 Snapshot on GitHub
 
@@ -118,9 +116,7 @@ There's support for file filters that hide the complexity of the rsync filters
 
 ##h2 Older versions
 
-{link stable/rabak-1.0.tgz Version 1.0}, released 14. Nov. 2008
-
-{link stable/rabak-1.0.ebuild Gentoo ebuild for Version 1.0}
+{link stable/rabak-1.0.tgz Version 1.0}, released 14. Nov. 2008 ({link stable/rabak-1.0.ebuild Gentoo ebuild})
 
 For instructions how to install Rabak see {link installation Installation}!
 
