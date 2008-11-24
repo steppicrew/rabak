@@ -191,7 +191,7 @@ PORTDIR_OVERLAY="/usr/local/portage"
 ##code
 -d /usr/local/portage/app-backup/rabak || mkdir -p /usr/local/portage/app-backup/rabak
 cd /usr/local/portage/app-backup/rabak/
-wget http://www.raisin.de/rabak/stable/rabak-<version>.ebuild
+wget http://raisin.de/rabak/stable/rabak-<version>.ebuild
 ##end
 
 Update your Manifest file:
