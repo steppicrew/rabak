@@ -6,7 +6,7 @@ inherit perl-module eutils
 
 DESCRIPTION="rabak is a backup utility for files and databases based on rsync."
 HOMEPAGE="http://www.raisin.de/rabak"
-SRC_URI="http://www.raisin.de/rabak/stable/${P}.tgz"
+SRC_URI="http://www.raisin.de/rabak/stable/${P}.tar.gz"
 
 SLOT="0"
 LICENSE="Artistic"
