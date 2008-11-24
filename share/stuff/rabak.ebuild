@@ -26,14 +26,14 @@ RDEPEND=">=dev-lang/perl-5.8.2
 		>=perl-core/Getopt-Long-2.36"
 
 src_compile() {
-	cd "${PF}"
+	cd "${WORKDIR}/${PF}"
 
 	perl-module_src_prep
 	perl-module_src_compile
 }
 
 src_install () {
-	cd "${PF}"
+	cd "${WORKDIR}/${PF}"
 
 	perl-module_src_install
 
