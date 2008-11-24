@@ -1,8 +1,9 @@
+
 # Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header: $
 
-inherit perl-module eutils
+inherit perl-app eutils
 
 DESCRIPTION="rabak is a backup utility for files and databases based on rsync."
 HOMEPAGE="http://www.raisin.de/rabak"
@@ -25,26 +26,29 @@ RDEPEND=">=dev-lang/perl-5.8.2
 		>=perl-core/Getopt-Long-2.36"
 
 src_compile() {
+	cd "${PF}"
+
 	perl-module_src_prep
 	perl-module_src_compile
 }
 
 src_install () {
+	cd "${PF}"
+
 	perl-module_src_install
 
 	dodoc LICENSE README TODO CHANGELOG INSTALL
 
 	# Move rabak to bin where it belongs.
-	dobin "rabak"
+	dobin rabak
 	# Copy sample config files
-	dodir "/etc/rabak"
-	cp -rp "etc/rabak" "${D}/etc/rabak"
-	fowners -R root:root "/etc/rabak"
+	insinto /etc
+	doins -r etc/rabak
 	# Make raba.secret.cf readable only for root
 	fperms 0400 "/etc/rabak/rabak.secret.cf"
 	# Copy misc files
-	dodir "/usr/share/rabak"
-	cp -rp share/* "${D}/usr/share/rabak/"
+	insinto "/usr/share/${PF}"
+	doins -r share/*
 }
 
 pkg_postinst() {
