@@ -180,6 +180,31 @@ cp -rp etc/rabak /etc/
 cp -rp share /usr/share/rabak
 ##end
 
+##h2 Install Rabak on Gentoo
+
+Prepare your portage tree for overlay (if not already done) by adding the following line to your @/etc/make.conf@ file:
+##code
+PORTDIR_OVERLAY="/usr/local/portage"
+##end
+
+{link download Download} the current ebuild and copy it to @/usr/local/portage/app-backup/rabak@, create nonexistant directories.
+##code
+-d /usr/local/portage/app-backup/rabak || mkdir -p /usr/local/portage/app-backup/rabak
+cd /usr/local/portage/app-backup/rabak/
+wget http://www.raisin.de/rabak/stable/rabak-<version>.ebuild
+##end
+
+Update your Manifest file:
+##code
+cd /usr/local/portage/app-backup/rabak/
+ebuild rabak-<version>.ebuild manifest
+##end
+
+And finally emerge your new rabak version:
+##code
+emerge -av rabak
+##end
+
 ; -----------------------------------------------------------------
 ; QUICK START
 ; -----------------------------------------------------------------
