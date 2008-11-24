@@ -9,7 +9,7 @@ HOMEPAGE="http://www.raisin.de/rabak"
 SRC_URI="http://www.raisin.de/rabak/stable/${P}.tgz"
 
 SLOT="0"
-LICENSE="MIT"
+LICENSE="Artistic"
 KEYWORDS="alpha amd64 ppc ppc64 sparc x86"
 IUSE=""
 
@@ -32,13 +32,19 @@ src_compile() {
 src_install () {
 	perl-module_src_install
 
-	dodoc Licence.txt README TODO CHANGELOG
+	dodoc LICENSE README TODO CHANGELOG INSTALL
 
-	# Move rsync to bin where it belongs.
-	dobin rabak
-	dodir /etc/rabak
-	cp etc/* "${D}"/etc/rabak
-	chmod 0400 "${D}"/etc/rabak/rabak.secret.cf
+	# Move rabak to bin where it belongs.
+	dobin "rabak"
+	# Copy sample config files
+	dodir "/etc/rabak"
+	cp -rp "etc/rabak" "${D}/etc/rabak"
+	fowners -R root:root "/etc/rabak"
+	# Make raba.secret.cf readable only for root
+	fperms 0400 "/etc/rabak/rabak.secret.cf"
+	# Copy misc files
+	dodir "/usr/share/rabak"
+	cp -rp share/* "${D}/usr/share/rabak/"
 }
 
 pkg_postinst() {
