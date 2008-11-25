@@ -566,7 +566,8 @@
         <title><?= $sPageTitle ?></title>
         <meta name="keywords" content="<?= $sPageKeywords ?>">
         <meta name="description" content="<?= $sPageDescription ?>">
-        <link rel="stylesheet" type="text/css" href="<?= $sRelPath ?>screen.css">
+        <link rel="stylesheet" type="text/css" href="http://github.com/steppicrew/rabak/tree/master%2Fshare%2Fstuff%2Fweb%2Fscreen.css?raw=true">
+        <!--link rel="stylesheet" type="text/css" href="<?= $sRelPath ?>screen.css"-->
     </head>
     <body class="default">
         <div id="container">
