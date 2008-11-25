@@ -231,7 +231,7 @@ rabak help
 
 View example's configuration (please modify paths to match correct location)
 ##code
-rabak conf -c examples/rabak.simple.cf example
+rabak conf -c share/examples/rabak.simple.cf example
 ##end
 
 Make a test backup:
