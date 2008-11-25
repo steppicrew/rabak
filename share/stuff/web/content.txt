@@ -259,7 +259,7 @@ nano -w /etc/rabak/rabak.cf
 Further examples can be found in directory @tutorial/@.
 See @README@:
 ##code
-less tutorial/REDAME
+less tutorial/README
 ##end
 
 ; -----------------------------------------------------------------
