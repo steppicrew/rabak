@@ -162,8 +162,19 @@ cpan -i DBD::SQLite
 
 {link download Download} the current release.
 
-Extract the files in rabak's archive to a temporary directory and
-install Rabak's perl library.
+First extract the files in rabak's archive to a temporary directory:
+##code
+tar -xvzf rabak-<version>.tar.gz
+##end
+
+To test rabak before installation start it with proper library paths.
+You may use the included @rabak_sandbox.sh@-script
+##code
+rabak-<version>/rabak_sandbox.sh help
+...
+##end
+
+To install Rabak's perl library:
 ##code
 cd rabak-<version>
 perl Makefile.PL

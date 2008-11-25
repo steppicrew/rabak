@@ -8,5 +8,3 @@
 # not yet included
 ^lib/GraphViz/
 
-^rabak_sandbox.sh$
-
