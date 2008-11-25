@@ -229,9 +229,14 @@ Look at rabak's help:
 rabak help
 ##end
 
+View example's configuration (please modify paths to match correct location)
+##code
+rabak conf -c examples/rabak.simple.cf example
+##end
+
 Make a test backup:
 ##code
-rabak backup -c examples/rabak.simple.cf example
+rabak backup -c share/examples/rabak.simple.cf example
 ##end
 
 Have a look at the result:

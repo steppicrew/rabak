@@ -1,17 +1,7 @@
 
 # Rabak example config file
 
-# =======================================================================================
-#       INCLUDE STANDARD SETTINGS
-# =======================================================================================
-
-INCLUDE rabak.std.cf
-
-# =======================================================================================
-#       SET UP EXCLUDE
-# =======================================================================================
-
-target = examples/example-backup
+target = share/examples/example-backup
 exclude = *.bak
 
 # switch.pretend = 1
@@ -26,8 +16,8 @@ title = Very simple example
 # switch.logging = 0
 # switch.verbose = 0
 # switch.quiet = 1
-source = examples/example-data
+source = share/examples/example-data
 target = $target/rabak
-exclude = $exclude, ./tmp/
+exclude = $exclude, $source/tmp/
 
 # EOF
