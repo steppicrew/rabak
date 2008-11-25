@@ -231,7 +231,7 @@ rabak help
 
 View example's configuration (please modify paths to match correct location)
 ##code
-cd /usr/share/rabak # (or whatever rabak's share path contains dir examples/)
+cd /usr/share/rabak # (or whatever rabak's share path, containing dir examples/, is)
 rabak conf -c examples/rabak.simple.cf example
 ##end
 
