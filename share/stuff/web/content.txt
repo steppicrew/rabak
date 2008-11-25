@@ -256,6 +256,12 @@ cp /etc/rabak/rabak.sample.cf /etc/rabak/rabak.cf
 nano -w /etc/rabak/rabak.cf
 ##end
 
+Further examples can be found in directory @tutorial/@.
+See @README@:
+##code
+less tutorial/REDAME
+##end
+
 ; -----------------------------------------------------------------
 ; FEATURE TESTS
 ; -----------------------------------------------------------------

@@ -9,22 +9,25 @@ descriptions.
 
  ----
 
-Try the tutorial configs from one directory up (the one "rabak" is in).
+Try the tutorial configs from one directory up (the one containing "tutorial/").
 
 To look at a tutorial's config file:
-./rabak -c tutorial/rabak.tutorial01.cf conf
+
+  rabak -c tutorial/rabak.tutorial01.cf
 
 You will see what backup sets are available (e.g. "tutorial" or "tutorial04")
 
  ----
 
 To look at a backup set's config:
-./rabak -c tutorial/rabak.tutorial01.cf conf <backup set>
+
+  rabak -c tutorial/rabak.tutorial01.cf <backup set>
 
  ----
 
 To try a backup:
-./rabak -c tutorial/rabak.tutorial01.cf backup <backup set>
+
+  rabak backup -c tutorial/rabak.tutorial01.cf <backup set>
 
 PLEASE NOTE: Some of the tutorial files will stop with an Error. This is
 ok, as they demonstrate features e.g. mounting devices. The tutorials
