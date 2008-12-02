@@ -49,20 +49,16 @@ sub newFromConf {
     return $new;
 }
 
+# IMPORTANT: define all used properties here, order will be used for show
+sub PropertyNames {
+    return ('title', 'source', 'target', 'email', shift->SUPER::PropertyNames(), 'path_extension', 'previous_path_extensions');
+}
+
 sub get_validation_message {
     my $self= shift;
     return $self->get_value_required_message("title")
         || $self->get_value_required_message("source")
         || $self->get_value_required_message("target");
-}
-
-sub sort_show_key_order {
-    my $self= shift;
-    (
-        "title", "source", "target",
-        $self->SUPER::sort_show_key_order(),
-        "path_extension", "previous_path_extension",
-    );
 }
 
 sub show {

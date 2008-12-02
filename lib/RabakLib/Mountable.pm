@@ -35,14 +35,14 @@ sub new {
     bless $self, $class;
 }
 
+# IMPORTANT: define all used properties here, order will be used for show
+sub PropertyNames {
+    return ('mount');
+}
+
 sub getPeer {
     my $self= shift;
     return $self->{PEER};
-}
-
-sub sort_show_key_order {
-    my $self= shift;
-    ("mount");
 }
 
 sub show {

@@ -28,6 +28,11 @@ sub new {
     bless $self, $class;
 }
 
+# IMPORTANT: define all used properties here, order will be used for show
+sub PropertyNames {
+    return ('device', 'directory', 'type', 'options', 'unmount', 'lazy_unmount', shift->SUPER::PropertyNames());
+}
+
 sub is_mounted {
     my $self= shift;
     
@@ -240,11 +245,6 @@ sub unmount {
     RabakLib::Log->logger->log(@$arMessages) if $bLogMessages;
     $self->{MOUNTPOINT}= undef;
     return 1;
-}
-
-sub sort_show_key_order {
-    my $self= shift;
-    ("device", "directory", "unmount", $self->SUPER::sort_show_key_order());
 }
 
 1;

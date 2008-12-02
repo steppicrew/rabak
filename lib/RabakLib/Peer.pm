@@ -51,6 +51,11 @@ sub new {
 
 }
 
+# IMPORTANT: define all used properties here, order will be used for show
+sub PropertyNames {
+    return ('host', 'port', 'user', 'path', 'protocol', 'identity_files', 'timeout', 'bandwidth', shift->SUPER::PropertyNames());
+}
+
 sub newFromConf {
     my $class= shift;
     my $oOrigConf= shift;
@@ -517,15 +522,6 @@ sub run_rabak_script {
     $hHandles->{STDIN}= $sScript if defined $sScript;
     
     return $self->run_cmd($sPerlCmd, $hHandles);
-}
-
-sub sort_show_key_order {
-    my $self= shift;
-
-    (
-        "host", "port", "user", "path", 
-        $self->SUPER::sort_show_key_order(),
-    );
 }
 
 # returns directory listing

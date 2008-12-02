@@ -31,6 +31,11 @@ sub new {
     return $self;
 }
 
+# IMPORTANT: define all used properties here, order will be used for show
+sub PropertyNames {
+    return (shift->SUPER::PropertyNames(), RabakLib::Mountable->PropertyNames(), 'group', 'discfree_threshold');
+}
+
 sub mountable {
     my $self= shift;
     return $self->{MOUNTABLE};
@@ -488,16 +493,6 @@ sub closeLogging {
     my $self= shift;
 
     logger->close();
-}
-
-sub sort_show_key_order {
-    my $self= shift;
-
-    (
-        $self->SUPER::sort_show_key_order(),
-        $self->mountable()->sort_show_key_order(),
-        "group",
-    );
 }
 
 sub show {

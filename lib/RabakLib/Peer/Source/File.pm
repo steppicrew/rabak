@@ -22,6 +22,11 @@ sub new {
     return $self;
 }
 
+# IMPORTANT: define all used properties here, order will be used for show
+sub PropertyNames {
+    return (shift->SUPER::PropertyNames(), RabakLib::Mountable->PropertyNames(), 'filter', 'exclude', 'include', 'scan_bak_dirs');
+}
+
 sub mountable {
     my $self= shift;
     return $self->{MOUNTABLE};
@@ -306,16 +311,6 @@ sub _flatten_mixed_filter {
         $aTails = $aNewTails;
     }
     return $aTails;
-}
-
-sub sort_show_key_order {
-    my $self= shift;
-    (
-        # overwrite Source's SUPER class with Mountable
-        $self->SUPER::sort_show_key_order(),
-        $self->mountable()->sort_show_key_order(),
-        "exclude", "include", "filter",
-    );
 }
 
 sub show {

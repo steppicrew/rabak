@@ -34,6 +34,11 @@ sub newFromConf {
     return $new;
 }
 
+# IMPORTANT: define all used properties here, order will be used for show
+sub PropertyNames {
+    return (shift->SUPER::PropertyNames(), 'dbuser', 'dbpassword');
+}
+
 sub get_show_cmd {
     die "This function has to be overloaded!"
 }
@@ -49,12 +54,6 @@ sub get_dump_cmd {
 sub get_valid_db {
     die "This function has to be overloaded!"
 }
-
-sub sort_show_key_order {
-    my $self= shift;
-    ($self->SUPER::sort_show_key_order(), "dbuser", "dbpassword")
-}
-
 
 # TODO
 # plan: build a tunnel, fetch the db, delete old baks, release tunnel

@@ -63,6 +63,11 @@ sub newFromConf {
     return $new;
 }
 
+# IMPORTANT: define all used properties here, order will be used for show
+sub PropertyNames {
+    return ('name');
+}
+
 sub setCmdData {
     my $self= shift;
     $self->{CMD_DATA}= shift;
@@ -530,15 +535,11 @@ sub _resolveObjects {
     return \@oResult;
 }
 
-sub sort_show_key_order {
-    return ();
-}
-
 sub sort_show_keys {
     my $self= shift;
     my @sKeys= @_;
     
-    my @sSortOrder= $self->sort_show_key_order();
+    my @sSortOrder= $self->PropertyNames();
     my @sResult= ();
     for my $sSort (@sSortOrder) {
         for (my $i= 0; $i < scalar @sKeys; $i++) {
@@ -643,6 +644,11 @@ sub show {
         # to get all references (objects will not change $hReferences and should be handled later)
         $self->get_value($sSubKey, undef,  $hConfShowCache->{'.'});
         push @sResult, $self->showConfValue("$sKey.$sSubKey", $hConfShowCache);
+    }
+    # try to resolve all properties not defined in current object
+    for my $sSubKey ($self->PropertyNames()) {
+        next if $self->{VALUES}{$sSubKey};
+        $self->get_value($sSubKey, undef,  $hConfShowCache->{'.'});
     }
     push @sResult, "[]" unless $bKeyInvalid;
     return \@sResult;

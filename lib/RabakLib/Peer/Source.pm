@@ -60,6 +60,12 @@ sub Factory {
     return $new;
 }
 
+
+# IMPORTANT: define all used properties here, order will be used for show
+sub PropertyNames {
+    return ('type', shift->SUPER::PropertyNames(), 'keep', 'path_extension', 'previous_path_extensions', 'inode_inventory', 'merge_duplicates');
+}
+
 sub getPathExtension {
     my $self= shift;
     my $sName= $self->get_value("path_extension", $self->getName());
@@ -83,16 +89,6 @@ sub finishBackup {
     
     logger->set_prefix();
     $self->cleanupTempfiles();
-}
-
-sub sort_show_key_order {
-    my $self= shift;
-
-    (
-        "type",
-        $self->SUPER::sort_show_key_order(),
-        "keep", "path_extension", "previous_path_extension",
-    );
 }
 
 sub show {
