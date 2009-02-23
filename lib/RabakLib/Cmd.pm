@@ -104,7 +104,7 @@ sub new {
             COMMAND_LINE => undef,
             HOSTNAME => $class->hostname(),
             CONFIG_FILE => undef,
-            USER => getpwuid($>),
+            USER => scalar getpwuid($>),
         },
     };
     bless $self, $class;
