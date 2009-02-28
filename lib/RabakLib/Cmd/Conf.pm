@@ -21,8 +21,9 @@ use vars qw(@ISA);
 
 sub getOptions {
     return {
-         "all"    => [ "", "", "", "Prints the complete configuration" ],
-         "filter" => [ "", "", "", "Prints rsync's filter rules" ],
+         "all"          => [ "", "", "", "Prints the complete configuration" ],
+         "filter"       => [ "", "", "", "Prints rsync's filter rules" ],
+         "omit-default" => [ "", "", "", "Suppress output of default-section" ],
     };
 }
 
@@ -62,9 +63,17 @@ sub run {
 
     ## FIXME: Muss das auch bei ($sBakset eq '') passieren?? Nee!
     $oConf->set_value("*.switch.warn_on_remote_access", 1);
+    
+    my $hConfShowCache= {};
+    
+    # if omit-default is given, mark all default values as shown and discard output
+    if ($self->{OPTS}{"omit-default"}) {
+        my $oDefaultConf= $oConf->get_node('default');
+        $oDefaultConf->show($hConfShowCache) if $oDefaultConf;
+    }
 
     $oBakset->set_value('/*.switch.show_filter', $self->{OPTS}{filter});
-    my @sConf= @{ $oBakset->show() };
+    my @sConf= @{ $oBakset->show($hConfShowCache) };
     pop @sConf;  # remove last []. (See RabalLib::Conf::show)
     logger->print(@sConf);
 
