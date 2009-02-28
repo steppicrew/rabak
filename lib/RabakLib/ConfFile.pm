@@ -294,7 +294,10 @@ sub _read_file {
                 $sNewValue=~ s/(?<!\\)\$($sregIdentRef)/$f->($1)/ge ||
                 $sNewValue=~ s/(?<!\\)\$\{($sregIdentRef)\}/$f->($1)/ge
             ) {};
-            logger->warn("Unescaped '\$' in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ /(?<!\\)\$/;
+            logger->warn("Unescaped '\$' in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ s/(?<!\\)\$/\\\$/;
+            # TODO: what to do with multi line quotes?
+            logger->warn("Unescaped '\"' in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ s/(?<!\\)\"/\\\"/;
+            logger->warn("Unescaped \"'\" in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ s/(?<!\\)\'/\\\'/;
             $sNewValue= $oConf->undo_remove_backslashes_part1($sNewValue);
         }
         $oConf->set_value($sName, $sNewValue);
