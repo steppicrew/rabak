@@ -312,11 +312,11 @@ sub remove_quotes {
         my $qchar= shift;
         my $quote= shift;
 
-        # escape all occurances of "\", \s and ","
-        $quote =~ s/([\\\s\,\'\"\(\)])/\\$1/g;
+        # escape all occurances of \s, ",", "'", '"', "(" and ")"
+        $quote =~ s/([\s\,\'\"\(\)])/\\$1/g;
 
-        # escape all occurances of "$" and "&" for single quotes
-        $quote =~ s/([\$\&])/\\$1/g if $qchar eq "'";
+        # escape all occurances of "\", "$" and "&" for single quotes
+        $quote =~ s/([\\\$\&])/\\$1/g if $qchar eq "'";
         return $quote;
     };
     $sValue =~ s/(?<!\\)([\'\"])(.*?)\1/$unquote->($1, $2)/egs; # ?; # for correct highlighting
