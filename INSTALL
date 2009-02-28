@@ -1,5 +1,5 @@
-To test Rabak, you can instantly can do (provided you already have
-the required libraries installed):
+To test Rabak, you instantly can do (provided you already have
+the required external libraries installed):
 
   ./rabak help
   ..etc..
