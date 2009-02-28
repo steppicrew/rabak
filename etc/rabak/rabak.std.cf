@@ -118,14 +118,6 @@ exclude =
     &exclude_win
     &exclude_common
 
-# Default filter: Exclude everything from 'exclude'-Variable, include everything
-# from 'include'-Variable. Note that &exclude means that the expansion of the
-# variable will happen "just in time", so you can define your 'exclude' later.
-# Using "$exclude" here would not work because of immediate expansion.
-filter=
-    - &exclude
-    + &include
-
 []
 
 # =======================================================================================
