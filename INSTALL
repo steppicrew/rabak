@@ -1,8 +1,8 @@
-To test Rabak, you may use our rabak wrapper to set perl's
-library paths properly:
+To test Rabak, you can instantly can do (provided you already have
+the required libraries installed):
 
-  ./rabak_sandbox.sh help
-  ...
+  ./rabak help
+  ..etc..
 
 To install Rabak's libraries simply run the following commands:
 
