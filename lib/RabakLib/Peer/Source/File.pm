@@ -50,7 +50,7 @@ sub _get_filter {
     }
     else {
         push @$aFilter, "-(", "&exclude", ")" if defined $self->get_raw_value('exclude');
-        push @$aFilter, "+(", "&include", ")" if defined $self->get_raw_value('include');
+        push @$aFilter, "+(", "&include", ")", "-/" if defined $self->get_raw_value('include');
     }
 
     return $self->_parseFilter($aFilter, $self->getPath(), $aMacroStack);

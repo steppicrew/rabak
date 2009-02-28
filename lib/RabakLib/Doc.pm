@@ -760,7 +760,7 @@ start at space. Spaces after C<(> and before C<)> are optional.
 of config variable $exclude_std.)
 
 Variable expansion is done at runtime (late expansion).
-(default: C<-&exclude +&include>)
+(default: C<-&exclude +&include> -/)
 
 Effective filter rules can be displayed with C<rabak -v conf E<lt>baksetE<gt>>.
 B<Attention:> Pathes beginning with C</> are absolute (not relative to C<source> as in
