@@ -5,10 +5,22 @@
 use warnings;
 use strict;
 
-# Comment out when not debugging
-use Carp ();
-local $SIG{__WARN__} = \&Carp::cluck;
-local $SIG{__DIE__} = \&Carp::cluck;
+BEGIN {
+
+    # Preferably use a the rabak library at rabaks location. This is usefull
+    # if rabak has not yet been installed or during development.
+    use Cwd 'abs_path';
+    my $path= abs_path($0);
+    $path =~ s/\/[^\/]+$//;
+    unshift @INC, "$path/lib/" if -d "$path/lib/RabakLib";
+
+    # If the file "!!DEVELOP!!" exists, include Carp functionality.
+    if (-e "!!DEVELOP!!") {
+        use Carp ();
+        $SIG{__WARN__} = \&Carp::cluck;
+        $SIG{__DIE__} = \&Carp::cluck;
+    }
+}
 
 use RabakLib::Cmd;
 
