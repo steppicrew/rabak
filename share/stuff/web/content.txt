@@ -169,8 +169,8 @@ tar -xvzf rabak-<version>.tar.gz
 cd rabak-<version>
 ##end
 
-To test Rabak, you can instantly can do (provided you already have
-the required libraries installed):
+To test Rabak, you instantly can do (provided you already have
+the required external libraries installed):
 ##code
 ./rabak help
 ..etc..
