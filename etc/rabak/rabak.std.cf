@@ -144,10 +144,4 @@ exclude_std_win = &default.exclude_win
 exclude_std_common = &default.exclude_common
 exclude_std = &default.exclude
 
-# Default exclude. You may want to override this in your cf file.
-exclude =
-
-# Default include: Include everything.
-include =
-
 # EOF
