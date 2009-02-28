@@ -607,6 +607,8 @@ sub showConfValue {
     my $self= shift;
     my $sKey= shift;
     my $hConfShowCache= shift || {};
+    
+    $sKey=~ s/^\/*\.*//;
 
     return () if defined $hConfShowCache->{$sKey};
     $hConfShowCache->{"$sKey"}= 1;
@@ -695,6 +697,7 @@ sub get_full_name {
     my $self= shift;
     my $sName= shift || '';
     
+    $sName=~ s/^\/*//;
     $sName=~ s/^.*\.//;
     while ($self->{PARENT_CONF}) {
         $sName= "$self->{NAME}.$sName";
