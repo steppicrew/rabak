@@ -3,23 +3,23 @@
 
 # This example won't work out of the box! It uses mount points that propably don't exist.
 
-# For details see: perldoc RabakLib::Doc
+# For details see: "rabak doc | less"
 
 # =======================================================================================
 #       INCLUDE STANDARD SETTINGS
 # =======================================================================================
 
-INCLUDE rabak.std.cf
-INCLUDE rabak.secret.cf
+INCLUDE ../../etc/rabak/rabak.std.cf
+INCLUDE ../../etc/rabak/rabak.secret.cf
 
 # =======================================================================================
 #       SET UP SOME VARIABLES
 # =======================================================================================
 
 target_base = /tmp/rabak-example-backup
-target_dir = $target_base/rabak
+target_dir  = $target_base/rabak
 
-smb_dir = /mnt/samba/e
+smb_dir  = /mnt/samba/e
 smb_user = backup
 # smb_password is in rabak.secret.cf
 
@@ -36,10 +36,10 @@ exclude_smb =
 
 [mount_external]
 
-device= /dev/sd?1
-directory= $target_base
-istarget= 1
-unmount= 1
+device    = /dev/sd?1
+directory = $target_base
+istarget  = 1
+unmount   = 1
 
 # =======================================================================================
 #       Mount point "//smb_server/e$" (Samba mount point)
@@ -47,11 +47,11 @@ unmount= 1
 
 [mount_smb_server]
 
-device= //smb_server/e\$
-directory= $smb_dir
-type= cifs
-opts= "username=$smb_user,password=$smb_password,ro"
-unmount= 1
+device    = //smb_server/e\$
+directory = $smb_dir
+type      = cifs
+opts      = "username=$smb_user,password=$smb_password,ro"
+unmount   = 1
 
 # =======================================================================================
 #       Source to back up
@@ -59,7 +59,7 @@ unmount= 1
 
 [example_source]
 
-path = $smb_dir
+path  = $smb_dir
 mount = &mount_smb_server
 
 # =======================================================================================
@@ -68,7 +68,7 @@ mount = &mount_smb_server
 
 [example_target]
 
-path = $target_base/rabak
+path  = $target_base/rabak
 mount = &mount_external
 group = example
 
@@ -82,9 +82,9 @@ discfree_threshold = 10%
 
 [example]
 
-title = Samba share example
-source = &example_source
-target = &example_target
+title   = Samba share example
+source  = &example_source
+target  = &example_target
 exclude = $exclude_std, $exclude_smb
 
 # For this example, only pretend:

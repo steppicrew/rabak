@@ -1,8 +1,8 @@
 
-Try the examples from the parent directory:
+Try the examples:
 
-./rabak -c examples/rabak.simple.cf conf
-./rabak -c examples/rabak.simple.cf conf example
-./rabak -c examples/rabak.simple.cf backup example
+../../rabak -c rabak.simple.cf conf
+../../rabak -c rabak.simple.cf conf example
+../../rabak -c rabak.simple.cf backup example
 
 It's also a good idea to use examples as templates for your own configurations.
