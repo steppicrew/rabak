@@ -110,13 +110,13 @@ There's support for file filters that hide the complexity of the rsync filters
 
 {link stable/rabak-1.0-r2.tar.gz Version 1.0-r2}, released 11. Mar. 2009 ({link stable/rabak-1.0-r2.ebuild Gentoo ebuild})
 
-{link stable/rabak-1.0-r1.tar.gz Version 1.0-r1}, released 24. Nov. 2008 ({link stable/rabak-1.0-r1.ebuild Gentoo ebuild})
-
 ##h2 Snapshot on GitHub
 
 {link http://www.github.com/steppicrew/rabak/tree/master Current snapshot on github.com}
 
 ##h2 Older versions
+
+{link stable/rabak-1.0-r1.tar.gz Version 1.0-r1}, released 24. Nov. 2008 ({link stable/rabak-1.0-r1.ebuild Gentoo ebuild})
 
 {link stable/rabak-1.0.tgz Version 1.0}, released 14. Nov. 2008 ({link stable/rabak-1.0.ebuild Gentoo ebuild})
 
