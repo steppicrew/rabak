@@ -19,24 +19,26 @@ use Data::Dumper;
 sub do_test {
     print Dumper(@_);
     
+    return ("result" => 42);
+}
+
+sub do_SetList {
 }
 
 sub API {
     my $cmd= shift;
     my %params= @_;
     
-
-    $cmd= "do_$cmd";
-
     my %result;
     eval {
-        no strict refs;
-        # %result= 
-        &$cmd(@_);
-    };
-    print $@;
+        no strict "refs";
 
-    return %result;
+        $cmd= "do_$cmd";
+        %result= &$cmd(@_);
+    };
+    return undef if $@;
+    
+    return \%result;
 }
 
 1;
