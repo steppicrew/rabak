@@ -1,7 +1,7 @@
 
 # Rabak standard config file
 
-# For details see: perldoc RabakLib::Doc
+# For details see: "rabak doc"
 
 # The syntax is quite similar to postfix config files.
 

@@ -8,17 +8,17 @@ BEGIN { plan tests => 65 };
 use Data::Dumper;
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
-use RabakLib::Conf;
-use RabakLib::Log;
+use Rabak::Conf;
+use Rabak::Log;
 
 # suppress all errors and warnings
 logger->setOpts({quiet => 1});
 
-print "# Testing 'RabakLib::Conf'\n";
+print "# Testing 'Rabak::Conf'\n";
 
 # creating root conf
-my $oRootConf= RabakLib::Conf->new('testconfig');
-ok ref $oRootConf, 'RabakLib::Conf', 'Creating RootConf';
+my $oRootConf= Rabak::Conf->new('testconfig');
+ok ref $oRootConf, 'Rabak::Conf', 'Creating RootConf';
 ok $oRootConf->{NAME}, 'testconfig', 'Name of RootConf 1';
 ok $oRootConf->get_value('name'), 'testconfig', 'Name of RootConf 2';
 ok $oRootConf->get_full_name(), '', 'Full name of RootConf';
@@ -44,7 +44,7 @@ ok $oRootConf->get_value('tesT_Key'), 'root test value', 'Setting scalar value (
 ok $oRootConf->get_value('test_key'), 'root test value', 'Setting scalar value (upper case 2)';
 
 # creating 1st level sub config
-my $oSubConf1= RabakLib::Conf->new('subconf1', $oRootConf);
+my $oSubConf1= Rabak::Conf->new('subconf1', $oRootConf);
 $oRootConf->set_value('subconf1', $oSubConf1);
 ok $oSubConf1->{PARENT_CONF}, $oRootConf, 'Reference to RootConf from SubConf1';
 ok $oRootConf->get_value('subconf1'), undef, 'Getting reference as value';
@@ -57,7 +57,7 @@ $oSubConf1->set_value('test_key', 'sub1 test value');
 ok $oSubConf1->get_value('test_key'), 'sub1 test value', 'Setting scalar value (SubConf1)';
 
 # creating 2nd level sub config
-my $oSubConf11= RabakLib::Conf->new('subconf11', $oSubConf1);
+my $oSubConf11= Rabak::Conf->new('subconf11', $oSubConf1);
 $oSubConf1->set_value('subconf11', $oSubConf11);
 ok $oSubConf11->{PARENT_CONF}, $oSubConf1, 'Reference to SubConf1 from SubConf11';
 ok $oSubConf1->get_value('subconf11'), undef, 'Getting reference as value';
@@ -98,7 +98,7 @@ ok $oSubConf1->get_value('test_key'), 'sub1 test value 1', 'Checking other sub v
 ok $oSubConf11->get_value('test_key'), 'sub11 test value', 'Checking other sub values';
 
 # test cloning
-my $oCloneSubConf1= RabakLib::Conf->newFromConf($oSubConf1);
+my $oCloneSubConf1= Rabak::Conf->newFromConf($oSubConf1);
 ok $oCloneSubConf1->{PARENT_CONF}, $oRootConf, 'Reference to RootConf from CloneSubConf1';
 ok $oCloneSubConf1, $oRootConf->get_node('subconf1'), 'Reference to CloneSubConf1 from RootConf';
 ok $oSubConf11->{PARENT_CONF}, $oCloneSubConf1, 'Reference to CloneSubConf1 from SubConf11';
@@ -121,7 +121,7 @@ ok $oSubConf11->get_switch('test_switch'), 'test switch command line', 'Getting 
 ok $oRootConf->get_switch('test_switch'), 'test switch command line', 'Getting switch from RootConf (overridden by command line switch)';
 
 # test preset_values and resolveObjects() with recursion check and wrong reference
-my $oSubConf2= RabakLib::Conf->new('subconf2', $oRootConf);
+my $oSubConf2= Rabak::Conf->new('subconf2', $oRootConf);
 $oSubConf2->set_value('key1', 'some value');
 $oRootConf->set_value('subconf2', $oSubConf2);
 $oSubConf11->preset_values({

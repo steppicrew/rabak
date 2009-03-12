@@ -317,7 +317,7 @@ rabak doc
 ##h1 Developers
 
 You can extend Rabak and add backup types. Have a look into
-the @RabakLib/Peer/Source@ directory.
+the @Rabak/Peer/Source@ directory.
 
 
 Have fun!

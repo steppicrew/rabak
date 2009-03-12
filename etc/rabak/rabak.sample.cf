@@ -8,7 +8,7 @@
 # When finished, the example environment can be removed by another script:
 # ./stuff/example-env-remove
 
-# For details see: perldoc RabakLib::Doc
+# For details see: "rabak doc"
 
 # The syntax is quite similar to postfix config files.
 # Don't be afraid of the file size. It's only different examples. (And real world configs.)

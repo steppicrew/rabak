@@ -7,26 +7,26 @@ BEGIN { plan tests => 44 };
 
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
-use RabakLib::Peer::Target;
-use RabakLib::Set;
+use Rabak::Peer::Target;
+use Rabak::Set;
 use Data::Dumper;
 
-print "# Testing 'RabakLib::Peer::Target'\n";
+print "# Testing 'Rabak::Peer::Target'\n";
 
 my $oRootConf= require "$Bin/Common.pm";
-ok ref $oRootConf, 'RabakLib::Conf', 'Checking base config';
+ok ref $oRootConf, 'Rabak::Conf', 'Checking base config';
 
 my $oSetConf= $oRootConf->get_node("testbakset");
-ok ref $oSetConf, 'RabakLib::Conf', 'Checking bakset config';
-my $oSet= RabakLib::Set->newFromConf($oSetConf);
-ok ref $oSet, 'RabakLib::Set', 'Creating bak set from Conf';
+ok ref $oSetConf, 'Rabak::Conf', 'Checking bakset config';
+my $oSet= Rabak::Set->newFromConf($oSetConf);
+ok ref $oSet, 'Rabak::Set', 'Creating bak set from Conf';
 ####################################################
 # test target creation
 my $oTargetConf= $oRootConf->get_node("testtarget");
-ok ref $oTargetConf, 'RabakLib::Conf', 'Checking target config';
+ok ref $oTargetConf, 'Rabak::Conf', 'Checking target config';
 ok -d $oTargetConf->get_value("path"), 1, 'Target path is a directory';
-my $oTarget= RabakLib::Peer::Target->newFromConf($oTargetConf);
-ok ref $oTarget, 'RabakLib::Peer::Target', 'Creating Target from Conf';
+my $oTarget= Rabak::Peer::Target->newFromConf($oTargetConf);
+ok ref $oTarget, 'Rabak::Peer::Target', 'Creating Target from Conf';
 
 ####################################################
 # mounting and unmounting

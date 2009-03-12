@@ -36,7 +36,7 @@ cpan -i Mail::Send (or cpan -i MailTools)
 cpan -i IPC::Run
 cpan -i Getopt::Long
 
-To use dupemerge, you will need the Digest::SHA1 and DBD::SQLite perl modules. To install it do:
+To use dupmerge, you will need the Digest::SHA1 and DBD::SQLite perl modules. To install it do:
 cpan -i Digest::SHA1
 cpan -i DBD::SQLite
 
@@ -107,7 +107,7 @@ The home page is http://www.raisin.de/rabak
 Developers
 ==========
 You can extend Rabak and add backup types. Have a look into
-the RabakLib/Type directory.
+the Rabak/Type directory.
 
 
 Have fun!

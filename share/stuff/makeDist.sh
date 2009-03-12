@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cd "../.."
-ver=`perl -Ilib -e 'use RabakLib::Version; print VERSION;'`
+ver=`perl -Ilib -e 'use Rabak::Version; print VERSION;'`
 vname="rabak-$ver"
 basedir="../dist"
 

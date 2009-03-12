@@ -1,7 +1,7 @@
 #!/bin/bash
 
 srcdir=".."
-ver=`perl -I$srcdir -e 'use RabakLib::Version; print VERSION;'`
+ver=`perl -I$srcdir -e 'use Rabak::Version; print VERSION;'`
 vname="rabak-$ver"
 basedir="../../dist/$vname"
 
@@ -11,7 +11,7 @@ ROOT_FILES="CHANGELOG LICENSE README TODO"
 BIN_FILES="rabak"
 ETC_FILES="rabak.sample.cf rabak.std.cf rabak.secret.cf"
 SHARE_FILES="tutorial stuff"
-MODULES="RabakLib"
+MODULES="Rabak"
 
 function copyFiles {
   local destdir="$1"
@@ -37,7 +37,7 @@ function copyModule {
         while (<>) {
             last if /^__END__/;
             next if /\#\!\/usr\/bin\/perl/;
-            $_= "# $_" if /use \"?RabakLib\:\:/;
+            $_= "# $_" if /use \"?Rabak\:\:/;
             print;
         }
     '

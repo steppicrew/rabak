@@ -7,28 +7,28 @@ BEGIN { plan tests => 45 };
 
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
-use RabakLib::Peer::Source;
-use RabakLib::Set;
+use Rabak::Peer::Source;
+use Rabak::Set;
 use Data::Dumper;
 
-print "# Testing 'RabakLib::Peer::Source::File'\n";
+print "# Testing 'Rabak::Peer::Source::File'\n";
 
 # TODO: test remote sources (dont know how to)
 
 my $oRootConf= require "$Bin/Common.pm";
-ok ref $oRootConf, 'RabakLib::Conf', 'Checking base config';
+ok ref $oRootConf, 'Rabak::Conf', 'Checking base config';
 
 my $oSetConf= $oRootConf->get_node("testbakset");
-ok ref $oSetConf, 'RabakLib::Conf', 'Checking bakset config';
-my $oSet= RabakLib::Set->newFromConf($oSetConf);
-ok ref $oSet, 'RabakLib::Set', 'Creating bak set from Conf';
+ok ref $oSetConf, 'Rabak::Conf', 'Checking bakset config';
+my $oSet= Rabak::Set->newFromConf($oSetConf);
+ok ref $oSet, 'Rabak::Set', 'Creating bak set from Conf';
 ####################################################
 # test source factory
 my $oSourceConf= $oRootConf->get_node("testsource_file");
-ok ref $oSourceConf, 'RabakLib::Conf', 'Checking source config';
+ok ref $oSourceConf, 'Rabak::Conf', 'Checking source config';
 ok -d $oSourceConf->get_value("path"), 1, 'Source path is a directory';
-my $oSource= RabakLib::Peer::Source->Factory($oSourceConf);
-ok ref $oSource, 'RabakLib::Peer::Source::File', 'Creating file source from Conf';
+my $oSource= Rabak::Peer::Source->Factory($oSourceConf);
+ok ref $oSource, 'Rabak::Peer::Source::File', 'Creating file source from Conf';
 
 ####################################################
 # test filter-routines
@@ -157,7 +157,7 @@ ok joinFilter(@sFilter), joinFilter(
 # create target
 
 my $oTarget= $oSet->get_targetPeer();
-ok ref $oTarget, 'RabakLib::Peer::Target', 'Retrieving target from bakset';
+ok ref $oTarget, 'Rabak::Peer::Target', 'Retrieving target from bakset';
 ok -d $oTarget->get_value("path"), 1, 'Target path is a directory';
 
 ####################################################

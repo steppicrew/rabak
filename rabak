@@ -12,7 +12,7 @@ BEGIN {
     use Cwd 'abs_path';
     my $path= abs_path($0);
     $path =~ s/\/[^\/]+$//;
-    unshift @INC, "$path/lib/" if -d "$path/lib/RabakLib";
+    unshift @INC, "$path/lib/" if -d "$path/lib/Rabak";
 
     # If the file "!!DEVELOP!!" exists, include Carp functionality.
     if (-e "!!DEVELOP!!") {
@@ -22,9 +22,9 @@ BEGIN {
     }
 }
 
-use RabakLib::Cmd;
+use Rabak::Cmd;
 
-my $oCmd= RabakLib::Cmd::Build(\@ARGV);
+my $oCmd= Rabak::Cmd::Build(\@ARGV);
 print $oCmd->error() . $/ unless $oCmd->run();
 
 1;

@@ -4,8 +4,8 @@ use strict;
 use File::Temp;
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
-use RabakLib::Conf;
-use RabakLib::Log;
+use Rabak::Conf;
+use Rabak::Log;
 
 # suppress all errors and warnings
 logger->setOpts({quiet => 1});
@@ -34,7 +34,7 @@ my $sTargetDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );
 #my $sSourceMountDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );
 #my $sTargetMountDir= File::Temp->tempdir('TESTXXXXX', CLEANUP => 1 );
 
-my $oRootConf= RabakLib::Conf->new('testconfig');
+my $oRootConf= Rabak::Conf->new('testconfig');
 $oRootConf->preset_values({
     "switch.logging" => 0,
     "switch.verbose" => 0,
@@ -42,7 +42,7 @@ $oRootConf->preset_values({
 
 return undef unless $oRootConf;
 
-my $oSetConf= RabakLib::Conf->new('testbakset', $oRootConf);
+my $oSetConf= Rabak::Conf->new('testbakset', $oRootConf);
 $oRootConf->set_value('testbakset', $oSetConf);
 $oSetConf->preset_values({
     title => "Test BakSet",
@@ -50,7 +50,7 @@ $oSetConf->preset_values({
     target => "&testtarget",
 });
 
-my $oSourceConf= RabakLib::Conf->new('testsource_file', $oRootConf);
+my $oSourceConf= Rabak::Conf->new('testsource_file', $oRootConf);
 $oRootConf->set_value('testsource_file', $oSourceConf);
 $oSourceConf->preset_values({
     type => "file",
@@ -58,21 +58,21 @@ $oSourceConf->preset_values({
     mount => "&testsource_file_mount",
 });
 
-my $oTargetConf= RabakLib::Conf->new('testtarget', $oRootConf);
+my $oTargetConf= Rabak::Conf->new('testtarget', $oRootConf);
 $oRootConf->set_value('testtarget', $oTargetConf);
 $oTargetConf->preset_values({
     path => $sTargetDir,
     mount => "&testtarget_mount",
 });
 
-my $oSourceMountConf= RabakLib::Conf->new('testsource_file_mount', $oRootConf);
+my $oSourceMountConf= Rabak::Conf->new('testsource_file_mount', $oRootConf);
 $oRootConf->set_value('testsource_file_mount', $oSourceMountConf);
 $oSourceMountConf->preset_values({
     device => "/tmp/rabak-sample-data/dev.source",
     directory => $sSourceDir,
 });
 
-my $oTargetMountConf= RabakLib::Conf->new('testtarget_mount', $oRootConf);
+my $oTargetMountConf= Rabak::Conf->new('testtarget_mount', $oRootConf);
 $oRootConf->set_value('testtarget_mount', $oTargetMountConf);
 $oTargetMountConf->preset_values({
     device => "/tmp/rabak-sample-data/dev.loop?",

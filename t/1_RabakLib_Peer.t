@@ -7,20 +7,20 @@ BEGIN { plan tests => 69 };
 
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
-use RabakLib::Peer::Target;
+use Rabak::Peer::Target;
 use Data::Dumper;
 
-print "# Testing 'RabakLib::Conf'\n";
+print "# Testing 'Rabak::Conf'\n";
 
 my $oRootConf= require "$Bin/Common.pm";
-ok ref $oRootConf, 'RabakLib::Conf', 'Checking base config';
+ok ref $oRootConf, 'Rabak::Conf', 'Checking base config';
 
 my $oTargetConf= $oRootConf->get_node("testtarget");
-ok ref $oTargetConf, 'RabakLib::Conf', 'Checking target config';
+ok ref $oTargetConf, 'Rabak::Conf', 'Checking target config';
 ok -d $oTargetConf->get_value("path"), 1, 'Path value is a directory';
-# we have to instanciate RabakLib::Peer::Target to get a mountable Peer (getPath() behaves differently)
-my $oPeer= RabakLib::Peer::Target->newFromConf($oTargetConf);
-ok ref $oPeer, 'RabakLib::Peer::Target', 'Creating Target Peer from Conf';
+# we have to instanciate Rabak::Peer::Target to get a mountable Peer (getPath() behaves differently)
+my $oPeer= Rabak::Peer::Target->newFromConf($oTargetConf);
+ok ref $oPeer, 'Rabak::Peer::Target', 'Creating Target Peer from Conf';
 
 my $sOrigPath= $oPeer->getPath();
 # check getPath()
