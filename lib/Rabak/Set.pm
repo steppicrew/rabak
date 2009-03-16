@@ -193,7 +193,7 @@ sub backup {
     # now try backing up every source 
     my %sNames= ();
     for my $oSourcePeer (@oSourcePeers) {
-        my $sName= $oSourcePeer->getName();
+        my $sName= $oSourcePeer->get_full_name();
         $oSourcePeer->set_value("name", "") if $sName=~ s/^\*//;
         if ($sNames{$sName}) {
             logger->error("Name '$sName' of Source Object has already been used. Skipping backup of source.");
