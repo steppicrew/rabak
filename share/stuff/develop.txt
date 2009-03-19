@@ -1,19 +1,21 @@
 
-git checkout:
-    git clone git@github.com:steppicrew/rabak.git
+API
+---
 
-git status:
-    git status
+Good structure:
+http://search.cpan.org/~jrockway/Chroniton-0.03/
 
-git (local) commit:
-    git commit -a
-    git commit <filename>
+readConfig
+writeConfig
 
-push to server:
-    git push
+backup
 
-revert to last HEAD version:
-    git reset --hard HEAD
+restore
 
-git log of a certain file:
-    git log --follow <file>
+archive
+
+queryBackups
+    by Time
+    by Name
+    by Files
+        

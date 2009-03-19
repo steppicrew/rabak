@@ -103,7 +103,7 @@ sub splitValue {
 
 # joins array of value parts with spaces
 # returns undef if there was an object or array is empty
-sub joinValue {
+sub _joinValue {
     my $self = shift;
     my $aValue= shift;
     
@@ -112,7 +112,7 @@ sub joinValue {
     my $bError;
     my @sValues = map {
         if (ref eq "ARRAY") {
-            my $sJoined= $self->joinValue($_);
+            my $sJoined= $self->_joinValue($_);
             $bError = 1 unless defined $sJoined;
             $sJoined;
         }
@@ -131,17 +131,18 @@ sub joinValue {
 }
 
 # gets array ref of preparsed value, separated by whitespaces
-sub get_prep_value {
-    my $self= shift;
-    my $sName= shift;
-    my $sDefault= shift;
-    
-    return $self->splitValue(
-        $self->remove_backslashes_part1(
-            $self->get_raw_value($sName, $sDefault)
-        )
-    );
-}
+# UNUSED! kill after Juli 09
+# sub get_prep_value {
+#     my $self= shift;
+#     my $sName= shift;
+#     my $sDefault= shift;
+#     
+#     return $self->splitValue(
+#         $self->remove_backslashes_part1(
+#             $self->get_raw_value($sName, $sDefault)
+#         )
+#     );
+# }
 
 # gets value as written in config
 sub get_raw_value {
@@ -225,7 +226,7 @@ sub get_value {
     my $aRefStack= shift;
     
     my @sValues= $self->resolveObjects($sName, $aRefStack);
-    my $sValue= $self->joinValue(\@sValues);
+    my $sValue= $self->_joinValue(\@sValues);
     unless (defined $sValue) {
         return $self->{NAME} if lc($sName) eq 'name';      
         return $sDefault;
@@ -411,13 +412,13 @@ sub set_value {
 
 # expand macro given in $sMacroName
 # returns array with expanded macro's content
-sub expandMacro {
+sub _expandMacro {
     my $self= shift;
     my $sMacroName= shift;
     my $oScope= shift || $self;
     my $aStack= shift || [];
     my $bRaiseError= shift;
-    my $hResult = $self->expandMacroHash($sMacroName, $oScope, $aStack, sub{$self->_resolveObjects(@_)});
+    my $hResult = $self->expandMacroHash($sMacroName, $oScope, $aStack);  # Remove Juli 09: , sub{$self->_resolveObjects(@_)});
     unless (defined $hResult->{DATA}) {
         logger()->error("$hResult->{ERROR} in scope \""
             . $oScope->get_full_name()
@@ -427,7 +428,7 @@ sub expandMacro {
 # print "got ", Dumper($hResult->{DATA}), "\n";
     return @{$hResult->{DATA}} if ref $hResult->{DATA} eq "ARRAY";
     logger->error(
-        "Internal error: expandMacro(\"$sMacroName\") in scope \""
+        "Internal error: _expandMacro(\"$sMacroName\") in scope \""
         . $oScope->get_full_name()
         . "\" should return an array reference! (got $hResult->{DATA})",
         "Please file bug report!"
@@ -491,7 +492,7 @@ sub resolveObjects {
     my $sProperty= shift;
     my $aStack= shift || [];
     
-    return map {$self->remove_backslashes_part2($_)} $self->expandMacro($sProperty, $self, $aStack);
+    return map {$self->remove_backslashes_part2($_)} $self->_expandMacro($sProperty, $self, $aStack);
 }
 
 sub _resolveObjects {
@@ -508,7 +509,7 @@ sub _resolveObjects {
         if ($sValue=~ s/^\&($sregIdentRef)$/$1/) {
 
             # macros are expanded and result added to @oResult
-            push @oResult, $self->expandMacro($sValue, $oScope, $aStack, 'raise error if macro is not found');
+            push @oResult, $self->_expandMacro($sValue, $oScope, $aStack, 'raise error if macro is not found');
             next;
         }
         
@@ -516,7 +517,7 @@ sub _resolveObjects {
         # expand all contained macros
         my $f = sub {
             my $sName= shift;
-            my $sResult= $self->joinValue(
+            my $sResult= $self->_joinValue(
                 $self->_resolveObjects(["&$sName"], $oScope, $aStack)
             );
             return $sResult if defined $sResult;

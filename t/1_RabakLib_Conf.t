@@ -30,13 +30,13 @@ ok $oRootConf->get_node('test_key'), undef, 'Getting scalar value as node (RootC
 
 # checking various types of splitting
 $oRootConf->set_value('test_key', '1   2\  3\  \ 4');
-ok $oRootConf->get_value('test_key'), '1 2  3   4', 'test for separator and exscpaed characters (1)';
+ok $oRootConf->get_value('test_key'), '1 2  3   4', 'test for separator and escaped characters (1)';
 $oRootConf->set_value('test_key', '1   2\ ,\, ,3\  \ 4');
-ok $oRootConf->get_value('test_key'), '1 2  , 3   4', 'test for separator and exscpaed characters (2)';
+ok $oRootConf->get_value('test_key'), '1 2  , 3   4', 'test for separator and escaped characters (2)';
 $oRootConf->set_value('test_key', '&this_is_a_macro_reference');
-ok $oRootConf->get_value('test_key'), undef, 'test for separator and exscpaed characters (3)';
+ok $oRootConf->get_value('test_key'), undef, 'test for separator and escaped characters (3)';
 $oRootConf->set_value('test_key', '\&this_is_a_macro_reference');
-ok $oRootConf->get_value('test_key'), '&this_is_a_macro_reference', 'test for separator and exscpaed characters (4)';
+ok $oRootConf->get_value('test_key'), '&this_is_a_macro_reference', 'test for separator and escaped characters (4)';
 
 # checking case insensivity
 $oRootConf->set_value('tesT_Key', 'root test value');

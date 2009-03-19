@@ -60,6 +60,7 @@ $oSource->set_value("include", "$sSourceDir/zuppi");
 ok joinFilter(@sFilter), joinFilter(
     '+ /',
     '+ /zuppi',
+    '- /***',
 ), 'Filter generated from include';
 
 $oSource->set_value("include", "$sSourceDir/zuppi/zuppi1 $sSourceDir/zuppi2/, $sSourceDir/zuppi3");
@@ -71,6 +72,7 @@ ok joinFilter(@sFilter), joinFilter(
     '+ /zuppi2/',
     '+ /zuppi2/**',
     '+ /zuppi3',
+    '- /***',
 ), 'Filter generated from include';
 
 $oSource->set_value("include", undef);
@@ -119,6 +121,7 @@ ok joinFilter(@sFilter), joinFilter(
     '+ /zappi/zuppi2/',
     '+ /zappi/zuppi2/**',
     '+ /zappi/zuppi3',
+    '- /***',
 ), 'Filter generated from exclude/include (inherited)';
 
 $oRootConf->set_value('include', undef);
