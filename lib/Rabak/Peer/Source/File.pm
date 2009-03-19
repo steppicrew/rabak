@@ -466,9 +466,10 @@ sub run {
         . " --filter='. " . $self->shell_quote($sRulesFile, 'dont quote') . "'"
         . " --stats"
         . " --verbose"
+        . " --verbose"
+        . " --itemize-changes"
     ;
 
-    $sFlags .= " --itemize-changes" if $self->{DEBUG};
     $sFlags .= " --dry-run" if $bPretend;
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
     
@@ -536,12 +537,12 @@ sub run {
     my @sLinkErrors= ();
     my $sTargetDir= $oTargetPeer->getAbsBakDir();
     my $sqTargetDir= quotemeta $sTargetDir;
+    my $fHandleHardLinksTo= sub{};
+    my $fHandleHardLinksToPrev= sub{};
     my %Handles= (
         STDOUT => sub {
             for my $sLine (@_) {
                 chomp $sLine;
-                # skip directory lines
-                next if $sLine =~ /^([^\/]+\/)+$/;
                 # detect some warnings
                 if ($sLine =~ /^file has vanished\: \".*\"$/) {
                     logger->warn($sLine);
@@ -552,7 +553,22 @@ sub run {
                     $sStdOutStat= 1;
                 }
                 if ($sStdOutStat) {
-                    logger->info($sLine);
+                    # skip directory lines
+                    next if $sLine =~ /^cd/;
+                    if ($sLine =~ /^(.{11})\s()/) {
+                        my ($flags, $sFile) = ($1, $2);
+                        if (substr($flags, 0, 1) == 'h') {
+                            if ($sFile =~ s/ \=\> (.+)/) {
+                                fHandleHardLinksTo->($File, $1);
+                            }
+                            else {
+                                fHandleHardLinksToPrev->($File);
+                            }
+                        }
+                        logger->info($sFile);
+                        next;
+                    }
+                    logger->warn("Could not parse \"$sLine\"");
                     next;
                 }
                 logger->verbose($sLine);
