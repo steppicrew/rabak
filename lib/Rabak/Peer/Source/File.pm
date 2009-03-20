@@ -466,7 +466,8 @@ sub run {
         . " --filter='. " . $self->shell_quote($sRulesFile, 'dont quote') . "'"
         . " --stats"
         . " --verbose"
-        . " --verbose"
+#        . " --verbose"
+        . " --itemize-changes"
         . " --itemize-changes"
     ;
 
@@ -537,8 +538,19 @@ sub run {
     my @sLinkErrors= ();
     my $sTargetDir= $oTargetPeer->getAbsBakDir();
     my $sqTargetDir= quotemeta $sTargetDir;
-    my $fHandleHardLinksTo= sub{};
-    my $fHandleHardLinksToPrev= sub{};
+    my $fHandleHardLinksTo= sub{
+        my $sFile= shift;
+        my $sLink= shift;
+        logger->verbose("Linking file \"$sFile\" to \"$sLink\"");
+    };
+    my $fHandleHardLinksToPrev= sub{
+        my $sFile= shift;
+        logger->verbose("Linking file \"$sFile\" to a previous version")
+    };
+    my $fHandleChangedFile= sub{
+        my $sFile= shift;
+        logger->verbose("File \"$sFile\" backed up")
+    };
     my %Handles= (
         STDOUT => sub {
             for my $sLine (@_) {
@@ -552,23 +564,25 @@ sub run {
                     logger->info('*** Rsync Statistics: ***') unless $sStdOutStat;
                     $sStdOutStat= 1;
                 }
-                if ($sStdOutStat) {
+                unless ($sStdOutStat) {
                     # skip directory lines
-                    next if $sLine =~ /^cd/;
-                    if ($sLine =~ /^(.{11})\s()/) {
-                        my ($flags, $sFile) = ($1, $2);
-                        if (substr($flags, 0, 1) == 'h') {
-                            if ($sFile =~ s/ \=\> (.+)/) {
-                                fHandleHardLinksTo->($File, $1);
-                            }
-                            else {
-                                fHandleHardLinksToPrev->($File);
-                            }
-                        }
-                        logger->info($sFile);
-                        next;
-                    }
-                    logger->warn("Could not parse \"$sLine\"");
+#                    next if $sLine =~ /^cd/;
+#                    if ($sLine =~ /^(.{11})\s()/) {
+#                        my ($flags, $sFile) = ($1, $2);
+#                        if (substr($flags, 0, 1) eq 'h') {
+#                            if ($sFile =~ s/ \=\> (.+)//) {
+#                                $fHandleHardLinksTo->($sFile, $1);
+#                            }
+#                            else {
+#                                $fHandleHardLinksToPrev->($sFile);
+#                            }
+#                        }
+#                        else {
+#                            $fHandleChangedFile->($sFile);
+#                        }
+#                        next;
+#                    }
+                    logger->info("Could not parse \"$sLine\"");
                     next;
                 }
                 logger->verbose($sLine);
