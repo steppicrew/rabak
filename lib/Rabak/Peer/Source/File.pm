@@ -466,7 +466,7 @@ sub run {
         . " --filter='. " . $self->shell_quote($sRulesFile, 'dont quote') . "'"
         . " --stats"
         . " --verbose"
-#        . " --verbose"
+        . " --verbose"
         . " --itemize-changes"
         . " --itemize-changes"
     ;
@@ -541,15 +541,15 @@ sub run {
     my $fHandleHardLinksTo= sub{
         my $sFile= shift;
         my $sLink= shift;
-        logger->verbose("Linking file \"$sFile\" to \"$sLink\"");
+#        logger->verbose("Linking file \"$sFile\" to \"$sLink\"");
     };
     my $fHandleHardLinksToPrev= sub{
         my $sFile= shift;
-        logger->verbose("Linking file \"$sFile\" to a previous version")
+#        logger->verbose("Linking file \"$sFile\" to a previous version")
     };
     my $fHandleChangedFile= sub{
         my $sFile= shift;
-        logger->verbose("File \"$sFile\" backed up")
+        logger->verbose("backed up \"$sFile\"")
     };
     my %Handles= (
         STDOUT => sub {
@@ -560,32 +560,38 @@ sub run {
                     logger->warn($sLine);
                     next;
                 }
-                if ($sLine =~ /^Number of .*\:\s+\d+$/) {
-                    logger->info('*** Rsync Statistics: ***') unless $sStdOutStat;
+                if ($sLine =~ /^total\:/) {
                     $sStdOutStat= 1;
                 }
+                if ($sLine =~ /^Number of .*\:\s+\d+$/) {
+                    logger->info('*** Rsync Statistics: ***') unless $sStdOutStat == 2;
+                    $sStdOutStat= 2;
+                }
+                next if $sStdOutStat == 1;
                 unless ($sStdOutStat) {
                     # skip directory lines
-#                    next if $sLine =~ /^cd/;
-#                    if ($sLine =~ /^(.{11})\s()/) {
-#                        my ($flags, $sFile) = ($1, $2);
-#                        if (substr($flags, 0, 1) eq 'h') {
-#                            if ($sFile =~ s/ \=\> (.+)//) {
-#                                $fHandleHardLinksTo->($sFile, $1);
-#                            }
-#                            else {
-#                                $fHandleHardLinksToPrev->($sFile);
-#                            }
-#                        }
-#                        else {
-#                            $fHandleChangedFile->($sFile);
-#                        }
-#                        next;
-#                    }
-                    logger->info("Could not parse \"$sLine\"");
-                    next;
+                    next if $sLine =~ /^cd/;
+                    if ($sLine =~ /^\[sender\] hiding/) {
+                    	next;
+                    }
+                    if ($sLine =~ /^([\>\<ch\.\*][fdLDS][ \.\+\?cstpoguax]{9})\s(.+)$/) {
+                        my ($flags, $sFile) = ($1, $2);
+                        next if $sFile eq './';
+                        if ($flags=~ /^h/) {
+                            if ($sFile =~ s/ \=\> (.+)$//) {
+                                $fHandleHardLinksTo->($sFile, $1);
+                            }
+                            else {
+                                $fHandleHardLinksToPrev->($sFile);
+                            }
+                        }
+                        else {
+                            $fHandleChangedFile->($sFile);
+                        }
+                        next;
+                    }
                 }
-                logger->verbose($sLine);
+                logger->info($sLine);
             } 
         },
         STDERR => sub {
