@@ -432,7 +432,7 @@ sub mountErrorIsFatal {
 sub run {
     my $self= shift;
     my $oTargetPeer= shift;
-    my $bPretend= shift;
+    my $hMetaInfo= shift;
 
     # print Dumper($self); die;
 
@@ -451,7 +451,7 @@ sub run {
     print $fhwRules join("\n", @sFilter), "\n";
     close $fhwRules;
 
-    # copy filter rules to source if target AND source and remote
+    # copy filter rules to source if target AND source are remote
     if ($oTargetPeer->is_remote() && $self->is_remote()) {
         my $sRemRulesFile= $self->tempfile;
         $self->copyLocalFileToRemote($sRulesFile, $sRemRulesFile);
@@ -471,7 +471,7 @@ sub run {
         . " --itemize-changes"
     ;
 
-    $sFlags .= " --dry-run" if $bPretend;
+    $sFlags .= " --dry-run" if $self->pretend();
     $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
     
     # $oSshPeer contains ssh parameters for rsync (seen from executing location)
@@ -523,7 +523,7 @@ sub run {
 
     my $iScanBakDirs= $self->get_value('scan_bak_dirs', 4);
 
-    my @sBakDir= @{$oTargetPeer->getOldBakDirs()};
+    my @sBakDir= @{$hMetaInfo->{OLD_DATA_DIRS}};
     splice @sBakDir, $iScanBakDirs if $#sBakDir >= $iScanBakDirs;
     my $sLinkFlags = "";
     map { $sLinkFlags .= " --link-dest=" . $self->shell_quote($_); } @sBakDir;
@@ -536,7 +536,7 @@ sub run {
     # prepare handles for stdout/stderr
     my $sStdOutStat= 0;
     my @sLinkErrors= ();
-    my $sTargetDir= $oTargetPeer->getAbsBakDir();
+    my $sTargetDir= $hMetaInfo->{DATA_DIR};
     my $sqTargetDir= quotemeta $sTargetDir;
     my $fHandleHardLinksTo= sub{
         my $sFile= shift;

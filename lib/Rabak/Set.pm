@@ -9,6 +9,7 @@ no warnings 'redefine';
 use Rabak::Log;
 use Rabak::Peer::Source;
 use Rabak::Peer::Target;
+use Rabak::Backup;
 use Rabak::Version;
 
 use Data::Dumper;
@@ -181,32 +182,33 @@ sub backup {
 
     my $oTargetPeer= $self->get_targetPeer();
     my @oSourcePeers= $self->get_sourcePeers();
+    
+    if ($self->get_switch('pretend')) {
+        $oTargetPeer->setPretend(1);
+        $_->setPretend(1) for @oSourcePeers;
+    }
 
-    $iResult= $oTargetPeer->prepareBackup(
-        $self->GetAllPathExtensions($self),
-        $self->get_switch('pretend'),
-    );
+    my $hBaksetData= $oTargetPeer->prepareBackup($self->GetAllPathExtensions($self));
+    
+    $iResult= $hBaksetData->{ERROR};
     goto cleanup if $iResult;
 
-    $oTargetPeer->initLogging($self->get_switch('pretend')) if $self->get_switch('logging');
+    $oTargetPeer->initLogging($hBaksetData) if $self->get_switch('logging');
 
     # now try backing up every source 
     my %sNames= ();
     for my $oSourcePeer (@oSourcePeers) {
-        my $sName= $oSourcePeer->get_full_name();
-        $oSourcePeer->set_value("name", "") if $sName=~ s/^\*//;
-        if ($sNames{$sName}) {
-            logger->error("Name '$sName' of Source Object has already been used. Skipping backup of source.");
+        my $sSourceName= $oSourcePeer->get_full_name();
+        $oSourcePeer->set_value('name', '') if $sSourceName=~ s/^\*//;
+        if ($sNames{$sSourceName}) {
+            logger->error("Source object named \"$sSourceName\" was already backed up. Skipping.");
             next;
         }
-        $sNames{$sName}= 1;
+        $sNames{$sSourceName}= 1;
+
         eval {
-            my $iBackupResult= $self->_backup_setup($oSourcePeer, $oTargetPeer);
-            unless ($iBackupResult) {
-                $iBackupResult= $self->_backup_run($oSourcePeer, $oTargetPeer);
-                $iSuccessCount++ unless $iBackupResult;
-            }
-            $self->_backup_cleanup($oSourcePeer, $oTargetPeer, $iBackupResult);
+            my $oBackup= Rabak::Backup->new($oSourcePeer, $oTargetPeer);
+            $iSuccessCount++ unless $oBackup->run($hBaksetData);
         };
         logger->error("An error occured during backup: '$@'") if $@;
     }
@@ -226,64 +228,6 @@ cleanup:
     
     # return number of failed backups or error code (negative)
     return $iResult;
-}
-
-sub _backup_setup {
-    my $self= shift;
-    my $oSourcePeer= shift;
-    my $oTargetPeer= shift;
-    
-    logger->info("Backup start at " . strftime("%F %X", localtime) . ": "
-        . ($oSourcePeer->getName() || $oSourcePeer->getFullPath()) . ", "
-        . $self->get_value("title")
-    );
-    logger->incIndent();
-
-    $oTargetPeer->prepareSourceBackup(
-        $oSourcePeer,
-        $self->get_switch('pretend'),
-    );
-
-    return $oSourcePeer->prepareBackup($self->get_switch('pretend'));
-}
-
-sub _backup_run {
-    my $self= shift;
-    my $oSourcePeer= shift;
-    my $oTargetPeer= shift;
-    
-    return $oSourcePeer->run(
-        $oTargetPeer,
-        $self->get_switch('pretend'),
-    );
-}
-
-sub _backup_cleanup {
-    my $self= shift;
-    my $oSourcePeer= shift;
-    my $oTargetPeer= shift;
-    my $iBackupResult= shift;
-    
-    my $sSourceSet= $oTargetPeer->getSourceSubdir();
-
-    $oSourcePeer->finishBackup($iBackupResult, $self->get_switch('pretend'));
-
-    if ($iBackupResult) {
-        logger->error("Backup failed: " . $oSourcePeer->get_last_error);
-        $iBackupResult= 9;
-    }
-    else {
-        logger->info("Done!");
-    }
-
-    $oTargetPeer->finishSourceBackup($iBackupResult, $self->get_switch('pretend'));
-
-    logger->decIndent();
-    logger->info("Backup done at "
-        . strftime("%F %X", localtime) . ": "
-        . ($oSourcePeer->getName() || $oSourcePeer->getFullPath()) . ", "
-        . $sSourceSet
-    );
 }
 
 # -----------------------------------------------------------------------------

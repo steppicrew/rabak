@@ -62,7 +62,7 @@ sub get_valid_db {
 sub run {
     my $self= shift;
     my $oTargetPeer= shift;
-    my $bPretend= shift;
+    my $hMetaInfo= shift;
 
     my %sValidDb= ();
     my @sDb= ();
@@ -95,13 +95,10 @@ sub run {
     my $sZipExt= $self->{PACKER}{ext};
 
     foreach (@sDb) {
-        my $sDestFile= $oTargetPeer->getAbsBakDir()
-            . "/$_."
-            . $oTargetPeer->getSourceSubdir()
-            . ".$sZipExt";
+        my $sDestFile= $hMetaInfo->{DATA_DIR} . "/$_.$sZipExt";
         my $sProbeCmd= $self->get_probe_cmd($_);
 
-        unless ($bPretend) {
+        unless ($self-pretend()) {
             $self->run_cmd($sProbeCmd);
             if ($self->get_last_exit) {
                 my $sError= $self->get_last_error;
@@ -128,7 +125,7 @@ sub run {
         }
 
         # now execute dump command on target
-        unless ($bPretend) {
+        unless ($self->pretend()) {
             $oDumpPeer->run_cmd("$sDumpCmd | $sPipeCmd");
             if ($oDumpPeer->get_last_exit) {
                 my $sError= $oDumpPeer->get_last_error;

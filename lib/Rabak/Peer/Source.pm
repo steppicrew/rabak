@@ -76,7 +76,6 @@ sub getPathExtension {
 
 sub prepareBackup {
     my $self= shift;
-    my $bPretend= shift;
 
     logger->info("Source: " . $self->getFullPath());
     logger->set_prefix($self->get_value("type"));
@@ -85,7 +84,6 @@ sub prepareBackup {
 sub finishBackup {
     my $self= shift;
     my $iBackupResult= shift;
-    my $bPretend= shift;
     
     logger->set_prefix();
     $self->cleanupTempfiles();

@@ -46,6 +46,7 @@ sub new {
     };
     $self->{TEMPFILES}= [];
     $self->{TEMP_RT_ENV}= undef;
+    $self->{PRETEND}= undef;
 
     bless $self, $class;
 
@@ -190,6 +191,17 @@ sub getUserHostPort {
     return $self->getUserHost() .
         ($iPort == 22 ? "" : ":$iPort") .
         $sSeparator;
+}
+
+sub setPretend {
+    my $self= shift;
+    my $bPretend= shift;
+    $self->{PRETEND}= $bPretend;
+}
+
+sub pretend {
+    my $self= shift;
+    return $self->{PRETEND};
 }
 
 # run command locally or remote
@@ -714,6 +726,8 @@ sub copyLocalFilesToRemote {
 sub mkdir {
     my $self= shift;
     my $sPath= $self->getPath(shift);
+    
+    return 1 if $self->pretend();
 
     return ${$self->_saveperl('
             # mkdir()
@@ -836,6 +850,18 @@ sub glob {
     ) || []};
 }
 
+sub rename {
+    my $self= shift;
+    my $sOldFile= shift;
+    my $sNewFile= shift;
+
+    return ${$self->_saveperl('
+            # rename()
+            $result= CORE::rename($sOldFile, $sNewFile);
+        ', { "sOldFile" => $sOldFile, "sNewFile" => $sNewFile, }, '$result'
+    ) || \undef};
+}
+
 sub echo {
     my $self= shift;
     my $sFile= $self->getPath(shift);
@@ -843,7 +869,7 @@ sub echo {
 
     for (@sLines) {
         chomp;
-        $self->savecmd("echo " .  $self->shell_quote($_) . " >> '$sFile'");
+        $self->savecmd("echo " .  $self->shell_quote($_) . " >> " .  $self->shell_quote($sFile));
     }
 }
 
