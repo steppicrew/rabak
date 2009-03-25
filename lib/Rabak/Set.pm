@@ -209,6 +209,7 @@ sub backup {
         eval {
             my $oBackup= Rabak::Backup->new($oSourcePeer, $oTargetPeer);
             $iSuccessCount++ unless $oBackup->run($hBaksetData);
+            1;
         };
         logger->error("An error occured during backup: '$@'") if $@;
     }

@@ -577,6 +577,7 @@ sub run {
                     if ($sLine =~ /^([\>\<ch\.\*][fdLDS][ \.\+\?cstpoguax]{9})\s(.+)$/) {
                         my ($flags, $sFile) = ($1, $2);
                         next if $sFile eq './';
+                        $hMetaInfo->{FILE_CALLBACK}->("$sTargetDir/$sFile") if $hMetaInfo->{FILE_CALLBACK};
                         if ($flags=~ /^h/) {
                             if ($sFile =~ s/ \=\> (.+)$//) {
                                 $fHandleHardLinksTo->($sFile, $1);

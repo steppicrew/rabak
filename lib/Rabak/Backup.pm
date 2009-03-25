@@ -98,13 +98,39 @@ sub _setup {
     $self->{BACKUP_DATA}{BACKUP_DATA_DIR}= $sBakDir . '/data';
     $self->{BACKUP_DATA}{BACKUP_META_DIR}= $sBakDir . '/meta';
     
-    
     logger->info("Backup \"$sBakDay$sSourceExt\" exists, using subset \"$sSourceSubdir\".") if $sSubSet;
 
     $oTargetPeer->mkdir($self->{BACKUP_DATA}{BACKUP_DIR});
     $oTargetPeer->mkdir($self->{BACKUP_DATA}{BACKUP_DATA_DIR});
     $oTargetPeer->mkdir($self->{BACKUP_DATA}{BACKUP_META_DIR});
     $self->_writeVersion($sBakDir);
+    
+    if ($oSourcePeer->get_value('inode_inventory') && !$oTargetPeer->pretend() && !$oTargetPeer->is_remote()) {
+        my $inodeStore= Rabak::InodeCache->new({
+            db_inodes_dir => $oTargetPeer->getPath($self->{BACKUP_DATA}{BAKSET_META_DIR}),
+        });
+        $inodeStore->prepareInformationStore(
+            $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_DATA_DIR}),
+            $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR} . '/files_inode.db'),
+        );
+        
+        $self->{BACKUP_DATA}{INODE_STORE}= $inodeStore;
+        my @sInventFiles= ();
+        $self->{BACKUP_DATA}{FILE_CALLBACK}= sub{
+            # add only existant files, remember nonexistant (files may be created after logging)
+            push @sInventFiles, @_;
+            my $count= scalar @sInventFiles;
+            while ($count--) {
+                my $sFile= shift @sInventFiles;
+                if (-f $sFile) {
+                    $inodeStore->addFile($sFile);
+                    next;
+                }
+                push @sInventFiles, $sFile;
+            }
+            return scalar @sInventFiles;
+        };
+    }
 
     return $oSourcePeer->prepareBackup();
 }
@@ -120,6 +146,7 @@ sub _run {
             DATA_DIR => $self->{TARGET}->getPath($self->{BACKUP_DATA}{BACKUP_DATA_DIR}),
             META_DIR => $self->{TARGET}->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR}),
             OLD_DATA_DIRS => \@sOldDataDirs,
+            FILE_CALLBACK => $self->{BACKUP_DATA}{FILE_CALLBACK},
         },
     );
 }
@@ -134,6 +161,10 @@ sub _cleanup {
     my $sSourceSet= $self->{BACKUP_DATA}{BACKUP_SUBDIR};
 
     $oSourcePeer->finishBackup($iResult);
+
+    # finish up previously nonexistant files
+    $self->{BACKUP_DATA}{FILE_CALLBACK}->() if $self->{BACKUP_DATA}{FILE_CALLBACK};
+    $self->{BACKUP_DATA}{INODE_STORE}->finishInformationStore() if $self->{BACKUP_DATA}{INODE_STORE};
 
     if ($iResult) {
         logger->error("Backup failed: " . $oSourcePeer->get_last_error());

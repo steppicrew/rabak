@@ -25,9 +25,13 @@ sub new {
     $self->{OPTS}= $hOptions;
     $self->{DS}= undef;
     $self->{STATS}= {};
+    
     bless $self, $class;
+    
+    $self->_init();
 
     # print Dumper($self); die;
+    return $self;
 }
 
 sub _init {
@@ -61,16 +65,13 @@ sub _init {
     logger()->info("Include skip zero sized files.") if $self->{OPTS}{include_zero_sized};
 }
 
-# callback function for File::Find
-sub _processFiles {
+# adds given file to db
+sub addFile {
     my $self= shift;
-    my $oTrap= shift;
-
-    return if $oTrap->terminated();
+    my $sFileName= shift;
     
-    my $sFileName= $_;
     my ($dev, $inode, $mode, $nlink, $uid, $gid, $rdev, $size,
-        $atime, $mtime, $ctime, $bsize, $blocks)= lstat;
+        $atime, $mtime, $ctime, $bsize, $blocks)= lstat $sFileName;
 
     # ignore all but regular files
     return if ($mode & S_IFLNK) == S_IFLNK;
@@ -78,7 +79,7 @@ sub _processFiles {
 
     $self->{dev}= $dev unless defined $self->{dev};
     unless ($dev == $self->{dev}) {
-        logger()->warn("Directories span different devices");
+        logger()->warn("Directories span different devices. Ignoring file \"$sFileName\".");
         return;
     }
     $self->{STATS}{total_new_files}++;
@@ -88,6 +89,16 @@ sub _processFiles {
 
     # store file names for each inode
     $self->{DS}->addInodeFile($inode, $sFileName);
+}
+
+# callback function for File::Find
+sub _processFiles {
+    my $self= shift;
+    my $oTrap= shift;
+
+    return if $oTrap->terminated();
+    
+    $self->addFile($_);
 }
 
 # calculate digest from file
@@ -148,18 +159,32 @@ sub setInodeDigest {
 }
 
 
-sub collect {
+sub prepareInformationStore {
+    my $self= shift;
+    my $sDir= shift;
+    my $sDbFileName= shift;
+    
+    $self->{DS}->beginWork();
+    $self->{DS}->registerInodes($self->{DS}->getInodes());
+    $self->{DS}->newDirectory($sDir, $sDbFileName) if $sDir;
+}
+
+sub finishInformationStore {
     my $self= shift;
 
-	$self->_init();
+    $self->{DS}->finishDirectory();
+    $self->{DS}->commitTransaction();
+}
+
+sub collect {
+    my $self= shift;
 
     my $fTrapCB= undef;
     
     my $oTrap= Rabak::Trap->new(sub {$fTrapCB->() if $fTrapCB});
 
     logger()->verbose("Preparing information store...");
-    $self->{DS}->beginWork();
-    $self->{DS}->registerInodes($self->{DS}->getInodes());
+    $self->prepareInformationStore();
     logger()->verbose("done");
     logger()->info("Collecting file information...");
 
@@ -204,7 +229,7 @@ sub collect {
     $self->{STATS}{total_inodes}= $self->{DS}->getInodeCount();
     logger()->info("done");
     logger()->verbose("Finishing information store...");
-    $self->{DS}->commitTransaction();
+    $self->finishInformationStore();
     logger()->verbose("done");
 
     return !$oTrap->restore();

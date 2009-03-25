@@ -30,20 +30,27 @@ sub new {
     );
 
     bless $self, $class;
+    $self->{inode_db}->_initTables('inodes');
+    return $self;
 }
 
 sub newDirectory {
     my $self= shift;
     my $sDirectory= shift;
+    my $sDBFileName= shift;
     
     $self->SUPER::newDirectory($sDirectory);
-    my $sFileName= $sDirectory;
-    $sFileName =~ s/\/+$//;
-    $sFileName.= $self->{dbfn_postfix};
-    my $bDbIsNew= ! -f $sFileName;
+
+    unless ($sDBFileName) {
+        $sDBFileName= $sDirectory;
+        $sDBFileName =~ s/\/+$//;
+        $sDBFileName.= $self->{dbfn_postfix};
+    }
+    my $bDbIsNew= ! -f $sDBFileName;
     $self->{current_db}= Rabak::InodeStore::DBBackend->new(
-        $sFileName, $self->{db_backend}, $self->{temp_dir}, {directory=> $sDirectory}
+        $sDBFileName, $self->{db_backend}, $self->{temp_dir}, {directory=> $sDirectory}
     );
+    $self->{current_db}->_initTables('files_inode');
     push @{$self->{dbs}}, $self->{current_db};
 
     # return true if db did not exist, false otherwise

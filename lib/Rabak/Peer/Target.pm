@@ -182,6 +182,8 @@ sub remove_old {
 sub inodeInventory {
     my $self= shift;
     
+    die "Rabak::Target::inodeInventory() is broken";
+    
     return 1 unless $self->_getSourceData("INVENTORY");
 
     my $sFullTargetDir= $self->getPath($self->_getSourceData("BAKDIR"));
@@ -224,6 +226,8 @@ sub inodeInventory {
 
 sub dupMerge {
     my $self= shift;
+
+    die "Rabak::Target::dupMerge() is broken";
     
     return 1 unless $self->_getSourceData("DUPMERGE");
 
@@ -327,8 +331,10 @@ sub prepareBackup {
     my $sBaksetExt= $asBaksetExts->[0];
     my $aBaksetTime= [localtime];
     my $sBaksetDir= strftime("%Y-%m", @$aBaksetTime) . $sBaksetExt;
+    my $sBaksetMeta= '.meta';
 
     $self->mkdir($sBaksetDir);
+    $self->mkdir($sBaksetMeta);
 
     return {
         BAKSET_EXT => $sBaksetExt,     # path extension for current bakset
@@ -336,6 +342,7 @@ sub prepareBackup {
         BAKSET_DIR => $sBaksetDir, # back set's directory (relative to target dir)
         BAKSET_TIME => $aBaksetTime,   # date of bak set start
         ALL_BAKSET_DIRS => $self->getAllBakdirs(),  # hash of all bak set dirs
+        BAKSET_META_DIR => $sBaksetMeta,
     };
 }
 

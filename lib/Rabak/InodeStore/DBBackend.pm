@@ -9,6 +9,20 @@ use File::Temp;
 use File::Copy;
 use Rabak::Log;
 
+my %TableDefinitions= (
+    'inodes' => 'inode INTEGER PRIMARY KEY, size INTEGER, mode INTEGER, owner TEXT, mtime INTEGER, digest TEXT',
+    'files_inode' => 'inode INTEGER, filename TEXT PRIMARY KEY',
+);
+my %IndexDefinitions= (
+    'inodes' => [
+        {'name' => 'inodes_size', 'fields' => ['size']},
+        {'name' => 'inodes_size_key', 'fields' => ['size', 'mode', 'owner', 'mtime']},
+    ],
+    'files_inode' => [
+        {'name' => 'files_inode_inode', 'fields' => ['inode']},
+    ],
+);
+
 sub new {
     my $class= shift;
     my $sFileName= shift;
@@ -34,8 +48,8 @@ sub new {
         real_dbfn=> $sRealFileName,
         dbh=> undef,
         db_backend=> $sDbEngine,
-        is_new=> undef,
         is_valid=> 1,
+        _tables=> {},
         
         _data=> $hData,
         
@@ -113,13 +127,35 @@ sub createHandle {
     eval {
         $dbh = DBI->connect("dbi:$sDbBackend:dbname=$dbfn", "", "")
             || die $DBI::errstr;
-        if ($self->{is_new}) {
-            $dbh->do("CREATE TABLE inodes (inode INTEGER PRIMARY KEY, size INTEGER, mode INTEGER, owner TEXT, mtime INTEGER, digest TEXT)");
-            $dbh->do("CREATE TABLE files_inode (inode INTEGER, filename TEXT PRIMARY KEY)");
-        }
     };
-    die "Could not create database!\n$@" if $@;
+    die "Could not create database '$dbfn'!\n$@" if $@;
     return $dbh;
+}
+
+sub _initTables {
+    my $self= shift;
+    my @sTableNames= @_;
+    
+    my $dbh= $self->getHandle();
+    for my $sTableName (@sTableNames) {
+        next if $self->{_tables}{$sTableName};
+        die "Table name \"$sTableName\" is not valid." unless $TableDefinitions{$sTableName};
+        $dbh->do("CREATE TABLE IF NOT EXISTS $sTableName ($TableDefinitions{$sTableName})");
+        $self->{_tables}{$sTableName}= 1;
+    }
+    $self->commitTransaction();
+}
+
+sub _createIndices {
+    my $self= shift;
+    
+    my $dbh= $self->getHandle();
+    for my $sTableName (keys %{$self->{_tables}}) {
+        next unless $IndexDefinitions{$sTableName};
+        for my $hIndexDef (@{$IndexDefinitions{$sTableName}}) {
+            $dbh->do("CREATE INDEX IF NOT EXISTS " . $hIndexDef->{name} . " ON $sTableName (" . join(', ', @{$hIndexDef->{fields}}) . ")");
+        }
+    }
 }
 
 sub prepareQuery {
@@ -493,12 +529,7 @@ sub commitTransaction {
     $self->getHandle()->commit();
     
     # creating indices after inserting all data
-    if ($buildIndex && $self->{is_new}) {
-        $self->getHandle()->do("CREATE INDEX inodes_size ON inodes (size)");
-        $self->getHandle()->do("CREATE INDEX inodes_size_key ON inodes (size, mode, owner, mtime)");
-        $self->getHandle()->do("CREATE INDEX files_inode_inode ON files_inode (inode)");
-        $self->{is_new}= undef;
-    }
+    $self->_createIndices() if $buildIndex;
   
     $self->{_transaction_mode}= undef;
 }
