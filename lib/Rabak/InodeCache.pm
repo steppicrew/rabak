@@ -49,13 +49,13 @@ sub _init {
     # decide what InodeStore type will be used
     # currently the only supported type is multidb
     if (1) { 
-        $self->{OPTS}{db_inodes_dir}= "." unless $self->{OPTS}{db_inodes_dir};
+        $self->{OPTS}{inodes_db}= "./inodes.db" unless $self->{OPTS}{inodes_db};
         $self->{OPTS}{db_postfix}= ".file_inode.db" unless $self->{OPTS}{db_postfix};
-        logger()->debug("Using '$self->{OPTS}{db_inodes_dir}' as inode's db directory.");
+        logger()->debug("Using '$self->{OPTS}{inodes_db}' as inodes db.");
         logger()->debug("Using '$self->{OPTS}{db_postfix}' as postfix for multi db.");
         $self->{DS}= Rabak::InodeStore->Factory(
             type => 'multidb',
-            db_inodes_dir => $self->{OPTS}{db_inodes_dir},
+            inodes_db => $self->{OPTS}{inodes_db},
             temp_dir => $self->{OPTS}{temp_dir},
             db_postfix => $self->{OPTS}{db_postfix},
             db_backend => $self->{OPTS}{db_backend}
@@ -69,9 +69,11 @@ sub _init {
 sub addFile {
     my $self= shift;
     my $sFileName= shift;
-    
     my ($dev, $inode, $mode, $nlink, $uid, $gid, $rdev, $size,
-        $atime, $mtime, $ctime, $bsize, $blocks)= lstat $sFileName;
+        $atime, $mtime, $ctime, $bsize, $blocks)= @_;
+    
+    ($dev, $inode, $mode, $nlink, $uid, $gid, $rdev, $size,
+        $atime, $mtime, $ctime, $bsize, $blocks)= lstat $sFileName unless defined $dev;
 
     # ignore all but regular files
     return if ($mode & S_IFLNK) == S_IFLNK;

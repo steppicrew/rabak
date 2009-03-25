@@ -25,7 +25,7 @@ sub getOptions {
         "max-size" =>           [ "", "=i", "<max size>",         "Ignore files larger than <max size>" ],
         "temp-dir" =>           [ "", "=s", "<temp dir>",         "Working directory for temporary data collection (default: '/tmp')" ],
         "db-backend" =>         [ "", "=s", "<db engine>",        "Database engine. possible values: sqlite2, sqlite3 (default)" ],
-        "db-inodes-dir" =>      [ "", "=s", "<dir>",              "Directory for inodes.db (default: current dir)" ],
+        "inodes-db" =>          [ "", "=s", "<db file>",          "Db file to store inode information (default: ./inodes:db)" ],
         "db-postfix" =>         [ "", "=s", "<multi db postfix>", "Enables db for each directory. Specifies postfix for db name" ],
     };
 }

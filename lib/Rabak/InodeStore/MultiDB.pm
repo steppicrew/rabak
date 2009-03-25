@@ -24,7 +24,7 @@ sub new {
     $self->{dbs}= []; # array of db hashes
     $self->{current_db}= undef;
 
-    my $sInodeFileName= "$hParams->{db_inodes_dir}/inodes.db";
+    my $sInodeFileName= $hParams->{inodes_db};
     $self->{inode_db}= Rabak::InodeStore::DBBackend->new(
         $sInodeFileName, $self->{db_backend}, $self->{temp_dir}
     );
