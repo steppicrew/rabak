@@ -105,33 +105,101 @@ sub _setup {
     $oTargetPeer->mkdir($self->{BACKUP_DATA}{BACKUP_META_DIR});
     $self->_writeVersion($sBakDir);
     
-    if ($oSourcePeer->get_value('inode_inventory') && !$oTargetPeer->pretend() && !$oTargetPeer->is_remote()) {
-        my $inodeStore= Rabak::InodeCache->new({
-            db_inodes_dir => $oTargetPeer->getPath($self->{BACKUP_DATA}{BAKSET_META_DIR}),
-        });
-        logger->info("Preparing information store for inode inventory...");
-        $inodeStore->prepareInformationStore(
-            $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_DATA_DIR}),
-            $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR} . '/files_inode.db'),
-        );
-        logger->info("...done");
-        
-        $self->{BACKUP_DATA}{INODE_STORE}= $inodeStore;
-        my @sInventFiles= ();
-        $self->{BACKUP_DATA}{FILE_CALLBACK}= sub{
-            # add only existant files, remember nonexistant (files may be created after logging)
-            push @sInventFiles, @_;
-            my $count= scalar @sInventFiles;
-            while ($count--) {
-                my $sFile= shift @sInventFiles;
-                if (-e $sFile) {
-                    $inodeStore->addFile($sFile);
-                    next;
+    if ($oSourcePeer->get_value('inode_inventory') && !$oTargetPeer->pretend()) {
+        if ($oTargetPeer->is_remote()) {
+            my $sTempDir= $oTargetPeer->local_tempdir();
+            my $sFileListFile= $sTempDir . '/filelist.txt';
+            my $fh;
+            open $fh, ">$sFileListFile" or die "Could not create temporary file \"$sFileListFile\".";
+            $self->{BACKUP_DATA}{FILE_CALLBACK}= sub {
+                print $fh join "\n", @_, '';
+            };
+            $self->{BACKUP_DATA}{FINISH_INVENTORY}= sub {
+                close $fh;
+                my $sRemoteInodesDb= $oTargetPeer->getPath($self->{BACKUP_DATA}{BAKSET_META_DIR} . '/inodes.db');
+                my $sInodesDb= $oTargetPeer->getLocalFile($sRemoteInodesDb);
+                my $inodeStore= Rabak::InodeCache->new({
+                    inodes_db => $sInodesDb,
+                });
+                logger->info("Preparing information store for inode inventory...");
+                my $sFilesInodeDb= $sTempDir . '/files_inode.db';
+                $inodeStore->prepareInformationStore(
+                    $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_DATA_DIR}),
+                    $sFilesInodeDb,
+                );
+                logger->info("...done");
+                
+                # idea: cat file list to remote site, return lstat's result (+ file name)
+                # and insert output into inode store
+                open $fh, $sFileListFile or die "Could not open file \"$sFileListFile\" for reading.";
+                my %Handles= (
+                    STDIN => sub {
+                        return scalar <$fh>;
+                    },
+                    STDOUT => sub {
+                        for my $sLine (@_) {
+                            chomp $sLine;
+                            my @sParams= split /\:/, $sLine, 14;
+                            if (scalar @sParams < 14) {
+                                logger->error("Error parsing inventory data (\"$sLine\").");
+                                next;
+                            }
+                            # rotate file name from end to front
+                            unshift @sParams, pop(@sParams);
+                            $inodeStore->addFile(@sParams);
+                        }
+                    },
+                    STDERR => sub {
+                        logger->error(@_);
+                    },
+                );
+                $oTargetPeer->run_cmd('perl -ne \'print join(":", lstat, $_), "\n"\'', \%Handles);
+                close $fh;
+                logger->info("Finishing information store for inode inventory...");
+                $inodeStore->finishInformationStore();
+                $self->copyLocalFileToRemote($sInodesDb, $sRemoteInodesDb);
+                $self->copyLocalFileToRemote(
+                    $sFilesInodeDb,
+                    $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR} . '/files_inode.db'),
+                );
+                logger->info("..done");
+            };
+        }
+        else {
+            my $inodeStore= Rabak::InodeCache->new({
+                inodes_db => $oTargetPeer->getPath($self->{BACKUP_DATA}{BAKSET_META_DIR} . '/inodes.db'),
+            });
+            logger->info("Preparing information store for inode inventory...");
+            $inodeStore->prepareInformationStore(
+                $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_DATA_DIR}),
+                $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR} . '/files_inode.db'),
+            );
+            logger->info("...done");
+            
+            my @sInventFiles= ();
+            $self->{BACKUP_DATA}{FILE_CALLBACK}= sub {
+                # add only existant files, remember nonexistant (files may be created after logging)
+                push @sInventFiles, @_;
+                my $count= scalar @sInventFiles;
+                while ($count--) {
+                    my $sFile= shift @sInventFiles;
+                    if (-e $sFile) {
+                        $inodeStore->addFile($sFile);
+                        next;
+                    }
+                    push @sInventFiles, $sFile;
                 }
-                push @sInventFiles, $sFile;
-            }
-            return scalar @sInventFiles;
-        };
+                return scalar @sInventFiles;
+            };
+
+            $self->{BACKUP_DATA}{FINISH_INVENTORY}= sub {
+                logger->info("Finishing information store for inode inventory...");
+                # finish up previously nonexistant files
+                $self->{BACKUP_DATA}{FILE_CALLBACK}->();
+                $inodeStore->finishInformationStore();
+                logger->info("..done");
+            };
+        }
     }
 
     return $oSourcePeer->prepareBackup();
@@ -164,13 +232,7 @@ sub _cleanup {
 
     $oSourcePeer->finishBackup($iResult);
 
-    if ($self->{BACKUP_DATA}{INODE_STORE}) {
-        logger->info("Finishing information store for inode inventory...");
-        # finish up previously nonexistant files
-        $self->{BACKUP_DATA}{FILE_CALLBACK}->() if $self->{BACKUP_DATA}{FILE_CALLBACK};
-        $self->{BACKUP_DATA}{INODE_STORE}->finishInformationStore();
-        logger->info("..done");
-    }
+    $self->{BACKUP_DATA}{FINISH_INVENTORY}->() if $self->{BACKUP_DATA}{FINISH_INVENTORY};
 
     if ($iResult) {
         logger->error("Backup failed: " . $oSourcePeer->get_last_error());
