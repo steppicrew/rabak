@@ -165,7 +165,7 @@ sub prepareInformationStore {
     my $sDbFileName= shift;
     
     $self->{DS}->beginWork();
-    $self->{DS}->registerInodes($self->{DS}->getInodes());
+    $self->{DS}->registerInodes();
     $self->{DS}->newDirectory($sDir, $sDbFileName) if $sDir;
 }
 

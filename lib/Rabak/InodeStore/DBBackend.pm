@@ -327,6 +327,16 @@ sub addInode {
     );
 }
 
+sub getInode {
+    my $self= shift;
+    my $iInode= shift;
+    
+    return $self->execSelectOne(
+        "SELECT * FROM inodes WHERE inode = ?",
+        $iInode,
+    );
+}
+
 sub getDescSortedSizes {
     my $self= shift;
     

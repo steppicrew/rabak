@@ -133,6 +133,7 @@ sub run {
                 logger->error("Dump failed. Skipping dump of \"$_\": $sError");
                 next;
             }
+            $hMetaInfo->{FILE_CALLBACK}->($sDestFile) if $hMetaInfo->{FILE_CALLBACK};
         }
 
         $bFoundOne= 1;

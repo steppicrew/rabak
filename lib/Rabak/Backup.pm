@@ -109,10 +109,12 @@ sub _setup {
         my $inodeStore= Rabak::InodeCache->new({
             db_inodes_dir => $oTargetPeer->getPath($self->{BACKUP_DATA}{BAKSET_META_DIR}),
         });
+        logger->info("Preparing information store for inode inventory...");
         $inodeStore->prepareInformationStore(
             $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_DATA_DIR}),
             $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR} . '/files_inode.db'),
         );
+        logger->info("...done");
         
         $self->{BACKUP_DATA}{INODE_STORE}= $inodeStore;
         my @sInventFiles= ();
@@ -162,9 +164,13 @@ sub _cleanup {
 
     $oSourcePeer->finishBackup($iResult);
 
-    # finish up previously nonexistant files
-    $self->{BACKUP_DATA}{FILE_CALLBACK}->() if $self->{BACKUP_DATA}{FILE_CALLBACK};
-    $self->{BACKUP_DATA}{INODE_STORE}->finishInformationStore() if $self->{BACKUP_DATA}{INODE_STORE};
+    if ($self->{BACKUP_DATA}{INODE_STORE}) {
+        logger->info("Finishing information store for inode inventory...");
+        # finish up previously nonexistant files
+        $self->{BACKUP_DATA}{FILE_CALLBACK}->() if $self->{BACKUP_DATA}{FILE_CALLBACK};
+        $self->{BACKUP_DATA}{INODE_STORE}->finishInformationStore();
+        logger->info("..done");
+    }
 
     if ($iResult) {
         logger->error("Backup failed: " . $oSourcePeer->get_last_error());

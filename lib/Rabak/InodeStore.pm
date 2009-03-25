@@ -58,10 +58,8 @@ sub inodeExists {
 
 sub registerInodes {
     my $self= shift;
-    my $aInodes= shift;
-    
-    my $iInode= undef;
-    while ($iInode= shift @$aInodes) {
+    my $aInodes= shift || $self->getInodes();
+    while (my $iInode= shift @$aInodes) {
         $self->{inodes}{$iInode}= undef;
     }
 }
