@@ -122,7 +122,7 @@ sub _setup {
             my $count= scalar @sInventFiles;
             while ($count--) {
                 my $sFile= shift @sInventFiles;
-                if (-f $sFile) {
+                if (-e $sFile) {
                     $inodeStore->addFile($sFile);
                     next;
                 }
