@@ -464,77 +464,78 @@ sub _sshperl {
     return $self->{LAST_RESULT}{exit} ? '' : $self->{LAST_RESULT}{stdout};
 }
 
-# builds an entire Rabak directory structure on remote site
-sub _buildTempRuntimeEnv {
-    my $self= shift;
-    
-    return $self->{TEMP_RT_ENV} if defined $self->{TEMP_RT_ENV} && $self->isDir($self->{TEMP_RT_ENV});
-    
-    my $sTempDir= $self->tempdir();
-    my $sModuleBase= __PACKAGE__;
-    $sModuleBase=~ s/\:\:.*//;
-    my @sRabakPaths= map {$INC{$_}} grep {/^$sModuleBase\//} keys %INC;
-    unless (scalar @sRabakPaths) {
-        logger->error("Could not determine ${sModuleBase}'s path!");
-        return 0;
-    }
-    my $sBasePath= Cwd::abs_path($sRabakPaths[0]);
-    $sBasePath=~ s/(\/$sModuleBase\/).*/$1/;
-
-    return $sBasePath unless $self->is_remote();
-
-    return undef if $self->copyLocalFilesToRemote(
-        [$sBasePath],
-        $sTempDir,
-        1,
-        sub {
-            my $sVar= shift;
-            $sVar=~ s/.*\/($sModuleBase\/)/$1/;
-            $sVar;
-        },
-    );
-    
-    $self->{TEMP_RT_ENV}= $sTempDir;
-    return $self->{TEMP_RT_ENV};
-}
-
-# runs given script with rabak environment
-sub run_rabak_script {
-    my $self= shift;
-    my $sScript= shift;
-    my $hHandles= shift || {};
-    
-    my $sRtDir= $self->_buildTempRuntimeEnv();
-    my $sPerlCmd= 'perl';
-    $sPerlCmd.= " -I'$sRtDir'" if $sRtDir;
-    
-    unless ($hHandles->{STDOUT}) {
-        # initialize peer's logging, parse log output from peer and log here
-        $sScript= '
-        use Rabak::Log;
-
-        logger()->setOpts({
-            "verbose" => logger()->LOG_MAX_LEVEL(),
-            "pretend" => 0,
-            "quiet" => 0,
-            "color" => 0,
-        });
-        logger()->set_prefix("X");
-        ' . $sScript if defined $sScript;
-
-        my $fLogParser= logger()->factLogReparser();
-        $hHandles->{STDOUT}= sub {
-            my $aLogEntries= $fLogParser->(@_);
-            foreach my $hEntry (@$aLogEntries) {
-                logger()->log($hEntry->{logrecord});
-            }
-        };
-    }
-    $hHandles->{STDERR}= sub {logger()->error(@_)} unless $hHandles->{STDERR};
-    $hHandles->{STDIN}= $sScript if defined $sScript;
-    
-    return $self->run_cmd($sPerlCmd, $hHandles);
-}
+# may we need it later again - but for now it's not required anymore
+# # builds an entire Rabak directory structure on remote site
+# sub _buildTempRuntimeEnv {
+#     my $self= shift;
+#     
+#     return $self->{TEMP_RT_ENV} if defined $self->{TEMP_RT_ENV} && $self->isDir($self->{TEMP_RT_ENV});
+#     
+#     my $sTempDir= $self->tempdir();
+#     my $sModuleBase= __PACKAGE__;
+#     $sModuleBase=~ s/\:\:.*//;
+#     my @sRabakPaths= map {$INC{$_}} grep {/^$sModuleBase\//} keys %INC;
+#     unless (scalar @sRabakPaths) {
+#         logger->error("Could not determine ${sModuleBase}'s path!");
+#         return 0;
+#     }
+#     my $sBasePath= Cwd::abs_path($sRabakPaths[0]);
+#     $sBasePath=~ s/(\/$sModuleBase\/).*/$1/;
+# 
+#     return $sBasePath unless $self->is_remote();
+# 
+#     return undef if $self->copyLocalFilesToRemote(
+#         [$sBasePath],
+#         $sTempDir,
+#         1,
+#         sub {
+#             my $sVar= shift;
+#             $sVar=~ s/.*\/($sModuleBase\/)/$1/;
+#             $sVar;
+#         },
+#     );
+#     
+#     $self->{TEMP_RT_ENV}= $sTempDir;
+#     return $self->{TEMP_RT_ENV};
+# }
+# 
+# # runs given script with rabak environment
+# sub run_rabak_script {
+#     my $self= shift;
+#     my $sScript= shift;
+#     my $hHandles= shift || {};
+#     
+#     my $sRtDir= $self->_buildTempRuntimeEnv();
+#     my $sPerlCmd= 'perl';
+#     $sPerlCmd.= " -I'$sRtDir'" if $sRtDir;
+#     
+#     unless ($hHandles->{STDOUT}) {
+#         # initialize peer's logging, parse log output from peer and log here
+#         $sScript= '
+#         use Rabak::Log;
+# 
+#         logger()->setOpts({
+#             "verbose" => logger()->LOG_MAX_LEVEL(),
+#             "pretend" => 0,
+#             "quiet" => 0,
+#             "color" => 0,
+#         });
+#         logger()->set_prefix("X");
+#         ' . $sScript if defined $sScript;
+# 
+#         my $fLogParser= logger()->factLogReparser();
+#         $hHandles->{STDOUT}= sub {
+#             my $aLogEntries= $fLogParser->(@_);
+#             foreach my $hEntry (@$aLogEntries) {
+#                 logger()->log($hEntry->{logrecord});
+#             }
+#         };
+#     }
+#     $hHandles->{STDERR}= sub {logger()->error(@_)} unless $hHandles->{STDERR};
+#     $hHandles->{STDIN}= $sScript if defined $sScript;
+#     
+#     return $self->run_cmd($sPerlCmd, $hHandles);
+# }
 
 # returns directory listing
 # if bFileType is set, appends file type character on every entry
