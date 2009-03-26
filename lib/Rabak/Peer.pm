@@ -419,6 +419,10 @@ sub _saveperl {
     die "Rabak::Peer->_saveperl() may not have an output variable defined and a handle for STDOUT"
         . " at the same time!" if $sOutVar && exists $hHandles->{STDERR};
 
+    # run script as command if it's remote or STDIN/STDOUT handles are defined
+    # (will be "eval"ed otherwise)
+    my $bRunAsCommand= $hHandles || $self->is_remote();
+
     # define and set "incoming" variables
     my $sPerlVars= '';
     for my $sKey (keys %$refInVars) {
@@ -429,7 +433,10 @@ sub _saveperl {
 
     # dump result variable to set $OUT_VAR at the end of script execution
     my $sPerlDump= '';
-    $sPerlDump.= "print Data::Dumper->Dump([\\$sOutVar], ['OUT_VAR']);" if $sOutVar;
+    if ($sOutVar) {
+        $sPerlDump= 'print ' if $bRunAsCommand;
+        $sPerlDump.= "Data::Dumper->Dump([\\$sOutVar], ['OUT_VAR']);";;
+    }
 
     # build modified perl script
     $sPerlScript= "
@@ -451,7 +458,17 @@ sub _saveperl {
     }
 
     # now execute script
-    my $result= $self->_run_perl($sPerlScript, $hHandles);
+    my $result;
+    if ($bRunAsCommand) {
+        $result= $self->_run_perl($sPerlScript, $hHandles);
+    }
+    else {
+        $result= eval $sPerlScript;
+        if ($@) {
+            $self->_set_error($@);
+            $result= undef;
+        }
+    }
 
     print "OUT: $result\n" if $self->{DEBUG} && $result;
 
