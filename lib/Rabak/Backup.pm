@@ -287,7 +287,7 @@ sub _convertBackupDirs {
     
     for my $sDir (@$aDirs) {
         my $sMetaVersion= $self->_getMetaVersion($sDir);
-        while ($sMetaVersion != $self->METAVERSION()) {
+        while ($sMetaVersion ne $self->METAVERSION()) {
             die "Internal error: Meta version \"$sMetaVersion\" has no convert function!" unless $hConvFuncs->{$sMetaVersion};
             my $sOldMetaVersion= $sMetaVersion;
             $sMetaVersion= $hConvFuncs->{$sMetaVersion}->($sDir);
@@ -321,6 +321,8 @@ sub _writeVersion {
     my $self= shift;
     my $sDir= shift;
     my $sVersion= shift || $self->METAVERSION();
+    
+    return if $self->{TARGET}->pretend();
     
     my $sMetaVersionFile= $self->_getMetaVersionFile($sDir);   
 
