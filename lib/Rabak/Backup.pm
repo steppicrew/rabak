@@ -139,7 +139,7 @@ sub _setup {
                     STDOUT => sub {
                         for my $sLine (@_) {
                             chomp $sLine;
-                            my @sParams= split /\:/, $sLine, 14;
+                            my @sParams= split /\:/, $sLine, 14;        #/
                             if (scalar @sParams < 14) {
                                 logger->error("Error parsing inventory data (\"$sLine\").");
                                 next;
@@ -153,12 +153,12 @@ sub _setup {
                         logger->error(@_);
                     },
                 );
-                $oTargetPeer->run_cmd('perl -ne \'print join(":", lstat, $_), "\n"\'', \%Handles);
+                $oTargetPeer->run_cmd('perl -ne \'chomp; print join(":", lstat, $_), "\n";\'', \%Handles);
                 close $fh;
                 logger->info("Finishing information store for inode inventory...");
                 $inodeStore->finishInformationStore();
-                $self->copyLocalFileToRemote($sInodesDb, $sRemoteInodesDb);
-                $self->copyLocalFileToRemote(
+                $oTargetPeer->copyLocalFileToRemote($sInodesDb, $sRemoteInodesDb);
+                $oTargetPeer->copyLocalFileToRemote(
                     $sFilesInodeDb,
                     $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR} . '/files_inode.db'),
                 );
