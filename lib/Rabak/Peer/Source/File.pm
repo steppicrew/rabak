@@ -525,8 +525,7 @@ sub run {
 
     my @sBakDir= @{$hMetaInfo->{OLD_DATA_DIRS}};
     splice @sBakDir, $iScanBakDirs if $#sBakDir >= $iScanBakDirs;
-    my $sLinkFlags = "";
-    map { $sLinkFlags .= " --link-dest=" . $self->shell_quote($_); } @sBakDir;
+    my $sLinkFlags= join(' --link-dest=', '', map({$self->shell_quote($_)} @sBakDir));
 
     my $sSourceDir = $self->getPath;
 
@@ -577,6 +576,8 @@ sub run {
                     if ($sLine =~ /^([\>\<ch\.\*][fdLDS][ \.\+\?cstpoguax]{9})\s(.+)$/) {
                         my ($flags, $sFile) = ($1, $2);
                         next if $sFile eq './';
+                        # skip symlinks
+                        next if $flags=~ /^.L/;
                         $hMetaInfo->{FILE_CALLBACK}->("$sTargetDir/$sFile") if $hMetaInfo->{FILE_CALLBACK};
                         if ($flags=~ /^h/) {
                             if ($sFile =~ s/ \=\> (.+)$//) {

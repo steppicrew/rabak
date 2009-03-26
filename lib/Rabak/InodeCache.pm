@@ -176,6 +176,7 @@ sub finishInformationStore {
 
     $self->{DS}->finishDirectory();
     $self->{DS}->commitTransaction();
+    $self->{DS}->endWork();
 }
 
 sub collect {
