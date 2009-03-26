@@ -372,11 +372,11 @@ sub ShellQuote {
     my $sValidChars= '\w\-\=';
 
     @sVals= map {
-        if (/[^$sValidChars]/) {
+        if (/[^$sValidChars]/s) {
             # quote "'"
-            s/\'/\'\\\'\'/g;
+            s/\'/\'\\\'\'/gs;
             # don't include "--param="-part in quotes if possible (for cosmetic reasons)
-            s/^([$sValidChars]+?\=)?(.+)$/\'$2\'/;
+            s/^([$sValidChars]+?\=)?(.+)$/\'$2\'/s;
             $_= $1 . $_ if defined $1;
         }
         $_;
@@ -414,6 +414,7 @@ sub _saveperl {
     my $sPerlScript= shift;
     my $refInVars= shift || {}; # input vars have to be references or skalars
     my $sOutVar= shift;
+    my $hHandles= shift || {};
 
     # define and set "incoming" variables
     my $sPerlVars= '';
@@ -426,8 +427,8 @@ sub _saveperl {
     # dump result variable to set $OUT_VAR at the end of script execution
     my $sPerlDump= '';
     if ($sOutVar) {
-        $sPerlDump= 'print ' if $self->is_remote();
-        $sPerlDump.= "Data::Dumper->Dump([\\$sOutVar], ['OUT_VAR']);";
+#        $sPerlDump= 'print ' if $self->is_remote();
+        $sPerlDump.= "print Data::Dumper->Dump([\\$sOutVar], ['OUT_VAR']);";
     }
     # build modified perl script
     $sPerlScript= "
@@ -449,14 +450,7 @@ sub _saveperl {
     }
 
     # now execute script
-    my $result;
-    if ($self->is_remote()) {
-        $result= $self->_sshperl($sPerlScript);
-    }
-    else {
-        $result= eval $sPerlScript;
-        $self->_set_error($@);
-    }
+    my $result= $self->_run_perl($sPerlScript, $hHandles);
 
     print "OUT: $result\n" if $self->{DEBUG} && $result;
 
@@ -466,11 +460,12 @@ sub _saveperl {
     return $OUT_VAR;
 }
 
-sub _sshperl {
+sub _run_perl {
     my $self= shift;
     my $sPerlScript= shift;
+    my $hHandles= shift || {};
 
-    $self->_run_ssh_cmd('perl', $sPerlScript);
+    $self->run_cmd(scalar $self->ShellQuote('perl', '-e', $sPerlScript), $hHandles);
     $self->_set_error($self->{LAST_RESULT}{stderr});
     print 'ERR: ' . $self->{LAST_RESULT}{stderr} . "\n" if $self->{DEBUG} && $self->{LAST_RESULT}{stderr};
     return $self->{LAST_RESULT}{exit} ? '' : $self->{LAST_RESULT}{stdout};
@@ -859,33 +854,34 @@ sub echo {
     my $hHandles= {
         STDIN => sub {
             my $sLine= shift @sLines;
+            return undef unless defined $sLine;
             chomp $sLine;
-            return $sLine . '\n';
+            return $sLine . "\n";
         },
     };
 
-    $self->save_cmd('cat - >> ' . $self->ShellQuote($sFile), $hHandles);
+    $self->savecmd('cat - >> ' . $self->ShellQuote($sFile), $hHandles);
 }
 
 sub cat {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
-    return $self->savecmd($self->ShellQuote('cat', $sFile));
+    return $self->savecmd(scalar $self->ShellQuote('cat', $sFile));
 }
 
 sub mount {
     my $self= shift;
     my @sParams= @_;
 
-    return $self->savecmd($self->ShellQuote('mount', @sParams));
+    return $self->savecmd(scalar $self->ShellQuote('mount', @sParams));
 }
 
 sub umount {
     my $self= shift;
     my @sParams= @_;
 
-    return $self->savecmd($self->ShellQuote('umount', @sParams));
+    return $self->savecmd(scalar $self->ShellQuote('umount', @sParams));
 }
 
 sub tempfile {
