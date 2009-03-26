@@ -360,18 +360,27 @@ sub build_ssh_cmd {
 
     push @sSshCmd, $self->getUserHost();
     push @sSshCmd, $sCmd;
-    $_= $self->shell_quote($_) for (@sSshCmd);
-    return join(" ", @sSshCmd);
+    return scalar $self->shell_quote(@sSshCmd);
 }
 
 # quote "'" char for shell execution
 sub shell_quote {
     my $self= shift;
-    my $sVal= shift;
-    my $bDontEnclose= shift;
-    $sVal =~ s/\'/\'\\\'\'/g;
-    return "'$sVal'" unless $bDontEnclose;
-    return $sVal;
+    my @sVals= @_;
+    
+    my $sqValidChars= '\w\-\=';
+
+    @sVals= map {
+      if (/[^$sqValidChars]/) {
+          s/\'/\'\\\'\'/g;
+          s/^([$sqValidChars]+?\=)?(.+)$/\'$2\'/;
+          $_= $1 . $_ if defined $1;
+      }
+      $_;
+    } @sVals;
+
+    return @sVals if wantarray;
+    return join ' ', @sVals;
 }
 
 sub _run_ssh_cmd {

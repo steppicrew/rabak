@@ -440,7 +440,7 @@ sub run {
 
     # Unused: my $sBakSet= $self->get_value('name');
 
-    my $sRsyncOpts = $self->get_value('rsync_opts') || '';
+    my @sRsyncOpts = $self->resolveObjects('rsync_opts') || ();
 
     # Write filter rules to temp file:
     my ($fhwRules, $sRulesFile)= $self->local_tempfile();
@@ -460,19 +460,20 @@ sub run {
 
     # print `cat $sRulesFile`;
 
-    my $sFlags= "--archive"
-        . " --sparse"
-        . " --hard-links"
-        . " --filter='. " . $self->shell_quote($sRulesFile, 'dont quote') . "'"
-        . " --stats"
-        . " --verbose"
-        . " --verbose"
-        . " --itemize-changes"
-        . " --itemize-changes"
-    ;
+    my @sFlags= (
+        '--archive', 
+        '--sparse',
+        '--hard-links',
+        '--filter=. ' . $sRulesFile,
+        '--stats',
+        '--verbose',
+        '--verbose',
+        '--itemize-changes',
+        '--itemize-changes',
+    );
 
-    $sFlags .= " --dry-run" if $self->pretend();
-    $sFlags .= " $sRsyncOpts" if $sRsyncOpts;
+    push @sFlags, '--dry-run' if $self->pretend();
+    push @sFlags, @sRsyncOpts;
     
     # $oSshPeer contains ssh parameters for rsync (seen from executing location)
     # - is TargetPeer if target is remote (rsync will be run on SourcePeer)
@@ -502,30 +503,36 @@ sub run {
         my $sBandwidth= $oSshPeer->get_value("bandwidth") || '';
         my @sIdentityFiles= $oSshPeer->get_value("identity_files") ? split(/\s+/, $oSshPeer->get_value("identity_files")) : undef;
 
-        if ($sRsyncOpts=~ s/\-\-bwlimit\=(\d+)//) {
+        if (grep {/^\-\-bwlimit\=(\d+)/} @sRsyncOpts) {
             $sBandwidth= $1 unless $sBandwidth;
+            @sRsyncOpts= grep {!/^\-\-bwlimit\=\d+/} @sRsyncOpts;
             logger->warn("--bandwidth in 'rsync_opts' is deprecated. Please use 'bandwidth' option (see Doc)!");
         }
-        if ($sRsyncOpts=~ s/\-\-timeout\=(\d+)//) {
+        if (grep {/^\-\-timeout\=(\d+)/} @sRsyncOpts) {
             $sTimeout= $1 unless $oTargetPeer->get_value("timeout");
+            @sRsyncOpts= grep {!/^\-\-timeout\=\d+/} @sRsyncOpts;
             logger->warn("--timeout in 'rsync_opts' is deprecated. Please use 'timeout' option (see Doc)!");
         }
 
+        my @sSshCmd= (
+            'ssh',
+            '-p', $sPort,
+        );
         my $sSshCmd= "ssh -p $sPort";
-        map { $sSshCmd.= " -i " . $self->shell_quote($_) if $_; } @sIdentityFiles if @sIdentityFiles;
+        push @sSshCmd, map { ('-i', $_) } grep {$_} @sIdentityFiles;
         if ($oSshPeer->get_value("protocol")) {
-            $sSshCmd.= " -1" if $oSshPeer->get_value("protocol") eq "1";
-            $sSshCmd.= " -2" if $oSshPeer->get_value("protocol") eq "2";
+            push @sSshCmd, '-1' if $oSshPeer->get_value('protocol') eq '1';
+            push @sSshCmd, '-2' if $oSshPeer->get_value('protocol') eq '2';
         }
-        $sFlags .= " --rsh='$sSshCmd' --timeout='$sTimeout' --compress";
-        $sFlags .= " --bwlimit='$sBandwidth'" if $sBandwidth;
+        push @sFlags, '--rsh=' . $self->shell_quote(@sSshCmd), "--timeout=$sTimeout", '--compress';
+        push @sFlags, "--bwlimit=$sBandwidth" if $sBandwidth;
     }
 
     my $iScanBakDirs= $self->get_value('scan_bak_dirs', 4);
 
     my @sBakDir= @{$hMetaInfo->{OLD_DATA_DIRS}};
     splice @sBakDir, $iScanBakDirs if $#sBakDir >= $iScanBakDirs;
-    my $sLinkFlags= join(' --link-dest=', '', map({$self->shell_quote($_)} @sBakDir));
+    push @sFlags, map {'--link-dest=' . $_} @sBakDir;
 
     my $sSourceDir = $self->getPath;
 
@@ -610,7 +617,7 @@ sub run {
     );
 
     # run rsync cmd
-    my $iRsyncExit = $self->_run_rsync($oRsyncPeer, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir, $sFlags.$sLinkFlags, \%Handles);
+    my $iRsyncExit = $self->_run_rsync($oRsyncPeer, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir, scalar $self->shell_quote(@sFlags), \%Handles);
 
     if (scalar @sLinkErrors) {
         logger->info("The following files could not be hard linked, trying again without --hard-links flag:");
@@ -636,9 +643,11 @@ sub run {
         $Handles{STDERR} = sub {logger->error(@_)};
 
         # run rsync cmd (drop exit code - has been logged anyway)
-        $self->_run_rsync($oRsyncPeer, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir,
-            "$sFlags --files-from=" . $self->shell_quote($sFilesFile),
-            \%Handles);
+        $self->_run_rsync(
+            $oRsyncPeer, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir,
+            scalar $self->shell_quote(@sFlags, "--files-from=$sFilesFile"),
+            \%Handles
+        );
 
         logger->decIndent();
         logger->info("...done fixing hard link errors.");

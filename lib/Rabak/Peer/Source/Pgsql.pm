@@ -12,35 +12,44 @@ use Rabak::Log;
 
 @ISA = qw(Rabak::Peer::Source::DBBase);
 
-sub _get_user {
-    my $self= shift;
-    my $sUser= $self->get_value('dbuser', 'postgres');
-    $sUser =~ s/[^a-z0-9_]//g;        # simple taint
-    return $sUser;
-}
+sub DEFAULT_USER {'postgres'};
 
 sub get_show_cmd {
     my $self= shift;
 
-    return "psql --no-psqlrc --quiet --tuples-only --list --username " . $self->shell_quote($self->_get_user()) . " postgres";
+    return (
+        'psql',
+        '--no-psqlrc',
+        '--tuples-only',
+        '--list',
+        '--username', $self->get_user(),
+        'postgres',
+    );
 }
 
 sub get_probe_cmd {
     my $self= shift;
-    my $sDb= $self->shell_quote(shift);
+    my $sDb= shift;
 
-    my $sProbeCmd= "pg_dump --schema-only --username=" . $self->shell_quote($self->_get_user()) . " --file='/dev/null' $sDb";
-    logger->info("Running probe: $sProbeCmd");
-    return $sProbeCmd;
+    return (
+        'pg_dump',
+        '--schema-only',
+        '--username=' . $self->get_user(),
+        '--file=/dev/null',
+        $sDb,
+    );
 }
 
 sub get_dump_cmd {
     my $self= shift;
-    my $sDb= $self->shell_quote(shift);
+    my $sDb= shift;
 
-    my $sDumpCmd= "pg_dump --clean --username=" . $self->shell_quote($self->_get_user()) . " $sDb";
-    logger->info("Running dump: $sDumpCmd");
-    return $sDumpCmd;
+    return (
+        'pg_dump',
+        '--clean',
+        '--username=' . $self->get_user(),
+        $sDb,
+    );
 }
 
 sub parse_valid_db {

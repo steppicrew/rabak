@@ -14,69 +14,48 @@ use Rabak::Log;
 
 use Data::Dumper;
 
-sub _get_user {
-    my $self= shift;
-    my $sUser= $self->get_value('dbuser', 'mysql');
-    # simple taint
-    $sUser =~ s/[^a-z0-9_]//g;
-    return $sUser;
-}
-
-sub _get_passwd {
-    my $self= shift;
-    my $sPassword= $self->get_value('dbpassword', '');
-    return $sPassword;
-}
+sub DEFAULT_USER {'mysql'};
 
 # returns credentials save for logging
-sub _get_log_credentials {
-    my $self= shift;
-    
-    my $sPassword= $self->_get_passwd();
-    my $sResult= "--user=" . $self->shell_quote($self->_get_user());
-    $sResult.= " --password='{{PASSWORD}}'" if defined $sPassword;
-    return $sResult;
-}
-
-# returns credentials with password logging
 sub _get_credentials {
     my $self= shift;
     
-    my $sResult= $self->_replace_password($self->_get_log_credentials());
-}
-
-# logs passwordless command (optional) and inserts real password
-sub _replace_password {
-    my $self= shift;
-    my $sCommand= shift || $self->_get_log_credentials();
-    my $sLog= shift;
-    
-    logger->info("$sLog: $sCommand") if $sLog;
-    my $sPassword= $self->_get_passwd();
-    $sCommand=~ s/\{\{PASSWORD\}\}/$sPassword/ if defined $sPassword;
-    return $sCommand;
+    my @sResult= (
+        "--user=" . $self->get_user(),
+    );
+    push @sResult, " --password='{{PASSWORD}}'" if defined $self->get_passwd();
+    return @sResult;
 }
 
 sub get_show_cmd {
     my $self= shift;
-    return "mysqlshow " . $self->_get_credentials();
+    return ("mysqlshow", $self->_get_credentials());
 }
 
 sub get_probe_cmd {
     my $self= shift;
-    my $sDb= $self->shell_quote(shift);
+    my $sDb= shift;
 
-    my $sProbeCmd= "mysqldump --no-data " . $self->_get_log_credentials() . " --result-file='/dev/null' $sDb";
-    return $self->_replace_password($sProbeCmd, "Running probe");
+    return ('mysqldump', '--no-data', $self->_get_log_credentials(), '--result-file=/dev/null', $sDb);
 }
 
 sub get_dump_cmd {
     my $self= shift;
-    my $sDb= $self->shell_quote(shift);
+    my $sDb= shift;
 
-    my $sParamFlush= $self->get_value("dbflushlogs", 1) ? " --flush-logs" : "";
-    my $sDumpCmd= "mysqldump --all --extended-insert --add-drop-table --allow-keywords --quick " . $self->_get_log_credentials() . "$sParamFlush --databases $sDb";
-    return $self->_replace_password($sDumpCmd, "Running dump");
+    my @sResult= (
+        'mysqldump',
+        '--all',
+        '--extended-insert',
+        '--add-drop-table',
+        '--allow-keywords'.
+        '--quick',
+        '--single-transaction',
+    );
+    push @sResult, '--flush-logs' if $self->get_value("dbflushlogs", 1);
+    push @sResult, '--databases', $sDb;
+
+    return @sResult;
 }
 
 sub parse_valid_db {

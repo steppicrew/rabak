@@ -34,6 +34,10 @@ sub newFromConf {
     return $new;
 }
 
+sub DEFAULT_USER {
+    die "This function has to be overloaded!"
+}
+
 # IMPORTANT: define all used properties here, order will be used for show
 sub PropertyNames {
     return (shift->SUPER::PropertyNames(), 'dbuser', 'dbpassword');
@@ -55,6 +59,45 @@ sub get_valid_db {
     die "This function has to be overloaded!"
 }
 
+sub get_user {
+    my $self= shift;
+    my $sUser= $self->get_value('dbuser', $self->DEFAULT_USER());
+    # simple taint
+    $sUser =~ s/[^a-z0-9_]//g;
+    return $sUser;
+}
+
+sub get_passwd {
+    my $self= shift;
+    my $sPassword= $self->get_value('dbpassword');
+    return $sPassword;
+}
+
+sub build_run_cmd {
+    my $self= shift;
+    my @sCommand= @_;
+    
+    my $sPassword= $self->get_passwd;
+    
+    my $sCommand= $self->shell_quote(@sCommand);
+    $sCommand=~ s/\{\{PASSWORD\}\}/$sPassword/ if defined $sPassword;
+    return $sCommand;
+}
+
+sub _run_cmd {
+    my $self= shift;
+    my @sCommand= @_;
+    $self->run_cmd($self->build_run_cmd(@sCommand));
+}
+
+sub log_cmd {
+    my $self= shift;
+    my $sLogPretext= shift;
+    my @sCommand= @_;
+    
+    logger->info($sLogPretext . ': ' . $self->shell_quote(@sCommand));
+}
+
 # TODO
 # plan: build a tunnel, fetch the db, delete old baks, release tunnel
 # TODO: option dump_oids
@@ -69,7 +112,7 @@ sub run {
     my $bFoundOne= 0;
 
     my $i= 0;
-    $self->run_cmd($self->get_show_cmd);
+    $self->_run_cmd($self->get_show_cmd());
     if ($self->get_last_exit) {
         logger->error("show databases command failed with: " . $self->get_error);
         return 9;
@@ -96,10 +139,11 @@ sub run {
 
     foreach (@sDb) {
         my $sDestFile= $hMetaInfo->{DATA_DIR} . "/$_.$sZipExt";
-        my $sProbeCmd= $self->get_probe_cmd($_);
+        my @sProbeCmd= $self->get_probe_cmd($_);
+        $self->log_cmd('Running probe', @sProbeCmd);
 
         unless ($self-pretend()) {
-            $self->run_cmd($sProbeCmd);
+            $self->_run_cmd(@sProbeCmd);
             if ($self->get_last_exit) {
                 my $sError= $self->get_last_error;
                 chomp $sError;
@@ -108,10 +152,13 @@ sub run {
             }
         }
 
-        my $sDumpCmd= $self->get_dump_cmd($_) . " | $sZipCmd";
+        my @sDumpCmd= $self->get_dump_cmd($_);
+        $self->log_cmd('Running dump', @sDumpCmd, '|', $sZipCmd);
 
         my $oDumpPeer= $self;
         my $sPipeCmd= "cat > '$sDestFile'";
+        
+        my $sDumpCmd= $self->build_run_cmd(@sDumpCmd) . " | " . $self->shell_quote($sZipCmd);
 
         if ($oTargetPeer->is_remote()) {
             # if target is remote, dump on source peer and write output remotely to target

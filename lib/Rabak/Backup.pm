@@ -208,7 +208,7 @@ sub _setup {
 sub _run {
     my $self= shift;
 
-    my @sOldDataDirs= grep {-d} map { $_ . '/data' } @{$self->{BACKUP_DATA}{OLD_BACKUP_DIRS}};
+    my @sOldDataDirs= map { $_ . '/data' } @{$self->{BACKUP_DATA}{OLD_BACKUP_DIRS}};
 
     return $self->{SOURCE}->run(
         $self->{TARGET},

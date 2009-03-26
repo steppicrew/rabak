@@ -95,9 +95,9 @@ sub mount {
     my $sUnmount= "";
 
     # parameters for mount command
-    my $spMountOpts= "";
-    $spMountOpts.=  "-t " . $oPeer->shell_quote($sMountType) . " " if $sMountType;
-    $spMountOpts.=  "-o" . $oPeer->shell_quote($sMountOpts) . " " if $sMountOpts;
+    my @spMountOpts= ();
+    push @spMountOpts, '-t', $sMountType if $sMountType;
+    push @spMountOpts, '-o', $sMountOpts if $sMountOpts;
 
     my %checkResult;
 
@@ -154,7 +154,7 @@ sub mount {
         }
 
         # ...and mount
-        $oPeer->mount("$spMountOpts" . $oPeer->shell_quote($sMountDevice) . " " . $oPeer->shell_quote($sMountDir));
+        $oPeer->mount(scalar $oPeer->shell_quote(@spMountOpts, $sMountDevice, $sMountDir));
         if ($?) { # mount failed
             my $sMountResult= $oPeer->get_error;
             chomp $sMountResult;
