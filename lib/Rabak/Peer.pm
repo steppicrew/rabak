@@ -416,6 +416,9 @@ sub _saveperl {
     my $sOutVar= shift;
     my $hHandles= shift || {};
 
+    die "Rabak::Peer->_saveperl() may not have an output variable defined and a handle for STDOUT"
+        . " at the same time!" if $sOutVar && exists $hHandles->{STDERR};
+
     # define and set "incoming" variables
     my $sPerlVars= '';
     for my $sKey (keys %$refInVars) {
@@ -426,10 +429,8 @@ sub _saveperl {
 
     # dump result variable to set $OUT_VAR at the end of script execution
     my $sPerlDump= '';
-    if ($sOutVar) {
-#        $sPerlDump= 'print ' if $self->is_remote();
-        $sPerlDump.= "print Data::Dumper->Dump([\\$sOutVar], ['OUT_VAR']);";
-    }
+    $sPerlDump.= "print Data::Dumper->Dump([\\$sOutVar], ['OUT_VAR']);" if $sOutVar;
+
     # build modified perl script
     $sPerlScript= "
         use Data::Dumper;
