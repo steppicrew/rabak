@@ -114,7 +114,7 @@ sub checkDf {
     my $iStValue= $sSpaceThreshold =~ /\b([\d\.]+)/ ? $1 : 0;
     my $sStUnit= 'K';
     $sStUnit = uc($1) if $sSpaceThreshold =~ /$iStValue\s*([gmkb\%])/i;
-    my $sDfResult = $self->df(undef, "-k");
+    my $sDfResult = $self->df(undef, '-k');
 
     unless ($sDfResult =~ /^\S+\s+(\d+)\s+\d+\s+(\d+)\s+/m && $1 > 100) {
         logger->error("Could not get free disc space!", $sDfResult);

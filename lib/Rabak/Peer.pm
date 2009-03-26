@@ -350,12 +350,11 @@ sub build_ssh_cmd {
 
     my @sSshCmd= ('ssh');
 
-    push @sSshCmd, '-p', $self->get_value("port") if $self->get_value("port");
-    if ($self->get_value("protocol")) {
-        push @sSshCmd, '-1' if $self->get_value("protocol") eq "1";
-        push @sSshCmd, '-2' if $self->get_value("protocol") eq "2";
-    }
-    push @sSshCmd, '-i', $self->resolveObjects("identity_files") if $self->get_value("identity_files");
+    my $p= $self->get_value('port');
+    push @sSshCmd, '-p', $p if $p;
+    $p= $self->get_value("protocol") || '';
+    push @sSshCmd, "-$p" if $p eq '1' || $p eq '2';
+    push @sSshCmd, map {('-i', $_)} $self->resolveObjects("identity_files");
 #    push @sSshCmd, '-vvv' if $self->{DEBUG};
 
     push @sSshCmd, $self->getUserHost();
@@ -363,20 +362,24 @@ sub build_ssh_cmd {
     return scalar $self->shell_quote(@sSshCmd);
 }
 
-# quote "'" char for shell execution
+# quote for shell execution
 sub shell_quote {
     my $self= shift;
     my @sVals= @_;
     
-    my $sqValidChars= '\w\-\=';
+    # character that don't need to be quoted
+    # element will be quoted if it contains other chars
+    my $sValidChars= '\w\-\=';
 
     @sVals= map {
-      if (/[^$sqValidChars]/) {
-          s/\'/\'\\\'\'/g;
-          s/^([$sqValidChars]+?\=)?(.+)$/\'$2\'/;
-          $_= $1 . $_ if defined $1;
-      }
-      $_;
+        if (/[^$sValidChars]/) {
+            # quote "'"
+            s/\'/\'\\\'\'/g;
+            # don't include "--param="-part in quotes if possible (for cosmetic reasons)
+            s/^([$sValidChars]+?\=)?(.+)$/\'$2\'/;
+            $_= $1 . $_ if defined $1;
+        }
+        $_;
     } @sVals;
 
     return @sVals if wantarray;
@@ -413,17 +416,17 @@ sub _saveperl {
     my $sOutVar= shift;
 
     # define and set "incoming" variables
-    my $sPerlVars= "";
+    my $sPerlVars= '';
     for my $sKey (keys %$refInVars) {
-        $sPerlVars.= "my " . Data::Dumper->Dump([$$refInVars{$sKey}], [$sKey]);
+        $sPerlVars.= 'my ' . Data::Dumper->Dump([$refInVars->{$sKey}], [$sKey]);
     }
     # define result variable
     $sPerlVars.= "my $sOutVar;\n" if $sOutVar;
 
     # dump result variable to set $OUT_VAR at the end of script execution
-    my $sPerlDump= "";
+    my $sPerlDump= '';
     if ($sOutVar) {
-        $sPerlDump= "print " if $self->is_remote();
+        $sPerlDump= 'print ' if $self->is_remote();
         $sPerlDump.= "Data::Dumper->Dump([\\$sOutVar], ['OUT_VAR']);";
     }
     # build modified perl script
@@ -436,8 +439,8 @@ sub _saveperl {
     ";
 
     if ($self->{DEBUG}) {
-        # extract script name
-        my $sScriptName= "";
+        # extract script name (is comment in first line)
+        my $sScriptName= '';
         $sScriptName= " \"$1\"" if $sPerlScript=~ s/^\s*\#\s*(\w+)\s?\(\s*\)\s*$//m;
 
         print "************* SCRIPT$sScriptName START ***************\n" .
@@ -452,14 +455,14 @@ sub _saveperl {
     }
     else {
         $result= eval $sPerlScript;
-        $self->_set_error(join("\n", $@));
+        $self->_set_error($@);
     }
 
     print "OUT: $result\n" if $self->{DEBUG} && $result;
 
-    # extract scripts result (if everything was ok, eval($result) sets $OUT_VAR)
+    # extract script's result (if everything was ok, eval($result) sets $OUT_VAR)
     my $OUT_VAR = undef;
-    eval($result) if $result && $sOutVar;
+    eval $result if $result && $sOutVar;
     return $OUT_VAR;
 }
 
@@ -467,9 +470,9 @@ sub _sshperl {
     my $self= shift;
     my $sPerlScript= shift;
 
-    $self->_run_ssh_cmd("perl", $sPerlScript);
+    $self->_run_ssh_cmd('perl', $sPerlScript);
     $self->_set_error($self->{LAST_RESULT}{stderr});
-    print "ERR: " . $self->{LAST_RESULT}{stderr} . "\n" if $self->{DEBUG} && $self->{LAST_RESULT}{stderr};
+    print 'ERR: ' . $self->{LAST_RESULT}{stderr} . "\n" if $self->{DEBUG} && $self->{LAST_RESULT}{stderr};
     return $self->{LAST_RESULT}{exit} ? '' : $self->{LAST_RESULT}{stdout};
 }
 
@@ -581,8 +584,8 @@ sub getDir {
     ';
 
     return @{$self->_saveperl($sPerlScript, {
-            "sPath" => $sPath,
-            "bFileType" => $bFileType,
+            'sPath' => $sPath,
+            'bFileType' => $bFileType,
         }, '@Dir'
     ) || []};
 }
@@ -633,11 +636,16 @@ sub getDirRecursive {
         }
     ';
 
-    return %{$self->_saveperl($sPerlScript, {
-            "sPath" => $sPath,
-            "iLevel" => $iLevel,
-        }, '%Dir'
-    ) || []};
+    return %{
+        $self->_saveperl(
+            $sPerlScript,
+            {
+                "sPath" => $sPath,
+                "iLevel" => $iLevel,
+            },
+            '%Dir',
+        ) || {}
+    };
 }
 
 # makes sure the given file exists locally
@@ -653,7 +661,7 @@ sub getLocalFile {
             print $fh @_;
         },
     };
-    $self->savecmd("cat '$sFile'", $hHandles);
+    $self->savecmd(scalar $self->shell_quote('cat', $sFile), $hHandles);
     CORE::close $fh;
     return $sTmpName;
 }
@@ -668,19 +676,22 @@ sub copyLocalFileToRemote {
     $self->_set_error();
 
     unless ($self->is_remote()) {
+        $sLocFile= $self->getPath($sLocFile);
         return 1 if $sLocFile eq $sRemFile;
+        $sLocFile= $self->shell_quote($sLocFile);
+        $sRemFile= $self->shell_quote($sRemFile);
         if ($bAppend) {
-            $self->_set_error(`cat "$sLocFile" 2>&1 >> "$sRemFile"`);
+            $self->_set_error(`cat $sLocFile 2>&1 >> $sRemFile`);
         }
         else {
-            $self->_set_error(`cp -f "$sLocFile" "$sRemFile" 2>&1`);
+            $self->_set_error(`cp -f $sLocFile $sRemFile 2>&1`);
         }
         return $self->get_error ? 0 : 1;
     }
 
     my $fh;
     if (CORE::open $fh, $sLocFile) {
-        my $sPipe= $bAppend ? ">>" : ">";
+        my $sPipe= $bAppend ? '>>' : '>';
         my $iBufferSize= 10240;
 
         my $hHandles= {
@@ -698,38 +709,6 @@ sub copyLocalFileToRemote {
         return $stderr ? 0 : 1;
     }
     $self->_set_error("Could not open local file \"$sLocFile\"");
-    return 0;
-}
-
-# copies local (temp) files to the remote host (recursive optional)
-sub copyLocalFilesToRemote {
-    my $self= shift;
-    my $sLocFiles= shift;
-    my $sRemDir= $self->getPath(shift);
-    my $bRecursive= shift;
-    my $fAbs2Rel= shift || sub{$_[0]=~ s/.*\///; $_[0]}; # return basename by default
-
-    while (my $sFile= shift @$sLocFiles) {
-        my $sRelPath= $fAbs2Rel->($sFile);
-        if (-d $sFile) {
-            next unless $bRecursive;
-            my $dh;
-            if (opendir $dh, $sFile) {
-                my @sNewFiles= map {"$sFile/$_"} grep {/\.pm$/ || (-d "$sFile/$_" && !/^\.\.?$/)} readdir $dh;
-                closedir $dh;
-                next unless scalar @sNewFiles;
-                $self->mkdir("$sRemDir/$sRelPath");
-                push @$sLocFiles, @sNewFiles;
-            }
-            else {
-                logger->error("Could not read directory \"$sFile\"");
-                return 1;
-            }
-            next;
-        }
-        next unless -f $sFile;
-        $self->copyLocalFileToRemote($sFile, "$sRemDir/$sRelPath");
-    }
     return 0;
 }
 
@@ -776,9 +755,9 @@ sub unlink {
 sub df {
     my $self= shift;
     my $sDir= $self->getPath(shift);
-    my $sParams= shift || '';
+    my @sParams= @_;
 
-    return $self->savecmd("df $sParams '$sDir'");
+    return $self->savecmd($self->shell_quote('df', @sParams, $sDir));
 }
 
 sub isDir {
@@ -788,7 +767,7 @@ sub isDir {
     return ${$self->_saveperl('
             # isDir()
             $result= -d $sDir;
-        ', { "sDir" => $sDir, }, '$result'
+        ', { 'sDir' => $sDir, }, '$result'
     ) || \undef};
 }
 
@@ -799,7 +778,7 @@ sub isReadable {
     return ${$self->_saveperl('
             # isReadable()
             $result= -r $sFile;
-        ', { "sFile" => $sFile, }, '$result'
+        ', { 'sFile' => $sFile, }, '$result'
     ) || \undef};
 }
 
@@ -810,7 +789,7 @@ sub isWritable {
     return ${$self->_saveperl('
             # isWritable()
             $result= -w $sFile;
-        ', { "sFile" => $sFile, }, '$result'
+        ', { 'sFile' => $sFile, }, '$result'
     ) || \undef};
 }
 
@@ -821,7 +800,7 @@ sub isFile {
     return ${$self->_saveperl('
             # isFile()
             $result= -f $sFile;
-        ', { "sFile" => $sFile, }, '$result'
+        ', { 'sFile' => $sFile, }, '$result'
     ) || \undef};
 }
 
@@ -832,7 +811,7 @@ sub isSymlink {
     return ${$self->_saveperl('
             # isSymlink()
             $result= -l $sFile;
-        ', { "sFile" => $sFile, }, '$result'
+        ', { 'sFile' => $sFile, }, '$result'
     ) || \undef};
 }
 
@@ -845,7 +824,7 @@ sub abs_path {
             # abs_path()
             use Cwd;
             $result= Cwd::abs_path($sFile);
-        ', { "sFile" => $sFile, }, '$result'
+        ', { 'sFile' => $sFile, }, '$result'
     ) || \undef};
 }
 
@@ -856,7 +835,7 @@ sub glob {
     return @{$self->_saveperl('
             # glob()
             @result= glob($sFile);
-        ', { "sFile" => $sFile, }, '@result'
+        ', { 'sFile' => $sFile, }, '@result'
     ) || []};
 }
 
@@ -868,7 +847,7 @@ sub rename {
     return ${$self->_saveperl('
             # rename()
             $result= CORE::rename($sOldFile, $sNewFile);
-        ', { "sOldFile" => $sOldFile, "sNewFile" => $sNewFile, }, '$result'
+        ', { 'sOldFile' => $sOldFile, 'sNewFile' => $sNewFile, }, '$result'
     ) || \undef};
 }
 
@@ -877,31 +856,36 @@ sub echo {
     my $sFile= $self->getPath(shift);
     my @sLines= @_;
 
-    for (@sLines) {
-        chomp;
-        $self->savecmd("echo " .  $self->shell_quote($_) . " >> " .  $self->shell_quote($sFile));
-    }
+    my $hHandles= {
+        STDIN => sub {
+            my $sLine= shift @sLines;
+            chomp $sLine;
+            return $sLine . '\n';
+        },
+    };
+
+    $self->save_cmd('cat - >> ' . $self->shell_quote($sFile), $hHandles);
 }
 
 sub cat {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
-    return $self->savecmd("cat '$sFile'");
+    return $self->savecmd($self->shell_quote('cat', $sFile));
 }
 
 sub mount {
     my $self= shift;
-    my $sParams= shift || '';
+    my @sParams= @_;
 
-    return $self->savecmd("mount $sParams");
+    return $self->savecmd($self->shell_quote('mount', @sParams));
 }
 
 sub umount {
     my $self= shift;
-    my $sParams= shift || '';
+    my @sParams= @_;
 
-    return $self->savecmd("umount $sParams");
+    return $self->savecmd($self->shell_quote('umount', @sParams));
 }
 
 sub tempfile {
@@ -916,7 +900,7 @@ sub tempfile {
             my @result= File::Temp->tempfile("rabak-XXXXXX", UNLINK => 1, DIR => $sDir);
             CORE::close $result[0];
             $sFileName= $result[1];
-        ', { "sDir" => $sDir, }, '$sFileName',
+        ', { 'sDir' => $sDir, }, '$sFileName',
     ) || \undef};
     push @{$self->{TEMPFILES}}, $sFileName if $sFileName;
     return $sFileName;
@@ -932,7 +916,7 @@ sub tempdir {
             # tempdir
             use File::Temp;
             $sDirName= File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 0, DIR => $sDir);
-        ', { "sDir" => $sDir, }, '$sDirName',
+        ', { 'sDir' => $sDir, }, '$sDirName',
     ) || \undef};
     push @{$self->{TEMPFILES}}, $sDirName if $sDirName;
     return $sDirName
@@ -945,14 +929,8 @@ sub rmtree {
     die "Rabak::Peer::rmtree called with dangerous parameter ($sTree)!" if $sTree eq '' || $sTree eq '/' || $sTree=~ /\*/;
 
     $self= $self->new() unless ref $self;
-    return $self->savecmd("if [ -e '$sTree' ]; then rm -rf '$sTree'; fi");
-    # TODO: why does this not work???
-    return ${$self->_saveperl('
-            # rmtree
-            use File::Path;
-            $result= rmtree([$sTree], $bDebug);
-        ', { sTree => $sTree, bDebug => $self->{DEBUG} }, '$result',
-    ) || \undef};
+    $sTree= $self->shell_quote($sTree);
+    return $self->savecmd("if [ -e $sTree ]; then rm -rf $sTree; fi");
 }
 
 =back

@@ -154,7 +154,7 @@ sub mount {
         }
 
         # ...and mount
-        $oPeer->mount(scalar $oPeer->shell_quote(@spMountOpts, $sMountDevice, $sMountDir));
+        $oPeer->mount(@spMountOpts, $sMountDevice, $sMountDir);
         if ($?) { # mount failed
             my $sMountResult= $oPeer->get_error;
             chomp $sMountResult;
@@ -216,7 +216,7 @@ sub unmount {
     return unless $sMountDir;
 
     my $oPeer = $self->{PEER_OBJECT};
-    $oPeer->umount($oPeer->shell_quote($sMountDir));
+    $oPeer->umount($sMountDir);
     if ($?) {
         my $sResult= $oPeer->get_error;
         chomp $sResult;
@@ -230,7 +230,7 @@ sub unmount {
         push @$arMessages, Rabak::Log->logger->warn($sError);
         push @$arMessages, Rabak::Log->logger->info("Trying lazy unmount.");
 
-        $oPeer->umount("-l " . $oPeer->shell_quote($sMountDir));
+        $oPeer->umount('-l', $sMountDir);
         if ($?) {
             my $sResult= $oPeer->get_error;
             chomp $sResult;
