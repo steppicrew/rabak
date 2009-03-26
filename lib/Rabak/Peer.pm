@@ -359,11 +359,11 @@ sub build_ssh_cmd {
 
     push @sSshCmd, $self->getUserHost();
     push @sSshCmd, $sCmd;
-    return scalar $self->shell_quote(@sSshCmd);
+    return scalar $self->ShellQuote(@sSshCmd);
 }
 
 # quote for shell execution
-sub shell_quote {
+sub ShellQuote {
     my $self= shift;
     my @sVals= @_;
     
@@ -661,7 +661,7 @@ sub getLocalFile {
             print $fh @_;
         },
     };
-    $self->savecmd(scalar $self->shell_quote('cat', $sFile), $hHandles);
+    $self->savecmd(scalar $self->ShellQuote('cat', $sFile), $hHandles);
     CORE::close $fh;
     return $sTmpName;
 }
@@ -678,8 +678,8 @@ sub copyLocalFileToRemote {
     unless ($self->is_remote()) {
         $sLocFile= $self->getPath($sLocFile);
         return 1 if $sLocFile eq $sRemFile;
-        $sLocFile= $self->shell_quote($sLocFile);
-        $sRemFile= $self->shell_quote($sRemFile);
+        $sLocFile= $self->ShellQuote($sLocFile);
+        $sRemFile= $self->ShellQuote($sRemFile);
         if ($bAppend) {
             $self->_set_error(`cat $sLocFile 2>&1 >> $sRemFile`);
         }
@@ -702,7 +702,7 @@ sub copyLocalFileToRemote {
             }
         };
 
-        my ($stdout, $stderr, $exit) = $self->_run_ssh_cmd("cat - $sPipe " . $self->shell_quote($sRemFile), undef, $hHandles);
+        my ($stdout, $stderr, $exit) = $self->_run_ssh_cmd("cat - $sPipe " . $self->ShellQuote($sRemFile), undef, $hHandles);
 
         $self->_set_error($stderr);
         CORE::close $fh;
@@ -757,7 +757,7 @@ sub df {
     my $sDir= $self->getPath(shift);
     my @sParams= @_;
 
-    return $self->savecmd($self->shell_quote('df', @sParams, $sDir));
+    return $self->savecmd($self->ShellQuote('df', @sParams, $sDir));
 }
 
 sub isDir {
@@ -864,28 +864,28 @@ sub echo {
         },
     };
 
-    $self->save_cmd('cat - >> ' . $self->shell_quote($sFile), $hHandles);
+    $self->save_cmd('cat - >> ' . $self->ShellQuote($sFile), $hHandles);
 }
 
 sub cat {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
-    return $self->savecmd($self->shell_quote('cat', $sFile));
+    return $self->savecmd($self->ShellQuote('cat', $sFile));
 }
 
 sub mount {
     my $self= shift;
     my @sParams= @_;
 
-    return $self->savecmd($self->shell_quote('mount', @sParams));
+    return $self->savecmd($self->ShellQuote('mount', @sParams));
 }
 
 sub umount {
     my $self= shift;
     my @sParams= @_;
 
-    return $self->savecmd($self->shell_quote('umount', @sParams));
+    return $self->savecmd($self->ShellQuote('umount', @sParams));
 }
 
 sub tempfile {
@@ -929,7 +929,7 @@ sub rmtree {
     die "Rabak::Peer::rmtree called with dangerous parameter ($sTree)!" if $sTree eq '' || $sTree eq '/' || $sTree=~ /\*/;
 
     $self= $self->new() unless ref $self;
-    $sTree= $self->shell_quote($sTree);
+    $sTree= $self->ShellQuote($sTree);
     return $self->savecmd("if [ -e $sTree ]; then rm -rf $sTree; fi");
 }
 

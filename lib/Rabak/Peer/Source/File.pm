@@ -368,8 +368,8 @@ sub _run_rsync {
     my $sFlags = shift || '';
     my $hHandles = shift || {};
     
-    $sSrc =  $self->shell_quote($sSrc);
-    $sDst =  $self->shell_quote($sDst);
+    $sSrc =  $self->ShellQuote($sSrc);
+    $sDst =  $self->ShellQuote($sDst);
     my $sRsyncCmd= "rsync $sFlags $sSrc $sDst";
 
     logger->info("Running" .
@@ -524,7 +524,7 @@ sub run {
             push @sSshCmd, '-1' if $oSshPeer->get_value('protocol') eq '1';
             push @sSshCmd, '-2' if $oSshPeer->get_value('protocol') eq '2';
         }
-        push @sFlags, '--rsh=' . $self->shell_quote(@sSshCmd), "--timeout=$sTimeout", '--compress';
+        push @sFlags, '--rsh=' . $self->ShellQuote(@sSshCmd), "--timeout=$sTimeout", '--compress';
         push @sFlags, "--bwlimit=$sBandwidth" if $sBandwidth;
     }
 
@@ -617,7 +617,7 @@ sub run {
     );
 
     # run rsync cmd
-    my $iRsyncExit = $self->_run_rsync($oRsyncPeer, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir, scalar $self->shell_quote(@sFlags), \%Handles);
+    my $iRsyncExit = $self->_run_rsync($oRsyncPeer, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir, scalar $self->ShellQuote(@sFlags), \%Handles);
 
     if (scalar @sLinkErrors) {
         logger->info("The following files could not be hard linked, trying again without --hard-links flag:");
@@ -645,7 +645,7 @@ sub run {
         # run rsync cmd (drop exit code - has been logged anyway)
         $self->_run_rsync(
             $oRsyncPeer, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir,
-            scalar $self->shell_quote(@sFlags, "--files-from=$sFilesFile"),
+            scalar $self->ShellQuote(@sFlags, "--files-from=$sFilesFile"),
             \%Handles
         );
 

@@ -73,21 +73,21 @@ sub get_passwd {
     return $sPassword;
 }
 
-sub build_run_cmd {
+sub build_db_cmd {
     my $self= shift;
     my @sCommand= @_;
     
     my $sPassword= $self->get_passwd;
     
-    my $sCommand= $self->shell_quote(@sCommand);
+    my $sCommand= $self->ShellQuote(@sCommand);
     $sCommand=~ s/\{\{PASSWORD\}\}/$sPassword/ if defined $sPassword;
     return $sCommand;
 }
 
-sub _run_cmd {
+sub db_cmd {
     my $self= shift;
     my @sCommand= @_;
-    $self->run_cmd($self->build_run_cmd(@sCommand));
+    $self->run_cmd($self->build_db_cmd(@sCommand));
 }
 
 sub log_cmd {
@@ -95,7 +95,7 @@ sub log_cmd {
     my $sLogPretext= shift;
     my @sCommand= @_;
     
-    logger->info($sLogPretext . ': ' . $self->shell_quote(@sCommand));
+    logger->info($sLogPretext . ': ' . $self->ShellQuote(@sCommand));
 }
 
 # TODO
@@ -112,7 +112,7 @@ sub run {
     my $bFoundOne= 0;
 
     my $i= 0;
-    $self->_run_cmd($self->get_show_cmd());
+    $self->db_cmd($self->get_show_cmd());
     if ($self->get_last_exit) {
         logger->error("show databases command failed with: " . $self->get_error);
         return 9;
@@ -143,7 +143,7 @@ sub run {
         $self->log_cmd('Running probe', @sProbeCmd);
 
         unless ($self-pretend()) {
-            $self->_run_cmd(@sProbeCmd);
+            $self->db_cmd(@sProbeCmd);
             if ($self->get_last_exit) {
                 my $sError= $self->get_last_error;
                 chomp $sError;
@@ -158,7 +158,7 @@ sub run {
         my $oDumpPeer= $self;
         my $sPipeCmd= "cat > '$sDestFile'";
         
-        my $sDumpCmd= $self->build_run_cmd(@sDumpCmd) . " | " . $self->shell_quote($sZipCmd);
+        my $sDumpCmd= $self->build_db_cmd(@sDumpCmd) . " | " . $self->ShellQuote($sZipCmd);
 
         if ($oTargetPeer->is_remote()) {
             # if target is remote, dump on source peer and write output remotely to target
@@ -173,7 +173,7 @@ sub run {
 
         # now execute dump command on target
         unless ($self->pretend()) {
-            $oDumpPeer->run_cmd("$sDumpCmd | $sPipeCmd");
+            $oDumpPeer->db_cmd("$sDumpCmd | $sPipeCmd");
             if ($oDumpPeer->get_last_exit) {
                 my $sError= $oDumpPeer->get_last_error;
                 chomp $sError;
