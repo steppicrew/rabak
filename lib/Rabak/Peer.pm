@@ -45,6 +45,7 @@ sub new {
         error => '',
     };
     $self->{TEMPFILES}= [];
+    $self->{LOCAL_TEMPFILES}= [];
     $self->{TEMP_RT_ENV}= undef;
     $self->{PRETEND}= undef;
 
@@ -101,6 +102,7 @@ sub cleanupTempfiles {
         $self->rmtree($sTempFile);
     }
     $self->{TEMPFILES}= [];
+    $self->{LOCAL_TEMPFILES}= [];
 }
 
 sub local_tempfile {
@@ -109,16 +111,23 @@ sub local_tempfile {
 #    $self= $self->new() unless ref $self;
 #    $sDir = $self->get_value("tempdir");
 
-    return File::Temp->tempfile('rabak-XXXXXX', UNLINK => 1, TMPDIR => 1);
+    my $tempfh= File::Temp->new(TEMPLATE => 'rabak-XXXXXX', UNLINK => 1, TMPDIR => 1);
+    # remember $tempfh to keep it in scope (will be unlinked otherwise) 
+    push @{$self->{LOCAL_TEMPFILES}}, $tempfh;
+    return ($tempfh, $tempfh->filename()) if wantarray;
+    return $tempfh->filename();
 }
 
 sub local_tempdir {
     my $self= shift;
     
+#    $self= $self->new() unless ref $self;
 #    my $sDir= $self->get_value("tempdir");
-    my $sDirName= File::Temp->tempdir('rabak-XXXXXX', CLEANUP => 1, TMPDIR => 1);
 
-    return $sDirName;
+    my $tempdir= File::Temp->newdir('rabak-XXXXXX', CLEANUP => 1, TMPDIR => 1);
+    # remember $tempdir to keep it in scope (will be unlinked otherwise) 
+    push @{$self->{LOCAL_TEMPFILES}}, $tempdir;
+    return $tempdir->dirname();
 }
 
 sub get_error {
@@ -402,14 +411,14 @@ sub _run_ssh_cmd {
 }
 
 # evaluates perl script remote or locally
-sub _saveperl {
+sub run_perl {
     my $self= shift;
     my $sPerlScript= shift;
     my $refInVars= shift || {}; # input vars have to be references or skalars
     my $sOutVar= shift;
     my $hHandles= shift || {};
 
-    die "Rabak::Peer->_saveperl() may not have an output variable defined and a handle for STDOUT"
+    die "Rabak::Peer->run_perl() may not have an output variable defined and a handle for STDOUT"
         . " at the same time!" if $sOutVar && exists $hHandles->{STDERR};
 
     # run script as command if it's remote or STDIN/STDOUT handles are defined
@@ -520,7 +529,7 @@ sub getDir {
         } @Dir if $bFileType;
     ';
 
-    return @{$self->_saveperl($sPerlScript, {
+    return @{$self->run_perl($sPerlScript, {
             'sPath' => $sPath,
             'bFileType' => $bFileType,
         }, '@Dir'
@@ -574,7 +583,7 @@ sub getDirRecursive {
     ';
 
     return %{
-        $self->_saveperl(
+        $self->run_perl(
             $sPerlScript,
             {
                 "sPath" => $sPath,
@@ -656,7 +665,7 @@ sub mkdir {
     
     return 1 if $self->pretend();
 
-    return ${$self->_saveperl('
+    return ${$self->run_perl('
             # mkdir()
             $result= -d $sPath || CORE::mkdir $sPath;
         ', { "sPath" => $sPath }, '$result'
@@ -669,7 +678,7 @@ sub symlink {
     my $sOrigFile= shift;
     my $sSymLink= $self->getPath(shift);
 
-    return ${$self->_saveperl('
+    return ${$self->run_perl('
             # symlink()
             $result= CORE::symlink $sOrigFile, $sSymLink;
         ', {
@@ -683,7 +692,7 @@ sub unlink {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
-    return ${$self->_saveperl('
+    return ${$self->run_perl('
             # unlink()
             $result= CORE::unlink $sFile;
         ', { "sFile" => $sFile, }, '$result'
@@ -702,7 +711,7 @@ sub isDir {
     my $self= shift;
     my $sDir= $self->getPath(shift);
 
-    return ${$self->_saveperl('
+    return ${$self->run_perl('
             # isDir()
             $result= -d $sDir;
         ', { 'sDir' => $sDir, }, '$result'
@@ -713,7 +722,7 @@ sub isReadable {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
-    return ${$self->_saveperl('
+    return ${$self->run_perl('
             # isReadable()
             $result= -r $sFile;
         ', { 'sFile' => $sFile, }, '$result'
@@ -724,7 +733,7 @@ sub isWritable {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
-    return ${$self->_saveperl('
+    return ${$self->run_perl('
             # isWritable()
             $result= -w $sFile;
         ', { 'sFile' => $sFile, }, '$result'
@@ -735,7 +744,7 @@ sub isFile {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
-    return ${$self->_saveperl('
+    return ${$self->run_perl('
             # isFile()
             $result= -f $sFile;
         ', { 'sFile' => $sFile, }, '$result'
@@ -746,7 +755,7 @@ sub isSymlink {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
-    return ${$self->_saveperl('
+    return ${$self->run_perl('
             # isSymlink()
             $result= -l $sFile;
         ', { 'sFile' => $sFile, }, '$result'
@@ -758,7 +767,7 @@ sub abs_path {
     my $self= shift;
     my $sFile= shift || '.'; # !! path *NOT* relative to target path but to cwd
     
-    return ${$self->_saveperl('
+    return ${$self->run_perl('
             # abs_path()
             use Cwd;
             $result= Cwd::abs_path($sFile);
@@ -770,7 +779,7 @@ sub glob {
     my $self= shift;
     my $sFile= shift;
 
-    return @{$self->_saveperl('
+    return @{$self->run_perl('
             # glob()
             @result= glob($sFile);
         ', { 'sFile' => $sFile, }, '@result'
@@ -782,7 +791,7 @@ sub rename {
     my $sOldFile= shift;
     my $sNewFile= shift;
 
-    return ${$self->_saveperl('
+    return ${$self->run_perl('
             # rename()
             $result= CORE::rename($sOldFile, $sNewFile);
         ', { 'sOldFile' => $sOldFile, 'sNewFile' => $sNewFile, }, '$result'
@@ -833,7 +842,7 @@ sub tempfile {
     $self= $self->new() unless ref $self;
     my $sDir= File::Spec->tmpdir;
 #    $sDir = $self->get_value("tempdir");
-    my $sFileName= ${$self->_saveperl('
+    my $sFileName= ${$self->run_perl('
             # tempfile
             use File::Temp;
             my @result= File::Temp->tempfile("rabak-XXXXXX", UNLINK => 1, DIR => $sDir);
@@ -851,7 +860,7 @@ sub tempdir {
     $self= $self->new() unless ref $self;
     my $sDir= File::Spec->tmpdir;
 #    $sDir= $self->get_value("tempdir");
-    my $sDirName= ${$self->_saveperl('
+    my $sDirName= ${$self->run_perl('
             # tempdir
             use File::Temp;
             $sDirName= File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 0, DIR => $sDir);

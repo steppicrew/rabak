@@ -153,7 +153,13 @@ sub _setup {
                         logger->error(@_);
                     },
                 );
-                $oTargetPeer->run_cmd('perl -ne \'chomp; print join(":", lstat, $_), "\n";\'', \%Handles);
+                $oTargetPeer->run_perl(
+                    'while (<>) {
+                        chomp;
+                        print join(":", lstat, $_), "\n";
+                    }',
+                    undef, undef, \%Handles,
+                );
                 close $fh;
                 logger->info("Finishing information store for inode inventory...");
                 $inodeStore->finishInformationStore();
