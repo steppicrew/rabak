@@ -454,7 +454,16 @@ sub run_perl {
     # now execute script
     my $result;
     if ($bRunAsCommand) {
-        $result= $self->_run_perl($sPerlScript, $hHandles);
+        if (exists $hHandles->{STDIN}) {
+            $self->run_cmd(scalar $self->ShellQuote('perl', '-e', $sPerlScript), $hHandles);
+        }
+        else {
+            $hHandles->{STDIN}= $sPerlScript;
+            $self->run_cmd('perl', $hHandles);
+        }
+        $self->_set_error($self->{LAST_RESULT}{stderr});
+        print 'ERR: ' . $self->{LAST_RESULT}{stderr} . "\n" if $self->{DEBUG} && $self->{LAST_RESULT}{stderr};
+        $result= $self->{LAST_RESULT}{exit} ? undef : $self->{LAST_RESULT}{stdout};
     }
     else {
         $result= eval $sPerlScript;
@@ -470,17 +479,6 @@ sub run_perl {
     my $OUT_VAR = undef;
     eval $result if $result && $sOutVar;
     return $OUT_VAR;
-}
-
-sub _run_perl {
-    my $self= shift;
-    my $sPerlScript= shift;
-    my $hHandles= shift || {};
-
-    $self->run_cmd(scalar $self->ShellQuote('perl', '-e', $sPerlScript), $hHandles);
-    $self->_set_error($self->{LAST_RESULT}{stderr});
-    print 'ERR: ' . $self->{LAST_RESULT}{stderr} . "\n" if $self->{DEBUG} && $self->{LAST_RESULT}{stderr};
-    return $self->{LAST_RESULT}{exit} ? '' : $self->{LAST_RESULT}{stdout};
 }
 
 ####################################################################################################
