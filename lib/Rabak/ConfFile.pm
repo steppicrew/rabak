@@ -319,11 +319,14 @@ sub remove_quotes {
 
         $quote =~ s/\~/\.\~/g;
         $quote =~ s/\\/\\\~/g;
-        # escape all occurances of \s, ",", "'", '"', "(" and ")"
-        $quote =~ s/([\s\,\'\"\(\)])/\\$1/g;
+        # escape all occurances of \s, ",", "(" and ")"
+        $quote =~ s/([\s\,\(\)])/\\$1/g;
 
         # escape all occurances of "$" and "&" for single quotes
-        $quote =~ s/([\$\&])/\\$1/g if $qchar eq "'";
+        # escape all occurances of other quote char for both
+        # (all occurances of $qchar are exscaped already)
+        $quote =~ s/([\$\&\"])/\\$1/g if $qchar eq "'";
+        $quote =~ s/([\'])/\\$1/g if $qchar eq '"';
         $quote =~ s/\\\~/\\/g;
         $quote =~ s/\.\~/\~/g;
         return $quote;
