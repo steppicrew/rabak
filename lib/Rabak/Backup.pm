@@ -29,36 +29,32 @@ sub METAVERSION {1};
 
 sub run {
     my $self= shift;
-    my $hBaksetData= shift || {};
+    my $hBaksetData= shift;
     
-    # copy bakset data
-    $self->{BACKUP_DATA}= {map {$_ => $hBaksetData->{$_}} keys %$hBaksetData};
-    
-    $self->_run() unless $self->_setup();
+    $self->_run() unless $self->_setup($hBaksetData);
     return $self->_cleanup();
 }
 
 sub _setup {
     my $self= shift;
+    my $hBaksetData= shift;
 
     my $oSourcePeer= $self->{SOURCE};
     my $oTargetPeer= $self->{TARGET};
     
-    logger->info("Backup start at " . strftime("%F %X", localtime) . ": "
-        . ($oSourcePeer->getName() || $oSourcePeer->getFullPath()) . ", "
-#        . $self->get_value("title")
-    );
+    my $sSourceName= $oSourcePeer->getName() || $oSourcePeer->getFullPath();
+    logger->info('Backup start at ' . strftime('%F %X', localtime) . ': ' . $sSourceName);
     logger->incIndent();
 
     # prepare target for backup
     my $asSourceExts= Rabak::Set->GetAllPathExtensions($oSourcePeer);
     # TODO: may be we only need "%d" as $sBakDay?
-    my $sBakDay= strftime("%Y-%m-%d", @{$self->{BACKUP_DATA}{BAKSET_TIME}});
+    my $sBakDay= strftime("%Y-%m-%d", @{$hBaksetData->{BAKSET_TIME}});
 
-    my $hDirs= $self->{BACKUP_DATA}{ALL_BAKSET_DIRS};
+    my $hDirs= $hBaksetData->{ALL_BAKSET_DIRS};
 
     my @sBakBaseDirs= $oTargetPeer->getBakdirsByExts(
-        $self->{BACKUP_DATA}{ALL_BAKSET_EXTS},
+        $hBaksetData->{ALL_BAKSET_EXTS},
         $asSourceExts,
         $hDirs,
     );
@@ -82,45 +78,50 @@ sub _setup {
     my $sSourceExt= $asSourceExts->[0];
     my $sSourceSet= $sBakDay . $sSubSet;
     my $sSourceSubdir= $sSourceSet . $sSourceExt;
-    my $sBakDir= $self->{BACKUP_DATA}{BAKSET_DIR} . '/' . $sSourceSubdir;
+    my $sBakDir= $hBaksetData->{BAKSET_DIR} . '/' . $sSourceSubdir;
     
     $self->_convertBackupDirs(\@sBakBaseDirs);
 
-    $self->{BACKUP_DATA}{OLD_BACKUP_DIRS}= \@sBakBaseDirs;
-    $self->{BACKUP_DATA}{SOURCE_EXT}= $sSourceExt;
-    $self->{BACKUP_DATA}{BACKUP_SUBSET}= $sSubSet;
-    $self->{BACKUP_DATA}{BACKUP_SUBDIR}= $sSourceSubdir;
-    $self->{BACKUP_DATA}{BACKUP_DIR}= $sBakDir;
+    $self->{BACKUP_DATA}{OLD_BACKUP_DATA_DIRS}= [map { $_ . '/data' } @sBakBaseDirs];
     $self->{BACKUP_DATA}{BACKUP_DATA_DIR}= $sBakDir . '/data';
     $self->{BACKUP_DATA}{BACKUP_META_DIR}= $sBakDir . '/meta';
     
     logger->info("Backup \"$sBakDay$sSourceExt\" exists, using subset \"$sSourceSubdir\".") if $sSubSet;
 
-    $oTargetPeer->mkdir($self->{BACKUP_DATA}{BACKUP_DIR});
+    $oTargetPeer->mkdir($sBakDir);
     $oTargetPeer->mkdir($self->{BACKUP_DATA}{BACKUP_DATA_DIR});
     $oTargetPeer->mkdir($self->{BACKUP_DATA}{BACKUP_META_DIR});
     $self->_writeVersion($sBakDir);
     
-    $self->{BACKUP_DATA}{FINISH_BACKUP}= [
+    ########################################################
+    # set cleanup chain
+    ########################################################
+    
+    # start finish functions with cleaning up source
+    my @fFinish= (
         sub {$oSourcePeer->finishBackup($self->{BACKUP_DATA}{BACKUP_RESULT})},
-    ];
+    );
     
     unless ($oTargetPeer->pretend()) {
+        # add finish function for inode inventory (and create per-file-callback function)
         if ($oSourcePeer->get_value('inode_inventory')) {
             if ($oTargetPeer->is_remote()) {
+                # special handling for remote targets (see idea below)
                 my $sTempDir= $oTargetPeer->local_tempdir();
                 my $sFileListFile= $sTempDir . '/filelist.txt';
                 my $fh;
                 open $fh, ">$sFileListFile" or die "Could not create temporary file \"$sFileListFile\".";
+
                 $self->{BACKUP_DATA}{FILE_CALLBACK}= sub {
                     print $fh join "\n", @_, '';
                 };
-                push @{$self->{BACKUP_DATA}{FINISH_BACKUP}}, sub {
+
+                push @fFinish, sub {
                     close $fh;
                     logger->verbose("Preparing information store for inode inventory...");
                     logger->incIndent();
                     logger->debug("Downloading \"inodes.db\"...");
-                    my $sRemoteInodesDb= $oTargetPeer->getPath($self->{BACKUP_DATA}{BAKSET_META_DIR} . '/inodes.db');
+                    my $sRemoteInodesDb= $oTargetPeer->getPath($hBaksetData->{BAKSET_META_DIR} . '/inodes.db');
                     my $sInodesDb= $oTargetPeer->getLocalFile($sRemoteInodesDb);
                     logger->debug("..done");
                     my $inodeStore= Rabak::InodeCache->new({
@@ -167,6 +168,11 @@ sub _setup {
                         undef, undef, \%Handles,
                     );
                     close $fh;
+
+                    if ($oSourcePeer->get_value('merge_duplicates')) {
+                        # TODO: do dupmerge
+                    }
+                
                     logger->verbose("Finishing information store for inode inventory...");
                     logger->incIndent();
                     $inodeStore->finishInformationStore();
@@ -183,8 +189,9 @@ sub _setup {
                 };
             }
             else {
+                # handle inode inventory for local targets
                 my $inodeStore= Rabak::InodeCache->new({
-                    inodes_db => $oTargetPeer->getPath($self->{BACKUP_DATA}{BAKSET_META_DIR} . '/inodes.db'),
+                    inodes_db => $oTargetPeer->getPath($hBaksetData->{BAKSET_META_DIR} . '/inodes.db'),
                 });
                 logger->verbose("Preparing information store for inode inventory...");
                 $inodeStore->prepareInformationStore(
@@ -194,6 +201,7 @@ sub _setup {
                 logger->verbose("...done");
                 
                 my @sInventFiles= ();
+ 
                 $self->{BACKUP_DATA}{FILE_CALLBACK}= sub {
                     # add only existant files, remember nonexistant (files may be created after logging)
                     push @sInventFiles, @_;
@@ -208,8 +216,12 @@ sub _setup {
                     }
                     return scalar @sInventFiles;
                 };
+                
+                if ($oSourcePeer->get_value('merge_duplicates')) {
+                    # TODO: do dupmerge
+                }
     
-                push @{$self->{BACKUP_DATA}{FINISH_BACKUP}}, sub {
+                push @fFinish, sub {
                     logger->verbose("Finishing information store for inode inventory...");
                     # finish up previously nonexistant files
                     $self->{BACKUP_DATA}{FILE_CALLBACK}->();
@@ -218,8 +230,45 @@ sub _setup {
                 };
             }
         }
-        # TODO: reimplement optional dupmerge
+        elsif ($oSourcePeer->get_value('merge_duplicates')) {
+            logger->error("Option \"merge_duplicates\" is only allowed if option \"inode_inventory\" si given too! Ignoring.")
+        }
     }
+    
+    # add finish function to log backup result
+    push @fFinish, sub {
+        if ($self->{BACKUP_DATA}{BACKUP_RESULT}) {
+            logger->error("Backup failed: " . $oSourcePeer->get_last_error());
+            $self->{BACKUP_DATA}{BACKUP_RESULT}= 9;
+        }
+        else {
+            logger->info("Done!");
+        }
+    };
+
+    unless ($oTargetPeer->pretend()) {
+        # add finish function to remove old backups and symlink current directory
+        push @fFinish, sub {
+            unless ($self->{BACKUP_DATA}{BACKUP_RESULT}) {
+                # remove old dirs if backup was successfully done
+                $oTargetPeer->remove_old($oSourcePeer->get_value('keep'), \@sBakBaseDirs);
+            }
+    
+            $sSourceExt=~ s/^\./\-/;
+            my $sCurrentLink= "current" . $hBaksetData->{BAKSET_EXT} . $sSourceExt;
+            $oTargetPeer->unlink($sCurrentLink);
+            $oTargetPeer->symlink($sBakDir, $sCurrentLink);
+        };
+    }
+
+    # add finish function with final logging
+    push @fFinish, sub {
+        logger->decIndent();
+        logger->info('Backup done at ' . strftime("%F %X", localtime) . ': ' . $sSourceName);
+    };
+    
+    $self->{BACKUP_DATA}{FINISH_BACKUP}= \@fFinish;
+    
     
     $self->{BACKUP_DATA}{BACKUP_RESULT}= $oSourcePeer->prepareBackup();
     return $self->{BACKUP_DATA}{BACKUP_RESULT};
@@ -228,14 +277,12 @@ sub _setup {
 sub _run {
     my $self= shift;
 
-    my @sOldDataDirs= map { $_ . '/data' } @{$self->{BACKUP_DATA}{OLD_BACKUP_DIRS}};
-
     $self->{BACKUP_DATA}{BACKUP_RESULT}= $self->{SOURCE}->run(
         $self->{TARGET},
         {
             DATA_DIR => $self->{TARGET}->getPath($self->{BACKUP_DATA}{BACKUP_DATA_DIR}),
             META_DIR => $self->{TARGET}->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR}),
-            OLD_DATA_DIRS => \@sOldDataDirs,
+            OLD_DATA_DIRS => $self->{BACKUP_DATA}{OLD_BACKUP_DATA_DIRS},
             FILE_CALLBACK => $self->{BACKUP_DATA}{FILE_CALLBACK},
         },
     );
@@ -245,42 +292,8 @@ sub _run {
 sub _cleanup {
     my $self= shift;
     
-    my $iResult= $self->{BACKUP_DATA}{BACKUP_RESULT};
-    my $oSourcePeer= $self->{SOURCE};
-    my $oTargetPeer= $self->{TARGET};
-    
-    my $sSourceSet= $self->{BACKUP_DATA}{BACKUP_SUBDIR};
-
     $_->() for (@{$self->{BACKUP_DATA}{FINISH_BACKUP}});
-
-    if ($iResult) {
-        logger->error("Backup failed: " . $oSourcePeer->get_last_error());
-        $iResult= 9;
-    }
-    else {
-        logger->info("Done!");
-    }
-
-    unless ($oTargetPeer->pretend()) {
-        unless ($iResult) {
-            # remove old dirs if backup was successfully done
-            $oTargetPeer->remove_old($oSourcePeer->get_value('keep'), $self->{BACKUP_DATA}{OLD_BACKUP_DIRS});
-        }
-
-        my $sSourceExt= $self->{BACKUP_DATA}{SOURCE_EXT};
-        $sSourceExt=~ s/^\./\-/;
-        my $sCurrentLink= "current" . $self->{BACKUP_DATA}{BAKSET_EXT} . $sSourceExt;
-        $oTargetPeer->unlink($sCurrentLink);
-        $oTargetPeer->symlink($self->{BACKUP_DATA}{BACKUP_DIR}, $sCurrentLink);
-    }
-
-    logger->decIndent();
-    logger->info("Backup done at "
-        . strftime("%F %X", localtime) . ": "
-        . ($oSourcePeer->getName() || $oSourcePeer->getFullPath()) . ", "
-        . $sSourceSet
-    );
-    return $iResult;
+    return $self->{BACKUP_DATA}{BACKUP_RESULT};
 }
 
 sub _convertBackupDirs {
