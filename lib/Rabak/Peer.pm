@@ -109,14 +109,14 @@ sub local_tempfile {
 #    $self= $self->new() unless ref $self;
 #    $sDir = $self->get_value("tempdir");
 
-    return @_= File::Temp->tempfile("rabak-XXXXXX", UNLINK => 1, TMPDIR => 1);
+    return File::Temp->tempfile('rabak-XXXXXX', UNLINK => 1, TMPDIR => 1);
 }
 
 sub local_tempdir {
     my $self= shift;
     
 #    my $sDir= $self->get_value("tempdir");
-    my $sDirName= File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 1, TMPDIR => 1);
+    my $sDirName= File::Temp->tempdir('rabak-XXXXXX', CLEANUP => 1, TMPDIR => 1);
 
     return $sDirName;
 }
@@ -204,6 +204,30 @@ sub pretend {
     return $self->{PRETEND};
 }
 
+# quote for shell execution
+sub ShellQuote {
+    my $self= shift;
+    my @sVals= @_;
+    
+    # character that don't need to be quoted
+    # element will be quoted if it contains other chars
+    my $sNoQuoteChars= '\w\-\=\.';
+
+    @sVals= map {
+        if (/[^$sNoQuoteChars]/s || $_ eq '') {
+            # quote "'"
+            s/\'/\'\\\'\'/gs;
+            # don't include "--param="-part in quotes if possible (for cosmetic reasons)
+            s/^([$sNoQuoteChars]+?\=)?(.*)$/\'$2\'/s;
+            $_= $1 . $_ if defined $1;
+        }
+        $_;
+    } @sVals;
+
+    return @sVals if wantarray;
+    return join ' ', @sVals;
+}
+
 # run command locally or remote
 # result: stdout of cmd
 sub savecmd {
@@ -241,7 +265,7 @@ sub run_cmd {
         "$hHandles->{STDIN}\n" .
         "************** STDIN END ****************\n" if $self->{DEBUG} && $hHandles->{STDIN};
 
-    return $self->_run_ssh_cmd($cmd, undef, $hHandles) if $self->is_remote();
+    return $self->_run_ssh_cmd($cmd, $hHandles) if $self->is_remote();
     return $self->_run_local_cmd($cmd, $hHandles);
 }
 
@@ -362,45 +386,14 @@ sub build_ssh_cmd {
     return scalar $self->ShellQuote(@sSshCmd);
 }
 
-# quote for shell execution
-sub ShellQuote {
-    my $self= shift;
-    my @sVals= @_;
-    
-    # character that don't need to be quoted
-    # element will be quoted if it contains other chars
-    my $sValidChars= '\w\-\=';
-
-    @sVals= map {
-        if (/[^$sValidChars]/s) {
-            # quote "'"
-            s/\'/\'\\\'\'/gs;
-            # don't include "--param="-part in quotes if possible (for cosmetic reasons)
-            s/^([$sValidChars]+?\=)?(.+)$/\'$2\'/s;
-            $_= $1 . $_ if defined $1;
-        }
-        $_;
-    } @sVals;
-
-    return @sVals if wantarray;
-    return join ' ', @sVals;
-}
-
 sub _run_ssh_cmd {
     my $self= shift;
     my $sCmd= shift;
-    my $sStdIn= shift;
     my $hHandles= shift || {};
 
     my $sRunCmd= '';
 
-    if (defined $sStdIn) {
-        die "More than one STDIN defined!" if defined $hHandles->{STDIN};
-        $hHandles->{STDIN}= $sStdIn;
-    }
-    
     $sRunCmd= $self->build_ssh_cmd($sCmd);
-    print "SSH: stdin [$sStdIn]\n######################\n" if $self->{DEBUG} && defined $sStdIn;
     print "SSH: running [$sRunCmd]\n" if $self->{DEBUG};
 
     print "WARNING: Trying to access remote host \"" . $self->get_value("host") . "\"!\n" if $self->get_switch("warn_on_remote_access");
@@ -489,78 +482,9 @@ sub _run_perl {
     return $self->{LAST_RESULT}{exit} ? '' : $self->{LAST_RESULT}{stdout};
 }
 
-# may we need it later again - but for now it's not required anymore
-# # builds an entire Rabak directory structure on remote site
-# sub _buildTempRuntimeEnv {
-#     my $self= shift;
-#     
-#     return $self->{TEMP_RT_ENV} if defined $self->{TEMP_RT_ENV} && $self->isDir($self->{TEMP_RT_ENV});
-#     
-#     my $sTempDir= $self->tempdir();
-#     my $sModuleBase= __PACKAGE__;
-#     $sModuleBase=~ s/\:\:.*//;
-#     my @sRabakPaths= map {$INC{$_}} grep {/^$sModuleBase\//} keys %INC;
-#     unless (scalar @sRabakPaths) {
-#         logger->error("Could not determine ${sModuleBase}'s path!");
-#         return 0;
-#     }
-#     my $sBasePath= Cwd::abs_path($sRabakPaths[0]);
-#     $sBasePath=~ s/(\/$sModuleBase\/).*/$1/;
-# 
-#     return $sBasePath unless $self->is_remote();
-# 
-#     return undef if $self->copyLocalFilesToRemote(
-#         [$sBasePath],
-#         $sTempDir,
-#         1,
-#         sub {
-#             my $sVar= shift;
-#             $sVar=~ s/.*\/($sModuleBase\/)/$1/;
-#             $sVar;
-#         },
-#     );
-#     
-#     $self->{TEMP_RT_ENV}= $sTempDir;
-#     return $self->{TEMP_RT_ENV};
-# }
-# 
-# # runs given script with rabak environment
-# sub run_rabak_script {
-#     my $self= shift;
-#     my $sScript= shift;
-#     my $hHandles= shift || {};
-#     
-#     my $sRtDir= $self->_buildTempRuntimeEnv();
-#     my $sPerlCmd= 'perl';
-#     $sPerlCmd.= " -I'$sRtDir'" if $sRtDir;
-#     
-#     unless ($hHandles->{STDOUT}) {
-#         # initialize peer's logging, parse log output from peer and log here
-#         $sScript= '
-#         use Rabak::Log;
-# 
-#         logger()->setOpts({
-#             "verbose" => logger()->LOG_MAX_LEVEL(),
-#             "pretend" => 0,
-#             "quiet" => 0,
-#             "color" => 0,
-#         });
-#         logger()->set_prefix("X");
-#         ' . $sScript if defined $sScript;
-# 
-#         my $fLogParser= logger()->factLogReparser();
-#         $hHandles->{STDOUT}= sub {
-#             my $aLogEntries= $fLogParser->(@_);
-#             foreach my $hEntry (@$aLogEntries) {
-#                 logger()->log($hEntry->{logrecord});
-#             }
-#         };
-#     }
-#     $hHandles->{STDERR}= sub {logger()->error(@_)} unless $hHandles->{STDERR};
-#     $hHandles->{STDIN}= $sScript if defined $sScript;
-#     
-#     return $self->run_cmd($sPerlCmd, $hHandles);
-# }
+####################################################################################################
+# PEER COMMANDS
+####################################################################################################
 
 # returns directory listing
 # if bFileType is set, appends file type character on every entry
@@ -668,11 +592,12 @@ sub getLocalFile {
 
     return $sFile unless $self->is_remote();
     
-    my ($fh, $sTmpName) = $self->local_tempfile;
+    my ($fh, $sTmpName) = $self->local_tempfile();
     my $hHandles= {
         STDOUT => sub {
             print $fh @_;
         },
+        STDOUT_UNBUFFERED => 1,
     };
     $self->savecmd(scalar $self->ShellQuote('cat', $sFile), $hHandles);
     CORE::close $fh;
@@ -715,7 +640,7 @@ sub copyLocalFileToRemote {
             }
         };
 
-        my ($stdout, $stderr, $exit) = $self->_run_ssh_cmd("cat - $sPipe " . $self->ShellQuote($sRemFile), undef, $hHandles);
+        my ($stdout, $stderr, $exit) = $self->_run_ssh_cmd("cat - $sPipe " . $self->ShellQuote($sRemFile), $hHandles);
 
         $self->_set_error($stderr);
         CORE::close $fh;
