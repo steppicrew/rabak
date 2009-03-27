@@ -11,6 +11,8 @@ use Rabak::Log;
 
 use Rabak::Set;      # benoetigt in print_set_list
 
+use Term::ANSIColor;
+
 use Data::Dumper;
 use Storable qw(dclone);
 
@@ -107,7 +109,7 @@ sub print_set_list {
             push @aSources, $_->getFullPath();
         }
         my $sSources= join '", "', @aSources;
-        logger->print("  $sBakSet - " . $oConf->{VALUES}{$sBakSet}->get_value("title")
+        logger->print('  ' . colored($sBakSet, 'bold') . ' - ' . $oConf->{VALUES}{$sBakSet}->get_value("title")
             . ", backs up \"$sSources\" to \""
             . $oTarget->getFullPath() . "\"");
         $bFound= 1;
