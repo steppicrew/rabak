@@ -140,6 +140,8 @@ sub remove_old {
     my $iKeep= shift;
     my $aOldBackupDirs= shift;
     
+    # TODO: keep should count only successful backups (status should be in meta dir)
+    
     return unless $iKeep;
 
     logger->info(
