@@ -62,7 +62,7 @@ sub dupmerge {
         my $hKey= undef;
         my $aKeys= $oStore->getKeysBySize($iSize, $aQueryKey);
         while ($hKey= shift @$aKeys) {
-	        last if $oTrap->terminated();
+            last if $oTrap->terminated();
 
             my $aInodes= $oStore->getInodesBySizeKey($iSize, $hKey);
             unless (scalar @$aInodes > 1) {
@@ -73,7 +73,7 @@ sub dupmerge {
 
             # sort inodes by md5 hash
             for my $iInode (@$aInodes) {
-		        last if $oTrap->terminated();
+                last if $oTrap->terminated();
 
                 $self->{INODE_CACHE}{STATS}{total_size} += $iSize;
                 my %digest= $oCache->getDigest($iInode);
@@ -87,7 +87,7 @@ sub dupmerge {
                 };
             }
             for my $sDigest (keys %digests) {
-		        last if $oTrap->terminated();
+                last if $oTrap->terminated();
 
                 # ignore digests with only one inode
                 if (scalar @{$digests{$sDigest}} == 1) {
@@ -101,7 +101,7 @@ sub dupmerge {
                 my $sLinkFile= undef;
                 my %FilesByInode= ();
                 for my $hInode (@{$digests{$sDigest}}) {
-			        last if $oTrap->terminated();
+                    last if $oTrap->terminated();
 
                     my $iInode= $hInode->{inode};
                     my $aFiles= $oStore->getFilesByInode($iInode);
@@ -123,7 +123,7 @@ sub dupmerge {
 
                 # link all inodes with the most linked one
                 for my $hInode (@{$digests{$sDigest}}) {
-			        last if $oTrap->terminated();
+                    last if $oTrap->terminated();
 
                     my $iInode= $hInode->{inode};
                     next unless $FilesByInode{$iInode};
@@ -135,7 +135,7 @@ sub dupmerge {
                     $self->{INODE_CACHE}{STATS}{linked_size} += -s $sLinkFile;
                     my $bLinkError= 0;
                     for my $sFile (@{$FilesByInode{$iInode}}) {
-				        last if $oTrap->terminated();
+                        last if $oTrap->terminated();
 
                         logger()->debug("ln -f '$sLinkFile' '$sFile'");
                         if ($self->{OPTS}{pretend}) {
