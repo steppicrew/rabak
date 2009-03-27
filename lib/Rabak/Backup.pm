@@ -123,7 +123,7 @@ sub _setup {
                     logger->debug("Downloading \"inodes.db\"...");
                     my $sRemoteInodesDb= $oTargetPeer->getPath($hBaksetData->{BAKSET_META_DIR} . '/inodes.db');
                     my $sInodesDb= $oTargetPeer->getLocalFile($sRemoteInodesDb);
-                    logger->debug("..done");
+                    logger->debug("done");
                     my $inodeStore= Rabak::InodeCache->new({
                         inodes_db => $sInodesDb,
                     });
@@ -133,7 +133,7 @@ sub _setup {
                         $sFilesInodeDb,
                     );
                     logger->decIndent();
-                    logger->verbose("...done");
+                    logger->verbose("done");
                     
                     # idea: cat file list to remote site, return lstat's result (+ file name)
                     # and insert output into inode store
@@ -178,14 +178,14 @@ sub _setup {
                     $inodeStore->finishInformationStore();
                     logger->debug("Uploading \"inodes.db\"...");
                     $oTargetPeer->copyLocalFileToRemote($sInodesDb, $sRemoteInodesDb);
-                    logger->debug("...done", "Uploading \"files_inode.db\"...");
+                    logger->debug("done", "Uploading \"files_inode.db\"...");
                     $oTargetPeer->copyLocalFileToRemote(
                         $sFilesInodeDb,
                         $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR} . '/files_inode.db'),
                     );
-                    logger->debug("...done");
+                    logger->debug("done");
                     logger->decIndent();
-                    logger->verbose("..done");
+                    logger->verbose("done");
                 };
             }
             else {
@@ -198,7 +198,7 @@ sub _setup {
                     $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_DATA_DIR}),
                     $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR} . '/files_inode.db'),
                 );
-                logger->verbose("...done");
+                logger->verbose("done");
                 
                 my @sInventFiles= ();
  
@@ -218,7 +218,27 @@ sub _setup {
                 };
                 
                 if ($oSourcePeer->get_value('merge_duplicates')) {
-                    # TODO: do dupmerge
+                    push @fFinish, sub {
+                        logger->info("Start merging duplicates...");
+                        logger->incIndent();
+                        logger->verbose("Adding old backup dirs...");
+                        logger->incIndent();
+                        for my $sBakBaseDir (@sBakBaseDirs) {
+                            my $sFilesInodeDb= $oTargetPeer->getPath($sBakBaseDir . '/meta/files_inode.db');
+                            my $sDataDir= $oTargetPeer->getPath($sBakBaseDir . '/data');
+                            next unless $oTargetPeer->isFile($sFilesInodeDb) && $oTargetPeer->isDir($sDataDir);
+                            logger->verbose("Adding \"$sDataDir\".");
+                            $inodeStore->addDirectory($sDataDir, $sFilesInodeDb);
+                        }
+                        logger->decIndent();
+                        logger->verbose("done");
+                        my $dupMerge= Rabak::DupMerge->new({
+                            INODE_CACHE => $inodeStore,
+                        });
+                        $dupMerge->dupmerge();
+                        logger->decIndent();
+                        logger->info("done");
+                    };
                 }
     
                 push @fFinish, sub {
@@ -226,7 +246,7 @@ sub _setup {
                     # finish up previously nonexistant files
                     $self->{BACKUP_DATA}{FILE_CALLBACK}->();
                     $inodeStore->finishInformationStore();
-                    logger->verbose("..done");
+                    logger->verbose("done");
                 };
             }
         }

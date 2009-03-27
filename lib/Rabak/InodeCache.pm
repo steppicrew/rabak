@@ -171,6 +171,17 @@ sub prepareInformationStore {
     $self->{DS}->newDirectory($sDir, $sDbFileName) if $sDir;
 }
 
+sub addDirectory {
+    my $self= shift;
+    my $sDir= shift;
+    my $sDbFileName= shift;
+    
+    $self->{DS}->finishDirectory();
+    my $result= $self->{DS}->newDirectory($sDir, $sDbFileName) if $sDir;
+    $self->{DS}->finishDirectory() if !$result && $sDbFileName;
+    return $result;
+}
+
 sub finishInformationStore {
     my $self= shift;
 
@@ -212,7 +223,7 @@ sub collect {
         $hDirsDone{$sDir}= undef;
         logger()->incIndent();
         my $sInfo= "Processing directory '$sDir'";
-        if ($self->{DS}->newDirectory($sDir)) {
+        if ($self->addDirectory($sDir)) {
             logger()->info("$sInfo...");
             $fTrapCB= sub{$self->{DS}->invalidate()};
             find({

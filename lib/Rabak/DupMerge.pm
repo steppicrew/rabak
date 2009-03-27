@@ -17,12 +17,17 @@ sub new {
 
     my $self= {};
     $self->{OPTS}= $hOptions;
-    $self->{INODE_CACHE}= Rabak::InodeCache->new($hOptions);
+    if ($hOptions->{INODE_CACHE}) {
+        $self->{INODE_CACHE}= $hOptions->{INODE_CACHE};
+    }
+    else {
+        $self->{INODE_CACHE}= Rabak::InodeCache->new($hOptions);
+    }
     
     bless $self, $class;
 }
 
-sub _run {
+sub dupmerge {
     my $self= shift;
     
     my $oTrap= Rabak::Trap->new();
@@ -173,12 +178,6 @@ sub _run {
     logger()->finish_progress("Processing files...done");
     logger()->decIndent();
     logger()->info("done");
-    logger()->verbose("Finishing information store...");
-
-    $oStore->endCached();
-    $oStore->endWork();
-
-    logger()->verbose("done");
 
     return !$oTrap->restore();
 }
@@ -188,7 +187,9 @@ sub run {
     
     return unless $self->{INODE_CACHE}->collect();
 
-    $self->_run();
+    $self->dupmerge();
+
+    $self->{INODE_CACHE}->finishInformationStore();
 
     $self->{INODE_CACHE}->printStats([
         {name => "total_size",         text => "Total file size in bytes"},

@@ -5,6 +5,7 @@ use strict;
 
 use Data::Dumper;
 
+use Rabak::Log;
 use Rabak::InodeStore;
 use Rabak::InodeStore::DBBackend;
 
@@ -152,7 +153,7 @@ sub _loopFilesByInode {
                     next;
                 }
  
-                warn "File '$sFullFileName' has changed inode!";
+                logger->warn("File '$sFullFileName' has changed inode!");
                 # TODO: insert new inode if not existant
                 if ($self->inodeExists($iCurInode)) {
                     $db->updateInodeFile($iCurInode, $sFile);
@@ -162,7 +163,7 @@ sub _loopFilesByInode {
                 }
             }
             else {
-                warn "File '$sFullFileName' disappeared!";
+                logger->warn("File '$sFullFileName' disappeared!");
                 $db->removeFile($sFile);
             }
         }
