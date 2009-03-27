@@ -154,7 +154,8 @@ sub _setup {
                     },
                 );
                 $oTargetPeer->run_perl(
-                    'while (<>) {
+                    '# get data for indoe inventory
+                    while (<>) {
                         chomp;
                         print join(":", lstat, $_), "\n";
                     }',
