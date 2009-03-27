@@ -87,14 +87,6 @@ sub newFromConf {
     return $new;
 }
 
-# delete all non deleted temp files on exit (important for remote sessions)
-sub DESTROY {
-    my $self= shift;
-
-# TODO: cleanup may create new object -> raises warning
-#    $self->cleanupTempfiles();
-}
-
 sub cleanupTempfiles {
     my $self= shift;
 
