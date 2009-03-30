@@ -86,11 +86,12 @@ sub addFile {
     }
     $self->{STATS}{total_new_files}++;
 
-    # process every inode only once
-    $self->{DS}->addInode($inode, $size, $mode, "${uid}_${gid}", $mtime) unless $self->{DS}->inodeExists($inode);
+    # process every inode only once (check if inode's hash matches this one)
+    my @Hash= ($size, $mode, "${uid}_${gid}", $mtime);
+    $self->{DS}->addInode($inode, @Hash) unless $self->{DS}->inodeExists($inode, @Hash);
 
     # store file names for each inode
-    $self->{DS}->addInodeFile($inode, $sFileName);
+    $self->{DS}->addInodeFile($inode, $sFileName, @Hash);
 }
 
 # callback function for File::Find
@@ -167,7 +168,7 @@ sub prepareInformationStore {
     my $sDbFileName= shift;
     
     $self->{DS}->beginWork();
-    $self->{DS}->registerInodes();
+    $self->{DS}->registerAllInodes();
     $self->{DS}->newDirectory($sDir, $sDbFileName) if $sDir;
 }
 

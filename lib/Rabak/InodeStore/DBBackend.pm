@@ -404,10 +404,17 @@ sub getFileCount {
 
 sub getInodes {
     my $self= shift;
+
+    my $result= {};
     
-    return $self->execSelectCol(
-        "SELECT inode FROM inodes",
-    );
+    my $sth= $self->prepareQuery("select", "SELECT inode, size, mode, owner, mtime FROM inodes");
+    $sth->execute();
+    while (my $row= $sth->fetchrow_arrayref()) {
+        $row= [@$row];
+        my $sKey= shift @$row;
+        $result->{$sKey}= join "_", @$row;
+    }
+    return $result;
 }
 
 sub getInodeDigest {

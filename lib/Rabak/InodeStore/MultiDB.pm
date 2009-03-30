@@ -78,8 +78,9 @@ sub addInodeFile {
     my $self= shift;
     my $iInode= shift;
     my $sName= shift;
+    my @sParams= @_;
     
-    $self->SUPER::addInodeFile($iInode, $sName);
+    $self->SUPER::addInodeFile($iInode, $sName, @sParams);
 
     # remove directory from file name
     my $qsDirectory= quotemeta $self->{current_db}->getData("directory");
@@ -208,7 +209,7 @@ sub getCurrentFileCount {
 sub getInodes {
     my $self= shift;
     
-    return [] unless $self->{inode_db};
+    return {} unless $self->{inode_db};
     return $self->{inode_db}->getInodes();
 }
 

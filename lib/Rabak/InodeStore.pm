@@ -11,6 +11,7 @@ use vars qw(@ISA);
 
 use File::Temp();
 use Data::Dumper;
+use Rabak::Log;
 
 sub Factory {
     my $class= shift;
@@ -52,16 +53,31 @@ sub DESTROY {
 sub inodeExists {
     my $self= shift;
     my $iInode= shift;
+    my @sParams= @_;
     
-    return exists $self->{inodes}{$iInode};
+    return undef unless exists $self->{inodes}{$iInode};
+    return 1 unless @sParams;
+    my $sHash= join "_", @sParams;
+    return 1 if $self->{inodes}{$iInode} eq $sHash;
+    logger->warn(
+        "Inode $iInode has changed ("
+        . $self->{inodes}{$iInode} . " != $sHash). Updating."
+    );
+    delete $self->{inodes}{$iInode};
+    return undef;
 }
 
-sub registerInodes {
+sub registerAllInodes {
     my $self= shift;
-    my $aInodes= shift || $self->getInodes();
-    while (my $iInode= shift @$aInodes) {
-        $self->{inodes}{$iInode}= undef;
-    }
+    return $self->{inodes}= $self->getInodes();
+}
+
+sub registerInode {
+    my $self= shift;
+    my $iInode= shift;
+    my @sParams= @_;
+    
+    $self->{inodes}{$iInode}= join "_", @sParams;
 }
 
 sub getInodeCount {
@@ -74,8 +90,9 @@ sub addInodeFile {
     my $self= shift;
     my $iInode= shift;
     my $sName= shift;
+    my @sParams= @_;
     
-    $self->registerInodes([$iInode]);
+    $self->registerInode($iInode, @sParams);
 }
 
 sub updateInodeFile {}
@@ -117,7 +134,7 @@ sub setInodeDigest {
 sub getInodes {
     my $self= shift;
     
-    return [];
+    return {};
 }
 
 sub getOneFileByInode {
