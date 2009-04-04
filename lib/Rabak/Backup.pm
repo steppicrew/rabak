@@ -79,18 +79,20 @@ sub _setup {
     my $sSourceSet= $sBakDay . $sSubSet;
     my $sSourceSubdir= $sSourceSet . $sSourceExt;
     my $sBakDir= $hBaksetData->{BAKSET_DIR} . '/' . $sSourceSubdir;
+    my $sBakDataDir= $sBakDir . '/data';
+    my $sBakMetaDir= $sBakDir . '/meta';
     
     $self->_convertBackupDirs(\@sBakBaseDirs);
 
     $self->{BACKUP_DATA}{OLD_BACKUP_DATA_DIRS}= [map { $_ . '/data' } @sBakBaseDirs];
-    $self->{BACKUP_DATA}{BACKUP_DATA_DIR}= $sBakDir . '/data';
-    $self->{BACKUP_DATA}{BACKUP_META_DIR}= $sBakDir . '/meta';
+    $self->{BACKUP_DATA}{BACKUP_DATA_DIR}= $sBakDataDir;
+    $self->{BACKUP_DATA}{BACKUP_META_DIR}= $sBakMetaDir;
     
     logger->info("Backup \"$sBakDay$sSourceExt\" exists, using subset \"$sSourceSubdir\".") if $sSubSet;
 
     $oTargetPeer->mkdir($sBakDir);
-    $oTargetPeer->mkdir($self->{BACKUP_DATA}{BACKUP_DATA_DIR});
-    $oTargetPeer->mkdir($self->{BACKUP_DATA}{BACKUP_META_DIR});
+    $oTargetPeer->mkdir($sBakDataDir);
+    $oTargetPeer->mkdir($sBakMetaDir);
     $self->_writeVersion($sBakDir);
     
     ########################################################
@@ -116,6 +118,8 @@ sub _setup {
                     print $fh join "\n", @_, '';
                 };
 
+                my $hTempFilesMap= {};
+                my $inodeStore;
                 push @fFinish, sub {
                     close $fh;
                     logger->verbose("Preparing information store for inode inventory...");
@@ -123,13 +127,15 @@ sub _setup {
                     logger->debug("Downloading \"inodes.db\"...");
                     my $sRemoteInodesDb= $oTargetPeer->getPath($hBaksetData->{BAKSET_META_DIR} . '/inodes.db');
                     my $sInodesDb= $oTargetPeer->getLocalFile($sRemoteInodesDb);
+                    $hTempFilesMap->{$sInodesDb}= $sRemoteInodesDb;
                     logger->debug("done");
-                    my $inodeStore= Rabak::InodeCache->new({
+                    $inodeStore= Rabak::InodeCache->new({
                         inodes_db => $sInodesDb,
                     });
                     my $sFilesInodeDb= $sTempDir . '/files_inode.db';
+                    $hTempFilesMap->{$sFilesInodeDb}= $sBakMetaDir . '/files_inode.db';
                     $inodeStore->prepareInformationStore(
-                        $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_DATA_DIR}),
+                        $oTargetPeer->getPath($sBakDataDir),
                         $sFilesInodeDb,
                     );
                     logger->decIndent();
@@ -172,18 +178,26 @@ sub _setup {
                     if ($oSourcePeer->get_value('merge_duplicates')) {
                         # TODO: do dupmerge
                     }
+                };
                 
-                    logger->verbose("Finishing information store for inode inventory...");
+                if ($oSourcePeer->get_value('merge_duplicates')) {
+                    push @fFinish, $self->_build_dupMerge(
+                        $oTargetPeer, $inodeStore, \@sBakBaseDirs, $hTempFilesMap,
+                    );
+                }
+
+                push @fFinish, sub {
+                    logger->verbose("Finishing information store...");
                     logger->incIndent();
                     $inodeStore->finishInformationStore();
-                    logger->debug("Uploading \"inodes.db\"...");
-                    $oTargetPeer->copyLocalFileToRemote($sInodesDb, $sRemoteInodesDb);
-                    logger->debug("done", "Uploading \"files_inode.db\"...");
-                    $oTargetPeer->copyLocalFileToRemote(
-                        $sFilesInodeDb,
-                        $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR} . '/files_inode.db'),
-                    );
-                    logger->debug("done");
+                    logger->verbose("Uploading temporary files to target...");
+                    logger->incIndent();
+                    for my $sTempFile (keys %$hTempFilesMap) {
+                        logger->debug('Uploading "' . $hTempFilesMap->{$sTempFile} . '".');
+                        $oTargetPeer->copyLocalFileToRemote($sTempFile, $hTempFilesMap->{$sTempFile});
+                    }
+                    logger->decIndent();
+                    logger->verbose("done");
                     logger->decIndent();
                     logger->verbose("done");
                 };
@@ -195,8 +209,8 @@ sub _setup {
                 });
                 logger->verbose("Preparing information store for inode inventory...");
                 $inodeStore->prepareInformationStore(
-                    $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_DATA_DIR}),
-                    $oTargetPeer->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR} . '/files_inode.db'),
+                    $oTargetPeer->getPath($sBakDataDir),
+                    $oTargetPeer->getPath($sBakMetaDir . '/files_inode.db'),
                 );
                 logger->verbose("done");
                 
@@ -217,34 +231,19 @@ sub _setup {
                     return scalar @sInventFiles;
                 };
                 
+                push @fFinish, sub {
+                    # finish up previously nonexistant files
+                    $self->{BACKUP_DATA}{FILE_CALLBACK}->();
+                };
+
                 if ($oSourcePeer->get_value('merge_duplicates')) {
-                    push @fFinish, sub {
-                        logger->info("Start merging duplicates...");
-                        logger->incIndent();
-                        logger->verbose("Adding old backup dirs...");
-                        logger->incIndent();
-                        for my $sBakBaseDir (@sBakBaseDirs) {
-                            my $sFilesInodeDb= $oTargetPeer->getPath($sBakBaseDir . '/meta/files_inode.db');
-                            my $sDataDir= $oTargetPeer->getPath($sBakBaseDir . '/data');
-                            next unless $oTargetPeer->isFile($sFilesInodeDb) && $oTargetPeer->isDir($sDataDir);
-                            logger->verbose("Adding \"$sDataDir\".");
-                            $inodeStore->addDirectory($sDataDir, $sFilesInodeDb);
-                        }
-                        logger->decIndent();
-                        logger->verbose("done");
-                        my $dupMerge= Rabak::DupMerge->new({
-                            INODE_CACHE => $inodeStore,
-                        });
-                        $dupMerge->dupmerge();
-                        logger->decIndent();
-                        logger->info("done");
-                    };
+                    push @fFinish, $self->_build_dupMerge(
+                        $oTargetPeer, $inodeStore, \@sBakBaseDirs
+                    );
                 }
     
                 push @fFinish, sub {
-                    logger->verbose("Finishing information store for inode inventory...");
-                    # finish up previously nonexistant files
-                    $self->{BACKUP_DATA}{FILE_CALLBACK}->();
+                    logger->verbose("Finishing information store...");
                     $inodeStore->finishInformationStore();
                     logger->verbose("done");
                 };
@@ -345,6 +344,60 @@ sub _convertBackupDirs {
             logger->info("Converted backup directory from version \"$sOldMetaVersion\" to \"$sMetaVersion\".");
         }
     }
+}
+
+sub _build_dupMerge {
+    my $self= shift;
+    my $oTargetPeer= shift;
+    my $inodeStore= shift;
+    my $aBakBaseDirs= shift;
+    my $hTempFilesMap= shift || {};
+
+    my $fAddDir;
+    my $fDupMerge;
+    if ($oTargetPeer->is_remote()) {
+        $fAddDir= sub {
+            my $sBakBaseDir= shift;
+            my $sRemoteFilesInodeDb= $oTargetPeer->getPath($sBakBaseDir . '/meta/files_inode.db');
+            my $sDataDir= $oTargetPeer->getPath($sBakBaseDir . '/data');
+            return unless $oTargetPeer->isFile($sRemoteFilesInodeDb) && $oTargetPeer->isDir($sDataDir);
+            logger->verbose("Adding \"$sDataDir\".");
+            my $sLocalFilesInodeDb= $oTargetPeer->getLocalFile($sRemoteFilesInodeDb);
+            $hTempFilesMap->{$sLocalFilesInodeDb}= $sRemoteFilesInodeDb;
+            $inodeStore->addDirectory($sDataDir, $sLocalFilesInodeDb);
+        };
+        $fDupMerge= sub {
+            die "Put some code here to merge remote files!";
+        };
+    }
+    else {
+        $fAddDir= sub {
+            my $sBakBaseDir= shift;
+            my $sFilesInodeDb= $oTargetPeer->getPath($sBakBaseDir . '/meta/files_inode.db');
+            my $sDataDir= $oTargetPeer->getPath($sBakBaseDir . '/data');
+            return unless $oTargetPeer->isFile($sFilesInodeDb) && $oTargetPeer->isDir($sDataDir);
+            logger->verbose("Adding \"$sDataDir\".");
+            $inodeStore->addDirectory($sDataDir, $sFilesInodeDb);
+        };
+        $fDupMerge= sub {
+            my $dupMerge= Rabak::DupMerge->new({
+                INODE_CACHE => $inodeStore,
+            });
+            $dupMerge->dupmerge();
+        };
+    }
+    return sub {
+        logger->info("Start merging duplicates...");
+        logger->incIndent();
+        logger->verbose("Adding old backup dirs...");
+        logger->incIndent();
+        $fAddDir->($_) for (@$aBakBaseDirs);
+        logger->decIndent();
+        logger->verbose("done");
+        $fDupMerge->();
+        logger->decIndent();
+        logger->info("done");
+    };
 }
 
 sub _getMetaVersionFile {
