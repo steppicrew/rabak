@@ -99,24 +99,26 @@ sub cleanupTempfiles {
 
 sub local_tempfile {
     my $self= shift;
+    my $sSuffix= shift || '';
 
-#    $self= $self->new() unless ref $self;
-#    $sDir = $self->get_value("tempdir");
+    my $sDir = $self->get_value("tempdir") || File::Spec->tmpdir();
 
-    my $tempfh= File::Temp->new(TEMPLATE => 'rabak-XXXXXX', UNLINK => 1, TMPDIR => 1);
+    my $tempfh= File::Temp->new(
+        TEMPLATE => 'rabak-XXXXXX', UNLINK => 1, SUFFIX => $sSuffix, DIR => $sDir,
+    );
     # remember $tempfh to keep it in scope (will be unlinked otherwise) 
     push @{$self->{LOCAL_TEMPFILES}}, $tempfh;
     return ($tempfh, $tempfh->filename()) if wantarray;
+    $tempfh->close();
     return $tempfh->filename();
 }
 
 sub local_tempdir {
     my $self= shift;
     
-#    $self= $self->new() unless ref $self;
-#    my $sDir= $self->get_value("tempdir");
+    my $sDir = $self->get_value("tempdir") || File::Spec->tmpdir();
 
-    my $tempdir= File::Temp->newdir('rabak-XXXXXX', CLEANUP => 1, TMPDIR => 1);
+    my $tempdir= File::Temp->newdir('rabak-XXXXXX', CLEANUP => 1, DIR => $sDir,);
     # remember $tempdir to keep it in scope (will be unlinked otherwise) 
     push @{$self->{LOCAL_TEMPFILES}}, $tempdir;
     return $tempdir->dirname();
@@ -588,10 +590,11 @@ sub getDirRecursive {
 sub getLocalFile {
     my $self= shift;
     my $sFile= $self->getPath(shift);
+    my $sSuffix= shift || '';
 
     return $sFile unless $self->is_remote();
     
-    my ($fh, $sTmpName) = $self->local_tempfile();
+    my ($fh, $sTmpName) = $self->local_tempfile($sSuffix);
     my $hHandles= {
         STDOUT => sub {
             print $fh @_;
@@ -828,17 +831,21 @@ sub umount {
 
 sub tempfile {
     my $self= shift;
+    my $sSuffix= shift || '';
 
     $self= $self->new() unless ref $self;
-    my $sDir= File::Spec->tmpdir;
-#    $sDir = $self->get_value("tempdir");
+    my $sDir = $self->get_value("tempdir");
     my $sFileName= ${$self->run_perl('
             # tempfile
             use File::Temp;
-            my @result= File::Temp->tempfile("rabak-XXXXXX", UNLINK => 1, DIR => $sDir);
-            CORE::close $result[0];
-            $sFileName= $result[1];
-        ', { 'sDir' => $sDir, }, '$sFileName',
+            use File::Spec;
+            $sDir= File::Spec->tmpdir() unless $sDir;
+            my $tempfh= File::Temp->new(
+                "rabak-XXXXXX", UNLINK => 0, DIR => $sDir, SUFFIX => $sSuffix,
+            );
+            $tempfh->close();
+            $sFileName= $tempfh->filename();
+        ', { 'sDir' => $sDir, 'sSuffix' => $sSuffix, }, '$sFileName',
     ) || \undef};
     push @{$self->{TEMPFILES}}, $sFileName if $sFileName;
     return $sFileName;
@@ -848,12 +855,13 @@ sub tempdir {
     my $self= shift;
 
     $self= $self->new() unless ref $self;
-    my $sDir= File::Spec->tmpdir;
-#    $sDir= $self->get_value("tempdir");
+    my $sDir= $self->get_value("tempdir");
     my $sDirName= ${$self->run_perl('
             # tempdir
             use File::Temp;
-            $sDirName= File::Temp->tempdir("rabak-XXXXXX", CLEANUP => 0, DIR => $sDir);
+            use File::Spec;
+            $sDir= File::Spec->tmpdir() unless $sDir;
+            $sDirName= File::Temp->newdir("rabak-XXXXXX", CLEANUP => 0, DIR => $sDir,);
         ', { 'sDir' => $sDir, }, '$sDirName',
     ) || \undef};
     push @{$self->{TEMPFILES}}, $sDirName if $sDirName;

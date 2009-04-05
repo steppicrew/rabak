@@ -443,7 +443,7 @@ sub run {
     my @sRsyncOpts = $self->resolveObjects('rsync_opts') || ();
 
     # Write filter rules to temp file:
-    my ($fhwRules, $sRulesFile)= $self->local_tempfile();
+    my ($fhwRules, $sRulesFile)= $self->local_tempfile('.filter');
 
     my @sFilter= $self->_get_filter(undef, $oTargetPeer);
     # print join("\n", @sFilter), "\n"; #die;
@@ -453,7 +453,7 @@ sub run {
 
     # copy filter rules to source if target AND source are remote
     if ($oTargetPeer->is_remote() && $self->is_remote()) {
-        my $sRemRulesFile= $self->tempfile;
+        my $sRemRulesFile= $self->tempfile('.filter');
         $self->copyLocalFileToRemote($sRulesFile, $sRemRulesFile);
         $sRulesFile = $sRemRulesFile;
     }
@@ -627,13 +627,13 @@ sub run {
         logger->info("Fixing hard link errors...");
         logger->incIndent();
         # Write failed link files to temp file:
-        my ($fhwFiles, $sFilesFile)= $self->local_tempfile();
+        my ($fhwFiles, $sFilesFile)= $self->local_tempfile('.filelist');
         print $fhwFiles join("\n", @sLinkErrors), "\n";
         close $fhwFiles;
 
         # copy files file to source if rsync is run remotely
         if ($oRsyncPeer->is_remote()) {
-            my $sRemFilesFile= $oRsyncPeer->tempfile;
+            my $sRemFilesFile= $oRsyncPeer->tempfile('.filelist');
             $oRsyncPeer->copyLocalFileToRemote($sFilesFile, $sRemFilesFile);
             $sFilesFile = $sRemFilesFile;
         }
