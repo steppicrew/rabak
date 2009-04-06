@@ -126,13 +126,13 @@ sub _setup {
                     logger->incIndent();
                     logger->debug("Downloading \"inodes.db\"...");
                     my $sLocalInodesDb= $oTargetPeer->getLocalFile($sInodesDb, SUFFIX => '.inodes.db');
-                    $hTempFilesMap->{$sLocalInodesDb}= $sInodesDb;
+                    $hTempFilesMap->{$sInodesDb}= $sLocalInodesDb;
                     logger->debug("done");
                     $inodeStore= Rabak::InodeCache->new({
                         inodes_db => $sLocalInodesDb,
                     });
                     my $sLocalFilesInodeDb= $oTargetPeer->local_tempfile(SUFFIX => '.files_inode.db');
-                    $hTempFilesMap->{$sLocalFilesInodeDb}= $sFilesInodeDb;
+                    $hTempFilesMap->{$sFilesInodeDb}= $sLocalFilesInodeDb;
                     $inodeStore->prepareInformationStore(
                         $oTargetPeer->getPath($sBakDataDir),
                         $sLocalFilesInodeDb,
@@ -187,9 +187,9 @@ sub _setup {
                     $inodeStore->finishInformationStore();
                     logger->verbose("Uploading temporary files to target...");
                     logger->incIndent();
-                    for my $sTempFile (keys %$hTempFilesMap) {
-                        logger->debug('Uploading "' . $hTempFilesMap->{$sTempFile} . '".');
-                        $oTargetPeer->copyLocalFileToRemote($sTempFile, $hTempFilesMap->{$sTempFile}, SAVE_COPY => 1,);
+                    for my $sRemoteFile (sort keys %$hTempFilesMap) {
+                        logger->debug("Uploading \"$sRemoteFile\".");
+                        $oTargetPeer->copyLocalFileToRemote($hTempFilesMap->{$sRemoteFile}, $sRemoteFile, SAVE_COPY => 1,);
                     }
                     logger->decIndent();
                     logger->verbose("done");
@@ -358,7 +358,7 @@ sub _build_dupMerge {
             return unless $oTargetPeer->isFile($sRemoteFilesInodeDb) && $oTargetPeer->isDir($sDataDir);
             logger->verbose("Adding \"$sDataDir\".");
             my $sLocalFilesInodeDb= $oTargetPeer->getLocalFile($sRemoteFilesInodeDb, SUFFIX => '.files_inode.db');
-            $hTempFilesMap->{$sLocalFilesInodeDb}= $sRemoteFilesInodeDb;
+            $hTempFilesMap->{$sRemoteFilesInodeDb}= $sLocalFilesInodeDb;
             ${$refInodeStore}->addDirectory($sDataDir, $sLocalFilesInodeDb);
         };
         $fDupMerge= sub {
