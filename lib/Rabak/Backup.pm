@@ -111,7 +111,7 @@ sub _setup {
             my $sFilesInodeDb= $oTargetPeer->getPath($sBakMetaDir . '/files_inode.db');
             if ($oTargetPeer->is_remote()) {
                 # special handling for remote targets (see idea below)
-                my ($fh, $sFileListFile)= $oTargetPeer->local_tempfile('.filelist.txt');
+                my ($fh, $sFileListFile)= $oTargetPeer->local_tempfile(SUFFIX => '.filelist.txt');
 
                 $self->{BACKUP_DATA}{FILE_CALLBACK}= sub {
                     print $fh join "\n", @_, '';
@@ -125,13 +125,13 @@ sub _setup {
                     logger->verbose("Preparing information store for inode inventory...");
                     logger->incIndent();
                     logger->debug("Downloading \"inodes.db\"...");
-                    my $sLocalInodesDb= $oTargetPeer->getLocalFile($sInodesDb, '.inodes.db');
+                    my $sLocalInodesDb= $oTargetPeer->getLocalFile($sInodesDb, SUFFIX => '.inodes.db');
                     $hTempFilesMap->{$sLocalInodesDb}= $sInodesDb;
                     logger->debug("done");
                     $inodeStore= Rabak::InodeCache->new({
                         inodes_db => $sLocalInodesDb,
                     });
-                    my $sLocalFilesInodeDb= $oTargetPeer->local_tempfile('.files_inode.db');
+                    my $sLocalFilesInodeDb= $oTargetPeer->local_tempfile(SUFFIX => '.files_inode.db');
                     $hTempFilesMap->{$sLocalFilesInodeDb}= $sFilesInodeDb;
                     $inodeStore->prepareInformationStore(
                         $oTargetPeer->getPath($sBakDataDir),
@@ -177,7 +177,7 @@ sub _setup {
                 
                 if ($oSourcePeer->get_value('merge_duplicates')) {
                     push @fFinish, $self->_build_dupMerge(
-                        $oTargetPeer, $inodeStore, \@sBakBaseDirs, $hTempFilesMap,
+                        $oTargetPeer, \$inodeStore, \@sBakBaseDirs, $hTempFilesMap,
                     );
                 }
 
@@ -189,7 +189,7 @@ sub _setup {
                     logger->incIndent();
                     for my $sTempFile (keys %$hTempFilesMap) {
                         logger->debug('Uploading "' . $hTempFilesMap->{$sTempFile} . '".');
-                        $oTargetPeer->copyLocalFileToRemote($sTempFile, $hTempFilesMap->{$sTempFile});
+                        $oTargetPeer->copyLocalFileToRemote($sTempFile, $hTempFilesMap->{$sTempFile}, SAVE_COPY => 1,);
                     }
                     logger->decIndent();
                     logger->verbose("done");
@@ -233,7 +233,7 @@ sub _setup {
 
                 if ($oSourcePeer->get_value('merge_duplicates')) {
                     push @fFinish, $self->_build_dupMerge(
-                        $oTargetPeer, $inodeStore, \@sBakBaseDirs
+                        $oTargetPeer, \$inodeStore, \@sBakBaseDirs
                     );
                 }
     
@@ -344,7 +344,7 @@ sub _convertBackupDirs {
 sub _build_dupMerge {
     my $self= shift;
     my $oTargetPeer= shift;
-    my $inodeStore= shift;
+    my $refInodeStore= shift;
     my $aBakBaseDirs= shift;
     my $hTempFilesMap= shift || {};
 
@@ -357,12 +357,12 @@ sub _build_dupMerge {
             my $sDataDir= $oTargetPeer->getPath($sBakBaseDir . '/data');
             return unless $oTargetPeer->isFile($sRemoteFilesInodeDb) && $oTargetPeer->isDir($sDataDir);
             logger->verbose("Adding \"$sDataDir\".");
-            my $sLocalFilesInodeDb= $oTargetPeer->getLocalFile($sRemoteFilesInodeDb, '.files_inode.db');
+            my $sLocalFilesInodeDb= $oTargetPeer->getLocalFile($sRemoteFilesInodeDb, SUFFIX => '.files_inode.db');
             $hTempFilesMap->{$sLocalFilesInodeDb}= $sRemoteFilesInodeDb;
-            $inodeStore->addDirectory($sDataDir, $sLocalFilesInodeDb);
+            ${$refInodeStore}->addDirectory($sDataDir, $sLocalFilesInodeDb);
         };
         $fDupMerge= sub {
-            die "Put some code here to merge remote files!";
+            logger->error("DupMerge for remote target peers not yet implemented", "Put some code here to merge remote files!");
         };
     }
     else {
@@ -372,11 +372,11 @@ sub _build_dupMerge {
             my $sDataDir= $oTargetPeer->getPath($sBakBaseDir . '/data');
             return unless $oTargetPeer->isFile($sFilesInodeDb) && $oTargetPeer->isDir($sDataDir);
             logger->verbose("Adding \"$sDataDir\".");
-            $inodeStore->addDirectory($sDataDir, $sFilesInodeDb);
+            ${$refInodeStore}->addDirectory($sDataDir, $sFilesInodeDb);
         };
         $fDupMerge= sub {
             my $dupMerge= Rabak::DupMerge->new({
-                INODE_CACHE => $inodeStore,
+                INODE_CACHE => ${$refInodeStore},
             });
             $dupMerge->dupmerge();
         };

@@ -74,7 +74,7 @@ sub checkMount {
     my $sDevConfFile= File::Spec->join($sMountPath, $self->get_switch('dev_conf_file', "rabak.dev.cf"));
     if ($self->isReadable("$sDevConfFile")) {
         if ($sTargetValue) {
-            my $oDevConfFile= Rabak::ConfFile->new($self->getLocalFile($sDevConfFile));
+            my $oDevConfFile= Rabak::ConfFile->new($self->getLocalFile($sDevConfFile, SUFFIX => '.dev.cf'));
             my $oDevConf= $oDevConfFile->conf();
             my $sFoundTargets = $oDevConf->get_value('targetvalues') || '';
             if (" $sFoundTargets " =~ /\s$sqTargetValue\s/) {

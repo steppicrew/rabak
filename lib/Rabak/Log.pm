@@ -289,7 +289,7 @@ sub open {
     my $bIsNew= !$oTarget->isFile($sFileName);
 
     if ($oTarget->is_remote()) {
-        ($self->{LOG_FH}, $self->{REAL_LOG_FILE_NAME})= $oTarget->local_tempfile('.log');
+        ($self->{LOG_FH}, $self->{REAL_LOG_FILE_NAME})= $oTarget->local_tempfile(SUFFIX => '.log');
     }
     else {
         unless (CORE::open ($self->{LOG_FH}, ">>$sFileName")) {
@@ -311,7 +311,7 @@ sub close {
     CORE::close $self->{LOG_FH} if $self->{LOG_FH};
     $self->{LOG_FH}= undef;
     if ($self->{TARGET}->is_remote()) {
-        logger->error($self->{TARGET}->get_error()) unless ($self->{TARGET}->copyLocalFileToRemote($self->{REAL_LOG_FILE_NAME}, $self->{LOG_FILE_NAME}, 1));
+        logger->error($self->{TARGET}->get_error()) unless ($self->{TARGET}->copyLocalFileToRemote($self->{REAL_LOG_FILE_NAME}, $self->{LOG_FILE_NAME}, APPEND => 1,));
     }
     $self->{TARGET}= undef;
 }

@@ -99,9 +99,10 @@ sub cleanupTempfiles {
 
 sub local_tempfile {
     my $self= shift;
-    my $sSuffix= shift || '';
+    my %hParams= @_;
 
-    my $sDir = $self->get_value("tempdir") || File::Spec->tmpdir();
+    my $sDir = $hParams{DIR} || $self->get_value("tempdir") || File::Spec->tmpdir();
+    my $sSuffix= $hParams{SUFFIX} || '';
 
     my $tempfh= File::Temp->new(
         TEMPLATE => 'rabak-XXXXXX', UNLINK => 1, SUFFIX => $sSuffix, DIR => $sDir,
@@ -115,8 +116,9 @@ sub local_tempfile {
 
 sub local_tempdir {
     my $self= shift;
-    
-    my $sDir = $self->get_value("tempdir") || File::Spec->tmpdir();
+    my %hParams= @_;
+
+    my $sDir = $hParams{DIR} || $self->get_value("tempdir") || File::Spec->tmpdir();
 
     my $tempdir= File::Temp->newdir('rabak-XXXXXX', CLEANUP => 1, DIR => $sDir,);
     # remember $tempdir to keep it in scope (will be unlinked otherwise) 
@@ -590,11 +592,11 @@ sub getDirRecursive {
 sub getLocalFile {
     my $self= shift;
     my $sFile= $self->getPath(shift);
-    my $sSuffix= shift || '';
+    my %hParams= @_;
 
     return $sFile unless $self->is_remote();
     
-    my ($fh, $sTmpName) = $self->local_tempfile($sSuffix);
+    my ($fh, $sTmpName) = $self->local_tempfile(%hParams);
     my $hHandles= {
         STDOUT => sub {
             print $fh @_;
@@ -609,29 +611,42 @@ sub getLocalFile {
 # copies a local (temp) file to the remote host
 sub copyLocalFileToRemote {
     my $self= shift;
-    my $sLocFile= shift;
+    my $sLocFile= $self->getPath(shift);
     my $sRemFile= $self->getPath(shift);
-    my $bAppend= shift || 0;
+    my %hParams= @_;
 
     $self->_set_error();
+    
+    die 'Internal error: Parameters "APPEND" and "SAVE_COPY" are exclusive!' if $hParams{APPEND} && $hParams{SAVE_COPY};
+
+    my $sqLocFile= $self->ShellQuote($sLocFile);
+    my $sqRemFile= $self->ShellQuote($sRemFile);
+    my $sCmdAppend= '';
+    if ($hParams{SAVE_COPY}) {
+        # if SAVE_COPY is given first copy to temporary file and rename on success 
+        my $sqFinalRemote= $sqRemFile;
+        my (undef, $sPath, $sFile)= File::Spec->splitpath($sRemFile);
+        $sRemFile= $self->tempfile(DIR => $sPath, SUFFIX => ".$sFile");
+        $sqRemFile= $self->ShellQuote($sRemFile);
+        # rename file, preserve result and remove leftovers (if any)
+        $sCmdAppend= " && mv -f $sqRemFile $sqFinalRemote; result=\$?; test -f $sqRemFile && rm $sqRemFile; exit \$result";
+    }
 
     unless ($self->is_remote()) {
         $sLocFile= $self->getPath($sLocFile);
         return 1 if $sLocFile eq $sRemFile;
-        $sLocFile= $self->ShellQuote($sLocFile);
-        $sRemFile= $self->ShellQuote($sRemFile);
-        if ($bAppend) {
-            $self->_set_error(`cat $sLocFile 2>&1 >> $sRemFile`);
+        if ($hParams{APPEND}) {
+            $self->_set_error(`cat $sqLocFile 2>&1 >> $sqRemFile`);
         }
         else {
-            $self->_set_error(`cp -f $sLocFile $sRemFile 2>&1`);
+            $self->_set_error(`cp -f $sqLocFile $sqRemFile 2>&1 $sCmdAppend`);
         }
         return $self->get_error ? 0 : 1;
     }
 
     my $fh;
     if (CORE::open $fh, $sLocFile) {
-        my $sPipe= $bAppend ? '>>' : '>';
+        my $sPipe= $hParams{APPEND} ? '>>' : '>';
         my $iBufferSize= 10240;
 
         my $hHandles= {
@@ -642,7 +657,7 @@ sub copyLocalFileToRemote {
             }
         };
 
-        my ($stdout, $stderr, $exit) = $self->_run_ssh_cmd("cat - $sPipe " . $self->ShellQuote($sRemFile), $hHandles);
+        my ($stdout, $stderr, $exit) = $self->_run_ssh_cmd("cat - $sPipe $sqRemFile $sCmdAppend", $hHandles);
 
         $self->_set_error($stderr);
         CORE::close $fh;
@@ -831,10 +846,12 @@ sub umount {
 
 sub tempfile {
     my $self= shift;
-    my $sSuffix= shift || '';
+    my %hParams= @_;
+    
+    my $sSuffix= $hParams{SUFFIX} || '';
+    my $sDir= $hParams{DIR} || $self->get_value("tempdir");
 
     $self= $self->new() unless ref $self;
-    my $sDir = $self->get_value("tempdir");
     my $sFileName= ${$self->run_perl('
             # tempfile
             use File::Temp;
@@ -853,9 +870,10 @@ sub tempfile {
 
 sub tempdir {
     my $self= shift;
-
+    my %hParams= @_;
+    
     $self= $self->new() unless ref $self;
-    my $sDir= $self->get_value("tempdir");
+    my $sDir= $hParams{DIR} || $self->get_value("tempdir");
     my $sDirName= ${$self->run_perl('
             # tempdir
             use File::Temp;
