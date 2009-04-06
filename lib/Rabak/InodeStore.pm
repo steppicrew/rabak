@@ -60,7 +60,7 @@ sub inodeExists {
     my $sHash= join "_", @sParams;
     return 1 if $self->{inodes}{$iInode} eq $sHash;
     logger->warn(
-        "Inode $iInode has changed ("
+        "Inode $iInode has been changed ("
         . $self->{inodes}{$iInode} . " != $sHash). Updating."
     );
     delete $self->{inodes}{$iInode};
