@@ -145,28 +145,7 @@ sub _loopFilesByInode {
         my $sDirectory= $db->getData("directory");
         for my $sFile (@{$db->getFilesByInode($iInode)}) {
             my $sFullFileName= "$sDirectory/$sFile";
-            if (-f $sFullFileName) {
-                # check if inode is connected to this file
-                my $iCurInode= (lstat($sFullFileName))[1];
-                
-                if ($iCurInode == $iInode) {
-                    return $sFullFileName unless $fFileOp->($sFullFileName);
-                    next;
-                }
- 
-                logger->warn("File '$sFullFileName' has changed inode!");
-                # TODO: insert new inode if not existant
-                if ($self->inodeExists($iCurInode)) {
-                    $db->updateInodeFile($iCurInode, $sFile);
-                }
-                else {
-                    $db->removeFile($sFile);
-                }
-            }
-            else {
-                logger->warn("File '$sFullFileName' disappeared!");
-                $db->removeFile($sFile);
-            }
+            return $sFullFileName unless $fFileOp->($sFullFileName);
         }
     }
     return undef;

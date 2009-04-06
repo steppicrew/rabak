@@ -105,7 +105,7 @@ sub _processFiles {
 }
 
 # calculate digest from file
-sub _calcDigest {
+sub calcDigest {
     my $self= shift;
     my $sFileName= shift;
     
@@ -131,24 +131,7 @@ sub getDigest {
     my $self= shift;
     my $iInode= shift;
     
-    my $sDigest= $self->{DS}->getInodeDigest($iInode);
-    
-    my $bCached= defined $sDigest;
-    if ($bCached) {
-        $self->{STATS}{digest_cachehit}++;
-    }
-    else {
-        my $sFileName= $self->{DS}->getOneFileByInode($iInode);
-        return () unless $sFileName;
-        
-        logger()->debug("Calculating digest for '$sFileName'");
-        $sDigest= $self->_calcDigest($sFileName);
-    }
-
-    return (
-        digest => $sDigest,
-        cached => $bCached,
-    );
+    return $self->{DS}->getInodeDigest($iInode);
 }
 
 # write digest to cache db

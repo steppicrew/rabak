@@ -27,8 +27,10 @@ sub new {
     bless $self, $class;
 }
 
+# seraches for duplicates and calls $fLinkFiles with hash table of 
 sub dupmerge {
     my $self= shift;
+    my $fSimilarInodes= shift || sub {$self->_processSimilarInodes(@_)};
     
     my $oTrap= Rabak::Trap->new();
 
@@ -65,114 +67,7 @@ sub dupmerge {
             last if $oTrap->terminated();
 
             my $aInodes= $oStore->getInodesBySizeKey($iSize, $hKey);
-            unless (scalar @$aInodes > 1) {
-                $self->{INODE_CACHE}{STATS}{total_size} += $iSize;
-                next;
-            }
-            my %digests= ();
-
-            # sort inodes by md5 hash
-            for my $iInode (@$aInodes) {
-                last if $oTrap->terminated();
-
-                $self->{INODE_CACHE}{STATS}{total_size} += $iSize;
-                my %digest= $oCache->getDigest($iInode);
-                my $sDigest= $digest{digest};
-                next unless defined $sDigest;
-
-                $digests{$sDigest}= [] unless exists $digests{$sDigest};
-                push @{$digests{$sDigest}}, {
-                    inode => $iInode,
-                    cached => $digest{cached},
-                };
-            }
-            for my $sDigest (keys %digests) {
-                last if $oTrap->terminated();
-
-                # ignore digests with only one inode
-                if (scalar @{$digests{$sDigest}} == 1) {
-                    $oStore->setInodeDigest($digests{$sDigest}[0]{inode}, $sDigest) unless $digests{$sDigest}[0]{cached};
-                    next;
-                }
-    
-                # find inode with most hard links
-                my $iMaxLinks= 0;
-                my $iMaxInode= undef;
-                my $sLinkFile= undef;
-                my %FilesByInode= ();
-                for my $hInode (@{$digests{$sDigest}}) {
-                    last if $oTrap->terminated();
-
-                    my $iInode= $hInode->{inode};
-                    my $aFiles= $oStore->getFilesByInode($iInode);
-                    unless (scalar @$aFiles) {
-
-                        # Rausgenommen, falls nicht alle Verzeichnisse zum Vergleich angegeben werden
-                        # $oStore->removeInode($iInode);
-                        next;
-                    }
-
-                    # remember file list for next loop
-                    $FilesByInode{$iInode}= $aFiles;
-                    if (scalar @$aFiles > $iMaxLinks) {
-                        $iMaxLinks= scalar @$aFiles;
-                        $iMaxInode= $iInode;
-                        $sLinkFile= $aFiles->[0];
-                    }
-                }
-
-                # link all inodes with the most linked one
-                for my $hInode (@{$digests{$sDigest}}) {
-                    last if $oTrap->terminated();
-
-                    my $iInode= $hInode->{inode};
-                    next unless $FilesByInode{$iInode};
-
-                    if ($iInode == $iMaxInode) {
-                        $oStore->setInodeDigest($iInode, $sDigest) unless $hInode->{cached};
-                        next;
-                    }
-                    $self->{INODE_CACHE}{STATS}{linked_size} += -s $sLinkFile;
-                    my $bLinkError= 0;
-                    for my $sFile (@{$FilesByInode{$iInode}}) {
-                        last if $oTrap->terminated();
-
-                        logger()->debug("ln -f '$sLinkFile' '$sFile'");
-                        if ($self->{OPTS}{pretend}) {
-                            $self->{INODE_CACHE}{STATS}{linked_files}++;
-                            next;
-                        }
-                        
-                        # find temporary file name
-                        my $iTmpNum= "";
-                        my $sTmpFile;
-                        while (-e ($sTmpFile= "$sFile.tmp$iTmpNum")) { $iTmpNum++; }
-                        
-                        # try to make sure no data is lost
-                        unless (link $sFile, $sTmpFile
-                                    and unlink $sFile
-                                    and link $sLinkFile, $sFile
-                                    and unlink $sTmpFile
-                        ) {
-                            # if anything goes wrong, restore original file
-                            if (-e $sTmpFile) {
-                                unlink $sFile if -e $sFile;
-                                rename $sTmpFile, $sFile;
-                            }
-                            $self->{INODE_CACHE}{STATS}{linked_files_failed}++;
-                            logger()->warn("Failed to link file '$sLinkFile' -> '$sFile'");
-                            $bLinkError= 1;
-                            next;
-                        }
-                        
-                        $self->{INODE_CACHE}{STATS}{linked_files}++;
-                        $oStore->updateInodeFile($iMaxInode, $sFile);
-                    }
-
-                    # TODO: should inode be removed if not all directories are checked??
-                    $oStore->removeInode($iInode) unless $self->{OPTS}{pretend} || $bLinkError;
-                }
-            }
+            $fSimilarInodes->($aInodes);
         }
     }
     logger()->finish_progress("Processing files...done");
@@ -180,6 +75,138 @@ sub dupmerge {
     logger()->info("done");
 
     return !$oTrap->restore();
+}
+
+sub _processSimilarInodes {
+    my $self= shift;
+    my $aInodes= shift;
+    my $fLinkFiles= shift || sub {$self->_linkFiles(@_)};
+    
+    my $oCache= $self->{INODE_CACHE};
+    my $oStore= $oCache->{DS};
+
+    return unless scalar @$aInodes > 1;
+    
+    # build hash (digest => [inode, inode...])
+    my %digests= ();
+    for my $iInode (@$aInodes) {
+#        last if $oTrap->terminated();
+
+        my $sDigest= $oCache->getDigest($iInode);
+        unless (defined $sDigest) {
+            my $sFileName= $oStore->getOneFileByInode($iInode);
+            next unless defined $sFileName;
+            logger->("Calculating digest for \"$sFileName\".");
+            $sDigest= $oCache->calcDigest($sFileName);
+            $oStore->setInodeDigest($iInode, $sDigest);
+        }
+
+        $digests{$sDigest}= [] unless exists $digests{$sDigest};
+        push @{$digests{$sDigest}}, $iInode;
+    }
+
+    # process inodes with the same digest
+    for my $sDigest (keys %digests) {
+#        last if $oTrap->terminated();
+
+        my @iInodes= @{$digests{$sDigest}};
+
+        # ignore digests with only one inode
+        next if scalar @iInodes == 1;
+    
+        # map files to inodes
+        my %FilesByInode= ();
+        for my $iInode (@iInodes) {
+#            last if $oTrap->terminated();
+            $FilesByInode{$iInode}= $oStore->getFilesByInode($iInode);
+        }
+        
+        $fLinkFiles->(\%FilesByInode);
+    }
+}
+
+sub _linkFiles {
+    my $self= shift;
+    my $hFilesByInode= shift;
+
+    my $oCache= $self->{INODE_CACHE};
+    my $oStore= $oCache->{DS};
+
+    # find inode with most hard links
+    my $iMaxLinks= 0;
+    my $iMaxInode= undef;
+    my $sLinkFile;
+    for my $iInode (keys %$hFilesByInode) {
+#        last if $oTrap->terminated();
+
+        my $aFiles= $hFilesByInode->{$iInode};
+        next unless scalar @$aFiles;
+
+        if (scalar @$aFiles > $iMaxLinks) {
+            $iMaxLinks= scalar @$aFiles;
+            $iMaxInode= $iInode;
+            $sLinkFile= $aFiles->[0];
+        }
+    }
+    
+    return unless $self->_testFile($sLinkFile, $iMaxInode);
+
+    # link all inodes with the most linked one
+    for my $iInode (keys %$hFilesByInode) {
+#            last if $oTrap->terminated();
+
+        next if $iInode == $iMaxInode;
+
+        my $bLinkError= 0;
+        for my $sFile (@{$hFilesByInode->{$iInode}}) {
+#                last if $oTrap->terminated();
+
+            next unless $self->_testFile($sFile, $iInode);
+
+            logger()->debug("ln -f '$sLinkFile' '$sFile'");
+            next if $self->{OPTS}{pretend};
+            
+            # find temporary file name
+            my $iTmpNum= "";
+            my $sTmpFile;
+            while (-e ($sTmpFile= "$sFile.tmp$iTmpNum")) { $iTmpNum++; }
+                
+            # try to make sure no data is lost
+            unless (link $sFile, $sTmpFile
+                        and unlink $sFile
+                        and link $sLinkFile, $sFile
+                        and unlink $sTmpFile
+            ) {
+                # if anything goes wrong, restore original file
+                if (-e $sTmpFile) {
+                    unlink $sFile if -e $sFile;
+                    rename $sTmpFile, $sFile;
+                }
+                logger()->warn("Failed to link file '$sLinkFile' -> '$sFile'");
+                $bLinkError= 1;
+                next;
+            }
+            $oStore->updateInodeFile($iMaxInode, $sFile);
+        }
+
+        # TODO: should inode be removed if not all directories are checked??
+        $oStore->removeInode($iInode) unless $self->{OPTS}{pretend} || $bLinkError;
+    }
+}
+
+sub _testFile {
+    my $self= shift;
+    my $sFile= shift;
+    my $iInode= shift;
+    unless (-f $sFile) {
+        logger->error("File \"$sFile\" has disappeared.");
+        return 0;
+    }
+    unless ((lstat $sFile)[1] == $iInode) {
+        logger->error("File \"$sFile\" has changed inode.");
+        return 0;
+    }
+    return 1;
 }
 
 sub run {
