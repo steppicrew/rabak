@@ -378,7 +378,7 @@ sub _build_dupMerge {
             my $dupMerge= Rabak::DupMerge->new({
                 INODE_CACHE => ${$refInodeStore},
             });
-            $dupMerge->dupmerge();
+            $dupMerge->dupMerge();
         };
     }
     return sub {
