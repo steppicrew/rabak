@@ -437,34 +437,40 @@ sub run_perl {
     }
 
     # build modified perl script
+    # ATTENTION: script has to end with "__END__\n" to make remaining input parsed as stdin
     $sPerlScript= "
         use Data::Dumper;
         $sPerlVars
         $sPerlScript
         $sPerlDump
-        __END__
-    ";
+        __END__\n";
 
     if ($self->{DEBUG}) {
         # extract script name (is comment in first line)
         my $sScriptName= '';
         $sScriptName= " \"$1\"" if $sPerlScript=~ s/^\s*\#\s*(\w+)\s?\(\s*\)\s*$//m;
 
-        print "************* SCRIPT$sScriptName START ***************\n" .
-            "$sPerlScript\n" .
+        print "************* SCRIPT$sScriptName START ***************\n",
+            "$sPerlScript\n",
             "************** SCRIPT$sScriptName END ****************\n";
     }
 
     # now execute script
     my $result;
     if ($bRunAsCommand) {
-        if (exists $hHandles->{STDIN}) {
-            $self->run_cmd(scalar $self->ShellQuote('perl', '-e', $sPerlScript), $hHandles);
+        my $fStdIn= $hHandles->{STDIN};
+        my @sScript= ($sPerlScript);
+        # if stdin is a scalar, simply append append text after __END__
+        unless (ref $fStdIn) {
+            push @sScript, $hHandles->{STDIN};
+            $fStdIn= undef;
         }
-        else {
-            $hHandles->{STDIN}= $sPerlScript;
-            $self->run_cmd('perl', $hHandles);
-        }
+        $hHandles->{STDIN}= sub {
+            return shift @sScript if scalar @sScript;
+            return $fStdIn->() if $fStdIn;
+            return undef;
+        };
+        $self->run_cmd('perl', $hHandles);
         $self->_set_error($self->{LAST_RESULT}{stderr});
         print 'ERR: ' . $self->{LAST_RESULT}{stderr} . "\n" if $self->{DEBUG} && $self->{LAST_RESULT}{stderr};
         $result= $self->{LAST_RESULT}{exit} ? undef : $self->{LAST_RESULT}{stdout};
