@@ -19,9 +19,9 @@ use Data::Dumper;
 # use POSIX qw(strftime);
 
 sub do_test {
-    print Dumper(@_);
+    # print Dumper(@_);
     
-    return { result => 500, error => 'Test not implemented' };
+    return { result => 500, error => 'Not implemented' };
 }
 
 sub do_setlist {
@@ -39,6 +39,14 @@ sub do_setlist {
             };
         } @sSets ],
     };
+}
+
+sub do_setstatus {
+    my $param= shift;
+
+    # $param->{set}..
+
+    return { result => 500, error => 'Not implemented' };
 }
 
 sub API {
