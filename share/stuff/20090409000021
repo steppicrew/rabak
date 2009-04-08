@@ -1,0 +1,31 @@
+rabak=./rabak backup test
+conf=/home/raisin/.rabak/rabak.cf
+version=1
+time.start=20090409000001
+time.end=20090409000810
+bakset=sample
+blaim=steppi@hamail.de
+
+[target]
+name=blubtarget
+title=Platte unterm Tisch
+# value=?
+# space_left=200MB
+
+[source0]
+name=source0
+path=file:///
+time.start=20090409000001
+time.end=20090409000210
+result=0
+errors=0
+warnings=3
+stats=123 files written
+
+[source1]
+name=source_pg
+path=psql://localhost/bctiny
+time.start=20090409000211
+time.end=20090409000810
+result=1
+stats=140MB copied
