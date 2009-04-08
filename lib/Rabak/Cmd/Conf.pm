@@ -54,7 +54,9 @@ sub run {
             $self->readConfFile()->print_all();
             return 1;
         }
-        $self->readConfFile()->print_set_list();
+        my $oConfFile= $self->readConfFile();
+        logger->print("Available backup sets in \"" . $oConfFile->filename() . "\":");
+        $oConfFile->print_set_list();
         return 1;
     }
 
