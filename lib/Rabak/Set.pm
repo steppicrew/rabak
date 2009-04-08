@@ -55,6 +55,17 @@ sub PropertyNames {
     return ('title', 'source', 'target', 'email', shift->SUPER::PropertyNames(), 'path_extension', 'previous_path_extensions');
 }
 
+sub GetSets {
+    my $class= shift;
+    my $oConf= shift;
+    return map { $class->newFromConf($oConf->{VALUES}{$_}) } grep {
+        ref $oConf->{VALUES}{$_}
+        && defined $oConf->{VALUES}{$_}->{VALUES}{title}
+        && defined $oConf->{VALUES}{$_}->{VALUES}{source}
+        && defined $oConf->{VALUES}{$_}->{VALUES}{target}
+    } sort keys %{ $oConf->{VALUES} };
+}
+
 sub get_validation_message {
     my $self= shift;
     return $self->get_value_required_message("title")

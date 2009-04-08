@@ -91,15 +91,9 @@ sub print_set_list {
     
     return unless defined $self->filename();
 
-    logger->print("Available backup sets in \"" . $self->filename() . "\":");
     my $bFound= 0;
     my $oConf= $self->{CONF};
-    for my $sBakSet (sort keys %{ $oConf->{VALUES} }) {
-        next unless ref $oConf->{VALUES}{$sBakSet}
-            && defined $oConf->{VALUES}{$sBakSet}->{VALUES}{title}
-            && defined $oConf->{VALUES}{$sBakSet}->{VALUES}{source}
-            && defined $oConf->{VALUES}{$sBakSet}->{VALUES}{target};
-        my $oSet= Rabak::Set->newFromConf($oConf->{VALUES}{$sBakSet});
+    for my $oSet (Rabak::Set->GetSets($oConf)) {
         my $oTarget= $oSet->get_targetPeer(); 
         my @oSources= $oSet->get_sourcePeers();
         next unless $oTarget && scalar @oSources;
@@ -109,7 +103,7 @@ sub print_set_list {
             push @aSources, $_->getFullPath();
         }
         my $sSources= join '", "', @aSources;
-        logger->print('  ' . colored($sBakSet, 'bold') . ' - ' . $oConf->{VALUES}{$sBakSet}->get_value("title")
+        logger->print('  ' . colored($oSet->getName(), 'bold') . ' - ' . $oSet->get_value("title")
             . ", backs up \"$sSources\" to \""
             . $oTarget->getFullPath() . "\"");
         $bFound= 1;
