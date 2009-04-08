@@ -27,17 +27,29 @@ sub do_test {
 sub do_setlist {
     my $oConfFile= Rabak::ConfFile->new();
     my $oConf= $oConfFile->conf();
-    my @sSets= Rabak::Set->GetSets($oConf);
+    
+    my $aSets= [];
+    for my $oSet (Rabak::Set->GetSets($oConf)) {
+        my $oTarget= $oSet->get_targetPeer();
+        my $hData= {
+            'title' => $oSet->get_value('title'),
+            'name' => $oSet->get_full_name(),
+            'target' => $oTarget->get_full_name(),
+        };
+        my $aSources= [];
+        for my $oSource ($oSet->get_sourcePeers()) {
+            my $hSourceData= {
+                'name' => $oSource->get_full_name(),
+            };
+            push @$aSources, $hSourceData;
+        }
+        $hData->{sources}= $aSources;
+        push @$aSets, $hData;
+    }
     
     return {
         result => 0,
-        sets => [ map {
-            my $oSet= $_;
-            {
-                'title' => $oSet->get_value('title'),
-                'name' => $oSet->getName(),
-            };
-        } @sSets ],
+        sets => $aSets,
     };
 }
 
