@@ -18,4 +18,13 @@ queryBackups
     by Time
     by Name
     by Files
+
+WUI:
+- List of Sets
+- Mount target
+- last backup statuseees
+- single file history
+- conf edit how?
+- restore files
+- clean backups?
         

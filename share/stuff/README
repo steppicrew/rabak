@@ -2,16 +2,16 @@
 This directory contains (in order of usefulness):
 
 sample-env-make
-    Build sample environments required by some samples from ../rabak.sample.cf
+    Build sample environments required by some samples from ../../etc/rabak/rabak.sample.cf
 
 sample-env-remove
     Remove sample environment built by sample-env-make
 
-run-dupemerge
-    Example for calling faster-dupemerge
-
 makeDist.sh
     Build distribution, mainly to prepare Gentoo ebuild file.
+
+rabak.ebuild
+    Gentoo ebuild for installing Rabak
 
 moveout-single
     Early solution for creating sparse archives from backup directories

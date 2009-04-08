@@ -45,14 +45,3 @@ Done:
 + rabak.conf nach /etc
 + Change config format to INI?
 - Implement post processing with faster-dupemerge
-
-WUI:
-- List of Sets
-- Mount target
-- last backup statuseees
-- single file history
-- conf edit how?
-- restore files
-- clean backups?
-
-
