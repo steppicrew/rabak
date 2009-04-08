@@ -199,7 +199,7 @@ sub backup {
         $_->setPretend(1) for @oSourcePeers;
     }
 
-    my $hBaksetData= $oTargetPeer->prepareBackup($self->GetAllPathExtensions($self));
+    my $hBaksetData= $oTargetPeer->prepareForBackup($self->GetAllPathExtensions($self));
     
     $iResult= $hBaksetData->{ERROR};
     goto cleanup if $iResult;
