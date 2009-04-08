@@ -20,9 +20,20 @@ jQuery(function($) {
         });
     };
 
-    api('setlist', function(result) {
-        console.log(result);
-        $("#body").html(result);
+    api('setlist', function(data) {
+        console.log(data);
+        if (data.result) {
+            // error stuff
+            return;
+        }
+
+        var html= [];
+        for (var sets_i in data.sets) {
+            var set= data.sets[sets_i];
+            html.push('<li>' + set.title + '</li>');
+        }
+
+        $("#body").html('<ol>' + html.join('') + '</ol>');
     });
 
 });

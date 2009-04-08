@@ -79,7 +79,8 @@ while ($conn = $d->accept) {
                 if (-e "static/$path") {
                     my $response = HTTP::Response->new(200);
                     my $type= "text/html";
-                    $type= "text/css" if $ext eq 'css';
+                    $type= "text/css"       if $ext eq 'css';
+                    $type= "image/x-icon"   if $ext eq 'ico';
                     $response->header("Content-type" => $type);
                     $response->content(read_file("static/$path"));
                     $conn->send_response($response);
