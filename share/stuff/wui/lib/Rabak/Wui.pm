@@ -49,14 +49,14 @@ sub _Index {
     <link rel="stylesheet" type="text/css" href="/static/all.css"></link>
     <script>
         if (typeof console == "undefined") {
-            console= { log: function(text) {} };    // global firebug stub
+            console= { log: function() {}, warn: function() {}, error: function() {} }; // global firebug stub
         }
     </script>
     <script language="javascript" src="/static/jquery-1.3.2.min.js"></script>
     <script language="javascript" src="/static/wui.js"></script>
 </head>
 <body>
-    HUHU3
+    Loading...
 </body>
 </html>
 EOT
