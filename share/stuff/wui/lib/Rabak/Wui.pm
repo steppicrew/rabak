@@ -5,11 +5,16 @@ package Rabak::Wui;
 use strict;
 use warnings;
 
+use lib "../../../lib";
+
+use Rabak;
 use Data::Dumper;
+use JSON::XS;
 
 my %dispatch= (
     '/' => \&_Index,
     '/index' => \&_Index,
+    '/api' => \&_Api,
 );
 
 sub Request {
@@ -29,6 +34,11 @@ sub Request {
 #    ;
 #    return "Not found";
 #}
+
+sub _Api {
+    my $params= shift;
+    return encode_json(Rabak::API($params));
+}
 
 sub _Index {
     return <<EOT;

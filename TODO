@@ -12,7 +12,6 @@ Code:
 - More backup types (which?)
 - Proper exit codes (maybe done)
 - Make ACLs work (wait for next rsync release)
-- Implement post processing with faster-dupemerge
 - Make "rabak admin" do something useful
 - Implement "rabak clean" to remove unwanted files on the backup media
 - Set mask of log files etc to 0600
@@ -45,3 +44,15 @@ Done:
 + Log rabak log command line, file name etc. include into mail
 + rabak.conf nach /etc
 + Change config format to INI?
+- Implement post processing with faster-dupemerge
+
+WUI:
+- List of Sets
+- Mount target
+- last backup statuseees
+- single file history
+- conf edit how?
+- restore files
+- clean backups?
+
+

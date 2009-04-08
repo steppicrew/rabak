@@ -19,26 +19,33 @@ use Data::Dumper;
 sub do_test {
     print Dumper(@_);
     
-    return ("result" => 42);
+    return { result => 500, error => 'Test not implemented' };
 }
 
-sub do_SetList {
+sub do_setlist {
+    return {
+        result => 0,
+        sets => [
+            { title => 'ho' },
+            { title => 'ha' },
+        ]
+    };
 }
 
 sub API {
-    my $cmd= shift;
-    my %params= @_;
+    my $params= shift;
     
-    my %result;
+    my $cmd= lc($params->{cmd});
+    my $result;
     eval {
         no strict "refs";
 
-        $cmd= "do_$cmd";
-        %result= &$cmd(@_);
+        my $do_cmd= "do_$cmd";
+        $result= &$do_cmd($params);
     };
-    return undef if $@;
+    return { result => 500, error => "Command '$cmd' unknown" } if $@;
     
-    return \%result;
+    return $result;
 }
 
 1;

@@ -7,7 +7,7 @@ use Getopt::Long 2.24 qw( :config auto_version bundling );
 use Pod::Usage;
 use HTTP::Daemon;
 use HTTP::Status;
-# use Data::Dumper;
+use Data::Dumper;
 
 use lib "./lib";
 
@@ -72,14 +72,15 @@ while ($conn = $d->accept) {
                 $status= RC_NOT_FOUND;
             }
             else {
-                $params = \%{[ $request->uri->query_form ]};
+                $params = { $request->uri->query_form };
             }
         }
         if ($request->method eq 'POST') {
+
             # I don't know how to elegantly fetch POST params, so that'll have to do:
             my $uri = URI->new("http://localhost/");
             $uri->query($request->content);
-            $params= \%{[ $uri->query_form ]};
+            $params= { $uri->query_form };
         }
         if ($params) {
             my $content= Rabak::Wui::Request($path, $params);
