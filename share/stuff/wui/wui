@@ -61,8 +61,8 @@ while ($conn = $d->accept) {
         my $params;
 
         if ($request->method eq 'GET') {
-            if ($path =~ /^\/static\/(.*)/) {
-                $path= $1;
+            if ($path =~ /^\/(?:static\/(.*)|(favicon.ico))$/) {
+                $path= $1 || $2;
                 $path =~ s#\.\.+##g;
                 $path =~ s/[^-\/\.a-zA-Z0-9_]+//g;
                 if (-e "static/$path") {
