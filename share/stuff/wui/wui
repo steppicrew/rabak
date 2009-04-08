@@ -78,6 +78,8 @@ while ($conn = $d->accept) {
         my $path= $request->uri->path;
         my $params;
 
+        print "Requested: [$path]\n";
+
         if ($request->method eq 'GET') {
             if ($path =~ /^\/(?:static\/(.*)|(favicon))(\.(.*?))$/) {
                 my $ext= $4;
@@ -85,7 +87,7 @@ while ($conn = $d->accept) {
                 $path =~ s#\.\.+##g;
                 $path =~ s/[^-\/\.a-zA-Z0-9_]+//g;
                 if (-e "static/$path") {
-                    my $response = HTTP::Response->new(200);
+                    my $response= HTTP::Response->new(200);
                     $response->header("Content-type" => ($mimetypes{$ext} || "text/html"));
                     $response->content(read_file("static/$path"));
                     $conn->send_response($response);
@@ -107,7 +109,7 @@ while ($conn = $d->accept) {
         if ($params) {
             my $content= Rabak::Wui::Request($path, $params);
             if (defined $content) {
-                my $response = HTTP::Response->new(200);
+                my $response= HTTP::Response->new(200);
                 $response->content($content);
                 $conn->send_response($response);
                 next;

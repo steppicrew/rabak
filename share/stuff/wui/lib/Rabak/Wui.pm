@@ -21,7 +21,7 @@ sub Request {
     my $path= shift;
     my $params= shift;
 
-    print "Requested: [$path]\n";
+#    print "Requested: [$path]\n";
 
     my $handler = $dispatch{$path};
     return $handler->($params) if ref($handler) eq "CODE";
