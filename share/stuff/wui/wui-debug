@@ -1,0 +1,6 @@
+#!/bin/sh
+
+while [ 1 == 1 ]; do
+    ./wui --debug
+    sleep 1
+done

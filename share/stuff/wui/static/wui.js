@@ -1,6 +1,10 @@
 
 jQuery(function($) {
 
+    $('body').html(
+        '<div id="head"></div><div id="body"></div>'
+    );
+
     var api= function(cmd, callback) {
         jQuery.ajax({
             url: "/api",
@@ -18,7 +22,7 @@ jQuery(function($) {
 
     api('setlist', function(result) {
         console.log(result);
-        $("body").html(result);
+        $("#body").html(result);
     });
 
 });
