@@ -181,12 +181,7 @@ sub remove_old {
     logger->info("Number of removed backups: $iCount");
 }
 
-# prepare backup
-# 1. mounts all target mount objects
-# 2. checks existance and permissions of target's directory
-# 3. creates bakset's target directory
-# sets some session data
-sub prepareBackup {
+sub prepare {
     my $self= shift;
     my $asBaksetExts= shift;
 
@@ -214,6 +209,20 @@ sub prepareBackup {
         logger->error("Target \"".$self->get_value("path")."\" is not writable. Backup set skipped.");
         return {ERROR => -2};
     }
+    return undef;
+}
+
+# prepare target for backup
+# 1. mounts all target mount objects
+# 2. checks existance and permissions of target's directory
+# 3. creates bakset's target directory
+# sets some session data
+sub prepareForBackup {
+    my $self= shift;
+    my $asBaksetExts= shift;
+
+    my $hResult= $self->prepare($asBaksetExts);
+    return $hResult if $hResult;
 
     my $sBaksetExt= $asBaksetExts->[0];
     my $aBaksetTime= [localtime];
@@ -233,6 +242,17 @@ sub prepareBackup {
     };
 }
 
+sub finish {
+    my $self= shift;
+    
+    $self->cleanupTempfiles();
+
+    my $mountable= $self->mountable();
+
+    # unmount all target mounts
+    $mountable->unmountAll();
+}
+
 sub finishBackup {
     my $self= shift;
 
@@ -250,13 +270,8 @@ sub finishBackup {
 
     $self->closeLogging();
     
-    $self->cleanupTempfiles();
-
-    my $mountable= $self->mountable();
-
-    # unmount all target mounts
-    $mountable->unmountAll();
-
+    $self->finish();
+    
     $self->{BAKSET_DATA}= undef;
     return 0;
 }
