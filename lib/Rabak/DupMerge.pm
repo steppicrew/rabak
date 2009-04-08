@@ -10,6 +10,7 @@ use warnings;
 use Rabak::Trap;
 use Rabak::Log;
 use Rabak::InodeCache;
+use Rabak::Peer;
 
 use Data::Dumper;
 
@@ -129,51 +130,72 @@ sub dupMergeProcessGenerator {
         my $sCommand= shift;
         my @sParams= @_;
         
+        if ($sCommand eq 'log') {
+            my $sLevel= shift @sParams;
+            logger->error(@sParams)   if $sLevel eq 'error';
+            logger->warn(@sParams)    if $sLevel eq 'warn';
+            logger->info(@sParams)    if $sLevel eq 'info';
+            logger->verbose(@sParams) if $sLevel eq 'verbose';
+            logger->debug(@sParams)   if $sLevel eq 'debug';
+            return;
+        }
+
+        if ($sCommand eq 'update inode') {
+            my $iInode= shift @sParams;
+            my $sFile= shift @sParams;        
+            $oStore->updateInodeFile($iInode, $sFile);
+            return;
+        }
+        
         if ($sCommand eq 'hardlink') {
             # do some output parsing
             return;
         }
 
-        my $iThisJobId= shift @sParams;
-        if ($sCommand eq 'digest') {
-            my $iInode= shift @sParams;
-            my $sDigest= shift @sParams;
-            
-            if ($sDigest) {
-                $hInodeDigestsPerJob->{$iThisJobId}{$iInode}= $sDigest;
-                $oStore->setInodeDigest($iInode, $sDigest);
+        if ($sCommand eq 'digest' || $sCommand eq 'idle') {
+            my $iThisJobId= shift @sParams;
+            if ($sCommand eq 'digest') {
+                my $iInode= shift @sParams;
+                my $sDigest= shift @sParams;
+                
+                if ($sDigest) {
+                    $hInodeDigestsPerJob->{$iThisJobId}{$iInode}= $sDigest;
+                    $oStore->setInodeDigest($iInode, $sDigest);
+                }
             }
+            # process completely finished jobs
+            while ($iLastJobId < $iThisJobId) {
+                return unless $hInodeDigestsPerJob->{$iLastJobId};
+                my %hInodes= %{$hInodeDigestsPerJob->{$iLastJobId}};
+                # build list of inodes per digest
+                my %hDigests= ();
+                for my $iInode (keys %hInodes) {
+                    $hDigests{$hInodes{$iInode}}= [] unless $hDigests{$hInodes{$iInode}};
+                    push @{$hDigests{$hInodes{$iInode}}}, $iInode;
+                }
+                
+                for my$sDigest (keys %hDigests) {
+                    my @iInodes= @{$hDigests{$sDigest}};
+                    # skip all digests with only one inode
+                    next unless scalar @iInodes > 1;
+                    my %hInodeFiles= map { $_ => $oStore->getFilesByInode($_) } @iInodes;
+                    push @qCommands, ['hardlink', %hInodeFiles];
+                }
+                
+                delete $hInodeDigestsPerJob->{$iLastJobId};
+                $iLastJobId++;
+            }
+            return;
         }
-        # process completely finished jobs
-        while ($iLastJobId < $iThisJobId) {
-            return unless $hInodeDigestsPerJob->{$iLastJobId};
-            my %hInodes= %{$hInodeDigestsPerJob->{$iLastJobId}};
-            # build list of inodes per digest
-            my %hDigests= ();
-            for my $iInode (keys %hInodes) {
-                $hDigests{$hInodes{$iInode}}= [] unless $hDigests{$hInodes{$iInode}};
-                push @{$hDigests{$hInodes{$iInode}}}, $iInode;
-            }
-            
-            for my$sDigest (keys %hDigests) {
-                my @iInodes= @{$hDigests{$sDigest}};
-                # skip all digests with only one inode
-                next unless scalar @iInodes > 1;
-                my %hInodeFiles= map { $_ => $oStore->getFilesByInode($_) } @iInodes;
-                push @qCommands, ['hardlink', %hInodeFiles];
-            }
-            
-            delete $hInodeDigestsPerJob->{$iLastJobId};
-            $iLastJobId++;
-        }
-        return;
     };
     
     return ($fGetInput, $fProcessOutput);
 }
 
+# dupmerge requires prepared inode store
 sub dupMerge {
     my $self= shift;
+    my $oPeer= shift || Rabak::Peer->new();
     my $oTrap= shift;
     
     logger()->info("Searching for duplicates...");
@@ -187,108 +209,150 @@ sub dupMerge {
     my $itInodes= $self->dupMergeInodesIterator();
     
     my ($fIn, $fOut)= $self->dupMergeProcessGenerator($itInodes);
-    
-    while (my $cmd= $fIn->()) {
-#    # simulate much more $fIn-calls than $fOut-calls
-#    while (my @cmds=map {$fIn->()} (1..50)) {
-#    last unless $cmds[0];
-#    while (my $cmd= shift @cmds) { 
 
-        last if $oTrap && $oTrap->terminated();
-
-        my @cmd= @$cmd;
-        my $sCommand= shift @cmd;
-        my @sCommandResult= ($sCommand);
-        
-        if ($sCommand eq 'digest') {
-            my $iJobId= shift @cmd;
-            my $iInode= shift @cmd;
-            my @sFiles= @cmd;
-
-            my $sDigest;
-            if (scalar @sFiles) {
-                logger->debug("Calculating digest for \"$sFiles[0]\"");
-                $sDigest= $oCache->calcDigest($sFiles[0]) if scalar @sFiles;
+    my $ioHandles= {
+        STDIN => sub {
+            my $cmd= $fIn->();
+            return undef unless defined $cmd;
+            local $Data::Dumper::Indent= 0;
+            local $Data::Dumper::Useqq= 1;
+            local $|= 1;
+#            print "> > > > > > > > > > > [", Data::Dumper->Dump([$cmd], ['$aCommand']) . "]\n";
+            return Data::Dumper->Dump([$cmd], ['$aCommand']) . "\n";
+        },
+        STDOUT => sub {
+            my @sLines= @_;
+            for my $sLine (@sLines) {
+#                print "< < < < < < < < < < < [$sLine]\n";
+                my $aCommandResult;
+                eval $sLine;
+                unless (ref $aCommandResult) {
+                    logger->error("Internal DupMerge error: could not parse out line '$sLine'");
+                    return;
+                }
+                $fOut->(@$aCommandResult);
             }
-            # calculate digest for one of the files
-            push @sCommandResult, $iJobId, $iInode, $sDigest;
-        }
-        elsif ($sCommand eq 'hardlink') {
-            my %hInodeFiles= @cmd;
-            my $iMaxInode= undef;
-            my $iMaxInodeCount= 0;
-            
-            # sort inodes by link count descending
-            # n.b.: inodes with no files are possible - filter out
-            my @iInodes= sort {
-                scalar(@{$hInodeFiles{$b}}) <=> scalar(@{$hInodeFiles{$a}})
-            } grep { scalar @{$hInodeFiles{$_}} } keys %hInodeFiles;
-            my $sLinkDest;
-            while (my $iInode= shift @iInodes) {
-                my @sFiles= @{$hInodeFiles{$iInode}};
-                if ($sLinkDest && -f $sLinkDest) {
-                    while (my $sFile= shift @sFiles) {
-                        
-                        next unless $self->_testFile($sFile, $iInode);
+        },
+    };
 
-                        logger()->debug("ln -f '$sLinkDest' '$sFile'");
+    $oPeer->run_perl(
+    '
+        use Data::Dumper;
+        sub outResult {
+            local $Data::Dumper::Indent= 0;
+            local $Data::Dumper::Useqq= 1;
+            local $|= 1;
+            print Data::Dumper->Dump([\@_], ["\$aCommandResult"]), "\n";
+        }
+        
+        sub testFile {
+            my $sFile= shift;
+            my $iInode= shift;
+            unless (-f $sFile) {
+                outResult("log", "error", "File \"$sFile\" has disappeared.");
+                return 0;
+            }
+            unless ((lstat $sFile)[1] == $iInode) {
+                outResult("log", "error", "File \"$sFile\" has changed inode.");
+                return 0;
+            }
+            return 1;
+        }
+        
+        while (<>) {
+            my $aCommand;
+            eval;
+            unless (defined $aCommand) {
+                outResult("log", "error", "Could not parse input line \"$_\"");
+                next;
+            }
             
-                        # find temporary file name
-                        my $iTmpNum= "";
-                        my $sTmpFile;
-                        while (-e ($sTmpFile= "$sFile.tmp$iTmpNum")) { $iTmpNum++; }
+            my $sCommand= shift @$aCommand;
+            my @sCommandResult= ($sCommand);
+            
+            if ($sCommand eq "digest") {
+                my $iJobId= shift @$aCommand;
+                my $iInode= shift @$aCommand;
+                my @sFiles= @$aCommand;
+    
+                my $sDigest;
+                if (scalar @sFiles) {
+                    outResult("log", "debug", "Calculating digest for \"$sFiles[0]\"");
+                    if (scalar @sFiles) {
+                        my $sFile= $sFiles[0];
+                        $sFile=~ '.q{s/\'/\'\\\'\'/gs}.';
+                        $sDigest= `md5sum '.q{'$sFile'}.'`;
+                        $sDigest=~ s/\s.+\n?//;
+                    }
+                    outResult("log", "error", "Could not calculating digest for \"$sFiles[0]\"") unless $sDigest;
+                }
+                # calculate digest for one of the files
+                outResult(@sCommandResult, $iJobId, $iInode, $sDigest);
+                next;
+            }
+            if ($sCommand eq "hardlink") {
+                my %hInodeFiles= @$aCommand;
+                my $iMaxInode= undef;
+                my $iMaxInodeCount= 0;
                 
-                        # try to make sure no data is lost
-                        unless (rename $sFile, $sTmpFile
-                                and link $sLinkDest, $sFile
-                                and unlink $sTmpFile
-                        ) {
-                            # if anything goes wrong, restore original file
-                            if (-e $sTmpFile) {
-                                unlink $sFile if -e $sFile;
-                                rename $sTmpFile, $sFile;
+                # sort inodes by link count descending
+                # n.b.: inodes with no files are possible - filter out
+                my @iInodes= sort {
+                    scalar(@{$hInodeFiles{$b}}) <=> scalar(@{$hInodeFiles{$a}})
+                } grep { scalar @{$hInodeFiles{$_}} } keys %hInodeFiles;
+                my $sLinkDest;
+                while (my $iInode= shift @iInodes) {
+                    my @sFiles= @{$hInodeFiles{$iInode}};
+                    if ($sLinkDest && -f $sLinkDest) {
+                        while (my $sFile= shift @sFiles) {
+                            
+                            next unless testFile($sFile, $iInode);
+    
+                            outResult("log", "debug", "ln -f \"$sLinkDest\" \"$sFile\"");
+                
+                            # find temporary file name
+                            my $iTmpNum= "";
+                            my $sTmpFile;
+                            while (-e ($sTmpFile= "$sFile.tmp$iTmpNum")) { $iTmpNum++; }
+                    
+                            # try to make sure no data is lost
+                            unless (rename $sFile, $sTmpFile
+                                    and link $sLinkDest, $sFile
+                                    and unlink $sTmpFile
+                            ) {
+                                # if anything goes wrong, restore original file
+                                if (-e $sTmpFile) {
+                                    unlink $sFile if -e $sFile;
+                                    rename $sTmpFile, $sFile;
+                                }
+                                outResult("log", "warn", "Failed to link file \"$sLinkDest\" -> \"$sFile\".");
+                                last;
                             }
-                            logger()->warn("Failed to link file '$sLinkDest' -> '$sFile'");
-                            last;
+                            outResult("update inode", $iMaxInode, $sFile);
                         }
-                        $oStore->updateInodeFile($iMaxInode, $sFile);
+                    }
+                    
+                    # there was an error linking files
+                    # assume more links to $sLinkDest are not possible
+                    if (scalar @sFiles) {
+                        $sLinkDest= shift @sFiles;
+                        $iMaxInode= $iInode;
                     }
                 }
-                
-                # there was an error linking files
-                # assume more links to $sLinkDest are not possible
-                if (scalar @sFiles) {
-                    $sLinkDest= shift @sFiles;
-                    $iMaxInode= $iInode;
-                }
+                outResult(@sCommandResult);
+                next;
             }
-        }
-        else {
             # for all other commands pass input to output
-            push @sCommandResult, @cmd;
+            outResult(@sCommandResult, @$aCommand);
         }
-        $fOut->(@sCommandResult);
-#    }
-    }
+    ',
+    undef, undef, $ioHandles);
+    
+    print "ERROR: ", $oPeer->get_last_error();
 
     logger()->finish_progress("Processing files...done");
     logger()->decIndent();
     logger()->info("done");
-}
-
-sub _testFile {
-    my $self= shift;
-    my $sFile= shift;
-    my $iInode= shift;
-    unless (-f $sFile) {
-        logger->error("File \"$sFile\" has disappeared.");
-        return 0;
-    }
-    unless ((lstat $sFile)[1] == $iInode) {
-        logger->error("File \"$sFile\" has changed inode.");
-        return 0;
-    }
-    return 1;
 }
 
 sub run {
@@ -298,7 +362,7 @@ sub run {
 
     my $oTrap= Rabak::Trap->new();
 
-    $self->dupMerge($oTrap);
+    $self->dupMerge(undef, $oTrap);
     
     $oTrap->restore();
 

@@ -349,7 +349,6 @@ sub _build_dupMerge {
     my $hTempFilesMap= shift || {};
 
     my $fAddDir;
-    my $fDupMerge;
     if ($oTargetPeer->is_remote()) {
         $fAddDir= sub {
             my $sBakBaseDir= shift;
@@ -361,9 +360,6 @@ sub _build_dupMerge {
             $hTempFilesMap->{$sRemoteFilesInodeDb}= $sLocalFilesInodeDb;
             ${$refInodeStore}->addDirectory($sDataDir, $sLocalFilesInodeDb);
         };
-        $fDupMerge= sub {
-            logger->error("DupMerge for remote target peers not yet implemented", "Put some code here to merge remote files!");
-        };
     }
     else {
         $fAddDir= sub {
@@ -374,12 +370,6 @@ sub _build_dupMerge {
             logger->verbose("Adding \"$sDataDir\".");
             ${$refInodeStore}->addDirectory($sDataDir, $sFilesInodeDb);
         };
-        $fDupMerge= sub {
-            my $dupMerge= Rabak::DupMerge->new({
-                INODE_CACHE => ${$refInodeStore},
-            });
-            $dupMerge->dupMerge();
-        };
     }
     return sub {
         logger->info("Start merging duplicates...");
@@ -389,7 +379,12 @@ sub _build_dupMerge {
         $fAddDir->($_) for (@$aBakBaseDirs);
         logger->decIndent();
         logger->verbose("done");
-        $fDupMerge->();
+
+        my $dupMerge= Rabak::DupMerge->new({
+            INODE_CACHE => ${$refInodeStore},
+        });
+        $dupMerge->dupMerge($oTargetPeer);
+
         logger->decIndent();
         logger->info("done");
     };
