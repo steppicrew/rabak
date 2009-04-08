@@ -157,14 +157,7 @@ sub error {
 sub readConfFile {
     my $self= shift;
 
-    my @sConfFiles = (
-        "$ENV{HOME}/.rabak/rabak.cf",
-        "/etc/rabak/rabak.cf",
-        "/etc/rabak.cf",
-        "./rabak.cf",
-    );
-    @sConfFiles= $self->{OPTS}{conf} if $self->{OPTS}{conf};
-    my $oConfFile= Rabak::ConfFile->new(@sConfFiles);
+    my $oConfFile= Rabak::ConfFile->new($self->{OPTS}{conf});
     my $oConf= $oConfFile->conf();
     $oConf->setCmdData($self->{DATA});
 

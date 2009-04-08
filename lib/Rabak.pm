@@ -8,6 +8,8 @@ use strict;
 # no warnings 'redefine';
 
 use Rabak::Log;
+use Rabak::ConfFile;
+
 # use Rabak::Peer::Source;
 # use Rabak::Peer::Target;
 # use Rabak::Version;
@@ -23,12 +25,19 @@ sub do_test {
 }
 
 sub do_setlist {
+    my $oConfFile= Rabak::ConfFile->new();
+    my $oConf= $oConfFile->conf();
+    my @sSets= Rabak::Set->GetSets($oConf);
+    
     return {
         result => 0,
-        sets => [
-            { title => 'ho' },
-            { title => 'ha' },
-        ]
+        sets => [ map {
+            my $oSet= $_;
+            {
+                'title' => $oSet->get_value('title'),
+                'name' => $oSet->getName(),
+            };
+        } @sSets ],
     };
 }
 

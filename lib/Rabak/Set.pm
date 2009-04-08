@@ -217,12 +217,15 @@ sub backup {
         }
         $sNames{$sSourceName}= 1;
 
+        my $oBackup= Rabak::Backup->new($oSourcePeer, $oTargetPeer);
         eval {
-            my $oBackup= Rabak::Backup->new($oSourcePeer, $oTargetPeer);
             $iSuccessCount++ unless $oBackup->run($hBaksetData);
             1;
         };
-        logger->error("An error occured during backup: '$@'") if $@;
+        if ($@) {
+            logger->error("An error occured during backup: '$@'");
+            $oBackup->setMetaBackupError($@);
+        }
     }
 
     $iResult= scalar(@oSourcePeers) - $iSuccessCount;

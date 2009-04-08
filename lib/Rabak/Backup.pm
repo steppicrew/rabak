@@ -27,6 +27,13 @@ sub new {
 
 sub METAVERSION {1};
 
+my %METAFILENAMES=(
+    version    => 'Version',
+    error      => 'Error',
+    result     => 'Result',
+    statistics => 'Statistics',
+);
+
 sub run {
     my $self= shift;
     my $hBaksetData= shift;
@@ -298,8 +305,10 @@ sub _run {
             META_DIR => $self->{TARGET}->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR}),
             OLD_DATA_DIRS => $self->{BACKUP_DATA}{OLD_BACKUP_DATA_DIRS},
             FILE_CALLBACK => $self->{BACKUP_DATA}{FILE_CALLBACK},
+            STATISTICS_CALLBACK => sub {$self->setMetaBackupStatistics(@_)},
         },
     );
+    $self->setMetaBackupResult($self->{BACKUP_DATA}{BACKUP_RESULT});
     return $self->{BACKUP_DATA}{BACKUP_RESULT};
 }
 
@@ -393,7 +402,7 @@ sub _build_dupMerge {
 sub _getMetaVersionFile {
     my $self= shift;
     my $sDir= shift || '';
-    return $sDir . '/meta/.version';
+    return $sDir . '/meta/' . $METAFILENAMES{version};
 }
 
 sub _getMetaVersion {
@@ -417,10 +426,38 @@ sub _writeVersion {
     
     return if $self->{TARGET}->pretend();
     
-    my $sMetaVersionFile= $self->_getMetaVersionFile($sDir);   
+    $self->_writeMetaFile($self->_getMetaVersionFile($sDir), $sVersion);
+}
 
-    $self->{TARGET}->unlink($sMetaVersionFile);
-    $self->{TARGET}->echo($sMetaVersionFile, $sVersion);
+sub _writeMetaFile {
+    my $self= shift;
+    my $sMetaFile= shift;
+    my @sContent= @_;
+    
+    $sMetaFile= ($self->{BACKUP_DATA}{BACKUP_META_DIR} || '.') . '/' . $sMetaFile unless $sMetaFile =~ /\//;
+    $self->{TARGET}->unlink($sMetaFile);
+    $self->{TARGET}->echo($sMetaFile, @sContent);
+}
+
+sub setMetaBackupResult {
+    my $self= shift;
+    my $sResult= shift;
+
+    $self->_writeMetaFile($METAFILENAMES{result}, $sResult);
+}
+
+sub setMetaBackupError {
+    my $self= shift;
+    my $sError= shift;
+
+    $self->_writeMetaFile($METAFILENAMES{error}, $sError);
+}
+
+sub setMetaBackupStatistics {
+    my $self= shift;
+    my @sStatistics= @_;
+
+    $self->_writeMetaFile($METAFILENAMES{statistics}, @sStatistics);
 }
 
 1;

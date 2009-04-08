@@ -557,6 +557,7 @@ sub run {
         my $sFile= shift;
         logger->verbose("backed up \"$sFile\"")
     };
+    my @sStatistics= ();
     my %Handles= (
         STDOUT => sub {
             for my $sLine (@_) {
@@ -600,6 +601,9 @@ sub run {
                         next;
                     }
                 }
+                else {
+                    push @sStatistics, $sLine;
+                }
                 logger->info($sLine);
             } 
         },
@@ -618,6 +622,8 @@ sub run {
 
     # run rsync cmd
     my $iRsyncExit = $self->_run_rsync($oRsyncPeer, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir, scalar $self->ShellQuote(@sFlags), \%Handles);
+
+    push @sStatistics, "", "Rsync's exit code: $iRsyncExit";
 
     if (scalar @sLinkErrors) {
         logger->info("The following files could not be hard linked, trying again without --hard-links flag:");
@@ -642,16 +648,22 @@ sub run {
         # simple error handling only
         $Handles{STDERR} = sub {logger->error(@_)};
 
+        push @sStatistics, "", "Statistics for previously failed hard links";
+
         # run rsync cmd (drop exit code - has been logged anyway)
-        $self->_run_rsync(
+        my $iRsyncExit= $self->_run_rsync(
             $oRsyncPeer, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir,
             scalar $self->ShellQuote(@sFlags, "--files-from=$sFilesFile"),
             \%Handles
         );
 
+        push @sStatistics, "", "Rsync's exit code: $iRsyncExit";
+
         logger->decIndent();
         logger->info("...done fixing hard link errors.");
     }
+
+    $hMetaInfo->{STATISTICS_CALLBACK}->(@sStatistics) if $hMetaInfo->{STATISTICS_CALLBACK};
 
     # return success for partial transfer errors (errors were logged already above)
     return 0 if $iRsyncExit == 23 || $iRsyncExit == 24;

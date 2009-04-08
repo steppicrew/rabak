@@ -42,7 +42,14 @@ sub new {
     my $class= shift;
 
     # if multiple files are specified, the first existing is used
-    my @sFiles= @_;
+    my @sFiles= grep {defined $_} @_;
+
+    @sFiles = (
+        "$ENV{HOME}/.rabak/rabak.cf",
+        "/etc/rabak/rabak.cf",
+        "/etc/rabak.cf",
+        "./rabak.cf",
+    ) unless @sFiles;
 
     my $self= {
         FILE => '',
