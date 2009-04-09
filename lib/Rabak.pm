@@ -56,9 +56,58 @@ sub do_setlist {
 sub do_setstatus {
     my $param= shift;
 
-    # $param->{set}..
+    # $param->{bakset}..
 
     return { result => 500, error => 'Not implemented' };
+}
+
+# STUB!
+sub do_backup_result {
+    my $param= shift;
+
+    # $param->{bakset}
+
+    # gebaut mit 20090409000021
+    my $VAR1 = {
+          '.root' => {
+                  'rabak' => './rabak backup test',
+                  'bakset' => 'sample',
+                  'blaim' => 'steppi@hamail.de',
+                  'time' => {
+                              'end' => '20090409000810',
+                              'start' => '20090409000001'
+                            },
+                  'version' => '1',
+                  'conf' => '/home/raisin/.rabak/rabak.cf'
+                },
+          'target' => {
+                        'name' => 'blubtarget',
+                        'title' => 'Platte unterm Tisch'
+                      },
+          'source1' => {
+                         'time' => {
+                                     'end' => '20090409000810',
+                                     'start' => '20090409000211'
+                                   },
+                         'stats' => '140MB copied',
+                         'name' => 'source_pg',
+                         'path' => 'psql://localhost/bctiny',
+                         'result' => '1'
+                       },
+          'source0' => {
+                         'warnings' => '3',
+                         'errors' => '0',
+                         'time' => {
+                                     'end' => '20090409000210',
+                                     'start' => '20090409000001'
+                                   },
+                         'stats' => '123 files written',
+                         'name' => 'source0',
+                         'path' => 'file:///',
+                         'result' => '0'
+                       }
+    };
+    return { result => 0, data => $VAR1 };
 }
 
 sub API {
