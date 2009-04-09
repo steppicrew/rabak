@@ -113,6 +113,7 @@ while ($conn = $d->accept) {
                 my $response= HTTP::Response->new(200);
                 $response->content($content);
                 $conn->send_response($response);
+                $conn->force_last_request();
                 next;
             }
             $status= RC_NOT_FOUND;

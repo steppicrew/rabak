@@ -5,22 +5,26 @@ jQuery(function($) {
         '<div id="head"></div><div id="body"></div>'
     );
 
-    var api= function(cmd, callback) {
+    var api= function(cmd, args, callback, errorCallback) {
         jQuery.ajax({
             url: "/api",
             type: "GET",
             data: { cmd: cmd },
             dataType: "json",
             success: function(data, status) {
-                if (callback) callback(data);
+                if (data.result && errorCallback) {
+                    errorCallback(data);
+                    return;
+                }
+                callback(data);
             },
             error: function(xhr, status, e) {
-                if (callback) callback({});
+                errorCallback ? errorCallback({ result: -1 }) : callback({ result: -1 });
             }
         });
     };
 
-    api('setlist', function(data) {
+    api('setlist', null, function(data) {
         console.log(data);
         if (data.result) {
             // error stuff
@@ -35,5 +39,13 @@ jQuery(function($) {
 
         $("#body").html('<ol>' + html.join('') + '</ol>');
     });
+
+    api('backup_result', null, function(data) {
+        console.log(data);
+    })
+
+    api('test', null, function(data) {
+        console.log(data);
+    })
 
 });
