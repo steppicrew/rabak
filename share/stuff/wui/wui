@@ -91,6 +91,7 @@ while ($conn = $d->accept) {
                     $response->header("Content-type" => ($mimetypes{$ext} || "text/html"));
                     $response->content(read_file("static/$path"));
                     $conn->send_response($response);
+                    $conn->force_last_request();
                     next;
                 }
                 $status= RC_NOT_FOUND;
