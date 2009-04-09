@@ -16,10 +16,17 @@ body {
     padding: 0;
     margin: 0;
     height: 100%;
+    overflow: hidden;
+}
+
+ol, ul {
+    padding: 0;
+    margin: 0;
 }
 
 /*  Switch to sane box model. Without this, AFAIK there is NO way to work
     with 100% height for layout AND using paddings + margins simultaniously.
+    Works on all proper browsers. Doesn't work with IE7, maybe with IE8...
 */
 div {
     box-sizing: border-box;
@@ -32,14 +39,32 @@ div {
     -webkit-border-radius: 0.25em;
 }
 
-#head {
+#head-c {
     width: 100%;
     height: 5em;
-    background-color: yellow;
+    background-color: #FF8;
+}
+
+#sidebar-c {
+    float: left;
+    width: 20em;
+    height: 100%;
+    background-color: #F8F;
+    padding-bottom: 5em;
+}
+
+#body-c {
+    height: 100%;
+    background-color: #8FF;
+    padding-bottom: 5em;
+}
+
+#sidebar, #body {
+    height: 100%;
+    overflow: auto;
+    padding: 1em;
 }
 
 /*****************************************************************************
     EOF
  *****************************************************************************/
-
-a { zuppi }

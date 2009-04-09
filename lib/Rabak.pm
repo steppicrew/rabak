@@ -21,7 +21,7 @@ use Data::Dumper;
 sub do_test {
     # print Dumper(@_);
     
-    return { result => 500, error => 'Not implemented' };
+    return { error => 500, error_text => 'Not implemented' };
 }
 
 sub do_setlist {
@@ -48,7 +48,7 @@ sub do_setlist {
     }
     
     return {
-        result => 0,
+        error => 0,
         sets => $aSets,
     };
 }
@@ -58,7 +58,7 @@ sub do_setstatus {
 
     # $param->{bakset}..
 
-    return { result => 500, error => 'Not implemented' };
+    return { error => 500, error_text => 'Not implemented' };
 }
 
 # STUB!
@@ -69,17 +69,16 @@ sub do_backup_result {
 
     # gebaut mit 20090409000021
     my $VAR1 = {
-          '.root' => {
                   'rabak' => './rabak backup test',
-                  'bakset' => 'sample',
+                  'bakset' => 'example',
                   'blaim' => 'steppi@hamail.de',
                   'time' => {
                               'end' => '20090409000810',
                               'start' => '20090409000001'
                             },
                   'version' => '1',
-                  'conf' => '/home/raisin/.rabak/rabak.cf'
-                },
+                  'conf' => '/home/raisin/.rabak/rabak.cf',
+
           'target' => {
                         'name' => 'blubtarget',
                         'title' => 'Platte unterm Tisch'
@@ -107,7 +106,7 @@ sub do_backup_result {
                          'result' => '0'
                        }
     };
-    return { result => 0, data => $VAR1 };
+    return { error => 0, result => $VAR1 };
 }
 
 sub API {
@@ -121,7 +120,7 @@ sub API {
         my $do_cmd= "do_$cmd";
         $result= &$do_cmd($params);
     };
-    return { result => 500, error => "Command '$cmd' unknown" } if $@;
+    return { error => 500, error_text => "Command '$cmd' unknown" } if $@;
     
     return $result;
 }
