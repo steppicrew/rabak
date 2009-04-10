@@ -56,7 +56,9 @@ sub _Index {
     <script language="javascript" src="/static/wui.js"></script>
 </head>
 <body>
-    <div id="head-c"><div id="head"></div></div>
+    <div id="head-c"><div id="head">
+        <h1>Rabak Web UI</h1>
+    </div></div>
     <div id="sidebar-c"><div id="sidebar"></div></div>
     <div id="body-c"><div id="body"></div></div>
 </html>
