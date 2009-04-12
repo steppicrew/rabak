@@ -39,36 +39,48 @@ div {
     -webkit-border-radius: 0.25em;
 }
 
+a {
+    color: black;
+}
+
 #head-c {
     width: 100%;
-    height: 5em;
+    height: 150px;
     background-color: #FF8;
-    background-image: url(wallpaper2.gif);
-    border-bottom: 1px solid black;
+    background-image: url(head-bg.png);
+}
+
+#head {
+    background: url(head-logo.png) no-repeat;
 }
 
 #sidebar-c {
+    background: url(sidebar-bg.png) repeat-y;
     float: left;
-    width: 20em;
+    width: 300px;
     height: 100%;
     background-color: #F8F;
-    padding-bottom: 5em;
-    border-right: 1px solid black;
+    padding-bottom: 150px;
+}
+
+#sidebar {
+    background: url(sidebar-bottom.png) no-repeat 0% 100%;
 }
 
 #body-c {
     height: 100%;
     background-color: #EFF;
-    padding-bottom: 5em;
+    padding-bottom: 150px;
 }
 
 #sidebar, #body {
     height: 100%;
     overflow: auto;
-    padding: 1em;
+    padding: 0 1em;
 }
 
 #head {
+    height: 150px;
     padding: 0 1em;
     overflow: auto;
 }

@@ -62,6 +62,7 @@ $SIG{TERM}= $SIG{QUIT}= $SIG{INT}= sub {
 my %mimetypes= (
     'gif' => 'image/gif',
     'jpg' => 'image/jpeg',
+    'png' => 'image/png',
     'css' => 'text/css',
     'ico' => 'image/x-icon',
     'js'  => 'application/x-javascript',
