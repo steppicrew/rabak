@@ -53,6 +53,7 @@ sub _Index {
         }
     </script>
     <script language="javascript" src="/static/jquery-1.3.2.min.js"></script>
+    <script language="javascript" src="/static/jquery.flot-0.5.pack.js"></script>
     <script language="javascript" src="/static/wui.js"></script>
 </head>
 <body>

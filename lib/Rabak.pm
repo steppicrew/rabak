@@ -24,7 +24,7 @@ sub do_test {
     return { error => 500, error_text => 'Not implemented' };
 }
 
-sub do_setlist {
+sub do_get_baksets {
     my $oConfFile= Rabak::ConfFile->new();
     my $oConf= $oConfFile->conf();
     
@@ -49,7 +49,7 @@ sub do_setlist {
     
     return {
         error => 0,
-        sets => $aSets,
+        baksets => $aSets,
     };
 }
 

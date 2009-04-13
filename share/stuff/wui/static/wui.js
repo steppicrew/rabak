@@ -26,7 +26,7 @@ jQuery(function($) {
 
 // TEST ----------------------- [[
 
-    api('setlist', null, function(data) {
+    api('get_baksets', null, function(data) {
         console.log(data);
         if (data.error) {
             // error stuff
@@ -34,12 +34,15 @@ jQuery(function($) {
         }
 
         var html= [];
-        for (var sets_i in data.sets) {
-            var set= data.sets[sets_i];
-            html.push('<li><a href="#show_backup_result:bakset=' + set.name + '">' + set.title + '</a></li>');
+        for (var baksets_i in data.baksets) {
+            var bakset= data.baksets[baksets_i];
+            html.push('<li><a href="#show_backup_result:bakset=' + bakset.name + '">' + bakset.title + '</a></li>');
         }
 
-        $("#sidebar").html('<ol>' + html.join('') + '</ol>');
+        $("#sidebar").html('<ol>' + html.join('') + '</ol>'
+            + '<hr />'
+            + '<a href="#test1">Test1</a>'
+        );
     });
 
     api('test', null, function(data) {
@@ -56,6 +59,28 @@ jQuery(function($) {
 
             $("#body").html('<h1>' + data.result.bakset + '</h1>');
         })
+    };
+    cmds.test1= function(params) {
+
+// kann mit fehlenden daten umgehen
+// alternative: http://code.google.com/p/protovis-js/downloads/list
+
+        $("#body").html('<div id="placeholder" style="width:600px;height:300px;"></div>');
+
+$(function () {
+    var d1 = [];
+    for (var i = 0; i < 14; i += 0.5)
+        d1.push([i, Math.sin(i)]);
+
+    var d2 = [[0, 3], [4, 8], [8, 5], [9, 13]];
+
+    // a null signifies separate line segments
+    var d3 = [[0, 12], [7, 12], null, [7, 2.5], [12, 2.5]];
+
+    $.plot($("#placeholder"), [ d1, d2, d3 ]);
+});
+
+        
     };
 
     $('a').live('click', function() {
