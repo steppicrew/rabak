@@ -53,7 +53,7 @@ sub do_get_baksets {
     };
 }
 
-sub do_setstatus {
+sub do_get_bakset_status {
     my $param= shift;
 
     # $param->{bakset}..
@@ -62,10 +62,12 @@ sub do_setstatus {
 }
 
 # STUB!
-sub do_backup_result {
+sub do_get_backup_result {
     my $param= shift;
 
     # $param->{bakset}
+    # $param->{from}
+    # $param->{until}
 
     # gebaut mit 20090409000021
     my $VAR1 = {
@@ -73,8 +75,8 @@ sub do_backup_result {
                   'bakset' => 'example',
                   'blaim' => 'steppi@hamail.de',
                   'time' => {
+                              'start' => '20090409000001',
                               'end' => '20090409000810',
-                              'start' => '20090409000001'
                             },
                   'version' => '1',
                   'conf' => '/home/raisin/.rabak/rabak.cf',
@@ -83,17 +85,17 @@ sub do_backup_result {
                         'name' => 'blubtarget',
                         'title' => 'Platte unterm Tisch'
                       },
-          'source1' => {
+          'source__1' => {
                          'time' => {
+                                     'start' => '20090409000211',
                                      'end' => '20090409000810',
-                                     'start' => '20090409000211'
                                    },
                          'stats' => '140MB copied',
                          'name' => 'source_pg',
                          'path' => 'psql://localhost/bctiny',
                          'result' => '1'
                        },
-          'source0' => {
+          'source__0' => {
                          'warnings' => '3',
                          'errors' => '0',
                          'time' => {

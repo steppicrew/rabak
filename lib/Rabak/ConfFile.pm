@@ -53,13 +53,13 @@ sub new {
 
     my $self= {
         FILE => '',
-        SEARCHPATHS => [map {/(.*)\/[^\/]+$/ ? $1 : '.'} grep { defined } @sFiles],
+        SEARCHPATHS => [ map { /(.*)\/[^\/]+$/ ? $1 : '.' } grep { defined } @sFiles ],
         CONF => Rabak::Conf->new('*'),
     };
     bless $self, $class;
     
     # find first existing file
-    my $sFile= (grep {defined && -f} @sFiles)[0];
+    my $sFile= (grep { defined && -f } @sFiles)[0];
 
     if (!defined $sFile && scalar @sFiles) {
         logger->error("No configuration found in '"

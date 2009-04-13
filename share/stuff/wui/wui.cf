@@ -1,0 +1,22 @@
+
+[group.op1]
+title=Operator 1
+
+[user.raisin]
+title=D.Raisin
+email=info1@raisin.de
+password=r
+groups=op1
+
+[user.steppi]
+title=S.Hantigk
+password=s
+groups=op1
+
+[conf.raisin]
+file=/home/raisin/.rabak/rabak.cf
+include_path=.:/etc/rabak
+
+access_all=op1
+access_cf_read=op1
+access_baklog_read=op1

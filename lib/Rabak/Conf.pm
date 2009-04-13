@@ -90,19 +90,30 @@ sub get_validation_message {
     return undef;
 }
 
-sub splitValue {
+# UNUSED
+# sub getValueNames {
+#     my $self = shift;
+# 
+#     return keys %{ $self->{VALUES} };
+# }
+
+# Splits a string, using spaces and commas as boundaries.
+# FIXME: Is an utility method: remove $self
+sub _splitValue {
     my $self = shift;
     my $sValue= shift;
     
     return undef unless defined $sValue;
     
-    return [""] if $sValue eq "";
+    return [ "" ] if $sValue eq "";
     my @Result = split /(?<!\\)[\s\,]+/, $sValue; # ?; # for correct syntax highlighting
     return \@Result;
 }
 
-# joins array of value parts with spaces
-# returns undef if there was an object or array is empty
+# Joins array of value parts with spaces.
+# Returns undef if there was an object or array is empty.
+# FIXME: Is an utility method: remove $self
+# FIXME: $bError is superfluous
 sub _joinValue {
     my $self = shift;
     my $aValue= shift;
@@ -137,7 +148,7 @@ sub _joinValue {
 #     my $sName= shift;
 #     my $sDefault= shift;
 #     
-#     return $self->splitValue(
+#     return $self->_splitValue(
 #         $self->remove_backslashes_part1(
 #             $self->get_raw_value($sName, $sDefault)
 #         )
@@ -474,7 +485,7 @@ sub expandMacroHash {
             ERROR => "\"$sMacroName\" is an object",
         };
     }
-    my $aMacro= $self->splitValue(
+    my $aMacro= $self->_splitValue(
         $fPreParse->(
             $self->remove_backslashes_part1($sMacro)
         )
@@ -492,7 +503,7 @@ sub resolveObjects {
     my $sProperty= shift;
     my $aStack= shift || [];
     
-    return map {$self->remove_backslashes_part2($_)} $self->_expandMacro($sProperty, $self, $aStack);
+    return map { $self->remove_backslashes_part2($_) } $self->_expandMacro($sProperty, $self, $aStack);
 }
 
 sub _resolveObjects {

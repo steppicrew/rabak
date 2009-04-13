@@ -37,7 +37,7 @@ title=Platte unterm Tisch
 # value=?
 # space_left=200MB
 
-[source0]
+[source__0]
 name=source0
 path=file:///
 time.start=20090409000001
@@ -47,7 +47,7 @@ errors=0
 warnings=3
 stats=123 files written
 
-[source1]
+[source__1]
 name=source_pg
 path=psql://localhost/bctiny
 time.start=20090409000211

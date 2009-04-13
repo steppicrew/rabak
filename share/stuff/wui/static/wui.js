@@ -1,16 +1,38 @@
 
 jQuery(function($) {
 
-    // TODO: stop pending api calls
+    var show_login_form= function() {
+        var message= loginError ? "Login failed!! Please try again..." : "Welcome, please log in!";
+        $('#body').html(''
+                + '<h1>' + message + '</h1>'
+                + '<div id="login"><form action="/login" method="post">'
+                +     '<input type="hidden" name="sid" value="' + sid + '" />'
+
+                +     '<p>Hallo Stephan, login ist steppi + s</p>'
+
+                +     '<p>User: <input name="usr" /></p>'
+                +     '<p>Password: <input name="pw" /></p>'
+                +     '<p><input type="submit" /></p>'
+                + '</form></div>'
+            )
+            .find('[name=usr]').focus();
+    };
+
+    // TODO: stop pending api calls ?
     var api= function(cmd, args, callback, errorCallback) {
         if (!args) args= {};
         args['cmd']= cmd;
+        args['sid']= sid;
+        
         jQuery.ajax({
             url: "/api",
             type: "GET",
             data: args,
             dataType: "json",
             success: function(data, status) {
+                if (data.error == 401) {
+                    show_login_form();
+                }
                 if (data.error && errorCallback) {
                     errorCallback(data);
                     return;
@@ -23,6 +45,12 @@ jQuery(function($) {
             }
         });
     };
+
+    var welcome= userTitle ? userTitle: userName;
+    welcome= welcome ? '<br />Welcome, ' + welcome + '!<br /><a href="/logout?sid=' + sid + '">Log out</a>' : '';
+    $('#head').html(
+        '<div style="float: right">' + welcome + '</div>'
+    );
 
 // TEST ----------------------- [[
 
@@ -53,13 +81,17 @@ jQuery(function($) {
 
 
     var cmds= {};
+
     cmds.show_backup_result= function(params) {
-        api('backup_result', params, function(data) {
+        api('get_backup_result', params, function(data) {
             console.log(data);
+
+            if (data.error) return;
 
             $("#body").html('<h1>' + data.result.bakset + '</h1>');
         })
     };
+
     cmds.test1= function(params) {
 
 // kann mit fehlenden daten umgehen
