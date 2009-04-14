@@ -4,7 +4,16 @@
 
     // License: See LICENSE file
 
-    global $aPages, $aMenu, $sRelPath;
+    global $aPages, $aMenu, $sRelPath, $sIncludePath;
+
+    $sIncludePath= "";
+
+    // This is a ugly Hack to fetch content files from GitHub directly.
+    // Further changes are some additional "?raw=true" to URLs in this file and the CSS.
+    // Good enough for now, but MUST be changed if the web site has traffic...
+    if ($_SERVER["HTTP_HOST"] == "www.raisin.de") {
+        $sIncludePath= "http://github.com/steppicrew/rabak/tree/master/share/stuff/web/";
+    }
  
     $sPageName= @$_SERVER["PATH_INFO"];
     $sRelPath= "../";
@@ -511,7 +520,7 @@
     }
 
     function printHtmlPage($sPageName) {
-        global $aPages, $aMenu, $sRelPath;
+        global $aPages, $aMenu, $sRelPath, $sIncludePath;
 
         $oPage= & new PAGE_PARSER('global');
         $oPage->parse();
@@ -566,7 +575,7 @@
         <title><?= $sPageTitle ?></title>
         <meta name="keywords" content="<?= $sPageKeywords ?>">
         <meta name="description" content="<?= $sPageDescription ?>">
-        <link rel="stylesheet" type="text/css" href="http://github.com/steppicrew/rabak/tree/master%2Fshare%2Fstuff%2Fweb%2Fscreen.css?raw=true">
+        <link rel="stylesheet" type="text/css" href="<?= $sIncludePath ?>screen.css?raw=true">
     </head>
     <body class="default">
         <div id="container">
@@ -593,7 +602,8 @@
     }
 
     function getContents() {
-        $sContents= file_get_contents("content.txt");
+        global $sIncludePath;
+        $sContents= file_get_contents($sIncludePath . "content.txt?raw=true");
 
         global $aPages, $aPagesFirstLine, $aPagesTitle, $aMenu;
         $aPages= array();
