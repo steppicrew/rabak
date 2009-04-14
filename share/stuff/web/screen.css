@@ -3,7 +3,7 @@
 
 body {
     text-align: center;
-    background: url(master%2Fshare%2Fstuff%2Fweb%2Fimages%2Fwallpaper2.gif?raw=true);
+    background: url(images/wallpaper2.gif?raw=true);
     margin: 0;
     padding: 0;
     height: 100.2%;
@@ -14,7 +14,7 @@ body, div, p, h1, h2, h3 {
 }
 
 #container {
-    background: url(master%2Fshare%2Fstuff%2Fweb%2Fimages%2Fcontainer-background.gif?raw=true) repeat-y;
+    background: url(images/container-background.gif?raw=true) repeat-y;
     text-align: left;
     width: 940px;
     min-height: 100.2%;
