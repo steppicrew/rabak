@@ -4,15 +4,17 @@
 
     // License: See LICENSE file
 
-    global $aPages, $aMenu, $sRelPath, $sIncludePath;
+    global $aPages, $aMenu, $sRelPath, $sIncludePath, $sIncludePostfix;
 
     $sIncludePath= "";
+    $sIncludePostfix= "";
 
     // This is a ugly Hack to fetch content files from GitHub directly.
     // Further changes are some additional "?raw=true" to URLs in this file and the CSS.
     // Good enough for now, but MUST be changed if the web site has traffic...
     if ($_SERVER["HTTP_HOST"] == "www.raisin.de") {
         $sIncludePath= "http://github.com/steppicrew/rabak/tree/master/share/stuff/web/";
+        $sIncludePostfix= "?raw=true";
     }
  
     $sPageName= @$_SERVER["PATH_INFO"];
@@ -520,7 +522,7 @@
     }
 
     function printHtmlPage($sPageName) {
-        global $aPages, $aMenu, $sRelPath, $sIncludePath;
+        global $aPages, $aMenu, $sRelPath, $sIncludePath, $sIncludePostfix;
 
         $oPage= & new PAGE_PARSER('global');
         $oPage->parse();
@@ -569,13 +571,16 @@
         $aSize= @getimagesize("images/head.gif");
         $sImg= '<img border=0 src="'.getImageUrl('head.gif').'" '.@$aSize[3].' alt="'.$sPageHeadImageText.'">';
         $sHead= getLink('index', $sImg);
+
+        $sCss= file_get_contents($sIncludePath . "screen.css" . $sIncludePostfix);
+        $sCss= preg_replace("/(\burl\()/", "$1$sRelPath", $sCss);
 ?>
 <html>
     <head>
         <title><?= $sPageTitle ?></title>
         <meta name="keywords" content="<?= $sPageKeywords ?>">
         <meta name="description" content="<?= $sPageDescription ?>">
-        <link rel="stylesheet" type="text/css" href="<?= $sIncludePath ?>screen.css?raw=true">
+        <style><?= $sCss ?></style>
     </head>
     <body class="default">
         <div id="container">
@@ -602,8 +607,8 @@
     }
 
     function getContents() {
-        global $sIncludePath;
-        $sContents= file_get_contents($sIncludePath . "content.txt?raw=true");
+        global $sIncludePath, $sIncludePostfix;
+        $sContents= file_get_contents($sIncludePath . "content.txt" . $sIncludePostfix);
 
         global $aPages, $aPagesFirstLine, $aPagesTitle, $aMenu;
         $aPages= array();
