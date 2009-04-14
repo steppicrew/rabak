@@ -72,10 +72,10 @@ sub new {
 # print Dumper($colors); die;
 # inkscape -D -e output.png map.svg
 
-our $grad_id;
+our $gradId;
 our %grads= ();
 
-sub str_to_hsv {
+sub strToHsv {
     my $color= shift;
 
     $color =~ s/^s+//;
@@ -96,12 +96,12 @@ sub str_to_hsv {
     return (0, 0, 0);
 }
 
-sub rgb_to_str {
+sub rgbToStr {
     my @rgb= @_;
     return sprintf('#%02x%02x%02x', $rgb[0], $rgb[1], $rgb[2]);
 }
 
-sub get_style {
+sub getStyle {
     my $g= shift;
 
     my %style= ();
@@ -112,7 +112,7 @@ sub get_style {
     return %style;
 }
 
-sub set_style {
+sub setStyle {
     my $g= shift;
     my %style= @_;
 
@@ -123,7 +123,7 @@ sub set_style {
     $g->set_att('style', $s_style);
 }
 
-sub _shadow_coord {
+sub _shadowCoord {
     my ($centerx, $centery, $f0, $x, $y)= @_;
 
     $x= ($x - $centerx) * $f0 + $centerx;
@@ -133,7 +133,7 @@ sub _shadow_coord {
     return sprintf(" %.2f,%.2f", $x, $y + 1);
 }
 
-sub _shadow_ring_part {
+sub _shadowRingPart {
     my ($rec, $centerx, $centery, $p0x, $p0y, $p1x, $p1y, $f0, $f)= @_;
     # my ($rec, $p0x, $p0y, $p1x, $p1y, $f)= @_;
 
@@ -143,7 +143,7 @@ sub _shadow_ring_part {
     $mx= ($mx - $centerx) * $f + $centerx;
     $my= ($my - $centery) * $f + $centery;
 
-    my $s= _shadow_coord($centerx, $centery, $f0, $mx, $my);
+    my $s= _shadowCoord($centerx, $centery, $f0, $mx, $my);
 
     # my $rf= 300;
     # return $s if ($p1x - $p0x) * ($p1x - $p0x) < $rf && ($p1y - $p0y) * ($p1y - $p0y) < $rf; 
@@ -153,15 +153,15 @@ sub _shadow_ring_part {
 
     if ($rec) {
         $f= (3 + $f) / 4;
-        $s= _shadow_ring_part($rec-1, $centerx, $centery, $p0x, $p0y, $mx, $my, $f0, $f)
+        $s= _shadowRingPart($rec-1, $centerx, $centery, $p0x, $p0y, $mx, $my, $f0, $f)
             . $s
-            . _shadow_ring_part($rec-1, $centerx, $centery, $mx, $my, $p1x, $p1y, $f0, $f)
+            . _shadowRingPart($rec-1, $centerx, $centery, $mx, $my, $p1x, $p1y, $f0, $f)
         ;
     }
     return $s;
 }
 
-sub _shadow_ring {
+sub _shadowRing {
     my ($g, $poly, $f0, $f, $color)= @_;
 
     my @bbox= $poly->bbox;
@@ -193,7 +193,7 @@ sub _shadow_ring {
         $mx= ($mx - $centerx) * $f + $centerx;
         $my= ($my - $centery) * $f + $centery;
 
-    #    $s .= _shadow_coord($centerx, $centery, $f0, $mx, $my);
+    #    $s .= _shadowCoord($centerx, $centery, $f0, $mx, $my);
 
         if ($i < $#{ $points }) {
 
@@ -203,7 +203,7 @@ sub _shadow_ring {
             $x2= ($x2 - $centerx) * $f + $centerx;
             $y2= ($y2 - $centery) * $f + $centery;
 
-            $s .= _shadow_ring_part(8, $centerx, $centery, $mx, $my, $x2, $y2, $f0, $f);
+            $s .= _shadowRingPart(8, $centerx, $centery, $mx, $my, $x2, $y2, $f0, $f);
         }
     }
 
@@ -219,32 +219,32 @@ sub _shadow_ring {
     $elt->paste('before', $g); 
 }
 
-sub add_shadow {
+sub addShadow {
     my $self= shift;
     my $g= shift;
 
     return unless $self->{SHADOW} eq 'simulate';
 
-    my $poly= get_points_as_poly($g);
+    my $poly= getPointsAsPoly($g);
     my $size= 0.82;
     my $dist= 1.26;
     for (0..3) {
-        _shadow_ring($g, $poly, $size, $dist, 'green');
+        _shadowRing($g, $poly, $size, $dist, 'green');
         $dist -= .02;
-        _shadow_ring($g, $poly, $size, $dist, 'red');
+        _shadowRing($g, $poly, $size, $dist, 'red');
         $dist -= .02;
     }
 }
 
 use GD::Polyline;
 
-sub add_shadow_new {
+sub addShadowNew {
     my $self= shift;
     my $g= shift;
 
     my $polyline = new GD::Polygon;
 
-    my @points= get_points($g);
+    my @points= getPoints($g);
     for my $point (@points) {
         $polyline->addPt($point->[0], $point->[1]);
     }
@@ -259,7 +259,7 @@ sub add_shadow_new {
 
 
     my $color= 'red';
-    my $s= points_to_str($poly->points);
+    my $s= pointsToStr($poly->points);
     my $opacity= 1;
 
     $s= qq(<polygon style="fill:$color; stroke:none;" points="$s"/>);
@@ -272,7 +272,7 @@ sub add_shadow_new {
 
 }
 
-sub poly_resize {
+sub polyResize {
     my $poly= shift;
     my $scale= shift;
 
@@ -283,15 +283,15 @@ sub poly_resize {
     return $poly->resize(scale => $scale, center => [$centerx, $centery]);
 }
 
-sub grad_id {
+sub gradId {
     my $id= shift;
     return $id unless $id =~ /[^\-a-zA-Z0-9]/;
-    $main::grad_id++;
-    # print "GRAD_ID! " . $main::grad_id . "!\n";
-    return "grad" . ($main::grad_id++);
+    $main::gradId++;
+    # print "GRAD_ID! " . $main::gradId . "!\n";
+    return "grad" . ($main::gradId++);
 }
 
-sub get_points {
+sub getPoints {
     my $g= shift;
 
     my @points= ();
@@ -304,14 +304,14 @@ sub get_points {
     return @points;
 }
 
-sub get_points_as_poly {
+sub getPointsAsPoly {
     my $g= shift;
 
-    my @points= get_points($g);
+    my @points= getPoints($g);
     return Math::Polygon->new(points => \@points);
 }
 
-sub points_to_str {
+sub pointsToStr {
     my @points= @_;
 
     my $s_points= '';
@@ -321,14 +321,14 @@ sub points_to_str {
     return $s_points;
 }
 
-sub add_highlight {
+sub addHighlight {
     my $self= shift;
     my $g= shift;
 
-    my $poly= get_points_as_poly($g);
-    $poly= poly_resize($poly, 0.85);
+    my $poly= getPointsAsPoly($g);
+    $poly= polyResize($poly, 0.85);
 
-    my $s_points= points_to_str($poly->points);
+    my $s_points= pointsToStr($poly->points);
 
     my $s = qq(<polygon style="fill:url(#poly-highlight); stroke: none;" points="$s_points"/>);
 
@@ -336,10 +336,10 @@ sub add_highlight {
     $elt->paste('after', $g); 
 }
 
-sub round_rectangles {
+sub roundRectangles {
     my $g= shift;
 
-    my @points= get_points($g);
+    my @points= getPoints($g);
 
     # check if it's a rectangle
     return unless scalar @points == 5;
@@ -377,71 +377,71 @@ sub round_rectangles {
     push @points, $points[0];
 
     # print STDERR Dumper( \@points );
-    # print STDERR points_to_str(@points);
+    # print STDERR pointsToStr(@points);
 
-    $g->set_att('points', points_to_str(@points));
+    $g->set_att('points', pointsToStr(@points));
 }
 
-sub modify_node_color {
+sub modifyNodeColor {
     my $self= shift;
     my $g= shift;
 
-    my %style= get_style($g);
+    my %style= getStyle($g);
 
     $style{'fill'}= 'white' if $style{'fill'} eq 'none';
 
     if ($style{'stroke'} ne 'none') {
         if ($style{'fill'} eq 'white') {
-            my $grad_id= grad_id($style{'stroke'});
-            $grads{'stroke-' . $grad_id}= $style{'stroke'};
-            $style{'stroke'}= 'url(#stroke-' . $grad_id . ')';
+            my $gradId= gradId($style{'stroke'});
+            $grads{'stroke-' . $gradId}= $style{'stroke'};
+            $style{'stroke'}= 'url(#stroke-' . $gradId . ')';
         }
         else {
-            my $grad_id= grad_id($style{'fill'});
-            $grads{'stroke-' . $grad_id}= $style{'fill'};
-            $style{'stroke'}= 'url(#stroke-' . $grad_id . ')';
+            my $gradId= gradId($style{'fill'});
+            $grads{'stroke-' . $gradId}= $style{'fill'};
+            $style{'stroke'}= 'url(#stroke-' . $gradId . ')';
         }
     }
 
-    my $grad_id= grad_id($style{'fill'});
-    $grads{'fill-' . $grad_id}= $style{'fill'};
-    $style{'fill'}= 'url(#fill-' . $grad_id . ')';
+    my $gradId= gradId($style{'fill'});
+    $grads{'fill-' . $gradId}= $style{'fill'};
+    $style{'fill'}= 'url(#fill-' . $gradId . ')';
 
-    set_style($g, %style);
+    setStyle($g, %style);
 }
 
-sub modify_cluster_color {
+sub modifyClusterColor {
     my $self= shift;
     my $g= shift;
 
-    my %style= get_style($g);
+    my %style= getStyle($g);
 
     # print STDERR Dumper(\%style);
 
     $style{'stroke'}= 'white' if $style{'stroke'} eq 'black';
 
-    my @hsv= str_to_hsv($style{'stroke'});
+    my @hsv= strToHsv($style{'stroke'});
 
     $hsv[1]= 128 if $hsv[1] > 128;
     $hsv[2]= 255 if $hsv[1];
-    $style{'stroke'}= rgb_to_str(hsv_to_rgb(@hsv));
+    $style{'stroke'}= rgbToStr(hsvToRgb(@hsv));
 
     # print STDERR Dumper(\%style);
 
-    my $grad_id= grad_id($style{'stroke'});
-    $grads{'cfill-' . $grad_id}= $style{'stroke'};
-    $style{'fill'}= 'url(#cfill-' . $grad_id . ')';
+    my $gradId= gradId($style{'stroke'});
+    $grads{'cfill-' . $gradId}= $style{'stroke'};
+    $style{'fill'}= 'url(#cfill-' . $gradId . ')';
 
     $hsv[1]= 32 if $hsv[1] > 32;
     $hsv[2]= 255 if $hsv[1];
-    $style{'stroke'}= rgb_to_str(hsv_to_rgb(@hsv));
+    $style{'stroke'}= rgbToStr(hsvToRgb(@hsv));
 
     # print STDERR Dumper(\%style);
 
-    set_style($g, %style);
+    setStyle($g, %style);
 }
 
-sub convert_ellipse_to_polygon {
+sub convertEllipseToPolygon {
 
     my $g= shift;
 
@@ -468,68 +468,68 @@ sub convert_ellipse_to_polygon {
     $g->del_att("ry");
 }
 
-sub modify_graph {
+sub modifyGraph {
     my $self= shift;
     my $root= shift;
 
     my @elts= $root->get_xpath("//[\@class=\"graph\"]/polygon");
     for my $g (@elts) {
-        my %style= get_style($g);
+        my %style= getStyle($g);
 
         # TODO: check color
 
         $style{'fill'}= 'url(#graph-background)';
-        set_style($g, %style);
+        setStyle($g, %style);
     }
 }
 
-sub modify_edges {
+sub modifyEdges {
     my $self= shift;
     my $root= shift;
 
     my @elts= $root->get_xpath("//[\@class=\"edge\"]/path");
     for my $g (@elts) {
-        my %style= get_style($g);
+        my %style= getStyle($g);
         $style{'stroke-width'}= 4 if defined $style{'stroke-width'} && $style{'stroke-width'} == 2;
-        set_style($g, %style);
+        setStyle($g, %style);
     }
 }
 
-sub modify_nodes {
+sub modifyNodes {
     my $self= shift;
     my $root= shift;
     my @elts;
 
     @elts= $root->get_xpath("//[\@class=\"node\"]/polygon");
     for my $g (@elts) {
-        round_rectangles($g);
+        roundRectangles($g);
     }
 
     @elts= $root->get_xpath("//[\@class=\"node\"]/ellipse");
     for my $g (@elts) {
-        convert_ellipse_to_polygon($g);
+        convertEllipseToPolygon($g);
     }
 
     @elts= $root->get_xpath("//[\@class=\"node\"]/polygon");
     for my $g (@elts) {
-        $self->modify_node_color($g);
-        $self->add_shadow($g);
-        $self->add_highlight($g);
+        $self->modifyNodeColor($g);
+        $self->addShadow($g);
+        $self->addHighlight($g);
     }
 }
 
-sub modify_cluster {
+sub modifyCluster {
     my $self= shift;
     my $root= shift;
 
     my @elts= $root->get_xpath("//[\@class=\"cluster\"]/polygon");
     for my $g (@elts) {
-        $self->modify_cluster_color($g);
-        $self->add_shadow($g);
+        $self->modifyClusterColor($g);
+        $self->addShadow($g);
     }
 }
 
-sub modify_text {
+sub modifyText {
     my $self= shift;
     my $root= shift;
 
@@ -550,7 +550,7 @@ sub modify_text {
 
     my @elts= $root->get_xpath("//text");
     for my $g (@elts) {
-        my %style= get_style($g);
+        my %style= getStyle($g);
         $style{'font-family'}= $subst{$style{'font-family'}} if defined $style{'font-family'} && $subst{$style{'font-family'}};
         if (defined $style{'font-size'} && $style{'font-size'} =~ /^(\d*(\.\d+))?([a-z]*)$/i) {
             $style{'font-size'}= sprintf("%.2f%s", $1 * $self->{FONT_SIZE_FACTOR}, $3);
@@ -559,11 +559,11 @@ sub modify_text {
             $style{'font-family'}= $style{'font'};
             delete $style{'font'};
         }
-        set_style($g, %style);
+        setStyle($g, %style);
     }
 }
 
-sub hsv_to_rgb {
+sub hsvToRgb {
     my (@hsv)= @_;
     $hsv[1]= 0 if $hsv[1] < 0;
     $hsv[1]= 255 if $hsv[1] > 255;
@@ -572,41 +572,41 @@ sub hsv_to_rgb {
     return GD::Simple->HSVtoRGB(@hsv);
 }
 
-sub add_grads {
+sub addGrads {
     my $self= shift;
     my $root= shift;
 
     for my $grad (keys %grads) {
     
         $grad =~ /^(.*?)-(.*)$/ or die;
-        my ($type, $grad_id)= ($1, $2);
+        my ($type, $gradId)= ($1, $2);
     
         my $color= $grads{$grad};
-        my @hsv= str_to_hsv($color);
+        my @hsv= strToHsv($color);
     
-        my @rgb1= hsv_to_rgb($hsv[0], $hsv[1] * 2, $hsv[2]);
-        my @rgb2= hsv_to_rgb($hsv[0], $hsv[1] / 6, $hsv[2] * 2);
+        my @rgb1= hsvToRgb($hsv[0], $hsv[1] * 2, $hsv[2]);
+        my @rgb2= hsvToRgb($hsv[0], $hsv[1] / 6, $hsv[2] * 2);
     
         if ($type eq 'stroke') {
-            @rgb1= hsv_to_rgb($hsv[0], $hsv[1] / 3, 150-16);
-            @rgb2= hsv_to_rgb($hsv[0], $hsv[1] * 3, 150+16);
+            @rgb1= hsvToRgb($hsv[0], $hsv[1] / 3, 150-16);
+            @rgb2= hsvToRgb($hsv[0], $hsv[1] * 3, 150+16);
         }
         if ($type eq 'cfill') {
 
-            @rgb1= hsv_to_rgb($hsv[0], $hsv[1] * 1.1, $hsv[2] + 30);
-            @rgb2= hsv_to_rgb($hsv[0], $hsv[1] - 30, $hsv[2] - (255- $hsv[1]) * 0.1);
+            @rgb1= hsvToRgb($hsv[0], $hsv[1] * 1.1, $hsv[2] + 30);
+            @rgb2= hsvToRgb($hsv[0], $hsv[1] - 30, $hsv[2] - (255- $hsv[1]) * 0.1);
 
-#            @rgb1= hsv_to_rgb($hsv[0], $hsv[1], $hsv[2] * 1.2);
-#            @rgb2= hsv_to_rgb($hsv[0], $hsv[1] - 10, $hsv[2] * 0.8);
+#            @rgb1= hsvToRgb($hsv[0], $hsv[1], $hsv[2] * 1.2);
+#            @rgb2= hsvToRgb($hsv[0], $hsv[1] - 10, $hsv[2] * 0.8);
         }
     
-        my $s_color1= rgb_to_str(@rgb1);
-        my $s_color2= rgb_to_str(@rgb2);
+        my $s_color1= rgbToStr(@rgb1);
+        my $s_color2= rgbToStr(@rgb2);
 
         if ($type eq 'cfill') {
             parse XML::Twig::Elt(qq(
                 <defs>
-                    <linearGradient id="$type-$grad_id" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <linearGradient id="$type-$gradId" x1="0%" y1="0%" x2="100%" y2="100%">
                         <stop offset="10%" style="stop-color:$s_color2; stop-opacity: 1;"/>
                         <stop offset="20%" style="stop-color:$s_color1; stop-opacity: 1;"/>
                         <stop offset="50%" style="stop-color:$s_color2; stop-opacity: 1;"/>
@@ -619,7 +619,7 @@ sub add_grads {
         else {
             parse XML::Twig::Elt(qq(
                 <defs>
-                    <linearGradient id="$type-$grad_id" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <linearGradient id="$type-$gradId" x1="0%" y1="0%" x2="0%" y2="100%">
                         <stop offset="0%" style="stop-color:$s_color2; stop-opacity: 1;"/>
                         <stop offset="70%" style="stop-color:$s_color1; stop-opacity: 1;"/>
                         <stop offset="95%" style="stop-color:$s_color2; stop-opacity: 1;"/>
@@ -673,13 +673,13 @@ sub getPrettySVG {
 
     %grads= ();
 
-    $self->modify_graph($root);
-    $self->modify_edges($root);
-    $self->modify_nodes($root);
-    $self->modify_cluster($root);
-    $self->modify_text($root);
+    $self->modifyGraph($root);
+    $self->modifyEdges($root);
+    $self->modifyNodes($root);
+    $self->modifyCluster($root);
+    $self->modifyText($root);
 
-    $self->add_grads($root);
+    $self->addGrads($root);
 
     return $twig->sprint;
 }

@@ -54,7 +54,7 @@ jQuery(function($) {
 
 // TEST ----------------------- [[
 
-    api('get_baksets', null, function(data) {
+    api('GetBaksets', null, function(data) {
         console.log(data);
         if (data.error) {
             // error stuff
@@ -73,7 +73,7 @@ jQuery(function($) {
         );
     });
 
-    api('test', null, function(data) {
+    api('Test', null, function(data) {
         console.log(data);
     })
 
@@ -83,7 +83,7 @@ jQuery(function($) {
     var cmds= {};
 
     cmds.show_backup_result= function(params) {
-        api('get_backup_result', params, function(data) {
+        api('GetBackupResult', params, function(data) {
             console.log(data);
 
             if (data.error) return;

@@ -40,8 +40,8 @@ sub run {
     my $oBakset= $self->getBakset($sBakset);
     return 0 unless $oBakset;
     
-    $oBakset->set_value('/*.switch.targetvalue', $self->{OPTS}{"targetgroup-value"}) if defined $self->{OPTS}{"targetgroup-value"};
-    $oBakset->set_value('/*.switch.logging', $self->{OPTS}{logging}) if defined $self->{OPTS}{logging};
+    $oBakset->setValue('/*.switch.targetvalue', $self->{OPTS}{"targetgroup-value"}) if defined $self->{OPTS}{"targetgroup-value"};
+    $oBakset->setValue('/*.switch.logging', $self->{OPTS}{logging}) if defined $self->{OPTS}{logging};
 
     $oBakset->backup();
     return 1;

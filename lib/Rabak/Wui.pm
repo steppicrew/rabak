@@ -81,18 +81,18 @@ sub _readConf {
     my $oConfFile= new Rabak::ConfFile("wui.cf");
         
     # FIXME: Wie feststellen dass Load nicht geklappt hat?
-    # $oConf->print_all();
+    # $oConf->printAll();
 
     $oConf= $oConfFile->conf();
         
-    # print "value:", $oConf->get_value("group"), "\n";
-    # print "raw_value:", $oConf->get_raw_value("group"), "\n";
-    # print "property:", $oConf->get_property("group"), "\n";
-    # print "node:", $oConf->get_node("group"), "\n";
+    # print "value:", $oConf->getValue("group"), "\n";
+    # print "raw_value:", $oConf->getRawValue("group"), "\n";
+    # print "property:", $oConf->getProperty("group"), "\n";
+    # print "node:", $oConf->getNode("group"), "\n";
         
-    $aGroups= $oConf->get_node("group");
-    $aUsers= $oConf->get_node("user");
-    $aConfs= $oConf->get_node("conf");
+    $aGroups= $oConf->getNode("group");
+    $aUsers= $oConf->getNode("user");
+    $aConfs= $oConf->getNode("conf");
 
     # FIXME: Fehlerbehandlung!
 }
@@ -112,7 +112,7 @@ sub _getSession {
     my $loginError;
     if ($params->{sid} && $aSessions{$params->{sid}}) {
         $sid= $params->{sid};
-        $oUser= $aUsers->get_node($aSessions{$sid}{user_name});
+        $oUser= $aUsers->getNode($aSessions{$sid}{user_name});
     }
     else {
         $sid= '';
@@ -122,12 +122,12 @@ sub _getSession {
     $aSessions{$sid}= { sid => $sid } unless $oUser;
 
     if ($params->{usr} || $params->{pw}) {
-        $oUser= $aUsers->get_node($params->{usr});
+        $oUser= $aUsers->getNode($params->{usr});
         if (!$oUser) {
             print "Failed to login as '", $params->{usr}, "'. User unknown.\n";
             $loginError= 1;
         }
-        elsif ($oUser->get_value("password") ne $params->{pw}) {
+        elsif ($oUser->getValue("password") ne $params->{pw}) {
             print "Failed to login as '", $params->{usr}, "'. Wrong password.\n";
             $oUser= undef;
             $loginError= 1;
@@ -138,7 +138,7 @@ sub _getSession {
     }
 
     $aSessions{$sid}{valid_until}= time + 3600;  # valid 1 hour from request
-    $aSessions{$sid}{user_title}= $oUser ? $oUser->get_value("title") : undef;
+    $aSessions{$sid}{user_title}= $oUser ? $oUser->getValue("title") : undef;
     $aSessions{$sid}{login_error}= $loginError;
 
     return $aSessions{$sid};

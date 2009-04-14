@@ -86,7 +86,7 @@ sub cmdData {
 }
 
 # Stub to override. A Rabak::Conf is always valid.
-sub get_validation_message {
+sub getValidationMessage {
     return undef;
 }
 
@@ -131,8 +131,8 @@ sub _joinValue {
             $bError= 1;
         }
         else {
-            # remove_backslashes_part2 should already have been called
-#            $self->remove_backslashes_part2($_);
+            # removeBackslashesPart2 should already have been called
+#            $self->removeBackslashesPart2($_);
             $_;
         }
     } @$aValue;
@@ -149,19 +149,19 @@ sub _joinValue {
 #     my $sDefault= shift;
 #     
 #     return $self->_splitValue(
-#         $self->remove_backslashes_part1(
-#             $self->get_raw_value($sName, $sDefault)
+#         $self->removeBackslashesPart1(
+#             $self->getRawValue($sName, $sDefault)
 #         )
 #     );
 # }
 
 # gets value as written in config
-sub get_raw_value {
+sub getRawValue {
     my $self= shift;
     my $sName= shift;
     my $sDefault= shift;
     
-    my $sValue= $self->find_property($sName);
+    my $sValue= $self->findProperty($sName);
     
     unless (defined $sValue) {
         return $self->{NAME} if lc($sName) eq 'name';      
@@ -172,7 +172,7 @@ sub get_raw_value {
     return $sValue;
 }
 
-sub remove_backslashes_part1 {
+sub removeBackslashesPart1 {
     my $self= shift;
     my $sValue= shift;
 
@@ -191,7 +191,7 @@ sub remove_backslashes_part1 {
     return $sValue;
 }
 
-sub undo_remove_backslashes_part1 {
+sub undoRemoveBackslashesPart1 {
     my $self= shift;
     my $sValue= shift;
 
@@ -203,7 +203,7 @@ sub undo_remove_backslashes_part1 {
     return $sValue;
 }
 
-sub remove_backslashes_part2 {
+sub removeBackslashesPart2 {
     my $self= shift;
     my $sValue= shift;
 
@@ -222,15 +222,15 @@ sub remove_backslashes_part2 {
     return $sValue;
 }
 
-sub remove_backslashes {
+sub removeBackslashes {
     my $self= shift;
     my $sValue= shift;
 
-    return $self->remove_backslashes_part2($self->remove_backslashes_part1($sValue));
+    return $self->removeBackslashesPart2($self->removeBackslashesPart1($sValue));
 }
 
 # returns scalar value (references to other objects are already resolved, backslashes are cleaned)
-sub get_value {
+sub getValue {
     my $self= shift;
     my $sName= shift;
     my $sDefault= shift;
@@ -247,31 +247,31 @@ sub get_value {
     return $sValue;
 }
 
-# TODO: Which is correct: find_property? get_value? get_prep_value? $oCOnf->{VALUES}?
-sub get_value_required_message {
+# TODO: Which is correct: findProperty? getValue? get_prep_value? $oCOnf->{VALUES}?
+sub getValueRequiredMessage {
     my $self= shift;
     my $sField= shift;
 
-    return "Required value \"" . $self->{NAME} . ".$sField\" missing." unless defined $self->find_property($sField);
+    return "Required value \"" . $self->{NAME} . ".$sField\" missing." unless defined $self->findProperty($sField);
     return undef;
 }
 
 # command line switches are set in /*.switch
 # if not it's a simple property value
-sub get_switch {
+sub getSwitch {
     my $self= shift;
     my $sName= shift;
     my $sDefault= shift;
     my $aRefStack= shift;
     
-    # lookup in /*.-scope is done by find_property
-#    my $sResult= $self->get_value("/*.switch.$sName", undef, $aRefStack);
+    # lookup in /*.-scope is done by findProperty
+#    my $sResult= $self->getValue("/*.switch.$sName", undef, $aRefStack);
 #    return $sResult if defined $sResult;
-    return $self->get_value("switch.$sName", $sDefault, $aRefStack);
+    return $self->getValue("switch.$sName", $sDefault, $aRefStack);
 }
 
 # find property and return it as it is (scalar, object etc.)
-sub find_property {
+sub findProperty {
     my $self= shift;
     my $sName= shift;
  
@@ -283,12 +283,12 @@ sub find_property {
         $sStarName=~ s/^[\.\/]*//;
 
         # search for existing values in '/*'-scope ('*.zuppi' overwrites '*.zappi.zuppi')
-        my $oRootScope= $self->find_scope("/*.$sStarName");
+        my $oRootScope= $self->findScope("/*.$sStarName");
         my @sStarName= split(/\./, $sStarName);
         $sStarName= '';
         while (my $sSubKey= pop @sStarName) {
             $sStarName= ".$sSubKey$sStarName";
-            my ($oValue, $oScope, $sKey)= $oRootScope->get_property("*$sStarName");
+            my ($oValue, $oScope, $sKey)= $oRootScope->getProperty("*$sStarName");
             if (defined $oValue) {
                 return ($oValue, $oScope, $sKey) if wantarray;
                 return $oValue;
@@ -307,13 +307,13 @@ sub find_property {
     return undef unless defined $sName;
     return undef if $sName eq '.' || $sName eq '';
     
-    my $oScope= $self->find_scope($sName);
+    my $oScope= $self->findScope($sName);
     $sName=~ s/^\/?\.*//;
     
     $sName= lc $sName;
 
     while (defined $oScope) {
-        my ($oProp, $oParentConf, $sKey)= $oScope->get_property($sName);
+        my ($oProp, $oParentConf, $sKey)= $oScope->getProperty($sName);
         if (defined $oProp) {
             return ($oProp, $oParentConf, $sKey) if wantarray;
             return $oProp;
@@ -324,7 +324,7 @@ sub find_property {
 }
 
 # finds proper scope
-sub find_scope {
+sub findScope {
     my $self= shift;
     my $sName= shift;
     
@@ -344,7 +344,7 @@ sub find_scope {
 
 # finds given property, does not look in other scopes
 # returns property, best fitting scope and remaining key
-sub get_property {
+sub getProperty {
     my $self= shift;
     my $sName= lc shift;
 
@@ -371,32 +371,32 @@ sub get_property {
 }
 
 # deletes given property
-sub remove_property {
+sub removeProperty {
     my $self= shift;
     my $sName= shift;
     
-    my (undef, $oScope, $sKey)= $self->get_property($sName);
+    my (undef, $oScope, $sKey)= $self->getProperty($sName);
     delete $oScope->{VALUES}{$sKey} if defined $oScope && exists $oScope->{VALUES}{$sKey};
 }
 
-sub get_node {
+sub getNode {
     my $self= shift;
     my $sName= shift;
     
-    my $oConf= $self->find_property($sName);
+    my $oConf= $self->findProperty($sName);
     return $oConf if ref $oConf;
     return undef;
 }
 
-sub preset_values {
+sub presetValues {
     my $self= shift;
     my $hValues= shift;
     for my $sName (keys(%$hValues)) {
-        $self->set_value($sName, $hValues->{$sName}) if defined $hValues->{$sName};
+        $self->setValue($sName, $hValues->{$sName}) if defined $hValues->{$sName};
     }
 }
 
-sub set_value {
+sub setValue {
     my $self= shift;
     my $sName= lc(shift || '');
     my $sValue= shift;
@@ -410,7 +410,7 @@ sub set_value {
     for (@sName) {
         $self->{VALUES}{$_}= Rabak::Conf->new($_, $self) unless exists $self->{VALUES}{$_};
         unless (ref $self->{VALUES}{$_}) {
-            logger->error("'" . $self->get_full_name() . ".$_' is not an object!");
+            logger->error("'" . $self->getFullName() . ".$_' is not an object!");
             exit 3;
         }
         
@@ -432,7 +432,7 @@ sub _expandMacro {
     my $hResult = $self->expandMacroHash($sMacroName, $oScope, $aStack);  # Remove Juli 09: , sub{$self->_resolveObjects(@_)});
     unless (defined $hResult->{DATA}) {
         logger()->error("$hResult->{ERROR} in scope \""
-            . $oScope->get_full_name()
+            . $oScope->getFullName()
             . "\"") if $hResult->{ERROR} && $bRaiseError;
         return ();
     }
@@ -440,7 +440,7 @@ sub _expandMacro {
     return @{$hResult->{DATA}} if ref $hResult->{DATA} eq "ARRAY";
     logger->error(
         "Internal error: _expandMacro(\"$sMacroName\") in scope \""
-        . $oScope->get_full_name()
+        . $oScope->getFullName()
         . "\" should return an array reference! (got $hResult->{DATA})",
         "Please file bug report!"
     );
@@ -461,16 +461,16 @@ sub expandMacroHash {
 
     my %sResult= ();
 
-# print "Scope: ", $oScope->get_full_name(), "\n";
+# print "Scope: ", $oScope->getFullName(), "\n";
 # print "Expanding $sMacroName\n";
 
     $sMacroName=~ s/^\&//;
-    my ($sMacro, $oMacroScope)= $oScope->find_property($sMacroName); 
+    my ($sMacro, $oMacroScope)= $oScope->findProperty($sMacroName); 
     unless ($oMacroScope) {
         return { ERROR => "Could not resolve Macro \"$sMacroName\"" };
     }
     # build full macro name
-    $sMacroName= $oMacroScope->get_full_name($sMacroName);
+    $sMacroName= $oMacroScope->getFullName($sMacroName);
 
     $aMacroStack->[0] = "[]" unless scalar @$aMacroStack;
     my $sMacroPath= $aMacroStack->[0];
@@ -487,7 +487,7 @@ sub expandMacroHash {
     }
     my $aMacro= $self->_splitValue(
         $fPreParse->(
-            $self->remove_backslashes_part1($sMacro)
+            $self->removeBackslashesPart1($sMacro)
         )
     );
     my $aNewMacroStack= [ "${sMacroPath}[$sMacroName]" ];
@@ -503,7 +503,7 @@ sub resolveObjects {
     my $sProperty= shift;
     my $aStack= shift || [];
     
-    return map { $self->remove_backslashes_part2($_) } $self->_expandMacro($sProperty, $self, $aStack);
+    return map { $self->removeBackslashesPart2($_) } $self->_expandMacro($sProperty, $self, $aStack);
 }
 
 sub _resolveObjects {
@@ -547,7 +547,7 @@ sub _resolveObjects {
     return \@oResult;
 }
 
-sub sort_show_keys {
+sub sortShowKeys {
     my $self= shift;
     my @sKeys= @_;
     
@@ -567,7 +567,7 @@ sub sort_show_keys {
     return @sResult;
 }
 
-sub get_all_references {
+sub getAllReferences {
     my $self= shift;
     my $aMacroStack= shift;
     
@@ -578,7 +578,7 @@ sub get_all_references {
     my @sResult= ($1);
 
     while (my $aSubStack= shift @aStack) {
-        push @sResult, $self->get_all_references($aSubStack);
+        push @sResult, $self->getAllReferences($aSubStack);
     }
     return @sResult;
 }
@@ -593,7 +593,7 @@ sub showUncachedReferences {
         # show all referenced objects not already shown and not anonymous
         my @sReferences= grep {
             !defined $aMacroStack->{$_} && !/\.\*\d+$/
-        } $self->get_all_references($aMacroStack->{'.'});
+        } $self->getAllReferences($aMacroStack->{'.'});
         
         last unless scalar @sReferences;
         
@@ -605,7 +605,7 @@ sub showUncachedReferences {
 
 sub getName {
     my $self= shift;
-    return $self->get_value('name', '');
+    return $self->getValue('name', '');
 }
 
 sub getShowName {
@@ -625,7 +625,7 @@ sub showConfValue {
     return () if defined $hConfShowCache->{$sKey};
     $hConfShowCache->{"$sKey"}= 1;
     # get the original config entry
-    my $sValue= $self->get_raw_value("/$sKey");
+    my $sValue= $self->getRawValue("/$sKey");
     return () unless defined $sValue;
 
     my @sResult= split /\n/, $sValue;
@@ -637,7 +637,7 @@ sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
     
-    my $sKey= $self->get_full_name();
+    my $sKey= $self->getFullName();
 
     return [] if $sKey=~ /\*\d*$/; # don't show anonymous objects
 
@@ -646,7 +646,7 @@ sub show {
 
     $hConfShowCache->{'.'}= [] unless $hConfShowCache->{'.'};
 
-    for my $sSubKey ($self->sort_show_keys(keys %{ $self->{VALUES} })) {
+    for my $sSubKey ($self->sortShowKeys(keys %{ $self->{VALUES} })) {
         next if $sSubKey =~ /^\./;
         if (ref($self->{VALUES}{$sSubKey})) {
 
@@ -656,13 +656,13 @@ sub show {
         }
 
         # to get all references (objects will not change $hReferences and should be handled later)
-        $self->get_value($sSubKey, undef,  $hConfShowCache->{'.'});
+        $self->getValue($sSubKey, undef,  $hConfShowCache->{'.'});
         push @sResult, $self->showConfValue("$sKey.$sSubKey", $hConfShowCache);
     }
     # try to resolve all properties not defined in current object
     for my $sSubKey ($self->PropertyNames()) {
         next if $self->{VALUES}{$sSubKey};
-        $self->get_value($sSubKey, undef,  $hConfShowCache->{'.'});
+        $self->getValue($sSubKey, undef,  $hConfShowCache->{'.'});
     }
     push @sResult, "[]" unless $bKeyInvalid;
     return \@sResult;
@@ -705,7 +705,7 @@ sub simplifyShow {
     return \@sResult;
 }
 
-sub get_full_name {
+sub getFullName {
     my $self= shift;
     my $sName= shift || '';
     

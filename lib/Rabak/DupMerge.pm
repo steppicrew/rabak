@@ -235,7 +235,7 @@ sub dupMerge {
         },
     };
 
-    $oPeer->run_perl(
+    $oPeer->runPerl(
     '
         use Data::Dumper;
         sub outResult {
@@ -348,9 +348,9 @@ sub dupMerge {
     ',
     undef, undef, $ioHandles);
     
-    print "ERROR: ", $oPeer->get_last_error();
+    print "ERROR: ", $oPeer->getLastError();
 
-    logger()->finish_progress("Processing files...done");
+    logger()->finishProgress("Processing files...done");
     logger()->decIndent();
     logger()->info("done");
 }

@@ -65,16 +65,16 @@ sub getPath {
 
     my $peer= $self->getPeer();
 
-    my $sBasePath= $peer->get_value("path");
+    my $sBasePath= $peer->getValue("path");
 
     return $sPath unless $sBasePath;
 
     # path may contain symlinks and should be expanded once
     unless ($self->{PATH_IS_ABSOLUTE}) {
-        my $sAbsPath= $peer->abs_path($sBasePath);
+        my $sAbsPath= $peer->absPath($sBasePath);
         if (defined $sAbsPath) {
             $sBasePath= $sAbsPath;
-            $peer->set_value("path", $sBasePath);
+            $peer->setValue("path", $sBasePath);
             $self->{PATH_IS_ABSOLUTE}= 1;
         }
     }
@@ -108,8 +108,8 @@ sub checkMount {
 
     my $peer= $self->getPeer();
 
-    # if abs_path fails try original mount device (eg. samba shares)
-    $sMountDevice= $peer->abs_path($sMountDevice) || $sMountDevice;
+    # if absPath fails try original mount device (eg. samba shares)
+    $sMountDevice= $peer->absPath($sMountDevice) || $sMountDevice;
 
     my $sqMountDevice= quotemeta $sMountDevice;
 
@@ -126,7 +126,7 @@ sub getMountObjects {
 
     my $peer= $self->getPeer();
 
-    return () unless $peer->find_property("mount");
+    return () unless $peer->findProperty("mount");
 
     my @oConfs= $peer->resolveObjects("mount");
     my @oMounts= ();
@@ -135,7 +135,7 @@ sub getMountObjects {
             my $sPath= $oConf;
             # TODO: for 'anonymous' mounts: should this set parent for inheriting values?
             $oConf= Rabak::Conf->new(undef, $peer);
-            $oConf->set_value("directory", $sPath);
+            $oConf->setValue("directory", $sPath);
         }
         push @oMounts, Rabak::Mount->newFromConf($oConf);
     } 
@@ -169,7 +169,7 @@ sub mountAll {
     return $iResult;
 }
 
-sub get_mounts {
+sub getMounts {
     my $self= shift;
 
     return $self->{_MOUNT_LIST} || [];

@@ -18,28 +18,28 @@ use Data::Dumper;
 # use File::Spec ();
 # use POSIX qw(strftime);
 
-sub do_test {
+sub _apiTest {
     # print Dumper(@_);
     
     return { error => 500, error_text => 'Not implemented' };
 }
 
-sub do_get_baksets {
+sub _apiGetBaksets {
     my $oConfFile= Rabak::ConfFile->new();
     my $oConf= $oConfFile->conf();
     
     my $aSets= [];
     for my $oSet (Rabak::Set->GetSets($oConf)) {
-        my $oTarget= $oSet->get_targetPeer();
+        my $oTarget= $oSet->getTargetPeer();
         my $hData= {
-            'title' => $oSet->get_value('title'),
-            'name' => $oSet->get_full_name(),
-            'target' => $oTarget->get_full_name(),
+            'title' => $oSet->getValue('title'),
+            'name' => $oSet->getFullName(),
+            'target' => $oTarget->getFullName(),
         };
         my $aSources= [];
-        for my $oSource ($oSet->get_sourcePeers()) {
+        for my $oSource ($oSet->getSourcePeers()) {
             my $hSourceData= {
-                'name' => $oSource->get_full_name(),
+                'name' => $oSource->getFullName(),
             };
             push @$aSources, $hSourceData;
         }
@@ -53,7 +53,7 @@ sub do_get_baksets {
     };
 }
 
-sub do_get_bakset_status {
+sub _apiGetBaksetStatus {
     my $param= shift;
 
     # $param->{bakset}..
@@ -62,7 +62,7 @@ sub do_get_bakset_status {
 }
 
 # STUB!
-sub do_get_backup_result {
+sub _apiGetBackupResult {
     my $param= shift;
 
     # $param->{bakset}
@@ -114,12 +114,12 @@ sub do_get_backup_result {
 sub API {
     my $params= shift;
     
-    my $cmd= lc($params->{cmd});
+    my $cmd= $params->{cmd};
     my $result;
     eval {
         no strict "refs";
 
-        my $do_cmd= "do_$cmd";
+        my $do_cmd= "_api$cmd";
         $result= &$do_cmd($params);
     };
     return { error => 500, error_text => "Command '$cmd' unknown" } if $@;
@@ -130,4 +130,3 @@ sub API {
 1;
 
 __END__
-

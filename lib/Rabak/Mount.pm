@@ -33,7 +33,7 @@ sub PropertyNames {
     return ('device', 'directory', 'type', 'options', 'unmount', 'lazy_unmount', shift->SUPER::PropertyNames());
 }
 
-sub is_mounted {
+sub isMounted {
     my $self= shift;
     
     return $self->{MOUNTPOINT};
@@ -52,7 +52,7 @@ sub MountDir2Device {
     
     my $sFsTab= $oPeer->cat("/etc/fstab") || '';
     my $sqMountDir= quotemeta $sMountDir;
-    return $oPeer->abs_path($1) if $sFsTab=~ /^(\S+)\s+$sqMountDir\s+/m;
+    return $oPeer->absPath($1) if $sFsTab=~ /^(\S+)\s+$sqMountDir\s+/m;
     return undef; 
     
 }
@@ -66,7 +66,7 @@ sub MountDevice2Dir {
     
     my $sFsTab= $oPeer->cat("/etc/fstab") || '';
     my $sqMountDevice= quotemeta $sMountDevice;
-    return $oPeer->abs_path($1) if $sFsTab=~ /^$sqMountDevice\s+(\S+)\s+/m;
+    return $oPeer->absPath($1) if $sFsTab=~ /^$sqMountDevice\s+(\S+)\s+/m;
     return undef; 
     
 }
@@ -89,9 +89,9 @@ sub mount {
     $self->{PEER_OBJECT}= $oPeer;
 
     my @aMountDeviceList= $self->resolveObjects("device");
-    my $sMountDir= $self->get_value("directory") || '';
-    my $sMountType= $self->get_value("type") || '';
-    my $sMountOpts= $self->get_value("options") || $self->get_value("opts") || '';
+    my $sMountDir= $self->getValue("directory") || '';
+    my $sMountType= $self->getValue("type") || '';
+    my $sMountOpts= $self->getValue("options") || $self->getValue("opts") || '';
     my $sUnmount= "";
 
     # parameters for mount command
@@ -156,7 +156,7 @@ sub mount {
         # ...and mount
         $oPeer->mount(@spMountOpts, $sMountDevice, $sMountDir);
         if ($?) { # mount failed
-            my $sMountResult= $oPeer->get_error;
+            my $sMountResult= $oPeer->getError;
             chomp $sMountResult;
             $sMountResult =~ s/\r?\n/ - /g;
             push @$arMessage, Rabak::Log->logger->warn("Mounting \"$sMountDevice\" on \"$sMountDir\" failed with: $sMountResult!");
@@ -198,7 +198,7 @@ sub mount {
     if ($iResult && $sMountDir) {
         $self->{MOUNTPOINT}= $sMountDir;
         # We want to unmount in reverse order:
-        unshift @{ $arUnmount }, $self if $self->get_value("unmount", 1);
+        unshift @{ $arUnmount }, $self if $self->getValue("unmount", 1);
     }
 
     push @$arMessage, Rabak::Log->logger->error("All mounts failed") unless $iResult;
@@ -218,11 +218,11 @@ sub unmount {
     my $oPeer = $self->{PEER_OBJECT};
     $oPeer->umount($sMountDir);
     if ($?) {
-        my $sResult= $oPeer->get_error;
+        my $sResult= $oPeer->getError;
         chomp $sResult;
         $sResult =~ s/\r?\n/ - /g;
         my $sError= "Unmounting \"$sMountDir\" failed: $sResult!";
-        unless ($self->get_value("lazy_unmount")) {
+        unless ($self->getValue("lazy_unmount")) {
             push @$arMessages, Rabak::Log->logger->error($sError);
             Rabak::Log->logger->log(@$arMessages) if $bLogMessages;
             return 0;
@@ -232,7 +232,7 @@ sub unmount {
 
         $oPeer->umount('-l', $sMountDir);
         if ($?) {
-            my $sResult= $oPeer->get_error;
+            my $sResult= $oPeer->getError;
             chomp $sResult;
             $sResult =~ s/\r?\n/ - /g;
     

@@ -9,7 +9,7 @@ no warnings 'redefine';
 use Rabak::Conf;
 use Rabak::Log;
 
-use Rabak::Set;      # benoetigt in print_set_list
+use Rabak::Set;      # benoetigt in printSetList
 
 use Term::ANSIColor;
 
@@ -68,7 +68,7 @@ sub new {
         return $self;
     }
 
-    $self->read_file($sFile) if $sFile;
+    $self->readFile($sFile) if $sFile;
     return $self;
 }
 
@@ -87,13 +87,13 @@ sub conf {
     return $self->{CONF};
 }
 
-=item print_set_list
+=item printSetList
 
 Prints a list of available backup sets.
 
 =cut
 
-sub print_set_list {
+sub printSetList {
     my $self= shift;
     
     return unless defined $self->filename();
@@ -101,8 +101,8 @@ sub print_set_list {
     my $bFound= 0;
     my $oConf= $self->{CONF};
     for my $oSet (Rabak::Set->GetSets($oConf)) {
-        my $oTarget= $oSet->get_targetPeer(); 
-        my @oSources= $oSet->get_sourcePeers();
+        my $oTarget= $oSet->getTargetPeer(); 
+        my @oSources= $oSet->getSourcePeers();
         next unless $oTarget && scalar @oSources;
 
         my @aSources= ();
@@ -110,7 +110,7 @@ sub print_set_list {
             push @aSources, $_->getFullPath();
         }
         my $sSources= join '", "', @aSources;
-        logger->print('  ' . colored($oSet->getName(), 'bold') . ' - ' . $oSet->get_value("title")
+        logger->print('  ' . colored($oSet->getName(), 'bold') . ' - ' . $oSet->getValue("title")
             . ", backs up \"$sSources\" to \""
             . $oTarget->getFullPath() . "\"");
         $bFound= 1;
@@ -118,13 +118,13 @@ sub print_set_list {
     logger->print("None.") unless $bFound;
 }
 
-=item print_all
+=item printAll
 
 Prints the complete, parsed configuration.
 
 =cut
 
-sub print_all {
+sub printAll {
     my $self= shift;
 
     my $hConfShowCache= {};
@@ -154,7 +154,7 @@ sub _error {
     exit 3;
 }
 
-sub read_file {
+sub readFile {
     my $self= shift;
 
     # use absolute paths only (needed for includes)
@@ -162,10 +162,10 @@ sub read_file {
     $self->{CONF}= Rabak::Conf->new('*');
     # $self->{CONF}= Rabak::Conf->new($sFile);
     $self->{FILE}= $sFile;
-    $self->_read_file($sFile);
+    $self->_readFile($sFile);
 }
 
-sub _read_file {
+sub _readFile {
     my $self= shift;
     my $sFile= shift;
     my $sOpener= shift;
@@ -214,7 +214,7 @@ sub _read_file {
             }
 
             # try reading file or raise error
-            $self->_read_file($sInclude, $sFile, $iLine);
+            $self->_readFile($sInclude, $sFile, $iLine);
             next;
         }
 
@@ -242,7 +242,7 @@ sub _read_file {
         }
 
         # get previous value and best matching scope
-        my ($sOldValue, $oScope)= $oConf->get_property($sName);
+        my ($sOldValue, $oScope)= $oConf->getProperty($sName);
         my $sNewValue= $sValue;
 
         # In case of a multiline, we need a newline at the end of each line
@@ -252,25 +252,25 @@ sub _read_file {
             $sNewValue.= "$sValue\n";
         }
 
-        $sNewValue= $self->remove_quotes($sNewValue);
+        $sNewValue= $self->removeQuotes($sNewValue);
 
         # remove current key to prevent self referencing
-        $oConf->remove_property($sName);
+        $oConf->removeProperty($sName);
         if ($sNewValue=~ /^\$($sregIdentRef)$/ || $sNewValue=~ /^\$\{($sregIdentRef)\}$/) {
 
             # if value is a simple reference, replace it by reference's content (may be an object)
             my $sRef= $1;
-            $sNewValue= $oScope->find_property($sRef);
+            $sNewValue= $oScope->findProperty($sRef);
             $self->_error("Could not resolve symbol '\$$sRef'", $sFile, $iLine, $sLine) unless defined $sNewValue;
             if (ref $sNewValue) {
 
                 # objects should be cloned to new location
-                my $sqNewValuesName= quotemeta $sNewValue->get_full_name();
+                my $sqNewValuesName= quotemeta $sNewValue->getFullName();
                 $self->_error("Could not reference parent", $sFile, $iLine, $sLine) if $sName=~ /^$sqNewValuesName\./;
 
                 # preset value to create all parent objects
-                $oConf->set_value($sName, '');
-                my (undef, $oNewScope, $sLastKey)= $oConf->get_property($sName);
+                $oConf->setValue($sName, '');
+                my (undef, $oNewScope, $sLastKey)= $oConf->getProperty($sName);
 
                 # create new conf-object
                 my $new= Rabak::Conf->new($sLastKey, $oNewScope);
@@ -285,14 +285,14 @@ sub _read_file {
             # function to expand referenced macros as scalar
             my $f = sub {
                 my $sRef= shift;
-                my $sResult= $oScope->find_property($sRef);
+                my $sResult= $oScope->findProperty($sRef);
                 $self->_error("Could not resolve symbol '$sRef'", $sFile, $iLine, $sLine) unless defined $sResult;
                 $self->_error("'$sRef' is an object", $sFile, $iLine, $sLine) if ref $sResult;
                 return $sResult;
             };
 
             # replace every occurance of a reference with reference's scalar value (or raise an error)
-            $sNewValue= $oConf->remove_backslashes_part1($sNewValue);
+            $sNewValue= $oConf->removeBackslashesPart1($sNewValue);
             while (
                 $sNewValue=~ s/(?<!\\)\$($sregIdentRef)/$f->($1)/ge ||
                 $sNewValue=~ s/(?<!\\)\$\{($sregIdentRef)\}/$f->($1)/ge
@@ -301,15 +301,15 @@ sub _read_file {
             # TODO: what to do with multi line quotes?
             logger->warn("Unescaped '\"' in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ s/(?<!\\)\"/\\\"/;
             logger->warn("Unescaped \"'\" in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ s/(?<!\\)\'/\\\'/;
-            $sNewValue= $oConf->undo_remove_backslashes_part1($sNewValue);
+            $sNewValue= $oConf->undoRemoveBackslashesPart1($sNewValue);
         }
-        $oConf->set_value($sName, $sNewValue);
+        $oConf->setValue($sName, $sNewValue);
     }
 
     return $oConf;
 }
 
-sub remove_quotes {
+sub removeQuotes {
     my $self= shift;
     my $sValue= shift;
 

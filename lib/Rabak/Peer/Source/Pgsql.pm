@@ -14,7 +14,7 @@ use Rabak::Log;
 
 sub DEFAULT_USER {'postgres'};
 
-sub get_show_cmd {
+sub getShowCmd {
     my $self= shift;
 
     return (
@@ -22,37 +22,37 @@ sub get_show_cmd {
         '--no-psqlrc',
         '--tuples-only',
         '--list',
-        '--username', $self->get_user(),
+        '--username', $self->getUser(),
         'postgres',
     );
 }
 
-sub get_probe_cmd {
+sub getProbeCmd {
     my $self= shift;
     my $sDb= shift;
 
     return (
         'pg_dump',
         '--schema-only',
-        '--username=' . $self->get_user(),
+        '--username=' . $self->getUser(),
         '--file=/dev/null',
         $sDb,
     );
 }
 
-sub get_dump_cmd {
+sub getDumpCmd {
     my $self= shift;
     my $sDb= shift;
 
     return (
         'pg_dump',
         '--clean',
-        '--username=' . $self->get_user(),
+        '--username=' . $self->getUser(),
         $sDb,
     );
 }
 
-sub parse_valid_db {
+sub parseValidDb {
     my $self= shift;
     my $sShowResult= shift;
 

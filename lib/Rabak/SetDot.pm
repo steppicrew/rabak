@@ -40,7 +40,7 @@ sub _dotConfTitle {
     my $sType= shift;
     my $oConf= shift;
 
-	# ->get_value("name") ??
+	# ->getValue("name") ??
     my $sTitleText= $oConf->{VALUES}{'name'} || $oConf->{NAME};
     $sTitleText= ucfirst($sType) . " \"$sTitleText\"";
     $sTitleText .= ': ' . $oConf->{VALUES}{'title'} if $oConf->{VALUES}{'title'};
@@ -129,12 +129,12 @@ sub toDot {
     $self->{_BOX_ADDED}= {};
 
     # print "]\n[";
-    # print $self->{SET}->get_value("name");
+    # print $self->{SET}->getValue("name");
     # print "]\n[";
-    # print $self->{SET}->get_value("title");
+    # print $self->{SET}->getValue("title");
     # print "]\n[";
 
-    my @oSources= $self->{SET}->get_sourcePeers();
+    my @oSources= $self->{SET}->getSourcePeers();
 
     my $sResult= '';
 
@@ -144,7 +144,7 @@ sub toDot {
         $sResult .= $self->_dotAddBox('source', $oSource, $self->{SET});
     }
 
-    my $oTarget= $self->{SET}->get_targetPeer();
+    my $oTarget= $self->{SET}->getTargetPeer();
     $sResult .= $self->_dotAddBox('target', $oTarget, $self->{SET});
 
     my $sTitle= dotify(_dotConfTitle('set', $self->{SET}));

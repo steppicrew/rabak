@@ -25,18 +25,18 @@ sub Factory {
     my $class= shift;
     my $oOrigConf= shift;
     
-    my $sPath= $oOrigConf->get_value("path");
+    my $sPath= $oOrigConf->getValue("path");
     if ($sPath && $sPath=~ s/^(\w+)\:\/\///) {
         my $sType= $1;
-        my $sPrefType= $oOrigConf->get_value("type");
+        my $sPrefType= $oOrigConf->getValue("type");
         logger->warn("Type in source path ($sType) differs from specified type ($sPrefType).") if $sPrefType && $sType ne $sPrefType;
-        $oOrigConf->set_value("type", $sType);
-        $oOrigConf->set_value("path", $sPath);
+        $oOrigConf->setValue("type", $sType);
+        $oOrigConf->setValue("path", $sPath);
     }
-    my $sType= $oOrigConf->get_value("type");
+    my $sType= $oOrigConf->getValue("type");
     unless (defined $sType) {
        $sType= "file";
-       $oOrigConf->set_value("type", $sType);
+       $oOrigConf->setValue("type", $sType);
     } 
     $sType= ucfirst lc $sType;
 
@@ -68,7 +68,7 @@ sub PropertyNames {
 
 sub getPathExtension {
     my $self= shift;
-    my $sName= $self->get_value("path_extension", $self->getName());
+    my $sName= $self->getValue("path_extension", $self->getName());
     $sName=~ s/^\*/source/;
     return "" if $sName eq "";
     return ".$sName";
@@ -78,14 +78,14 @@ sub prepareBackup {
     my $self= shift;
 
     logger->info("Source: " . $self->getFullPath());
-    logger->set_prefix($self->get_value("type"));
+    logger->setPrefix($self->getValue("type"));
     return 0;
 }
 sub finishBackup {
     my $self= shift;
     my $iBackupResult= shift;
     
-    logger->set_prefix();
+    logger->setPrefix();
     $self->cleanupTempfiles();
 }
 
@@ -108,7 +108,7 @@ sub show {
 
 sub getFullPath {
     my $self= shift;
-    return $self->get_value("type") . "://" . $self->SUPER::getFullPath();
+    return $self->getValue("type") . "://" . $self->SUPER::getFullPath();
 }
 
 1;

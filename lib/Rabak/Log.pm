@@ -267,7 +267,7 @@ sub clear {
     $self->{MESSAGES}= '';
 }
 
-sub get_messages_file {
+sub getMessagesFile {
     my $self= shift;
 
     CORE::close($self->{MSG_FH}) if defined $self->{MSG_FH};
@@ -288,8 +288,8 @@ sub open {
     $self->{LOG_FILE_NAME}= $self->{REAL_LOG_FILE_NAME}= $sFileName;
     my $bIsNew= !$oTarget->isFile($sFileName);
 
-    if ($oTarget->is_remote()) {
-        ($self->{LOG_FH}, $self->{REAL_LOG_FILE_NAME})= $oTarget->local_tempfile(SUFFIX => '.log');
+    if ($oTarget->isRemote()) {
+        ($self->{LOG_FH}, $self->{REAL_LOG_FILE_NAME})= $oTarget->localTempfile(SUFFIX => '.log');
     }
     else {
         unless (CORE::open ($self->{LOG_FH}, ">>$sFileName")) {
@@ -310,8 +310,8 @@ sub close {
     return unless $self->{TARGET};
     CORE::close $self->{LOG_FH} if $self->{LOG_FH};
     $self->{LOG_FH}= undef;
-    if ($self->{TARGET}->is_remote()) {
-        logger->error($self->{TARGET}->get_error()) unless ($self->{TARGET}->copyLocalFileToRemote($self->{REAL_LOG_FILE_NAME}, $self->{LOG_FILE_NAME}, APPEND => 1,));
+    if ($self->{TARGET}->isRemote()) {
+        logger->error($self->{TARGET}->getError()) unless ($self->{TARGET}->copyLocalFileToRemote($self->{REAL_LOG_FILE_NAME}, $self->{LOG_FILE_NAME}, APPEND => 1,));
     }
     $self->{TARGET}= undef;
 }
@@ -344,8 +344,8 @@ sub mailLog {
     my $self= shift;
     my $sSubject= shift;
 
-    my $iErrors= $self->get_errorCount;
-    my $iWarns= $self->get_warnCount;
+    my $iErrors= $self->getErrorCount;
+    my $iWarns= $self->getWarnCount;
     my $sErrWarn;
     $sErrWarn= "$iErrors error" if $iErrors; 
     $sErrWarn.= "s" if $iErrors > 1; 
@@ -358,7 +358,7 @@ sub mailLog {
         ? "RABAK '$self->{SWITCH_NAME}': $sSubject"
         : "RABAK: $sSubject";
 
-    my $sFileName= $self->get_messages_file();
+    my $sFileName= $self->getMessagesFile();
     my $fh;
     CORE::open $fh, "<$sFileName" or $fh= undef;
     my $fBody = sub {<$fh>};
@@ -379,36 +379,36 @@ sub mailWarning {
     return $self->_mail("RABAK WARNING: $sSubject", sub {shift @sBody});
 }
 
-sub get_filename() {
+sub getFilename() {
     my $self= shift;
 
     return $self->{TARGET} ? $self->{LOG_FILE_NAME} : undef;
 }
 
-sub get_errorCount {
+sub getErrorCount {
     my $self= shift;
     return $self->{ERRORCOUNT};
 }
-sub get_warnCount {
+sub getWarnCount {
     my $self= shift;
     return $self->{WARNCOUNT};
 }
 
-sub set_stdout_prefix {
+sub setStdoutPrefix {
     my $self= shift;
     my $sPrefix= shift;
     
     $self->{STDOUT_PREFIX}= defined $sPrefix ? "$sPrefix " : "";
 }
 
-sub set_prefix {
+sub setPrefix {
     my $self= shift;
     my $sPrefix= shift || '';
 
     $self->{PREFIX}= $sPrefix;
 }
 
-sub set_category {
+sub setCategory {
     my $self= shift;
     my $sPrefix= shift || '';
 
@@ -481,7 +481,7 @@ sub progress {
     $self->{LAST_PROGRESS}= $sMessage;
 }
 
-sub finish_progress {
+sub finishProgress {
     my $self= shift;
     my $sMessage= shift;
 

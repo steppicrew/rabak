@@ -64,7 +64,7 @@ sub newFromConf {
     
     my $new= $class->SUPER::newFromConf($oOrigConf);
 
-    my $sPath= $new->get_value("path");
+    my $sPath= $new->getValue("path");
     
     if ($sPath) {
         # remove leading "file://" etc.
@@ -76,11 +76,11 @@ sub newFromConf {
             my $iPort= $3;
             $sUser=~ s/\@$//;
             $iPort=~ s/^\:// if $iPort;
-            $new->set_value("host", $sHost);
-            $new->set_value("user", $sUser) if $sUser;
-            $new->set_value("port", $iPort) if $iPort;
+            $new->setValue("host", $sHost);
+            $new->setValue("user", $sUser) if $sUser;
+            $new->setValue("port", $iPort) if $iPort;
         }
-        $new->set_value("path", $sPath);
+        $new->setValue("path", $sPath);
     }
 
     # print Data::Dumper->Dump([$self->{VALUES}]); die;
@@ -97,11 +97,11 @@ sub cleanupTempfiles {
     $self->{LOCAL_TEMPFILES}= [];
 }
 
-sub local_tempfile {
+sub localTempfile {
     my $self= shift;
     my %hParams= @_;
 
-    my $sDir = $hParams{DIR} || $self->get_value("tempdir") || File::Spec->tmpdir();
+    my $sDir = $hParams{DIR} || $self->getValue("tempdir") || File::Spec->tmpdir();
     my $sSuffix= $hParams{SUFFIX} || '';
 
     my $tempfh= File::Temp->new(
@@ -114,11 +114,11 @@ sub local_tempfile {
     return $tempfh->filename();
 }
 
-sub local_tempdir {
+sub localTempdir {
     my $self= shift;
     my %hParams= @_;
 
-    my $sDir = $hParams{DIR} || $self->get_value("tempdir") || File::Spec->tmpdir();
+    my $sDir = $hParams{DIR} || $self->getValue("tempdir") || File::Spec->tmpdir();
 
     my $tempdir= File::Temp->newdir('rabak-XXXXXX', CLEANUP => 1, DIR => $sDir,);
     # remember $tempdir to keep it in scope (will be unlinked otherwise) 
@@ -126,43 +126,43 @@ sub local_tempdir {
     return $tempdir->dirname();
 }
 
-sub get_error {
+sub getError {
     my $self= shift;
 
     return $self->{ERRORMSG};
 }
 
-sub get_last_out {
+sub getLastOut {
     my $self= shift;
     return $self->{LAST_RESULT}{stdout};
 }
 
-sub get_last_error {
+sub getLastError {
     my $self= shift;
     return $self->{LAST_RESULT}{stderr};
 }
 
-sub get_last_exit {
+sub getLastExit {
     my $self= shift;
     return $self->{LAST_RESULT}{exit};
 }
 
-sub _set_error {
+sub _setError {
     my $self= shift;
     my $sError= shift || '';
 
     $self->{ERRORMSG}= $sError;
 }
 
-sub is_remote {
+sub isRemote {
     my $self= shift;
-    return $self->get_value("host");
+    return $self->getValue("host");
 }
 
 # may be overridden (Mountable.pm)
 sub getPath {
     my $self= shift;
-    my $sPath= shift || $self->get_value("path");
+    my $sPath= shift || $self->getValue("path");
 
     return $sPath;
 }
@@ -178,11 +178,11 @@ sub getUserHost {
     my $self= shift;
     my $sSeparator= shift || '';
 
-    return "" unless $self->is_remote();
+    return "" unless $self->isRemote();
 
-    my $sUser= $self->get_value("user");
+    my $sUser= $self->getValue("user");
     return ($sUser ? "$sUser\@" : "") .
-        $self->get_value("host") .
+        $self->getValue("host") .
         $sSeparator;
 }
 
@@ -190,9 +190,9 @@ sub getUserHostPort {
     my $self= shift;
     my $sSeparator= shift || '';
 
-    return "" unless $self->is_remote();
+    return "" unless $self->isRemote();
 
-    my $iPort= $self->get_value("port", 22);
+    my $iPort= $self->getValue("port", 22);
     return $self->getUserHost() .
         ($iPort == 22 ? "" : ":$iPort") .
         $sSeparator;
@@ -242,13 +242,13 @@ sub savecmd {
 
     $self= $self->new() unless ref $self;
 
-    $self->run_cmd($cmd, $hHandles);
-    $self->_set_error($self->{LAST_RESULT}{stderr});
+    $self->runCmd($cmd, $hHandles);
+    $self->_setError($self->{LAST_RESULT}{stderr});
     $?= $self->{LAST_RESULT}{exit} || 0; # set standard exit variable
     return $self->{LAST_RESULT}{stdout} || '';
 }
 
-=item run_cmd($sCmd, $bPiped)
+=item runCmd($sCmd, $bPiped)
 
 Runs a command either locally or remote.
 
@@ -256,7 +256,7 @@ Result: (stdout, stderr, exit code)
 
 =cut
 
-sub run_cmd {
+sub runCmd {
     my $self= shift;
     my $cmd= shift;
     my $hHandles= shift || {};
@@ -270,8 +270,8 @@ sub run_cmd {
         "$hHandles->{STDIN}\n" .
         "************** STDIN END ****************\n" if $self->{DEBUG} && $hHandles->{STDIN};
 
-    return $self->_run_ssh_cmd($cmd, $hHandles) if $self->is_remote();
-    return $self->_run_local_cmd($cmd, $hHandles);
+    return $self->_runSshCmd($cmd, $hHandles) if $self->isRemote();
+    return $self->_runLocalCmd($cmd, $hHandles);
 }
 
 # creates function for output line buffering (for stdout/err handling)
@@ -295,7 +295,7 @@ sub _outbufSplitFact {
     };
 }
 
-sub _prepare_io_handles {
+sub _prepareIoHandles {
     my $self= shift;
     my $hHandles= shift;
     
@@ -327,7 +327,7 @@ sub _prepare_io_handles {
 # $hHandles->{STDERR}: func ref to handle stderr, gets array of lines if line buffered (optional)
 # $hHandles->{STDOUT_UNBUFFERED}: if false, stdout will be handled line buffered
 # $hHandles->{STDERR_UNBUFFERED}: if false, stderr will be handled line buffered
-sub _run_local_cmd {
+sub _runLocalCmd {
     my $self= shift;
     my $aCmd= shift;
     my $hHandles= shift || {};
@@ -341,7 +341,7 @@ sub _run_local_cmd {
         error => '',
     };
 
-    my ($fStdIn, $fStdOut, $fStdErr)= $self->_prepare_io_handles($hHandles);
+    my ($fStdIn, $fStdOut, $fStdErr)= $self->_prepareIoHandles($hHandles);
 
     # start $aCmd in shell context if its a scalar
     # ($sCmd should be an array reference to avoid shell,
@@ -360,7 +360,7 @@ sub _run_local_cmd {
     
     $self->{LAST_RESULT}{exit}=  $h->result;
 
-    $self->_set_error($self->{LAST_RESULT}{stderr});
+    $self->_setError($self->{LAST_RESULT}{stderr});
 
     return (
         $self->{LAST_RESULT}{stdout},
@@ -370,18 +370,18 @@ sub _run_local_cmd {
     );
 }
 
-sub build_ssh_cmd {
+sub buildSshCmd {
     my $self= shift;
     my $sCmd= shift;
 
     die "Peer.pm: No command specified!" unless defined $sCmd;
-    die "Peer.pm: No host specified!" unless defined $self->get_value("host");
+    die "Peer.pm: No host specified!" unless defined $self->getValue("host");
 
     my @sSshCmd= ('ssh');
 
-    my $p= $self->get_value('port');
+    my $p= $self->getValue('port');
     push @sSshCmd, '-p', $p if $p;
-    $p= $self->get_value("protocol") || '';
+    $p= $self->getValue("protocol") || '';
     push @sSshCmd, "-$p" if $p eq '1' || $p eq '2';
     push @sSshCmd, map {('-i', $_)} $self->resolveObjects("identity_files");
 #    push @sSshCmd, '-vvv' if $self->{DEBUG};
@@ -391,35 +391,35 @@ sub build_ssh_cmd {
     return scalar $self->ShellQuote(@sSshCmd);
 }
 
-sub _run_ssh_cmd {
+sub _runSshCmd {
     my $self= shift;
     my $sCmd= shift;
     my $hHandles= shift || {};
 
     my $sRunCmd= '';
 
-    $sRunCmd= $self->build_ssh_cmd($sCmd);
+    $sRunCmd= $self->buildSshCmd($sCmd);
     print "SSH: running [$sRunCmd]\n" if $self->{DEBUG};
 
-    print "WARNING: Trying to access remote host \"" . $self->get_value("host") . "\"!\n" if $self->get_switch("warn_on_remote_access");
+    print "WARNING: Trying to access remote host \"" . $self->getValue("host") . "\"!\n" if $self->getSwitch("warn_on_remote_access");
 
-    return $self->_run_local_cmd($sRunCmd, $hHandles);
+    return $self->_runLocalCmd($sRunCmd, $hHandles);
 }
 
 # evaluates perl script remote or locally
-sub run_perl {
+sub runPerl {
     my $self= shift;
     my $sPerlScript= shift;
     my $refInVars= shift || {}; # input vars have to be references or skalars
     my $sOutVar= shift;
     my $hHandles= shift || {};
 
-    die "Rabak::Peer->run_perl() may not have an output variable defined and a handle for STDOUT"
+    die "Rabak::Peer->runPerl() may not have an output variable defined and a handle for STDOUT"
         . " at the same time!" if $sOutVar && exists $hHandles->{STDERR};
 
     # run script as command if it's remote or STDIN/STDOUT handles are defined
     # (will be "eval"ed otherwise)
-    my $bRunAsCommand= $hHandles || $self->is_remote();
+    my $bRunAsCommand= $hHandles || $self->isRemote();
 
     # define and set "incoming" variables
     my $sPerlVars= '';
@@ -470,15 +470,15 @@ sub run_perl {
             return $fStdIn->() if $fStdIn;
             return undef;
         };
-        $self->run_cmd('perl', $hHandles);
-        $self->_set_error($self->{LAST_RESULT}{stderr});
+        $self->runCmd('perl', $hHandles);
+        $self->_setError($self->{LAST_RESULT}{stderr});
         print 'ERR: ' . $self->{LAST_RESULT}{stderr} . "\n" if $self->{DEBUG} && $self->{LAST_RESULT}{stderr};
         $result= $self->{LAST_RESULT}{exit} ? undef : $self->{LAST_RESULT}{stdout};
     }
     else {
         $result= eval $sPerlScript;
         if ($@) {
-            $self->_set_error($@);
+            $self->_setError($@);
             $result= undef;
         }
     }
@@ -529,7 +529,7 @@ sub getDir {
         } @Dir if $bFileType;
     ';
 
-    return @{$self->run_perl($sPerlScript, {
+    return @{$self->runPerl($sPerlScript, {
             'sPath' => $sPath,
             'bFileType' => $bFileType,
         }, '@Dir'
@@ -583,7 +583,7 @@ sub getDirRecursive {
     ';
 
     return %{
-        $self->run_perl(
+        $self->runPerl(
             $sPerlScript,
             {
                 "sPath" => $sPath,
@@ -600,9 +600,9 @@ sub getLocalFile {
     my $sFile= $self->getPath(shift);
     my %hParams= @_;
 
-    return $sFile unless $self->is_remote();
+    return $sFile unless $self->isRemote();
     
-    my ($fh, $sTmpName) = $self->local_tempfile(%hParams);
+    my ($fh, $sTmpName) = $self->localTempfile(%hParams);
     my $hHandles= {
         STDOUT => sub {
             print $fh @_;
@@ -621,7 +621,7 @@ sub copyLocalFileToRemote {
     my $sRemFile= $self->getPath(shift);
     my %hParams= @_;
 
-    $self->_set_error();
+    $self->_setError();
     
     die 'Internal error: Parameters "APPEND" and "SAVE_COPY" are exclusive!' if $hParams{APPEND} && $hParams{SAVE_COPY};
 
@@ -638,16 +638,16 @@ sub copyLocalFileToRemote {
         $sCmdAppend= " && mv -f $sqRemFile $sqFinalRemote; result=\$?; test -f $sqRemFile && rm $sqRemFile; exit \$result";
     }
 
-    unless ($self->is_remote()) {
+    unless ($self->isRemote()) {
         $sLocFile= $self->getPath($sLocFile);
         return 1 if $sLocFile eq $sRemFile;
         if ($hParams{APPEND}) {
-            $self->_set_error(`cat $sqLocFile 2>&1 >> $sqRemFile`);
+            $self->_setError(`cat $sqLocFile 2>&1 >> $sqRemFile`);
         }
         else {
-            $self->_set_error(`cp -f $sqLocFile $sqRemFile 2>&1 $sCmdAppend`);
+            $self->_setError(`cp -f $sqLocFile $sqRemFile 2>&1 $sCmdAppend`);
         }
-        return $self->get_error ? 0 : 1;
+        return $self->getError ? 0 : 1;
     }
 
     my $fh;
@@ -663,13 +663,13 @@ sub copyLocalFileToRemote {
             }
         };
 
-        my ($stdout, $stderr, $exit) = $self->_run_ssh_cmd("cat - $sPipe $sqRemFile $sCmdAppend", $hHandles);
+        my ($stdout, $stderr, $exit) = $self->_runSshCmd("cat - $sPipe $sqRemFile $sCmdAppend", $hHandles);
 
-        $self->_set_error($stderr);
+        $self->_setError($stderr);
         CORE::close $fh;
         return $stderr ? 0 : 1;
     }
-    $self->_set_error("Could not open local file \"$sLocFile\"");
+    $self->_setError("Could not open local file \"$sLocFile\"");
     return 0;
 }
 
@@ -679,7 +679,7 @@ sub mkdir {
     
     return 1 if $self->pretend();
 
-    return ${$self->run_perl('
+    return ${$self->runPerl('
             # mkdir()
             $result= -d $sPath || CORE::mkdir $sPath;
         ', { "sPath" => $sPath }, '$result'
@@ -692,7 +692,7 @@ sub symlink {
     my $sOrigFile= shift;
     my $sSymLink= $self->getPath(shift);
 
-    return ${$self->run_perl('
+    return ${$self->runPerl('
             # symlink()
             $result= CORE::symlink $sOrigFile, $sSymLink;
         ', {
@@ -706,7 +706,7 @@ sub unlink {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
-    return ${$self->run_perl('
+    return ${$self->runPerl('
             # unlink()
             $result= CORE::unlink $sFile;
         ', { "sFile" => $sFile, }, '$result'
@@ -725,7 +725,7 @@ sub isDir {
     my $self= shift;
     my $sDir= $self->getPath(shift);
 
-    return ${$self->run_perl('
+    return ${$self->runPerl('
             # isDir()
             $result= -d $sDir;
         ', { 'sDir' => $sDir, }, '$result'
@@ -736,7 +736,7 @@ sub isReadable {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
-    return ${$self->run_perl('
+    return ${$self->runPerl('
             # isReadable()
             $result= -r $sFile;
         ', { 'sFile' => $sFile, }, '$result'
@@ -747,7 +747,7 @@ sub isWritable {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
-    return ${$self->run_perl('
+    return ${$self->runPerl('
             # isWritable()
             $result= -w $sFile;
         ', { 'sFile' => $sFile, }, '$result'
@@ -758,7 +758,7 @@ sub isFile {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
-    return ${$self->run_perl('
+    return ${$self->runPerl('
             # isFile()
             $result= -f $sFile;
         ', { 'sFile' => $sFile, }, '$result'
@@ -769,20 +769,20 @@ sub isSymlink {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
-    return ${$self->run_perl('
+    return ${$self->runPerl('
             # isSymlink()
             $result= -l $sFile;
         ', { 'sFile' => $sFile, }, '$result'
     ) || \undef};
 }
 
-# abs_path *MUST NOT* use getPath!! would result in an infinte loop
-sub abs_path {
+# absPath *MUST NOT* use getPath!! would result in an infinte loop
+sub absPath {
     my $self= shift;
     my $sFile= shift || '.'; # !! path *NOT* relative to target path but to cwd
     
-    return ${$self->run_perl('
-            # abs_path()
+    return ${$self->runPerl('
+            # absPath()
             use Cwd;
             $result= Cwd::abs_path($sFile);
         ', { 'sFile' => $sFile, }, '$result'
@@ -793,7 +793,7 @@ sub glob {
     my $self= shift;
     my $sFile= shift;
 
-    return @{$self->run_perl('
+    return @{$self->runPerl('
             # glob()
             @result= glob($sFile);
         ', { 'sFile' => $sFile, }, '@result'
@@ -805,7 +805,7 @@ sub rename {
     my $sOldFile= shift;
     my $sNewFile= shift;
 
-    return ${$self->run_perl('
+    return ${$self->runPerl('
             # rename()
             $result= CORE::rename($sOldFile, $sNewFile);
         ', { 'sOldFile' => $sOldFile, 'sNewFile' => $sNewFile, }, '$result'
@@ -855,10 +855,10 @@ sub tempfile {
     my %hParams= @_;
     
     my $sSuffix= $hParams{SUFFIX} || '';
-    my $sDir= $hParams{DIR} || $self->get_value("tempdir");
+    my $sDir= $hParams{DIR} || $self->getValue("tempdir");
 
     $self= $self->new() unless ref $self;
-    my $sFileName= ${$self->run_perl('
+    my $sFileName= ${$self->runPerl('
             # tempfile
             use File::Temp;
             use File::Spec;
@@ -879,8 +879,8 @@ sub tempdir {
     my %hParams= @_;
     
     $self= $self->new() unless ref $self;
-    my $sDir= $hParams{DIR} || $self->get_value("tempdir");
-    my $sDirName= ${$self->run_perl('
+    my $sDir= $hParams{DIR} || $self->getValue("tempdir");
+    my $sDirName= ${$self->runPerl('
             # tempdir
             use File::Temp;
             use File::Spec;

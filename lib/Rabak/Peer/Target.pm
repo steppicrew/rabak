@@ -60,23 +60,23 @@ sub checkMount {
     
     return $sMountPath if $sMountPath=~ /^\d+$/;
 
-    my $sTargetValue= $self->get_value("group", "");
+    my $sTargetValue= $self->getValue("group", "");
     
     my $sqTargetValue= quotemeta $sTargetValue;
-    if (defined $self->get_switch('targetvalue')) {
-        $sTargetValue.= "." . $self->get_switch('targetvalue');
+    if (defined $self->getSwitch('targetvalue')) {
+        $sTargetValue.= "." . $self->getSwitch('targetvalue');
         $sqTargetValue= quotemeta $sTargetValue;
     }
     else {
         $sqTargetValue.= '(\.\w+)?';
     }
 
-    my $sDevConfFile= File::Spec->join($sMountPath, $self->get_switch('dev_conf_file', "rabak.dev.cf"));
+    my $sDevConfFile= File::Spec->join($sMountPath, $self->getSwitch('dev_conf_file', "rabak.dev.cf"));
     if ($self->isReadable("$sDevConfFile")) {
         if ($sTargetValue) {
             my $oDevConfFile= Rabak::ConfFile->new($self->getLocalFile($sDevConfFile, SUFFIX => '.dev.cf'));
             my $oDevConf= $oDevConfFile->conf();
-            my $sFoundTargets = $oDevConf->get_value('targetvalues') || '';
+            my $sFoundTargets = $oDevConf->getValue('targetvalues') || '';
             if (" $sFoundTargets " =~ /\s$sqTargetValue\s/) {
                 push @$arMountMessages, logger->info("Target value \"$sTargetValue\" found on device \"$sMountDevice\"");
             }
@@ -108,7 +108,7 @@ sub mountErrorIsFatal {
 sub checkDf {
     my $self= shift;
 
-    my $sSpaceThreshold= $self->get_value('discfree_threshold');
+    my $sSpaceThreshold= $self->getValue('discfree_threshold');
     return undef unless $sSpaceThreshold;
 
     my $iStValue= $sSpaceThreshold =~ /\b([\d\.]+)/ ? $1 : 0;
@@ -135,7 +135,7 @@ sub checkDf {
     return undef;
 }
 
-sub remove_old {
+sub removeOld {
     my $self= shift;
     my $iKeep= shift;
     my $aOldBackupDirs= shift;
@@ -166,8 +166,8 @@ sub remove_old {
         }
         logger->verbose("Removing \"$sDir\"");
         $self->rmtree($sDir);
-        if ($self->get_last_exit()) {
-            logger->error($self->get_last_error()) ;
+        if ($self->getLastExit()) {
+            logger->error($self->getLastError()) ;
         }
         else {
             $iCount++;
@@ -201,12 +201,12 @@ sub prepare {
     # check target dir
     unless ($self->isDir()) {
         logger->error(@sMountMessage);
-        logger->error("Target \"".$self->get_value("path")."\" is not a directory. Backup set skipped.");
+        logger->error("Target \"".$self->getValue("path")."\" is not a directory. Backup set skipped.");
         return {ERROR => -1};
     }
     unless ($self->isWritable()) {
         logger->error(@sMountMessage);
-        logger->error("Target \"".$self->get_value("path")."\" is not writable. Backup set skipped.");
+        logger->error("Target \"".$self->getValue("path")."\" is not writable. Backup set skipped.");
         return {ERROR => -2};
     }
     return undef;
@@ -259,8 +259,8 @@ sub finishBackup {
     my $aDf = $self->checkDf();
     if (defined $aDf) {
         logger->warn(join "", @$aDf);
-        my $sHostName= $self->get_value("host") || $self->cmdData("hostname");
-        logger->mailWarning("disc space too low on ${sHostName}'s target dir \"" . $self->abs_path($self->getPath()) . "\"",
+        my $sHostName= $self->getValue("host") || $self->cmdData("hostname");
+        logger->mailWarning("disc space too low on ${sHostName}'s target dir \"" . $self->absPath($self->getPath()) . "\"",
             "Rabak Version " . VERSION() . " on \"" . $self->cmdData("hostname") . "\" as user \"" . $self->cmdData("user") . "\"",
             "Command line: " . $self->cmdData("command_line"),
             "#"x80,

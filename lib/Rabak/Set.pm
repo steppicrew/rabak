@@ -34,7 +34,7 @@ sub new {
 
     $self->{_TARGET_OBJECT}= undef;
 
-    $self->set_value("name", $sName);
+    $self->setValue("name", $sName);
     bless $self, $class;
 }
 
@@ -44,9 +44,9 @@ sub newFromConf {
     
     my $new= $class->SUPER::newFromConf($oOrigConf);
 
-    # FIXME: Where is ERROR used? Use get_validation_message on returned instance!
+    # FIXME: Where is ERROR used? Use getValidationMessage on returned instance!
 
-    $new->{ERROR}= $new->get_validation_message();
+    $new->{ERROR}= $new->getValidationMessage();
     return $new;
 }
 
@@ -66,18 +66,18 @@ sub GetSets {
     } sort keys %{ $oConf->{VALUES} };
 }
 
-sub get_validation_message {
+sub getValidationMessage {
     my $self= shift;
-    return $self->get_value_required_message("title")
-        || $self->get_value_required_message("source")
-        || $self->get_value_required_message("target");
+    return $self->getValueRequiredMessage("title")
+        || $self->getValueRequiredMessage("source")
+        || $self->getValueRequiredMessage("target");
 }
 
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
     
-    logger->set_stdout_prefix("#");
+    logger->setStdoutPrefix("#");
     
     my $aResult= [];
     
@@ -86,8 +86,8 @@ sub show {
         "# Configuration for \"$self->{NAME}\"",
         "#" x 80;
 
-    my @oSources= $self->get_sourcePeers();
-    my $oTarget= $self->get_targetPeer();
+    my @oSources= $self->getSourcePeers();
+    my $oTarget= $self->getTargetPeer();
 
     push @$aResult, @{$self->SUPER::show($hConfShowCache)};
 
@@ -95,8 +95,8 @@ sub show {
     
     push @$aResult, @{$oTarget->show($hConfShowCache)};
     
-    my $oRootConf= $self->find_scope("/switch");
-    my $oSwitches= $oRootConf->get_property("switch");
+    my $oRootConf= $self->findScope("/switch");
+    my $oSwitches= $oRootConf->getProperty("switch");
     if (defined $oSwitches && ref $oSwitches) {
         push @$aResult, "", "# Switches:", @{$oSwitches->show()};
     }
@@ -113,7 +113,7 @@ sub show {
 #  ...
 # -----------------------------------------------------------------------------
 
-sub get_targetPeer {
+sub getTargetPeer {
     my $self= shift;
 
     unless ($self->{_TARGET_OBJECT}) {
@@ -124,10 +124,10 @@ sub get_targetPeer {
             my $sPath= $oConf;
             # TODO: for 'anonymous' targets: should this set parent for inheriting values?
             $oConf= Rabak::Conf->new(undef, $self);
-            $oConf->set_value("path", $sPath);
+            $oConf->setValue("path", $sPath);
         }
         $self->{_TARGET_OBJECT}= Rabak::Peer::Target->newFromConf($oConf);
-        ## $self->{_TARGET_OBJECT}->set_value("switch.warn_on_remote_access", );
+        ## $self->{_TARGET_OBJECT}->setValue("switch.warn_on_remote_access", );
     }
     return $self->{_TARGET_OBJECT};
 }
@@ -136,7 +136,7 @@ sub get_targetPeer {
 #  Backup
 # -----------------------------------------------------------------------------
 
-sub get_sourcePeers {
+sub getSourcePeers {
     my $self= shift;
     
     my @oConfs= $self->resolveObjects("source");
@@ -146,7 +146,7 @@ sub get_sourcePeers {
             my $sPath= $oConf;
             # TODO: for 'anonymous' sources: should this set parent for inheriting values?
             $oConf= Rabak::Conf->new(undef, $self);
-            $oConf->set_value("path", $sPath);
+            $oConf->setValue("path", $sPath);
         }
         push @oSources, Rabak::Peer::Source->Factory($oConf);
     } 
@@ -155,7 +155,7 @@ sub get_sourcePeers {
 
 sub getPathExtension {
     my $self= shift;
-    my $sExt = $self->get_value("path_extension", $self->getName());
+    my $sExt = $self->getValue("path_extension", $self->getName());
     return "" if $sExt eq "";
     return ".$sExt";
 }
@@ -179,22 +179,22 @@ sub backup {
     
     my %LogOpts= ();
     for my $sLogOpt ('pretend', 'logging', 'verbose', 'quiet') {
-        $LogOpts{ucfirst $sLogOpt} = $self->get_switch($sLogOpt);
+        $LogOpts{ucfirst $sLogOpt} = $self->getSwitch($sLogOpt);
     }
-    $LogOpts{"Email"} = $self->get_value("email");
+    $LogOpts{"Email"} = $self->getValue("email");
     $LogOpts{"Name"} = $self->getName();
     logger->setOpts(\%LogOpts);
 
-    logger->set_category($self->getName());
+    logger->setCategory($self->getName());
     
     logger->info("Rabak Version " . VERSION() . " on \"" . $self->cmdData("hostname") . "\" as user \"" . $self->cmdData("user") . "\"");
     logger->info("Command line: " . $self->cmdData("command_line"));
     logger->info("Configuration read from: '" . $self->cmdData("config_file") . "'");
 
-    my $oTargetPeer= $self->get_targetPeer();
-    my @oSourcePeers= $self->get_sourcePeers();
+    my $oTargetPeer= $self->getTargetPeer();
+    my @oSourcePeers= $self->getSourcePeers();
     
-    if ($self->get_switch('pretend')) {
+    if ($self->getSwitch('pretend')) {
         $oTargetPeer->setPretend(1);
         $_->setPretend(1) for @oSourcePeers;
     }
@@ -204,13 +204,13 @@ sub backup {
     $iResult= $hBaksetData->{ERROR};
     goto cleanup if $iResult;
 
-    $oTargetPeer->initLogging($hBaksetData) if $self->get_switch('logging');
+    $oTargetPeer->initLogging($hBaksetData) if $self->getSwitch('logging');
 
     # now try backing up every source 
     my %sNames= ();
     for my $oSourcePeer (@oSourcePeers) {
-        my $sSourceName= $oSourcePeer->get_full_name();
-        $oSourcePeer->set_value('name', '') if $sSourceName=~ s/^\*//;
+        my $sSourceName= $oSourcePeer->getFullName();
+        $oSourcePeer->setValue('name', '') if $sSourceName=~ s/^\*//;
         if ($sNames{$sSourceName}) {
             logger->error("Source object named \"$sSourceName\" was already backed up. Skipping.");
             next;
@@ -236,7 +236,7 @@ cleanup:
     my $sSubject= "successfully finished";
     $sSubject= "$iSuccessCount of " . scalar(@oSourcePeers) . " backups $sSubject" if $iResult;
     $sSubject= "ERROR: all backups failed" unless $iSuccessCount;
-    $sSubject= "*PRETENDED* $sSubject" if $self->get_switch("pretend");
+    $sSubject= "*PRETENDED* $sSubject" if $self->getSwitch("pretend");
 
     # send admin mail
    logger->mailLog($sSubject);
@@ -249,9 +249,9 @@ cleanup:
 #  Remove file
 # -----------------------------------------------------------------------------
 
-sub rm_file {
+sub rmFile {
 
-    die "The current rm_file is flawed. It will be available again in the next release!";
+    die "The current rmFile is flawed. It will be available again in the next release!";
 
     my $self= shift;
     my @sFileMask= shift || ();
@@ -273,7 +273,7 @@ sub rm_file {
     my $sBakSetDay= $sBakSet;
     my $sSourceName= $oSource->getName();
     $sBakSetDay.= "-$sSourceName"  if $sSourceName;
-    my $oTargetPeer= $self->get_targetPeer();
+    my $oTargetPeer= $self->getTargetPeer();
 
     # TODO: Make a better check!
     logger->exitError(3, "Can't remove! \"$sBakSet.target\" is empty or points to file system root.") if $oTargetPeer->getPath eq '' || $oTargetPeer->getPath eq '/';
@@ -310,7 +310,7 @@ sub rm_file {
 
     map {
         logger->log("Removing " . scalar @{ $aDirs{$_} } . " directories: $_");
-        !$self->get_switch('pretend') && rmtree($aDirs{$_}, $self->{DEBUG});
+        !$self->getSwitch('pretend') && rmtree($aDirs{$_}, $self->{DEBUG});
 
         # print Dumper($aDirs{$_});
 
@@ -321,7 +321,7 @@ sub rm_file {
 
         # print Dumper($aFiles{$_});
 
-        !$self->get_switch('pretend') && unlink(@{ $aFiles{$_} });
+        !$self->getSwitch('pretend') && unlink(@{ $aFiles{$_} });
     } sort { $a cmp $b } keys %aFiles;
 
     map { logger->log("Didn't find: $_") unless defined $iFoundMask{$_} } @sFileMask;

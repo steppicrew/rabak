@@ -164,11 +164,11 @@ sub readConfFile {
     $self->{DATA}{CONFIG_FILE}= $oConfFile->filename();
 
     # overwrite values with comand line switches
-    $oConf->preset_values({
+    $oConf->presetValues({
         '*.switch.pretend'      => $self->{OPTS}{pretend},
         '*.switch.targetvalue'  => $self->{OPTS}{i},    # deprecate?
     });
-    # print Dumper($oConf->get_node("switch")->{VALUES});
+    # print Dumper($oConf->getNode("switch")->{VALUES});
     return $oConfFile;
 }
 
@@ -177,7 +177,7 @@ sub getBakset {
     my $sBakSet= shift || '';
 
     my $oConf= $self->readConfFile->conf();
-    my $hSetConf= $oConf->get_node($sBakSet);
+    my $hSetConf= $oConf->getNode($sBakSet);
 
     unless ($hSetConf) {
     	$self->{ERROR}= "Backup Set '$sBakSet' does not exist!";
@@ -186,17 +186,17 @@ sub getBakset {
 
     # Build a Set from Hash
     my $oSet= Rabak::Set->newFromConf($hSetConf);
-    my $sError= $oSet->get_validation_message();
+    my $sError= $oSet->getValidationMessage();
 
     if ($sError) {
     	$self->{ERROR}= "Backup Set '$sBakSet' is not properly defined!";
 
-        logger->set_stdout_prefix("#");
+        logger->setStdoutPrefix("#");
     	logger->warn("Backup Set '$sBakSet' is not properly defined:",
             "$sError",
             "The following values were found in the configuration:",
         );
-        logger->set_stdout_prefix();
+        logger->setStdoutPrefix();
         logger->print(@{ $hSetConf->show() });
     	return undef;
     }

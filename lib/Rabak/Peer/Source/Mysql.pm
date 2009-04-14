@@ -17,29 +17,29 @@ use Data::Dumper;
 sub DEFAULT_USER {'mysql'};
 
 # returns credentials save for logging
-sub _get_credentials {
+sub _getCredentials {
     my $self= shift;
     
     my @sResult= (
-        "--user=" . $self->get_user(),
+        "--user=" . $self->getUser(),
     );
-    push @sResult, " --password='{{PASSWORD}}'" if defined $self->get_passwd();
+    push @sResult, " --password='{{PASSWORD}}'" if defined $self->getPasswd();
     return @sResult;
 }
 
-sub get_show_cmd {
+sub getShowCmd {
     my $self= shift;
-    return ("mysqlshow", $self->_get_credentials());
+    return ("mysqlshow", $self->_getCredentials());
 }
 
-sub get_probe_cmd {
+sub getProbeCmd {
     my $self= shift;
     my $sDb= shift;
 
     return ('mysqldump', '--no-data', $self->_get_log_credentials(), '--result-file=/dev/null', $sDb);
 }
 
-sub get_dump_cmd {
+sub getDumpCmd {
     my $self= shift;
     my $sDb= shift;
 
@@ -52,13 +52,13 @@ sub get_dump_cmd {
         '--quick',
         '--single-transaction',
     );
-    push @sResult, '--flush-logs' if $self->get_value("dbflushlogs", 1);
+    push @sResult, '--flush-logs' if $self->getValue("dbflushlogs", 1);
     push @sResult, '--databases', $sDb;
 
     return @sResult;
 }
 
-sub parse_valid_db {
+sub parseValidDb {
     my $self= shift;
     my $sShowResult= shift;
 

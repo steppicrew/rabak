@@ -67,13 +67,13 @@ sub run {
 #       Private
 ################################################################################
 
-sub _no_arg {
+sub _noArg {
     return 1 unless defined shift;
     print "Invalid arguments. Try 'help'!\n";
     return 0;
 }
 
-sub _need_set {
+sub _needSet {
     my $self= shift;
 
     unless ($self->{SET}) {
@@ -83,13 +83,13 @@ sub _need_set {
     return $self->{SET};
 }
 
-sub _check_set {
+sub _checkSet {
     my $self= shift;
     my $sSet= shift;
 
-    return $self->_need_set() unless $sSet;
+    return $self->_needSet() unless $sSet;
 
-    my $oSet= $self->_get_set($sSet);
+    my $oSet= $self->_getSet($sSet);
     # my $oSet= $self->{CONF}{VALUES}{$sSet};
     return $oSet if $oSet;
 
@@ -97,7 +97,7 @@ sub _check_set {
     return undef;
 }
 
-sub _get_set {
+sub _getSet {
     my $self= shift;
     my $sSet= shift;
 
@@ -109,24 +109,24 @@ sub _get_set {
     return $oSet;
 }
 
-sub do_set_list {
+sub doSetList {
     my $self= shift;
 
-    _no_arg(shift) or return;
+    _noArg(shift) or return;
 
-    $self->{CONF_FILE}->print_set_list();
+    $self->{CONF_FILE}->printSetList();
 }
 
-sub do_set {
+sub doSet {
     my $self= shift;
     my $sSet= shift || '';
 
-    _no_arg(shift) or return;
+    _noArg(shift) or return;
 
     my $oConf= $self->{CONF};
     if (defined $oConf->{VALUES}{$sSet}) {
         # $self->{SET}= $oConf->{VALUES}{$sSet};
-        $self->{SET}= $self->_get_set($sSet);
+        $self->{SET}= $self->_getSet($sSet);
         return;
     }
 
@@ -136,10 +136,10 @@ sub do_set {
         print "Backup set \"$sSet\" doesn't exist. Try 'set'!\n";
         return;
     }
-    $self->do_set_list();
+    $self->doSetList();
 }
 
-sub do_help {
+sub doHelp {
     print "set         List available sets\n";
     print "set SET     Use backup set SET\n";
     print "mount [SET] Mount set (Current if SET is omitted)\n";
@@ -148,39 +148,39 @@ sub do_help {
     # bakdirs
 }
 
-sub do_mount {
+sub doMount {
     my $self= shift;
     my $sSet= shift || '';
 
-    _no_arg(shift) or return;
+    _noArg(shift) or return;
 
-    $self->{SET}= $self->_check_set($sSet) or return;
+    $self->{SET}= $self->_checkSet($sSet) or return;
     $self->{SET}->mount();
 }
 
-sub do_umount() {
-    do_unmount(@_);
+sub doUmount() {
+    doUnmount(@_);
 }
 
-sub do_unmount() {
+sub doUnmount() {
     my $self= shift;
 
-    my $oSet= $self->_need_set() or return;
+    my $oSet= $self->_needSet() or return;
     $self->{SET}->unmount();
 }
 
-sub do_bakdirs {
+sub doBakdirs {
     my $self= shift;
 
-    _no_arg(shift) or return;
+    _noArg(shift) or return;
 
-    my $oSet= $self->_need_set() or return;
-    my @sDirs= $oSet->collect_bakdirs([ '.' . $oSet->get_value('name') ], [ '' ]);
+    my $oSet= $self->_needSet() or return;
+    my @sDirs= $oSet->collect_bakdirs([ '.' . $oSet->getValue('name') ], [ '' ]);
 
     map { print "$_\n"; } @sDirs;
 }
 
-sub do_range {
+sub doRange {
     my $self= shift;
     my $sEq= shift || '';
     my $sValue= '';
@@ -199,7 +199,7 @@ sub do_range {
         # display range ..
     }
 
-    _no_arg(shift) or return;
+    _noArg(shift) or return;
 
     if (!$self->{RANGE_FROM} && !$self->{RANGE_UNTIL}) {
         print "No range.\n";
@@ -212,13 +212,13 @@ sub do_range {
     print ".\n";
 }
 
-sub do_conf {
+sub doConf {
     my $self= shift;
     my $sSet= shift || '';
 
-    _no_arg(shift) or return;
+    _noArg(shift) or return;
 
-    my $oSet= $self->_check_set($sSet) or return;
+    my $oSet= $self->_checkSet($sSet) or return;
     $oSet->show();
 }
 
@@ -232,9 +232,9 @@ sub loop() {
     while (1) {
         my $sPrompt= $self->{CONF_FILE}->filename();
         if ($self->{SET}) {
-            $sPrompt .= '/' . $self->{SET}->get_value('name');
+            $sPrompt .= '/' . $self->{SET}->getValue('name');
 
-            # my $iMounts= scalar @{ $self->{SET}->get_mounts() };
+            # my $iMounts= scalar @{ $self->{SET}->getMounts() };
             my $iMounts= 0;
 
             $sPrompt .= ':' . $iMounts if $iMounts;

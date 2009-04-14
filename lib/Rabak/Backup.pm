@@ -113,12 +113,12 @@ sub _setup {
     
     unless ($oTargetPeer->pretend()) {
         # add finish function for inode inventory (and create per-file-callback function)
-        if ($oSourcePeer->get_value('inode_inventory')) {
+        if ($oSourcePeer->getValue('inode_inventory')) {
             my $sInodesDb= $oTargetPeer->getPath($hBaksetData->{BAKSET_META_DIR} . '/inodes.db');
             my $sFilesInodeDb= $oTargetPeer->getPath($sBakMetaDir . '/files_inode.db');
-            if ($oTargetPeer->is_remote()) {
+            if ($oTargetPeer->isRemote()) {
                 # special handling for remote targets (see idea below)
-                my ($fh, $sFileListFile)= $oTargetPeer->local_tempfile(SUFFIX => '.filelist.txt');
+                my ($fh, $sFileListFile)= $oTargetPeer->localTempfile(SUFFIX => '.filelist.txt');
 
                 $self->{BACKUP_DATA}{FILE_CALLBACK}= sub {
                     print $fh join "\n", @_, '';
@@ -138,7 +138,7 @@ sub _setup {
                     $inodeStore= Rabak::InodeCache->new({
                         inodes_db => $sLocalInodesDb,
                     });
-                    my $sLocalFilesInodeDb= $oTargetPeer->local_tempfile(SUFFIX => '.files_inode.db');
+                    my $sLocalFilesInodeDb= $oTargetPeer->localTempfile(SUFFIX => '.files_inode.db');
                     $hTempFilesMap->{$sFilesInodeDb}= $sLocalFilesInodeDb;
                     $inodeStore->prepareInformationStore(
                         $oTargetPeer->getPath($sBakDataDir),
@@ -171,7 +171,7 @@ sub _setup {
                             logger->error(@_);
                         },
                     );
-                    $oTargetPeer->run_perl(
+                    $oTargetPeer->runPerl(
                         '# get data for indoe inventory
                         while (<>) {
                             chomp;
@@ -182,8 +182,8 @@ sub _setup {
                     close $fh;
                 };
                 
-                if ($oSourcePeer->get_value('merge_duplicates')) {
-                    push @fFinish, $self->_build_dupMerge(
+                if ($oSourcePeer->getValue('merge_duplicates')) {
+                    push @fFinish, $self->_buildDupMerge(
                         $oTargetPeer, \$inodeStore, \@sBakBaseDirs, $hTempFilesMap,
                     );
                 }
@@ -238,8 +238,8 @@ sub _setup {
                     $self->{BACKUP_DATA}{FILE_CALLBACK}->();
                 };
 
-                if ($oSourcePeer->get_value('merge_duplicates')) {
-                    push @fFinish, $self->_build_dupMerge(
+                if ($oSourcePeer->getValue('merge_duplicates')) {
+                    push @fFinish, $self->_buildDupMerge(
                         $oTargetPeer, \$inodeStore, \@sBakBaseDirs
                     );
                 }
@@ -251,7 +251,7 @@ sub _setup {
                 };
             }
         }
-        elsif ($oSourcePeer->get_value('merge_duplicates')) {
+        elsif ($oSourcePeer->getValue('merge_duplicates')) {
             logger->error("Option \"merge_duplicates\" is only allowed if option \"inode_inventory\" si given too! Ignoring.")
         }
     }
@@ -259,7 +259,7 @@ sub _setup {
     # add finish function to log backup result
     push @fFinish, sub {
         if ($self->{BACKUP_DATA}{BACKUP_RESULT}) {
-            logger->error("Backup failed: " . $oSourcePeer->get_last_error());
+            logger->error("Backup failed: " . $oSourcePeer->getLastError());
             $self->{BACKUP_DATA}{BACKUP_RESULT}= 9;
         }
         else {
@@ -272,7 +272,7 @@ sub _setup {
         push @fFinish, sub {
             unless ($self->{BACKUP_DATA}{BACKUP_RESULT}) {
                 # remove old dirs if backup was successfully done
-                $oTargetPeer->remove_old($oSourcePeer->get_value('keep'), \@sBakBaseDirs);
+                $oTargetPeer->removeOld($oSourcePeer->getValue('keep'), \@sBakBaseDirs);
             }
     
             $sSourceExt=~ s/^\./\-/;
@@ -350,7 +350,7 @@ sub _convertBackupDirs {
     }
 }
 
-sub _build_dupMerge {
+sub _buildDupMerge {
     my $self= shift;
     my $oTargetPeer= shift;
     my $refInodeStore= shift;
@@ -358,7 +358,7 @@ sub _build_dupMerge {
     my $hTempFilesMap= shift || {};
 
     my $fAddDir;
-    if ($oTargetPeer->is_remote()) {
+    if ($oTargetPeer->isRemote()) {
         $fAddDir= sub {
             my $sBakBaseDir= shift;
             my $sRemoteFilesInodeDb= $oTargetPeer->getPath($sBakBaseDir . '/meta/files_inode.db');

@@ -33,12 +33,12 @@ sub mountable {
 }
 
 # hash table for detecting references and list of all used macros in filter expansion
-sub _get_filter {
+sub _getFilter {
     my $self= shift;
     my $aMacroStack= shift || [];
     my $oTargetPeer= shift;
 
-    my $sFilter= $self->get_raw_value('filter'); 
+    my $sFilter= $self->getRawValue('filter'); 
     
     # target path is always excluded
     my $aFilter= [];
@@ -49,8 +49,8 @@ sub _get_filter {
         push @$aFilter, "&filter";
     }
     else {
-        push @$aFilter, "-(", "&exclude", ")" if defined $self->get_raw_value('exclude');
-        push @$aFilter, "+(", "&include", ")", "-/" if defined $self->get_raw_value('include');
+        push @$aFilter, "-(", "&exclude", ")" if defined $self->getRawValue('exclude');
+        push @$aFilter, "+(", "&include", ")", "-/" if defined $self->getRawValue('include');
     }
 
     return $self->_parseFilter($aFilter, $self->getPath(), $aMacroStack);
@@ -71,7 +71,7 @@ sub _parseFilter {
 
     my $sFilter= $self->_expand($aFilter, $self, $aMacroStack);
 # print Dumper($sFilter);
-    my @sFilter= @{$self->_flatten_filter($sFilter)};
+    my @sFilter= @{$self->_flattenFilter($sFilter)};
 
     return @sFilter unless scalar @sFilter;
 
@@ -79,7 +79,7 @@ sub _parseFilter {
     my %sExcDirs= ();
     my @sResult= ();
     for my $sEntry (@sFilter) {
-        $sEntry= $self->remove_backslashes_part2($sEntry);
+        $sEntry= $self->removeBackslashesPart2($sEntry);
         $sEntry=~ s/^([\-\+\#]*)\s*//;
         my $sIncExc= $1;
         
@@ -252,7 +252,7 @@ sub _expand {
 }
 
 # flattens a list of filters like "/foo /foo/bar /bar"
-sub _flatten_filter {
+sub _flattenFilter {
     my $self= shift;
     my $hFilter= shift;
 
@@ -260,7 +260,7 @@ sub _flatten_filter {
     my @sResult= ();
     for my $sEntry (@{$hFilter->{DATA}}) {
         if (ref $sEntry) {
-            push @sResult, @{$self->_flatten_mixed_filter($sEntry)};
+            push @sResult, @{$self->_flattenMixedFilter($sEntry)};
         }
         else {
             push @sResult, $sEntry;
@@ -270,7 +270,7 @@ sub _flatten_filter {
 }
 
 # flattens a combination of filters like "/foo/(bar1 bar2)/"
-sub _flatten_mixed_filter {
+sub _flattenMixedFilter {
     my $self= shift;
     my $hFilter= shift;
 
@@ -278,7 +278,7 @@ sub _flatten_mixed_filter {
     my @aResult= ();
     for my $sEntry (@{$hFilter->{DATA}}) {
         if (ref $sEntry) {
-            push @aResult, $self->_flatten_filter($sEntry);
+            push @aResult, $self->_flattenFilter($sEntry);
         }
         else {
             push @aResult, [$sEntry];
@@ -324,10 +324,10 @@ sub show {
     
     my $aMacroStack= [];
 
-    my @sFilter= $self->_get_filter($aMacroStack, $oTarget);
+    my @sFilter= $self->_getFilter($aMacroStack, $oTarget);
     my $sLastScope= "";
     my @sSubResult= ();
-    for my $sMacroName ($self->get_all_references($aMacroStack)) {
+    for my $sMacroName ($self->getAllReferences($aMacroStack)) {
         push @sSubResult, $self->showConfValue($sMacroName, $hConfShowCache);
     }
     push @$aResult, "", "# Referenced filters:", @sSubResult if scalar @sSubResult;
@@ -336,14 +336,14 @@ sub show {
     shift @$aMacroStack if scalar @$aMacroStack;
     push @{$hConfShowCache->{'.'}}, @$aMacroStack;
     
-    return $aResult unless $self->get_switch("show_filter", 0);
+    return $aResult unless $self->getSwitch("show_filter", 0);
 
     my $sBaseDir= $self->getFullPath();
     push @$aResult, "", "# Expanded rsync filter (relative to '$sBaseDir'):", map {"#\t$_"} @sFilter;
     return $aResult;
 }
 
-sub valid_source_dir {
+sub validSourceDir {
     my $self= shift;
 
     my $sSourceDir= $self->getFullPath();
@@ -360,11 +360,11 @@ sub valid_source_dir {
     return $self->getPath();
 }
 
-sub _run_rsync {
+sub _runRsync {
     my $self = shift;
     my $oRsyncPeer = shift || $self;
-    my $sSrc = shift or die "_run_rsync: No source specified";
-    my $sDst = shift or die "_run_rsync: No target specified";
+    my $sSrc = shift or die "_runRsync: No source specified";
+    my $sDst = shift or die "_runRsync: No target specified";
     my $sFlags = shift || '';
     my $hHandles = shift || {};
     
@@ -373,14 +373,14 @@ sub _run_rsync {
     my $sRsyncCmd= "rsync $sFlags $sSrc $sDst";
 
     logger->info("Running" .
-        ($oRsyncPeer->is_remote() ?
+        ($oRsyncPeer->isRemote() ?
             " on '" . $oRsyncPeer->getUserHostPort() . "'" :
             "") .
         ": $sRsyncCmd");
     logger->incIndent();
 
     # run rsync command
-    my (undef, undef, $iExit, $sError)= $oRsyncPeer->run_cmd($sRsyncCmd, $hHandles);
+    my (undef, undef, $iExit, $sError)= $oRsyncPeer->runCmd($sRsyncCmd, $hHandles);
 
     logger->decIndent();
     logger->error($sError) if $sError;
@@ -402,7 +402,7 @@ sub prepareBackup {
 
     logger->log(@sMountMessage);
 
-    return $self->valid_source_dir() ? 0 : 1;
+    return $self->validSourceDir() ? 0 : 1;
 }
 
 sub finishBackup {
@@ -438,21 +438,21 @@ sub run {
 
     # print '**$bPretend**'; die;
 
-    # Unused: my $sBakSet= $self->get_value('name');
+    # Unused: my $sBakSet= $self->getValue('name');
 
     my @sRsyncOpts = $self->resolveObjects('rsync_opts') || ();
 
     # Write filter rules to temp file:
-    my ($fhwRules, $sRulesFile)= $self->local_tempfile(SUFFIX => '.filter');
+    my ($fhwRules, $sRulesFile)= $self->localTempfile(SUFFIX => '.filter');
 
-    my @sFilter= $self->_get_filter(undef, $oTargetPeer);
+    my @sFilter= $self->_getFilter(undef, $oTargetPeer);
     # print join("\n", @sFilter), "\n"; #die;
 
     print $fhwRules join("\n", @sFilter), "\n";
     close $fhwRules;
 
     # copy filter rules to source if target AND source are remote
-    if ($oTargetPeer->is_remote() && $self->is_remote()) {
+    if ($oTargetPeer->isRemote() && $self->isRemote()) {
         my $sRemRulesFile= $self->tempfile(SUFFIX => '.filter');
         $self->copyLocalFileToRemote($sRulesFile, $sRemRulesFile);
         $sRulesFile = $sRemRulesFile;
@@ -485,23 +485,23 @@ sub run {
     my $oRsyncPeer = $self;
     my $sSourceDirPref = "";
     my $sTargetDirPref = "";
-    if ($oTargetPeer->is_remote()) {
+    if ($oTargetPeer->isRemote()) {
         # unless target and source on same host/user/port
         unless ($oTargetPeer->getUserHostPort() eq $self->getUserHostPort()) {
             $oSshPeer = $oTargetPeer;
             $sTargetDirPref= $oTargetPeer->getUserHost(":");
         }
     }
-    elsif ($self->is_remote()) {
+    elsif ($self->isRemote()) {
         $oSshPeer= $self;
         $sSourceDirPref= $self->getUserHost(":");
         $oRsyncPeer = $oTargetPeer;
     }
     if ($oSshPeer) {
-        my $sPort= $oSshPeer->get_value("port") || 22;
-        my $sTimeout= $oSshPeer->get_value("timeout") || 150;
-        my $sBandwidth= $oSshPeer->get_value("bandwidth") || '';
-        my @sIdentityFiles= $oSshPeer->get_value("identity_files") ? split(/\s+/, $oSshPeer->get_value("identity_files")) : undef;
+        my $sPort= $oSshPeer->getValue("port") || 22;
+        my $sTimeout= $oSshPeer->getValue("timeout") || 150;
+        my $sBandwidth= $oSshPeer->getValue("bandwidth") || '';
+        my @sIdentityFiles= $oSshPeer->getValue("identity_files") ? split(/\s+/, $oSshPeer->getValue("identity_files")) : undef;
 
         if (grep {/^\-\-bwlimit\=(\d+)/} @sRsyncOpts) {
             $sBandwidth= $1 unless $sBandwidth;
@@ -509,7 +509,7 @@ sub run {
             logger->warn("--bandwidth in 'rsync_opts' is deprecated. Please use 'bandwidth' option (see Doc)!");
         }
         if (grep {/^\-\-timeout\=(\d+)/} @sRsyncOpts) {
-            $sTimeout= $1 unless $oTargetPeer->get_value("timeout");
+            $sTimeout= $1 unless $oTargetPeer->getValue("timeout");
             @sRsyncOpts= grep {!/^\-\-timeout\=\d+/} @sRsyncOpts;
             logger->warn("--timeout in 'rsync_opts' is deprecated. Please use 'timeout' option (see Doc)!");
         }
@@ -520,15 +520,15 @@ sub run {
         );
         my $sSshCmd= "ssh -p $sPort";
         push @sSshCmd, map { ('-i', $_) } grep {$_} @sIdentityFiles;
-        if ($oSshPeer->get_value("protocol")) {
-            push @sSshCmd, '-1' if $oSshPeer->get_value('protocol') eq '1';
-            push @sSshCmd, '-2' if $oSshPeer->get_value('protocol') eq '2';
+        if ($oSshPeer->getValue("protocol")) {
+            push @sSshCmd, '-1' if $oSshPeer->getValue('protocol') eq '1';
+            push @sSshCmd, '-2' if $oSshPeer->getValue('protocol') eq '2';
         }
         push @sFlags, '--rsh=' . $self->ShellQuote(@sSshCmd), "--timeout=$sTimeout", '--compress';
         push @sFlags, "--bwlimit=$sBandwidth" if $sBandwidth;
     }
 
-    my $iScanBakDirs= $self->get_value('scan_bak_dirs', 4);
+    my $iScanBakDirs= $self->getValue('scan_bak_dirs', 4);
 
     my @sBakDir= @{$hMetaInfo->{OLD_DATA_DIRS}};
     splice @sBakDir, $iScanBakDirs if $#sBakDir >= $iScanBakDirs;
@@ -621,7 +621,7 @@ sub run {
     );
 
     # run rsync cmd
-    my $iRsyncExit = $self->_run_rsync($oRsyncPeer, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir, scalar $self->ShellQuote(@sFlags), \%Handles);
+    my $iRsyncExit = $self->_runRsync($oRsyncPeer, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir, scalar $self->ShellQuote(@sFlags), \%Handles);
 
     push @sStatistics, "", "Rsync's exit code: $iRsyncExit";
 
@@ -633,12 +633,12 @@ sub run {
         logger->info("Fixing hard link errors...");
         logger->incIndent();
         # Write failed link files to temp file:
-        my ($fhwFiles, $sFilesFile)= $self->local_tempfile(SUFFIX => '.filelist');
+        my ($fhwFiles, $sFilesFile)= $self->localTempfile(SUFFIX => '.filelist');
         print $fhwFiles join("\n", @sLinkErrors), "\n";
         close $fhwFiles;
 
         # copy files file to source if rsync is run remotely
-        if ($oRsyncPeer->is_remote()) {
+        if ($oRsyncPeer->isRemote()) {
             my $sRemFilesFile= $oRsyncPeer->tempfile(SUFFIX => '.filelist');
             $oRsyncPeer->copyLocalFileToRemote($sFilesFile, $sRemFilesFile);
             $sFilesFile = $sRemFilesFile;
@@ -651,7 +651,7 @@ sub run {
         push @sStatistics, "", "Statistics for previously failed hard links";
 
         # run rsync cmd (drop exit code - has been logged anyway)
-        my $iRsyncExit= $self->_run_rsync(
+        my $iRsyncExit= $self->_runRsync(
             $oRsyncPeer, $sSourceDirPref.$sSourceDir, $sTargetDirPref.$sTargetDir,
             scalar $self->ShellQuote(@sFlags, "--files-from=$sFilesFile"),
             \%Handles
@@ -676,4 +676,3 @@ sub getPath {
 }
 
 1;
-

@@ -22,7 +22,7 @@ sub newFromConf {
     
     my $new= $class->SUPER::newFromConf($oOrigConf);
 
-    my $sPacker= lc $new->get_value("packer");
+    my $sPacker= lc $new->getValue("packer");
 
     logger->warn("Unknown packer '$sPacker'. Valid Values are: '"
         . join("', '", keys %sPackers)
@@ -43,54 +43,54 @@ sub PropertyNames {
     return (shift->SUPER::PropertyNames(), 'dbuser', 'dbpassword');
 }
 
-sub get_show_cmd {
+sub getShowCmd {
     die "This function has to be overloaded!"
 }
 
-sub get_probe_cmd {
+sub getProbeCmd {
     die "This function has to be overloaded!"
 }
 
-sub get_dump_cmd {
+sub getDumpCmd {
     die "This function has to be overloaded!"
 }
 
-sub get_valid_db {
+sub getValidDb {
     die "This function has to be overloaded!"
 }
 
-sub get_user {
+sub getUser {
     my $self= shift;
-    my $sUser= $self->get_value('dbuser', $self->DEFAULT_USER());
+    my $sUser= $self->getValue('dbuser', $self->DEFAULT_USER());
     # simple taint
     $sUser =~ s/[^a-z0-9_]//g;
     return $sUser;
 }
 
-sub get_passwd {
+sub getPasswd {
     my $self= shift;
-    my $sPassword= $self->get_value('dbpassword');
+    my $sPassword= $self->getValue('dbpassword');
     return $sPassword;
 }
 
-sub build_db_cmd {
+sub buildDbCmd {
     my $self= shift;
     my @sCommand= @_;
     
-    my $sPassword= $self->get_passwd;
+    my $sPassword= $self->getPasswd;
     
     my $sCommand= $self->ShellQuote(@sCommand);
     $sCommand=~ s/\{\{PASSWORD\}\}/$sPassword/ if defined $sPassword;
     return $sCommand;
 }
 
-sub db_cmd {
+sub dbCmd {
     my $self= shift;
     my @sCommand= @_;
-    $self->run_cmd($self->build_db_cmd(@sCommand));
+    $self->runCmd($self->buildDbCmd(@sCommand));
 }
 
-sub log_cmd {
+sub logCmd {
     my $self= shift;
     my $sLogPretext= shift;
     my @sCommand= @_;
@@ -112,14 +112,14 @@ sub run {
     my $bFoundOne= 0;
 
     my $i= 0;
-    $self->db_cmd($self->get_show_cmd());
-    if ($self->get_last_exit) {
-        logger->error("show databases command failed with: " . $self->get_error);
+    $self->dbCmd($self->getShowCmd());
+    if ($self->getLastExit) {
+        logger->error("show databases command failed with: " . $self->getError);
         return 9;
     }
-    %sValidDb= $self->parse_valid_db($self->get_last_out);
+    %sValidDb= $self->parseValidDb($self->getLastOut);
 
-    my $sSource= $self->get_value("path");
+    my $sSource= $self->getValue("path");
 
     if ($sSource eq '*') {
         @sDb= sort keys %sValidDb;
@@ -139,43 +139,43 @@ sub run {
 
     foreach (@sDb) {
         my $sDestFile= $hMetaInfo->{DATA_DIR} . "/$_.$sZipExt";
-        my @sProbeCmd= $self->get_probe_cmd($_);
-        $self->log_cmd('Running probe', @sProbeCmd);
+        my @sProbeCmd= $self->getProbeCmd($_);
+        $self->logCmd('Running probe', @sProbeCmd);
 
         unless ($self-pretend()) {
-            $self->db_cmd(@sProbeCmd);
-            if ($self->get_last_exit) {
-                my $sError= $self->get_last_error;
+            $self->dbCmd(@sProbeCmd);
+            if ($self->getLastExit) {
+                my $sError= $self->getLastError;
                 chomp $sError;
                 logger->error("Probe failed. Skipping \"$_\": $sError");
                 next;
             }
         }
 
-        my @sDumpCmd= $self->get_dump_cmd($_);
-        $self->log_cmd('Running dump', @sDumpCmd, '|', $sZipCmd);
+        my @sDumpCmd= $self->getDumpCmd($_);
+        $self->logCmd('Running dump', @sDumpCmd, '|', $sZipCmd);
 
         my $oDumpPeer= $self;
         my $sPipeCmd= "cat > '$sDestFile'";
         
-        my $sDumpCmd= $self->build_db_cmd(@sDumpCmd) . " | " . $self->ShellQuote($sZipCmd);
+        my $sDumpCmd= $self->buildDbCmd(@sDumpCmd) . " | " . $self->ShellQuote($sZipCmd);
 
-        if ($oTargetPeer->is_remote()) {
+        if ($oTargetPeer->isRemote()) {
             # if target is remote, dump on source peer and write output remotely to target
             # TODO: check if target and source are the same users on the same host
-            $sPipeCmd= $oTargetPeer->build_ssh_cmd($sPipeCmd);
+            $sPipeCmd= $oTargetPeer->buildSshCmd($sPipeCmd);
         }
-        elsif ($self->is_remote()) {
+        elsif ($self->isRemote()) {
             # if target is local and soure is remote, dump over ssh and write directly to file
             $oDumpPeer= $oTargetPeer;
-            $sDumpCmd= $self->build_ssh_cmd($sDumpCmd);
+            $sDumpCmd= $self->buildSshCmd($sDumpCmd);
         }
 
         # now execute dump command on target
         unless ($self->pretend()) {
-            $oDumpPeer->db_cmd("$sDumpCmd | $sPipeCmd");
-            if ($oDumpPeer->get_last_exit) {
-                my $sError= $oDumpPeer->get_last_error;
+            $oDumpPeer->dbCmd("$sDumpCmd | $sPipeCmd");
+            if ($oDumpPeer->getLastExit) {
+                my $sError= $oDumpPeer->getLastError;
                 chomp $sError;
                 logger->error("Dump failed. Skipping dump of \"$_\": $sError");
                 next;
