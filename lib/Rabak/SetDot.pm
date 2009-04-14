@@ -24,12 +24,12 @@ sub new {
 
 my %_boxAdded;
 
-sub dotify {
+sub _dotify {
     $_[0] =~ s/"/\\"/g;
     return $_[0];
 }
 
-sub dothtmlify {
+sub _dothtmlify {
     $_[0] =~ s/&/&amp;/g;
     $_[0] =~ s/</&lt;/g;
     $_[0] =~ s/>/&gt;/g;
@@ -66,7 +66,7 @@ sub _dotAddBox {
     my %hKeys;
     map { $hKeys{$_}= 1 } keys %{ $oConf->{VALUES} };
 
-    my $sTitleText= dothtmlify(_dotConfTitle($sType, $oConf));
+    my $sTitleText= _dothtmlify(_dotConfTitle($sType, $oConf));
     $sTitleText= "<table border=\"0\"><tr><td>$sTitleText</td></tr></table>";
 
     my $sName= $oConf->{NAME};
@@ -88,7 +88,7 @@ sub _dotAddBox {
         }
         return if $sValue eq '';
         $sValue= substr($sValue, 0, 27) . "..." if length($sValue) > 30;
-        $sResult .= "<tr><td align=\"left\">" . dothtmlify($sKey) . ":</td><td>&#160;</td><td align=\"left\">" . dothtmlify($sValue) . "</td></tr>";
+        $sResult .= "<tr><td align=\"left\">" . _dothtmlify($sKey) . ":</td><td>&#160;</td><td align=\"left\">" . _dothtmlify($sValue) . "</td></tr>";
         # print Dumper($oSource->{VALUES});
 
         delete $hKeys{$sKey};
@@ -147,7 +147,7 @@ sub toDot {
     my $oTarget= $self->{SET}->getTargetPeer();
     $sResult .= $self->_dotAddBox('target', $oTarget, $self->{SET});
 
-    my $sTitle= dotify(_dotConfTitle('set', $self->{SET}));
+    my $sTitle= _dotify(_dotConfTitle('set', $self->{SET}));
 
     $sResult= qq(
         subgraph cluster1 {

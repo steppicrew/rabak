@@ -33,6 +33,7 @@ sub PropertyNames {
     return ('device', 'directory', 'type', 'options', 'unmount', 'lazy_unmount', shift->SUPER::PropertyNames());
 }
 
+# DETECTED UNUSED: isMounted
 sub isMounted {
     my $self= shift;
     

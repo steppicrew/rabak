@@ -222,6 +222,7 @@ sub removeBackslashesPart2 {
     return $sValue;
 }
 
+# DETECTED UNUSED: removeBackslashes
 sub removeBackslashes {
     my $self= shift;
     my $sValue= shift;
@@ -547,7 +548,7 @@ sub _resolveObjects {
     return \@oResult;
 }
 
-sub sortShowKeys {
+sub _sortShowKeys {
     my $self= shift;
     my @sKeys= @_;
     
@@ -646,7 +647,7 @@ sub show {
 
     $hConfShowCache->{'.'}= [] unless $hConfShowCache->{'.'};
 
-    for my $sSubKey ($self->sortShowKeys(keys %{ $self->{VALUES} })) {
+    for my $sSubKey ($self->_sortShowKeys(keys %{ $self->{VALUES} })) {
         next if $sSubKey =~ /^\./;
         if (ref($self->{VALUES}{$sSubKey})) {
 

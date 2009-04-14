@@ -55,6 +55,7 @@ sub getDumpCmd {
     die "This function has to be overloaded!"
 }
 
+# DETECTED UNUSED: getValidDb
 sub getValidDb {
     die "This function has to be overloaded!"
 }
@@ -73,7 +74,7 @@ sub getPasswd {
     return $sPassword;
 }
 
-sub buildDbCmd {
+sub _buildDbCmd {
     my $self= shift;
     my @sCommand= @_;
     
@@ -84,13 +85,13 @@ sub buildDbCmd {
     return $sCommand;
 }
 
-sub dbCmd {
+sub _dbCmd {
     my $self= shift;
     my @sCommand= @_;
-    $self->runCmd($self->buildDbCmd(@sCommand));
+    $self->runCmd($self->_buildDbCmd(@sCommand));
 }
 
-sub logCmd {
+sub _logCmd {
     my $self= shift;
     my $sLogPretext= shift;
     my @sCommand= @_;
@@ -112,7 +113,7 @@ sub run {
     my $bFoundOne= 0;
 
     my $i= 0;
-    $self->dbCmd($self->getShowCmd());
+    $self->_dbCmd($self->getShowCmd());
     if ($self->getLastExit) {
         logger->error("show databases command failed with: " . $self->getError);
         return 9;
@@ -140,10 +141,10 @@ sub run {
     foreach (@sDb) {
         my $sDestFile= $hMetaInfo->{DATA_DIR} . "/$_.$sZipExt";
         my @sProbeCmd= $self->getProbeCmd($_);
-        $self->logCmd('Running probe', @sProbeCmd);
+        $self->_logCmd('Running probe', @sProbeCmd);
 
         unless ($self-pretend()) {
-            $self->dbCmd(@sProbeCmd);
+            $self->_dbCmd(@sProbeCmd);
             if ($self->getLastExit) {
                 my $sError= $self->getLastError;
                 chomp $sError;
@@ -153,12 +154,12 @@ sub run {
         }
 
         my @sDumpCmd= $self->getDumpCmd($_);
-        $self->logCmd('Running dump', @sDumpCmd, '|', $sZipCmd);
+        $self->_logCmd('Running dump', @sDumpCmd, '|', $sZipCmd);
 
         my $oDumpPeer= $self;
         my $sPipeCmd= "cat > '$sDestFile'";
         
-        my $sDumpCmd= $self->buildDbCmd(@sDumpCmd) . " | " . $self->ShellQuote($sZipCmd);
+        my $sDumpCmd= $self->_buildDbCmd(@sDumpCmd) . " | " . $self->ShellQuote($sZipCmd);
 
         if ($oTargetPeer->isRemote()) {
             # if target is remote, dump on source peer and write output remotely to target
@@ -173,7 +174,7 @@ sub run {
 
         # now execute dump command on target
         unless ($self->pretend()) {
-            $oDumpPeer->dbCmd("$sDumpCmd | $sPipeCmd");
+            $oDumpPeer->_dbCmd("$sDumpCmd | $sPipeCmd");
             if ($oDumpPeer->getLastExit) {
                 my $sError= $oDumpPeer->getLastError;
                 chomp $sError;

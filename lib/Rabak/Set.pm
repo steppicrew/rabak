@@ -249,9 +249,9 @@ cleanup:
 #  Remove file
 # -----------------------------------------------------------------------------
 
-sub rmFile {
+sub _rmFile {
 
-    die "The current rmFile is flawed. It will be available again in the next release!";
+    die "The current _rmFile is flawed. It will be available again in the next release!";
 
     my $self= shift;
     my @sFileMask= shift || ();

@@ -130,7 +130,7 @@ sub LOG_LEVEL_PREFIX {
     }
 }
 
-sub getLevelPrefix {
+sub _getLevelPrefix {
     my $self= shift;
     my $iLevel= shift;
     
@@ -138,10 +138,10 @@ sub getLevelPrefix {
     return sprintf '%-10s', "$sPrefix:";
 }
 
-sub getColoredLevelPrefix {
+sub _getColoredLevelPrefix {
     my $self= shift;
     my $iLevel= shift;
-    my $sPrefix= $self->getLevelPrefix($iLevel);
+    my $sPrefix= $self->_getLevelPrefix($iLevel);
     
     return colored($sPrefix, 'bold red')    if $iLevel == LOG_ERROR_LEVEL;
     return colored($sPrefix, 'bold yellow') if $iLevel == LOG_WARN_LEVEL;
@@ -172,7 +172,7 @@ sub Uncolor {
     return join '', @sStrings;
 }
 
-sub fixupColors {
+sub _fixupColors {
     my $self= shift;
     my @sStrings= @_;
     return $self->Uncolor(@sStrings) unless $self->{SWITCH_COLOR};
@@ -182,7 +182,7 @@ sub fixupColors {
 
 sub _print {
     my $self= shift;
-    print $self->fixupColors(@_);
+    print $self->_fixupColors(@_);
 }
 
 sub incIndent {
@@ -197,6 +197,7 @@ sub decIndent {
 }
 
 # TODO: make Log parser capable of log files (lines start with a date)
+# DETECTED UNUSED: factLogReparser
 sub factLogReparser {
     my $self= shift;
     
@@ -205,7 +206,7 @@ sub factLogReparser {
     return sub {
         my $aResult= [];
         foreach my $sLine (@_) {
-            # remove progress output
+            # remove _progress output
             $sLine =~ s/.*\r//;
             # remove colors
             $sLine= $self->Uncolor($sLine);
@@ -267,7 +268,7 @@ sub clear {
     $self->{MESSAGES}= '';
 }
 
-sub getMessagesFile {
+sub _getMessagesFile {
     my $self= shift;
 
     CORE::close($self->{MSG_FH}) if defined $self->{MSG_FH};
@@ -344,8 +345,8 @@ sub mailLog {
     my $self= shift;
     my $sSubject= shift;
 
-    my $iErrors= $self->getErrorCount;
-    my $iWarns= $self->getWarnCount;
+    my $iErrors= $self->_getErrorCount;
+    my $iWarns= $self->_getWarnCount;
     my $sErrWarn;
     $sErrWarn= "$iErrors error" if $iErrors; 
     $sErrWarn.= "s" if $iErrors > 1; 
@@ -358,7 +359,7 @@ sub mailLog {
         ? "RABAK '$self->{SWITCH_NAME}': $sSubject"
         : "RABAK: $sSubject";
 
-    my $sFileName= $self->getMessagesFile();
+    my $sFileName= $self->_getMessagesFile();
     my $fh;
     CORE::open $fh, "<$sFileName" or $fh= undef;
     my $fBody = sub {<$fh>};
@@ -379,17 +380,18 @@ sub mailWarning {
     return $self->_mail("RABAK WARNING: $sSubject", sub {shift @sBody});
 }
 
+# DETECTED UNUSED: getFilename
 sub getFilename() {
     my $self= shift;
 
     return $self->{TARGET} ? $self->{LOG_FILE_NAME} : undef;
 }
 
-sub getErrorCount {
+sub _getErrorCount {
     my $self= shift;
     return $self->{ERRORCOUNT};
 }
-sub getWarnCount {
+sub _getWarnCount {
     my $self= shift;
     return $self->{WARNCOUNT};
 }
@@ -463,7 +465,7 @@ sub print {
     $self->log($self->print(@sMessage));
 }
 
-sub progress {
+sub _progress {
     my $self= shift;
     my $sMessage= shift;
 
@@ -515,7 +517,7 @@ sub log {
 sub _buildLogPrefixes {
     my $self= shift;
     my $iLogLevel= shift;
-    my $sLogLevelPrefix= $self->getLevelPrefix($iLogLevel);
+    my $sLogLevelPrefix= $self->_getLevelPrefix($iLogLevel);
     
     my $sMsgPref= "  " x $self->{INDENT1};
     $sMsgPref.= colored("[$self->{PREFIX}] ", 'bold') if $self->{PREFIX};
@@ -524,7 +526,7 @@ sub _buildLogPrefixes {
     my $sLogPref= $self->{CATEGORY} ? "$self->{CATEGORY}\t" : "";
     return (
         "STDOUT" => "$self->{STDOUT_PREFIX}"
-            . $self->getColoredLevelPrefix($iLogLevel)
+            . $self->_getColoredLevelPrefix($iLogLevel)
             . "$sMsgPref",
         "LOG" => _timestr() . "\t$sLogLevelPrefix$sLogPref$sMsgPref",
     );

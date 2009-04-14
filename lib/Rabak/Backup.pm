@@ -305,10 +305,10 @@ sub _run {
             META_DIR => $self->{TARGET}->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR}),
             OLD_DATA_DIRS => $self->{BACKUP_DATA}{OLD_BACKUP_DATA_DIRS},
             FILE_CALLBACK => $self->{BACKUP_DATA}{FILE_CALLBACK},
-            STATISTICS_CALLBACK => sub {$self->setMetaBackupStatistics(@_)},
+            STATISTICS_CALLBACK => sub {$self->_setMetaBackupStatistics(@_)},
         },
     );
-    $self->setMetaBackupResult($self->{BACKUP_DATA}{BACKUP_RESULT});
+    $self->_setMetaBackupResult($self->{BACKUP_DATA}{BACKUP_RESULT});
     return $self->{BACKUP_DATA}{BACKUP_RESULT};
 }
 
@@ -439,7 +439,7 @@ sub _writeMetaFile {
     $self->{TARGET}->echo($sMetaFile, @sContent);
 }
 
-sub setMetaBackupResult {
+sub _setMetaBackupResult {
     my $self= shift;
     my $sResult= shift;
 
@@ -453,7 +453,7 @@ sub setMetaBackupError {
     $self->_writeMetaFile($METAFILENAMES{error}, $sError);
 }
 
-sub setMetaBackupStatistics {
+sub _setMetaBackupStatistics {
     my $self= shift;
     my @sStatistics= @_;
 

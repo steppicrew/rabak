@@ -40,7 +40,7 @@ sub Help {
     );
 }
 
-sub getHelp {
+sub _getHelp {
     my $self= shift;
     my $sCmd= shift;
 
@@ -62,7 +62,7 @@ sub run {
     $self->warnOptions([ ]);
     
     if ($self->{ARGS}[0]) {
-        my @sHelp= $self->getHelp($self->{ARGS}[0]);
+        my @sHelp= $self->_getHelp($self->{ARGS}[0]);
         logger->print('', shift(@sHelp));
         logger->print('', shift(@sHelp)) if scalar @sHelp;
         logger->print('', @sHelp, '') if scalar @sHelp;
@@ -71,7 +71,7 @@ sub run {
         logger->print(Rabak::Version::VersionMsg());
         logger->print('', 'Available commands:');
         for my $sCmd ($self->GetAllCommands()) {
-            my @sHelp= $self->getHelp($sCmd);
+            my @sHelp= $self->_getHelp($sCmd);
             logger->print('', '    ' . shift(@sHelp));
             logger->print('    ' . shift(@sHelp)) if scalar @sHelp;
         }

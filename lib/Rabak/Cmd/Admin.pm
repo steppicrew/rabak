@@ -109,7 +109,7 @@ sub _getSet {
     return $oSet;
 }
 
-sub doSetList {
+sub _doSetList {
     my $self= shift;
 
     _noArg(shift) or return;
@@ -117,6 +117,7 @@ sub doSetList {
     $self->{CONF_FILE}->printSetList();
 }
 
+# DETECTED UNUSED: doSet
 sub doSet {
     my $self= shift;
     my $sSet= shift || '';
@@ -136,9 +137,10 @@ sub doSet {
         print "Backup set \"$sSet\" doesn't exist. Try 'set'!\n";
         return;
     }
-    $self->doSetList();
+    $self->_doSetList();
 }
 
+# DETECTED UNUSED: doHelp
 sub doHelp {
     print "set         List available sets\n";
     print "set SET     Use backup set SET\n";
@@ -148,6 +150,7 @@ sub doHelp {
     # bakdirs
 }
 
+# DETECTED UNUSED: doMount
 sub doMount {
     my $self= shift;
     my $sSet= shift || '';
@@ -158,17 +161,19 @@ sub doMount {
     $self->{SET}->mount();
 }
 
+# DETECTED UNUSED: doUmount
 sub doUmount() {
-    doUnmount(@_);
+    _doUnmount(@_);
 }
 
-sub doUnmount() {
+sub _doUnmount() {
     my $self= shift;
 
     my $oSet= $self->_needSet() or return;
     $self->{SET}->unmount();
 }
 
+# DETECTED UNUSED: doBakdirs
 sub doBakdirs {
     my $self= shift;
 
@@ -180,6 +185,7 @@ sub doBakdirs {
     map { print "$_\n"; } @sDirs;
 }
 
+# DETECTED UNUSED: doRange
 sub doRange {
     my $self= shift;
     my $sEq= shift || '';
@@ -212,6 +218,7 @@ sub doRange {
     print ".\n";
 }
 
+# DETECTED UNUSED: doConf
 sub doConf {
     my $self= shift;
     my $sSet= shift || '';

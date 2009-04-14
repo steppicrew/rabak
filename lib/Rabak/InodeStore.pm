@@ -72,7 +72,7 @@ sub registerAllInodes {
     return $self->{inodes}= $self->getInodes();
 }
 
-sub registerInode {
+sub _registerInode {
     my $self= shift;
     my $iInode= shift;
     my @sParams= @_;
@@ -92,11 +92,12 @@ sub addInodeFile {
     my $sName= shift;
     my @sParams= @_;
     
-    $self->registerInode($iInode, @sParams);
+    $self->_registerInode($iInode, @sParams);
 }
 
 sub updateInodeFile {}
 
+# DETECTED UNUSED: getDirectory
 sub getDirectory {
     my $self= shift;
     return $self->{current_dir};
@@ -151,6 +152,7 @@ sub addInode { die "Must be overriden"; }
 sub getDescSortedSizes { die "Must be overriden"; }
 sub getKeysBySize { die "Must be overriden"; }
 sub getInodesBySizeKey { die "Must be overriden"; }
+# DETECTED UNUSED: getInodeFiles
 sub getInodeFiles { die "Must be overriden"; }
 sub getFileKeyByInode { die "Must be overriden"; }
 sub getCurrentFileCount { die "Must be overriden"; }

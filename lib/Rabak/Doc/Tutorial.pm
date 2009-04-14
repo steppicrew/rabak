@@ -30,7 +30,7 @@ while (<DATA>) {
 
 my $toc= @{ $part{'INTRO'} }[1];
 
-sub expandBody {
+sub _expandBody {
     my $body= shift;
     my $n= shift;
     my $no_code= shift || 0;
@@ -83,13 +83,13 @@ for my $n (sort { $a cmp $b } keys %part) {
     $title= "Tutorial $n: $title";
 
     my $contents=
-        expandBody(@{ $part{'COMMON_HEAD'} }[1], $n)
+        _expandBody(@{ $part{'COMMON_HEAD'} }[1], $n)
         . "\n\n"
         . "#" x length($title) . "######\n"
         . "#  $title  #\n"
         . "#" x length($title) . "######\n"
-        . expandBody($body, $n)
-        . expandBody(@{ $part{'COMMON_TAIL'} }[1], $n, 1)
+        . _expandBody($body, $n)
+        . _expandBody(@{ $part{'COMMON_TAIL'} }[1], $n, 1)
     ;
 
     my $fout;

@@ -74,6 +74,7 @@ sub getData {
     return $self->{_data}{$sKey};
 }
 
+# DETECTED UNUSED: setData
 sub setData {
     my $self= shift;
     my $sKey= shift;
@@ -82,13 +83,13 @@ sub setData {
     $self->{_data}{$sKey}= $sValue;
 }
 
-sub getFileName {
+sub _getFileName {
     my $self= shift;
     
     return $self->{dbfn};
 }
 
-sub getRealFileName {
+sub _getRealFileName {
     my $self= shift;
     
     return $self->{real_dbfn};
@@ -99,17 +100,17 @@ sub wasChanged {
     return $self->{_changed};
 }
 
-sub getHandle {
+sub _getHandle {
     my $self= shift;
     
     unless ($self->{dbh}) {
-        my $sFileName= $self->getRealFileName();
-        $self->{dbh}= $self->createHandle($sFileName),
+        my $sFileName= $self->_getRealFileName();
+        $self->{dbh}= $self->_createHandle($sFileName),
     }
     return $self->{dbh};
 }
 
-sub createHandle {
+sub _createHandle {
     my $self= shift;
     my $dbfn= shift;
     
@@ -137,7 +138,7 @@ sub _initTables {
     my $self= shift;
     my @sTableNames= @_;
     
-    my $dbh= $self->getHandle();
+    my $dbh= $self->_getHandle();
     for my $sTableName (@sTableNames) {
         next if $self->{_tables}{$sTableName};
         die "Table name \"$sTableName\" is not valid." unless $TableDefinitions{$sTableName};
@@ -150,7 +151,7 @@ sub _initTables {
 sub _createIndices {
     my $self= shift;
     
-    my $dbh= $self->getHandle();
+    my $dbh= $self->_getHandle();
     for my $sTableName (keys %{$self->{_tables}}) {
         next unless $IndexDefinitions{$sTableName};
         for my $hIndexDef (@{$IndexDefinitions{$sTableName}}) {
@@ -159,18 +160,18 @@ sub _createIndices {
     }
 }
 
-sub prepareQuery {
+sub _prepareQuery {
     my $self= shift;
     my $sQueryMode= shift;
     my $sQuery= shift;
     
     $self->{db_sth}{$sQueryMode}{$sQuery}=
-        $self->getHandle()->prepare($sQuery) unless $self->{db_sth}{$sQueryMode}{$sQuery};
+        $self->_getHandle()->prepare($sQuery) unless $self->{db_sth}{$sQueryMode}{$sQuery};
     
     return $self->{db_sth}{$sQueryMode}{$sQuery};
 }
 
-sub debugQuery {
+sub _debugQuery {
     my $self= shift;
     my $sQuery= shift;
     my @sValues= @_;
@@ -178,45 +179,45 @@ sub debugQuery {
     print "executing '$sQuery' with values (" . join(", ", @sValues) . ") [$self->{dbfn}]\n";
 }
 
-sub execQuery {
+sub _execQuery {
     my $self= shift;
     my $sQueryMode= shift;
     my $sQuery= shift;
     my @sValues= @_;
 
-    $self->debugQuery($sQuery, @sValues) if $self->{debug};    
-    return $self->prepareQuery($sQueryMode, $sQuery)->execute(@sValues);
+    $self->_debugQuery($sQuery, @sValues) if $self->{debug};    
+    return $self->_prepareQuery($sQueryMode, $sQuery)->execute(@sValues);
 }
 
-sub execChangeQuery {
+sub _execChangeQuery {
     my $self= shift;
     my $sQueryMode= shift;
     my $sQuery= shift;
     my @sValues= @_;
 
     if ($self->{cached_queries}) {
-        $self->flushCache() if $self->{_cache_count} > 100;
+        $self->_flushCache() if $self->{_cache_count} > 100;
         $self->{cached_queries}{$sQueryMode}{$sQuery}= [] unless $self->{cached_queries}{$sQueryMode}{$sQuery};
         push @{$self->{cached_queries}{$sQueryMode}{$sQuery}}, [@sValues];
         $self->{_cache_count}++;
     }
     else {
-        $self->beginTransaction();
-        return $self->execQuery($sQueryMode, $sQuery, @sValues);
+        $self->_beginTransaction();
+        return $self->_execQuery($sQueryMode, $sQuery, @sValues);
     }
 }
 
-sub flushCache {
+sub _flushCache {
     my $self= shift;
 
     return unless $self->{cached_queries} && $self->{_cache_count};
 
-    $self->beginTransaction();
+    $self->_beginTransaction();
     for my $sQueryMode (keys %{$self->{cached_queries}}) {
         for my $sQuery (keys %{$self->{cached_queries}{$sQueryMode}}) {
             my $aValues= undef;
             while ($aValues= shift @{$self->{cached_queries}{$sQueryMode}{$sQuery}}) {
-                $self->execQuery($sQueryMode, $sQuery, @$aValues);
+                $self->_execQuery($sQueryMode, $sQuery, @$aValues);
             }
         }
     }
@@ -224,50 +225,50 @@ sub flushCache {
 
 }
 
-sub execUpdate {
+sub _execUpdate {
     my $self= shift;
     my $sQuery= shift;
     my @sValues= @_;
 
-    return $self->execChangeQuery("update", $sQuery, @sValues);
+    return $self->_execChangeQuery("update", $sQuery, @sValues);
 }
 
-sub execSelectCol {
+sub _execSelectCol {
     my $self= shift;
     my $sQuery= shift;
     my @sValues= @_;
 
-    $self->debugQuery($sQuery, @sValues) if $self->{debug};    
+    $self->_debugQuery($sQuery, @sValues) if $self->{debug};    
     
-    return $self->getHandle()->selectcol_arrayref(
-        $self->prepareQuery("select", $sQuery),
+    return $self->_getHandle()->selectcol_arrayref(
+        $self->_prepareQuery("select", $sQuery),
         undef, @sValues,
     );
 }
 
-sub execSelectRows {
+sub _execSelectRows {
     my $self= shift;
     my $sQuery= shift;
     my @sValues= @_;
 
-    $self->debugQuery($sQuery, @sValues) if $self->{debug};    
+    $self->_debugQuery($sQuery, @sValues) if $self->{debug};    
     
-    return $self->getHandle()->selectall_arrayref(
-        $self->prepareQuery("select", $sQuery),
+    return $self->_getHandle()->selectall_arrayref(
+        $self->_prepareQuery("select", $sQuery),
         { Slice => {} }, @sValues,
     );
     
 }
 
-sub execSelectOne {
+sub _execSelectOne {
     my $self= shift;
     my $sQuery= shift;
     my @sValues= @_;
 
-    $self->debugQuery($sQuery, @sValues) if $self->{debug};    
+    $self->_debugQuery($sQuery, @sValues) if $self->{debug};    
     
-    my $result= $self->getHandle()->selectrow_arrayref(
-        $self->prepareQuery("select", $sQuery),
+    my $result= $self->_getHandle()->selectrow_arrayref(
+        $self->_prepareQuery("select", $sQuery),
         undef, @sValues,
     );
     return undef unless defined $result;
@@ -275,7 +276,7 @@ sub execSelectOne {
     return undef;
 }
 
-sub finishStatements {
+sub _finishStatements {
     my $self= shift;
     my @sModes= @_ || keys %{$self->{db_sth}};
 
@@ -297,7 +298,7 @@ sub addInodeFile {
     my $iInode= shift;
     my $sName= shift;
     
-    return $self->execUpdate(
+    return $self->_execUpdate(
         "INSERT INTO files_inode (inode, filename) VALUES (?, ?)",
         $iInode, $sName,
     );
@@ -308,7 +309,7 @@ sub updateInodeFile {
     my $iInode= shift;
     my $sName= shift;
 
-    return $self->execUpdate(
+    return $self->_execUpdate(
         "UPDATE files_inode SET inode = ? WHERE filename = ?",
         $iInode, $sName,
     );
@@ -322,17 +323,18 @@ sub addInode {
     my $sOwner= shift;
     my $iMtime= shift;
     
-    return $self->execUpdate(
+    return $self->_execUpdate(
         "INSERT OR REPLACE INTO inodes (inode, size, mode, owner, mtime) VALUES (?, ?, ?, ?, ?)",
         $iInode, $iSize, $iMode, $sOwner, $iMtime,
     );
 }
 
+# DETECTED UNUSED: getInode
 sub getInode {
     my $self= shift;
     my $iInode= shift;
     
-    return $self->execSelectOne(
+    return $self->_execSelectOne(
         "SELECT * FROM inodes WHERE inode = ?",
         $iInode,
     );
@@ -341,7 +343,7 @@ sub getInode {
 sub getDescSortedSizes {
     my $self= shift;
     
-    return $self->execSelectCol("SELECT DISTINCT size FROM inodes ORDER BY size DESC");
+    return $self->_execSelectCol("SELECT DISTINCT size FROM inodes ORDER BY size DESC");
 }
 
 sub getKeysBySize {
@@ -351,7 +353,7 @@ sub getKeysBySize {
     
     $aKeys= ['size'] unless scalar @$aKeys;
     my $sQueryKey= join ", ", @$aKeys;
-    return $self->execSelectRows(
+    return $self->_execSelectRows(
         "SELECT DISTINCT $sQueryKey FROM inodes WHERE size = ?",
         $iSize,
     );
@@ -369,7 +371,7 @@ sub getInodesBySizeKey {
         push @KeyValues, $hKeys->{$sKey};
     }
 
-    return $self->execSelectCol(
+    return $self->_execSelectCol(
         "SELECT inode FROM inodes WHERE size = ? $sQueryKey",
         $iSize, @KeyValues,
     );
@@ -379,7 +381,7 @@ sub getFilesByInode {
     my $self= shift;
     my $iInode= shift;
     
-    return $self->execSelectCol(
+    return $self->_execSelectCol(
         "SELECT filename FROM files_inode WHERE inode = ?",
         $iInode,
     );
@@ -389,7 +391,7 @@ sub getFileKeyByInode {
     my $self= shift;
     my $iInode= shift;
     
-    return $self->execSelectOne(
+    return $self->_execSelectOne(
         "SELECT key FROM files_inode WHERE inode = ?",
         $iInode,
     );
@@ -398,7 +400,7 @@ sub getFileKeyByInode {
 sub getFileCount {
     my $self= shift;
     
-    return $self->execSelectOne(
+    return $self->_execSelectOne(
         "SELECT COUNT(filename) FROM files_inode",
     );
 }
@@ -408,7 +410,7 @@ sub getInodes {
 
     my $result= {};
     
-    my $sth= $self->prepareQuery("select", "SELECT inode, size, mode, owner, mtime FROM inodes");
+    my $sth= $self->_prepareQuery("select", "SELECT inode, size, mode, owner, mtime FROM inodes");
     $sth->execute();
     while (my $row= $sth->fetchrow_arrayref()) {
         $row= [@$row];
@@ -422,7 +424,7 @@ sub getInodeDigest {
     my $self= shift;
     my $iInode= shift;
     
-    return $self->execSelectOne(
+    return $self->_execSelectOne(
         "SELECT digest FROM inodes WHERE inode = ?",
         $iInode,
     );
@@ -433,7 +435,7 @@ sub setInodeDigest {
     my $iInode= shift;
     my $sDigest= shift;
     
-    return $self->execUpdate(
+    return $self->_execUpdate(
         "UPDATE inodes SET digest = ? WHERE inode = ?",
         $sDigest, $iInode,
     );
@@ -443,17 +445,18 @@ sub removeInode {
     my $self= shift;
     my $iInode= shift;
     
-    return $self->execUpdate(
+    return $self->_execUpdate(
         "DELETE FROM inodes WHERE inode = ?",
         $iInode,
     );
 }
 
+# DETECTED UNUSED: removeFile
 sub removeFile {
     my $self= shift;
     my $sFileName= shift;
     
-    return $self->execUpdate(
+    return $self->_execUpdate(
         "DELETE FROM files_inode WHERE filename = ?",
         $sFileName,
     );
@@ -463,7 +466,7 @@ sub beginWork {
     my $self= shift;
 
     # make sure database exists    
-    $self->getHandle();
+    $self->_getHandle();
 }
 
 sub endWork {
@@ -471,22 +474,22 @@ sub endWork {
     my $buildIndex= shift;
     
     if ($self->{dbh}) {
-        my ($sFileName, $sRealFileName)= ($self->getFileName(), $self->getRealFileName());
+        my ($sFileName, $sRealFileName)= ($self->_getFileName(), $self->_getRealFileName());
 
         $self->{cached_queries}= undef unless $self->{is_valid};
 
         $self->endCached();
         # finish statements before commit
-        $self->finishStatements();
+        $self->_finishStatements();
     
         $self->commitTransaction($buildIndex);
     
-        for my $sth (@{$self->getHandle()->{ChildHandles}}) {
+        for my $sth (@{$self->_getHandle()->{ChildHandles}}) {
             next unless defined $sth;
             logger->error("unresolved statement: '$sth->{Statement}' ($self->{dbfn})");
         }
     
-        $self->getHandle()->disconnect();
+        $self->_getHandle()->disconnect();
         $self->{dbh}= undef;
         if ($self->{is_valid}) {
             unless ($sFileName eq $sRealFileName) {
@@ -518,16 +521,16 @@ sub beginCached {
 sub endCached {
     my $self= shift;
 
-    $self->flushCache();
+    $self->_flushCache();
     $self->{cached_queries}= undef;
 }
 
-sub beginTransaction {
+sub _beginTransaction {
     my $self= shift;
     
     return if $self->{_transaction_mode};
     
-    $self->getHandle()->begin_work();
+    $self->_getHandle()->begin_work();
     $self->{_transaction_mode}= 1;
     $self->{_changed}= 1;
 }
@@ -542,9 +545,9 @@ sub commitTransaction {
     return unless $self->{_transaction_mode} && $self->{dbh};
     
     # free statement handles
-    $self->finishStatements("update");
+    $self->_finishStatements("update");
 
-    $self->getHandle()->commit();
+    $self->_getHandle()->commit();
     
     # creating indices after inserting all data
     $self->_createIndices() if $buildIndex;
@@ -557,7 +560,7 @@ sub unlink {
     
     $self->endWork(0);
     
-    my $sFileName= $self->getFileName();
+    my $sFileName= $self->_getFileName();
     unlink $sFileName if $sFileName && -f $sFileName;
 }
 

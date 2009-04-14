@@ -89,7 +89,7 @@ sub Build {
 
     $oCmd= Rabak::Cmd::Error->new($sError) if $sError;
 
-    $oCmd->setup($hOpts, $asArgs, $sCommandLine);
+    $oCmd->_setup($hOpts, $asArgs, $sCommandLine);
 
     return $oCmd;
 }
@@ -116,7 +116,7 @@ sub hostname {
     return $sHostname;
 }
 
-sub setup {
+sub _setup {
     my $self= shift;
     my $hOpts= shift;
     my $hArgs= shift;

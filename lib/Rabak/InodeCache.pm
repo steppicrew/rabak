@@ -105,6 +105,7 @@ sub _processFiles {
 }
 
 # calculate digest from file
+# DETECTED UNUSED: calcDigest
 sub calcDigest {
     my $self= shift;
     my $sFileName= shift;

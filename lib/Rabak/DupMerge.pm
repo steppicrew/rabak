@@ -32,7 +32,7 @@ sub new {
 
 # generates function returning list of similar inodes per call
 # or undef at end
-sub dupMergeInodesIterator {
+sub _dupMergeInodesIterator {
     my $self= shift;
     
     # build array of relevant properties
@@ -76,7 +76,7 @@ sub dupMergeInodesIterator {
     }
 }
 
-sub dupMergeProcessGenerator {
+sub _dupMergeProcessGenerator {
     my $self= shift;
     my $fInodesIterator= shift;
     
@@ -206,9 +206,9 @@ sub dupMerge {
 
     $oStore->beginCached();
 
-    my $itInodes= $self->dupMergeInodesIterator();
+    my $itInodes= $self->_dupMergeInodesIterator();
     
-    my ($fIn, $fOut)= $self->dupMergeProcessGenerator($itInodes);
+    my ($fIn, $fOut)= $self->_dupMergeProcessGenerator($itInodes);
 
     my $ioHandles= {
         STDIN => sub {

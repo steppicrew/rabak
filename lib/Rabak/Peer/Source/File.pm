@@ -343,7 +343,7 @@ sub show {
     return $aResult;
 }
 
-sub validSourceDir {
+sub _validSourceDir {
     my $self= shift;
 
     my $sSourceDir= $self->getFullPath();
@@ -402,7 +402,7 @@ sub prepareBackup {
 
     logger->log(@sMountMessage);
 
-    return $self->validSourceDir() ? 0 : 1;
+    return $self->_validSourceDir() ? 0 : 1;
 }
 
 sub finishBackup {

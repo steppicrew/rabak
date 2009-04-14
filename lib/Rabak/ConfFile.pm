@@ -68,7 +68,7 @@ sub new {
         return $self;
     }
 
-    $self->readFile($sFile) if $sFile;
+    $self->_readFile($sFile) if $sFile;
     return $self;
 }
 
@@ -154,7 +154,7 @@ sub _error {
     exit 3;
 }
 
-sub readFile {
+sub _readFile {
     my $self= shift;
 
     # use absolute paths only (needed for includes)
@@ -252,7 +252,7 @@ sub _readFile {
             $sNewValue.= "$sValue\n";
         }
 
-        $sNewValue= $self->removeQuotes($sNewValue);
+        $sNewValue= $self->_removeQuotes($sNewValue);
 
         # remove current key to prevent self referencing
         $oConf->removeProperty($sName);
@@ -309,7 +309,7 @@ sub _readFile {
     return $oConf;
 }
 
-sub removeQuotes {
+sub _removeQuotes {
     my $self= shift;
     my $sValue= shift;
 

@@ -40,7 +40,7 @@ sub PropertyNames {
     return ('mount');
 }
 
-sub getPeer {
+sub _getPeer {
     my $self= shift;
     return $self->{PEER};
 }
@@ -63,7 +63,7 @@ sub getPath {
     my $self= shift;
     my $sPath= shift || '.';
 
-    my $peer= $self->getPeer();
+    my $peer= $self->_getPeer();
 
     my $sBasePath= $peer->getValue("path");
 
@@ -106,7 +106,7 @@ sub checkMount {
     
     return 0 unless $sMountDevice;
 
-    my $peer= $self->getPeer();
+    my $peer= $self->_getPeer();
 
     # if absPath fails try original mount device (eg. samba shares)
     $sMountDevice= $peer->absPath($sMountDevice) || $sMountDevice;
@@ -124,7 +124,7 @@ sub checkMount {
 sub getMountObjects {
     my $self= shift;
 
-    my $peer= $self->getPeer();
+    my $peer= $self->_getPeer();
 
     return () unless $peer->findProperty("mount");
 
@@ -149,7 +149,7 @@ sub mountAll {
     my $self= shift;
     my $arMessage= shift || [];
 
-    my $peer= $self->getPeer();
+    my $peer= $self->_getPeer();
 
     my @aMounts= $self->getMountObjects();
     

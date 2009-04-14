@@ -114,6 +114,7 @@ sub localTempfile {
     return $tempfh->filename();
 }
 
+# DETECTED UNUSED: localTempdir
 sub localTempdir {
     my $self= shift;
     my %hParams= @_;
@@ -235,7 +236,7 @@ sub ShellQuote {
 
 # run command locally or remote
 # result: stdout of cmd
-sub savecmd {
+sub _savecmd {
     my $self= shift;
     my $cmd= shift;
     my $hHandles= shift || {};
@@ -497,13 +498,13 @@ sub runPerl {
 
 # returns directory listing
 # if bFileType is set, appends file type character on every entry
-sub getDir {
+sub _getDir {
     my $self= shift;
     my $sPath= $self->getPath(shift);
     my $bFileType= shift;
 
     my $sPerlScript= '
-        # getDir()
+        # _getDir()
         use Cwd;
         $sPath= Cwd::abs_path($sPath);
         @Dir= (<$sPath/*>);
@@ -609,7 +610,7 @@ sub getLocalFile {
         },
         STDOUT_UNBUFFERED => 1,
     };
-    $self->savecmd(scalar $self->ShellQuote('cat', $sFile), $hHandles);
+    $self->_savecmd(scalar $self->ShellQuote('cat', $sFile), $hHandles);
     CORE::close $fh;
     return $sTmpName;
 }
@@ -718,7 +719,7 @@ sub df {
     my $sDir= $self->getPath(shift);
     my @sParams= @_;
 
-    return $self->savecmd($self->ShellQuote('df', @sParams, $sDir));
+    return $self->_savecmd($self->ShellQuote('df', @sParams, $sDir));
 }
 
 sub isDir {
@@ -765,12 +766,12 @@ sub isFile {
     ) || \undef};
 }
 
-sub isSymlink {
+sub _isSymlink {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
     return ${$self->runPerl('
-            # isSymlink()
+            # _isSymlink()
             $result= -l $sFile;
         ', { 'sFile' => $sFile, }, '$result'
     ) || \undef};
@@ -826,28 +827,28 @@ sub echo {
         },
     };
 
-    $self->savecmd('cat - >> ' . $self->ShellQuote($sFile), $hHandles);
+    $self->_savecmd('cat - >> ' . $self->ShellQuote($sFile), $hHandles);
 }
 
 sub cat {
     my $self= shift;
     my $sFile= $self->getPath(shift);
 
-    return $self->savecmd(scalar $self->ShellQuote('cat', $sFile));
+    return $self->_savecmd(scalar $self->ShellQuote('cat', $sFile));
 }
 
 sub mount {
     my $self= shift;
     my @sParams= @_;
 
-    return $self->savecmd(scalar $self->ShellQuote('mount', @sParams));
+    return $self->_savecmd(scalar $self->ShellQuote('mount', @sParams));
 }
 
 sub umount {
     my $self= shift;
     my @sParams= @_;
 
-    return $self->savecmd(scalar $self->ShellQuote('umount', @sParams));
+    return $self->_savecmd(scalar $self->ShellQuote('umount', @sParams));
 }
 
 sub tempfile {
@@ -900,7 +901,7 @@ sub rmtree {
 
     $self= $self->new() unless ref $self;
     $sTree= $self->ShellQuote($sTree);
-    return $self->savecmd("if [ -e $sTree ]; then rm -rf $sTree; fi");
+    return $self->_savecmd("if [ -e $sTree ]; then rm -rf $sTree; fi");
 }
 
 =back

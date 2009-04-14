@@ -105,7 +105,7 @@ sub mountErrorIsFatal {
     return $iMountResult;
 }
 
-sub checkDf {
+sub _checkDf {
     my $self= shift;
 
     my $sSpaceThreshold= $self->getValue('discfree_threshold');
@@ -237,7 +237,7 @@ sub prepareForBackup {
         ALL_BAKSET_EXTS => $asBaksetExts,  # path extensions for this and all previous backsets
         BAKSET_DIR => $sBaksetDir, # back set's directory (relative to target dir)
         BAKSET_TIME => $aBaksetTime,   # date of bak set start
-        ALL_BAKSET_DIRS => $self->getAllBakdirs(),  # hash of all bak set dirs
+        ALL_BAKSET_DIRS => $self->_getAllBakdirs(),  # hash of all bak set dirs
         BAKSET_META_DIR => $sBaksetMeta,
     };
 }
@@ -256,7 +256,7 @@ sub finish {
 sub finishBackup {
     my $self= shift;
 
-    my $aDf = $self->checkDf();
+    my $aDf = $self->_checkDf();
     if (defined $aDf) {
         logger->warn(join "", @$aDf);
         my $sHostName= $self->getValue("host") || $self->cmdData("hostname");
@@ -268,7 +268,7 @@ sub finishBackup {
         );
     }
 
-    $self->closeLogging();
+    $self->_closeLogging();
     
     $self->finish();
     
@@ -276,7 +276,7 @@ sub finishBackup {
     return 0;
 }
 
-sub getLogFileInfo {
+sub _getLogFileInfo {
     my $self= shift;
 
     my $aBaksetTime= shift;
@@ -301,7 +301,7 @@ sub initLogging {
     my $sBaksetDir= $hBaksetData->{BAKSET_DIR};
     my $sBaksetExt= $hBaksetData->{BAKSET_EXT};
 
-    my $hInfo= $self->getLogFileInfo($aBaksetTime, $sBaksetDir, $sBaksetExt);
+    my $hInfo= $self->_getLogFileInfo($aBaksetTime, $sBaksetDir, $sBaksetExt);
 
     my $sLogDir= $hInfo->{DIR};
     my $sLogFile= $hInfo->{FILE};
@@ -328,7 +328,7 @@ sub initLogging {
     logger->info("", "**** Only pretending, no changes are made! ****", "") if $self->pretend();
 }
 
-sub closeLogging {
+sub _closeLogging {
     my $self= shift;
 
     logger->close();
@@ -356,7 +356,7 @@ sub getPath {
     return $self->mountable()->getPath(@_);
 }
 
-sub getAllBakdirs {
+sub _getAllBakdirs {
     my $self= shift;
 
     # get recursive file listing for 1 extra level
@@ -392,7 +392,7 @@ sub getBakdirsByExts {
     my $self= shift;
     my $asSetExts= shift;
     my $asSourceExts= shift;
-    my $hDirs= shift || $self->getAllBakdirs();
+    my $hDirs= shift || $self->_getAllBakdirs();
 
     my $i= 1;
     my %hSetExts=    map { $_ => $i++ } @$asSetExts;
