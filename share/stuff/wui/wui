@@ -9,7 +9,7 @@ use HTTP::Daemon;
 use HTTP::Status;
 use Data::Dumper;
 
-use lib "./lib";
+use lib "../../../lib";
 
 use Rabak::Wui;
 
