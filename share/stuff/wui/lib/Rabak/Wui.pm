@@ -2,6 +2,20 @@
 
 package Rabak::Wui;
 
+=head1 NAME
+
+Rabak Web User Interface (aka Rabak WUI)
+
+=head1 DESCRIPTION
+
+Rabak WUI allows monitoring of Rabak processes from a web browser. It features
+session handling and fancy graphics.
+
+This package contains the request handler for Web requests. These are typically
+made by C<wui>, a HTTP server that comes with Rabak.
+
+=cut
+
 use strict;
 use warnings;
 
@@ -9,6 +23,7 @@ use lib "../../../lib";
 
 use Rabak;
 use Rabak::ConfFile;
+
 use Data::Dumper;
 use JSON::XS;
 
@@ -20,14 +35,42 @@ our $aConfs;
 
 our %aSessions;
 
-my %dispatch= (
-    '/' => \&_Index,
-    '/login' => \&_Login,
-    '/logout' => \&_Logout,
-    '/index' => \&_Index,
-    '/api' => \&_Api,
-);
+=head1 METHODS
 
+=head2 Class Methods
+
+=over 4
+
+=item C<Request>
+
+    Request($path, $params)
+
+    Request("/login", { usr => "john", "pw" => "doe" })
+
+Handles a request. C<$path> is dispached to a corresponding method,
+which receives C<$params>.
+
+If successful, returns a string containing the information for the
+client.
+
+Returns C<undef> on failure.
+
+=cut
+
+sub Request {
+    my $path= shift;
+    my $params= shift;
+
+    _readConf() unless $oConf;
+
+    my $handler = $dispatch{$path};
+    return undef unless ref($handler) eq "CODE";
+
+    return $handler->($params);
+}
+
+
+# Reads config file for Web UI
 sub _readConf {
     my $oConfFile= new Rabak::ConfFile("wui.cf");
         
@@ -48,19 +91,10 @@ sub _readConf {
     # FIXME: Fehlerbehandlung!
 }
 
-sub Request {
-    my $path= shift;
-    my $params= shift;
-
-    _readConf() unless $oConf;
-
-    my $handler = $dispatch{$path};
-    return undef unless ref($handler) eq "CODE";
-
-    return $handler->($params);
-}
-
-sub getSession {
+# Fetches a session. The Session-Id is in $params->{sid}. If the session
+# is invalid a new one will be generated. If $params->{usr} and $params->{pw}
+# are set to a proper value, the user will be logged in for this session.
+sub _getSession {
     my $params= shift;
 
     for (keys %aSessions) {
@@ -104,10 +138,18 @@ sub getSession {
     return $aSessions{$sid};
 }
 
+my %dispatch= (
+    '/' => \&_Index,
+    '/login' => \&_Login,
+    '/logout' => \&_Logout,
+    '/index' => \&_Index,
+    '/api' => \&_Api,
+);
+
 sub _Login {
     my $params= shift;
 
-    my $oSession= getSession($params);
+    my $oSession= _getSession($params);
     return '<meta http-equiv="refresh" content="0; url=/?sid=' . $oSession->{sid}
         . ($oSession->{login_error} ? '&err=1' : '')
         . '">';
@@ -116,7 +158,7 @@ sub _Login {
 sub _Logout {
     my $params= shift;
 
-    my $sid= getSession($params)->{sid};
+    my $sid= _getSession($params)->{sid};
     delete $aSessions{$sid};
     return '<meta http-equiv="refresh" content="0; url=/">';
 }
@@ -124,7 +166,7 @@ sub _Logout {
 sub _Api {
     my $params= shift;
 
-    my $oSession= getSession($params);
+    my $oSession= _getSession($params);
     return encode_json(
         $oSession->{user_name} ? Rabak::API($params) : { error => 401, error_text => 'Authorization required' }
     );
@@ -133,7 +175,7 @@ sub _Api {
 sub _Index {
     my $params= shift;
 
-    my $oSession= getSession($params);
+    my $oSession= _getSession($params);
     my $sid= $oSession->{sid};
     my $userName= $oSession->{user_name} || '';
     my $userTitle= $oSession->{user_title} || '';
@@ -167,5 +209,17 @@ sub _Index {
 </html>
 EOT
 }
+
+=back
+
+=cut
+
+=head1 COPYRIGHT
+
+Copyright (c) 2009 Dietrich Raisin and Stephan Hantigk.
+All rights reserved.  This module is free software;
+you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut
 
 1;
