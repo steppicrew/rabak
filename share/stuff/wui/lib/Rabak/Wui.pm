@@ -35,6 +35,14 @@ our $aConfs;
 
 our %aSessions;
 
+my %dispatch= (
+    '/' => \&_Index,
+    '/login' => \&_Login,
+    '/logout' => \&_Logout,
+    '/index' => \&_Index,
+    '/api' => \&_Api,
+);
+
 =head1 METHODS
 
 =head2 Class Methods
@@ -137,14 +145,6 @@ sub _getSession {
 
     return $aSessions{$sid};
 }
-
-my %dispatch= (
-    '/' => \&_Index,
-    '/login' => \&_Login,
-    '/logout' => \&_Logout,
-    '/index' => \&_Index,
-    '/api' => \&_Api,
-);
 
 sub _Login {
     my $params= shift;
