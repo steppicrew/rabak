@@ -19,8 +19,6 @@ made by C<wui>, a HTTP server that comes with Rabak.
 use strict;
 use warnings;
 
-use lib "../../../lib";
-
 use Rabak;
 use Rabak::ConfFile;
 
