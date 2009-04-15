@@ -69,7 +69,7 @@ a {
 
 #body-c {
     height: 100%;
-    background-color: #EFF;
+    x-background-color: #EFF;
     padding-bottom: 150px;
 }
 
