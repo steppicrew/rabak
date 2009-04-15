@@ -2,21 +2,15 @@
 
 package Rabak;
 
+# PRE ALPHA CODE!
+
 use warnings;
 use strict;
-
-# no warnings 'redefine';
 
 use Rabak::Log;
 use Rabak::ConfFile;
 
-# use Rabak::Peer::Source;
-# use Rabak::Peer::Target;
-# use Rabak::Version;
-
 use Data::Dumper;
-# use File::Spec ();
-# use POSIX qw(strftime);
 
 sub _apiTest {
     # print Dumper(@_);
@@ -25,6 +19,8 @@ sub _apiTest {
 }
 
 sub _apiGetBaksets {
+    my $param= shift; # UNUSED
+
     my $oConfFile= Rabak::ConfFile->new();
     my $oConf= $oConfFile->conf();
     
@@ -49,7 +45,12 @@ sub _apiGetBaksets {
     
     return {
         error => 0,
-        baksets => $aSets,
+        confs => {
+            '/home/raisin/.rabak/rabak.cf' => {
+                title => 'Test config',
+                baksets => $aSets,
+            }
+        }
     };
 }
 
@@ -61,8 +62,15 @@ sub _apiGetBaksetStatus {
     return { error => 500, error_text => 'Not implemented' };
 }
 
+=pod
+
+sub _apiGet {
+}
+
+=cut
+
 # STUB!
-sub _apiGetBackupResult {
+sub _apiGetSessions {
     my $param= shift;
 
     # $param->{bakset}
@@ -70,45 +78,67 @@ sub _apiGetBackupResult {
     # $param->{until}
 
     # gebaut mit 20090409000021
-    my $VAR1 = {
-                  'rabak' => './rabak backup test',
-                  'bakset' => 'example',
-                  'blaim' => 'steppi@hamail.de',
-                  'time' => {
-                              'start' => '20090409000001',
-                              'end' => '20090409000810',
-                            },
-                  'version' => '1',
-                  'conf' => '/home/raisin/.rabak/rabak.cf',
+    my $example1 = {
+            'cmdline' => './rabak backup example',
+            'bakset' => 'example',
+            'blaim' => 'steppi@hamail.de',
+            # 'version' => '1',
 
-          'target' => {
-                        'name' => 'blubtarget',
-                        'title' => 'Platte unterm Tisch'
-                      },
-          'source__1' => {
-                         'time' => {
-                                     'start' => '20090409000211',
-                                     'end' => '20090409000810',
-                                   },
-                         'stats' => '140MB copied',
-                         'name' => 'source_pg',
-                         'path' => 'psql://localhost/bctiny',
-                         'result' => '1'
-                       },
-          'source__0' => {
-                         'warnings' => '3',
-                         'errors' => '0',
-                         'time' => {
-                                     'end' => '20090409000210',
-                                     'start' => '20090409000001'
-                                   },
-                         'stats' => '123 files written',
-                         'name' => 'source0',
-                         'path' => 'file:///',
-                         'result' => '0'
-                       }
+            'target' => {
+                'name' => 'blubtarget',
+                'title' => 'Platte unterm Tisch'
+            },
+
+            'sources' => {
+                'source0' => {
+                    'path' => 'file:///',
+                },
+                'source_pg' => {
+                    'path' => 'psql://localhost/bctiny',
+                },
+            },
+
+            'sessions' => {
+                '20090409000001:20090409000810' => {
+                    'time' => {
+                        'start' => '20090409000001',
+                        'end' => '20090409000810',
+                    },
+                    'target' => {
+                        'uuid' => 'BF733C62-29F7-11DE-A32E-A9BFECDD0C97',
+                    },
+                    'sources' => {
+                        'source_pg' => {
+                            'time' => {
+                                'start' => '20090409000211',
+                                'end' => '20090409000810',
+                            },
+                            'stats' => '140MB copied',
+                            'result' => '1'
+                        },
+                        'source0' => {
+                            'warnings' => '3',
+                            'errors' => '0',
+                            'time' => {
+                                'end' => '20090409000210',
+                                'start' => '20090409000001'
+                            },
+                            'stats' => '123 files written',
+                            'result' => '0'
+                        },
+                    },
+                }
+            },
     };
-    return { error => 0, result => $VAR1 };
+
+    return {
+        error => 0,
+        'baksets' => {
+            '/home/raisin/.rabak/rabak.cf' => {
+                'example' => $example1,
+            },
+        }
+    };
 }
 
 sub API {

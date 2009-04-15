@@ -83,12 +83,12 @@ jQuery(function($) {
     var cmds= {};
 
     cmds.show_backup_result= function(params) {
-        api('GetBackupResult', params, function(data) {
+        api('GetSessions', params, function(data) {
             console.log(data);
 
             if (data.error) return;
 
-            $("#body").html('<h1>' + data.result.bakset + '</h1>');
+            $("#body").html('<h1>' + data.result.confs + '</h1>');
         })
     };
 
