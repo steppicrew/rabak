@@ -180,11 +180,16 @@ jQuery(function($) {
                     html.push('<h2>' + bakset.title + '</h2>');
 
                     map(bakset.sessions, function(session_id, session) {
+                        session.title= fmtTime(session.time);
                         html.push('<h3>Session ' + session.title + '</h3>');
 
                         var table= [];
                         map(session.sources, function(source_name, source) {
-                            table.push(['Source ' + source_name, source.title,
+                            var icon= source.result ? '/static/icon_cancel.png' : '/static/icon_ok.png';
+                            icon= '<img src="' + icon + '" width="16" height="16" />';
+                            table.push([
+                                icon,
+                                'Source ' + source_name, source.title,
                                 // bakset.sources[source_name].path,
                                 source.path,
                                 fmtTime(source.time), source.stats]);
