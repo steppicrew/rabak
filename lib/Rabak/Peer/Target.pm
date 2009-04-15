@@ -218,6 +218,11 @@ sub _prepare {
     return undef;
 }
 
+# return meta dir of bakset
+sub GetMetaDir {
+    return '.meta';
+}
+
 # prepare target for backup
 # 1. mounts all target mount objects
 # 2. checks existance and permissions of target's directory
@@ -234,7 +239,7 @@ sub prepareForBackup {
     my $sBaksetExt= $asBaksetExts->[0];
     my $aBaksetTime= [ localtime ];
     my $sBaksetDir= strftime("%Y-%m", @$aBaksetTime) . $sBaksetExt;
-    my $sBaksetMeta= '.meta';
+    my $sBaksetMeta= $self->GetMetaDir();
 
     my $sDevConfFile= $self->_getDevConfFile();
     my $sUUID;
@@ -301,7 +306,8 @@ sub finishBackup {
     
     my $sFileName= $hBaksetData->{BAKSET_META_DIR} . '/session.'
         . $hSessionData->{time}{start} . '.'
-        . $hSessionData->{time}{end};
+        . $hSessionData->{time}{end}
+        . $hBaksetData->{BAKSET_EXT};
     $self->echo($sFileName, Data::Dumper->Dump([$hSessionData], ['session']));
     
     $self->finish();

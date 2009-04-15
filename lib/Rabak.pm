@@ -18,11 +18,26 @@ sub _apiTest {
     return { error => 500, error_text => 'Not implemented' };
 }
 
+sub _getConf {
+    my $oConfFile= Rabak::ConfFile->new();
+    return $oConfFile->conf(), $oConfFile->filename() if wantarray;
+    return $oConfFile->conf();
+}
+
+sub _getBakset {
+    my $oConf= shift;
+    my $sBakset= shift;
+    
+    for my $oSet (Rabak::Set->GetSets($oConf)) {
+        return $oSet if $oSet->getFullName eq $sBakset;
+    }
+    return undef
+}
+
 sub _apiGetBaksets {
     my $param= shift; # UNUSED
 
-    my $oConfFile= Rabak::ConfFile->new();
-    my $oConf= $oConfFile->conf();
+    my ($oConf, $sConfFileName)= _getConf();
     
     my $hSets= {};
     for my $oSet (Rabak::Set->GetSets($oConf)) {
@@ -40,14 +55,14 @@ sub _apiGetBaksets {
             $hSources->{$oSource->getName()}= $hSourceData;
         }
         $hData->{sources}= $hSources;
-        $hSets->{$oSet->getName()}= $hData;
+        $hSets->{$oSet->getFullName()}= $hData;
     }
     
     return {
         error => 0,
         confs => {
             raisin => {
-                file => '/home/raisin/.rabak/rabak.cf',
+                file => $sConfFileName,
                 title => 'Raisin\'s Config',
                 baksets => $hSets,
             },
@@ -71,7 +86,7 @@ sub _apiGet {
 =cut
 
 # STUB!
-sub _apiGetSessions {
+sub _apiGetSessions_______stub {
     my $param= shift;
 
     # $param->{bakset}
@@ -140,6 +155,58 @@ sub _apiGetSessions {
                 title => 'Raisin\'s Config',
                 baksets => {
                     'example' => $example1,
+                },
+            },
+        }
+    };
+}
+
+sub _apiGetSessions {
+    my $param= shift;
+
+
+    my ($oConf, $sConfFileName)= _getConf();
+    my $sBakset= $param->{bakset};
+    
+    my $oSet= _getBakset($oConf, $sBakset);
+    return {
+        error => 500,
+        error_text => "Bakset '$sBakset' does not exist.",
+    } unless $oSet;
+
+    my $oTargetPeer= $oSet->getTargetPeer();
+    my $sMetaDir= $oTargetPeer->getPath($oTargetPeer->GetMetaDir());
+    
+    my $hResult= {
+        conf_file => $sConfFileName,
+        bakset => $sBakset,
+        target => {
+            'name' => $oTargetPeer->getFullName(),
+            'path' => $oTargetPeer->getFullPath(),
+        },
+    };
+    
+    my $hSessions= {};
+    
+    my @sSessionFiles= $oTargetPeer->glob("$sMetaDir/session.*.$sBakset");
+    for my $sSessionFile (@sSessionFiles) {
+        my $sContent= $oTargetPeer->cat($sSessionFile);
+        my $session;
+        eval "$sContent; 1;";
+        next unless defined $session;
+        $hSessions->{scalar keys %$hSessions}= $session;
+    }
+    
+    $hResult->{sessions}= $hSessions;
+
+    return {
+        error => 0,
+        'confs' => {
+            raisin => {
+                file => '/home/raisin/.rabak/rabak.cf',
+                title => 'Raisin\'s Config',
+                baksets => {
+                    'example' => $hResult,
                 },
             },
         }
