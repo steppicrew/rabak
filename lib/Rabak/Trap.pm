@@ -17,13 +17,13 @@ sub new {
     };
 
     my $sigHandler= sub {
-	    logger()->warn(
-	    	"\n**** Caught interrupt. Finishing information store...",
-	        "Press [Ctrl-C] again to cancel (may result in db information loss)."
-	    );
-	    $self->restore();
-	    $self->{terminated}= 1;
-	    $fCallBack->() if $fCallBack;
+        logger()->warn(
+            "\n**** Caught interrupt. Finishing information store...",
+            "Press [Ctrl-C] again to cancel (may result in db information loss)."
+        );
+        $self->restore();
+        $self->{terminated}= 1;
+        $fCallBack->() if $fCallBack;
     };
 
     for my $sSig ("INT", "TERM", "QUIT", "KILL") {
@@ -35,7 +35,7 @@ sub new {
 }
 
 sub terminated {
-	return shift->{terminated};
+    return shift->{terminated};
 }
 
 sub restore {
