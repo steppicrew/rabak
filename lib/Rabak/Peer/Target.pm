@@ -304,11 +304,13 @@ sub finishBackup {
 
     $self->_closeLogging();
     
-    my $sFileName= $hBaksetData->{BAKSET_META_DIR} . '/session.'
-        . $hSessionData->{time}{start} . '.'
-        . $hSessionData->{time}{end}
-        . $hBaksetData->{BAKSET_EXT};
-    $self->echo($sFileName, Data::Dumper->Dump([$hSessionData], ['session']));
+    if ($hBaksetData->{BAKSET_META_DIR}) {
+        my $sFileName= $hBaksetData->{BAKSET_META_DIR} . '/session.'
+            . $hSessionData->{time}{start} . '.'
+            . $hSessionData->{time}{end}
+            . $hBaksetData->{BAKSET_EXT};
+        $self->echo($sFileName, Data::Dumper->Dump([$hSessionData], ['session']));
+    }
     
     $self->finish();
     
