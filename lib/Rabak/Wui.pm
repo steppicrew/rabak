@@ -47,18 +47,16 @@ my %dispatch= (
 
 =over 4
 
-=item C<Request>
+=item Request
 
-    Request($path, $params)
+Usage: C<Request($path, $params)>
 
-    Request("/login", { usr => "john", "pw" => "doe" })
+Example: C<Request("/login", { usr =E<gt> "john", "pw" =E<gt> "doe" })>
 
 Handles a request. C<$path> is dispached to a corresponding method,
 which receives C<$params>.
-
 If successful, returns a string containing the information for the
 client.
-
 Returns C<undef> on failure.
 
 =cut

@@ -181,7 +181,7 @@ sub removeOld {
     logger->info("Number of removed backups: $iCount");
 }
 
-sub prepare {
+sub _prepare {
     my $self= shift;
     my $asBaksetExts= shift;
 
@@ -194,7 +194,7 @@ sub prepare {
     unless ($iMountResult) { # fatal mount error
         logger->error("There was at least one fatal mount error on target. Backup set skipped.");
         logger->error(@sMountMessage);
-        return {ERROR => -3};
+        return { ERROR => -3 };
     }
     logger->log(@sMountMessage);
 
@@ -202,12 +202,12 @@ sub prepare {
     unless ($self->isDir()) {
         logger->error(@sMountMessage);
         logger->error("Target \"".$self->getValue("path")."\" is not a directory. Backup set skipped.");
-        return {ERROR => -1};
+        return { ERROR => -1 };
     }
     unless ($self->isWritable()) {
         logger->error(@sMountMessage);
         logger->error("Target \"".$self->getValue("path")."\" is not writable. Backup set skipped.");
-        return {ERROR => -2};
+        return { ERROR => -2 };
     }
     return undef;
 }
@@ -221,16 +221,20 @@ sub prepareForBackup {
     my $self= shift;
     my $asBaksetExts= shift;
 
-    my $hResult= $self->prepare($asBaksetExts);
+    my $hResult= $self->_prepare($asBaksetExts);
     return $hResult if $hResult;
 
     my $sBaksetExt= $asBaksetExts->[0];
-    my $aBaksetTime= [localtime];
+    my $aBaksetTime= [ localtime ];
     my $sBaksetDir= strftime("%Y-%m", @$aBaksetTime) . $sBaksetExt;
     my $sBaksetMeta= '.meta';
 
     $self->mkdir($sBaksetDir);
     $self->mkdir($sBaksetMeta);
+
+    # if ($self->isWritable("$sBakset/target.cf")) {
+    #     $oConf= new Rabak::ConfFile();
+    # }
 
     return {
         BAKSET_EXT => $sBaksetExt,     # path extension for current bakset

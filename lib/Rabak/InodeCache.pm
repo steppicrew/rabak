@@ -180,7 +180,7 @@ sub collect {
 
     my $fTrapCB= undef;
     
-    my $oTrap= Rabak::Trap->new(sub {$fTrapCB->() if $fTrapCB});
+    my $oTrap= Rabak::Trap->new(sub { $fTrapCB->() if $fTrapCB });
 
     logger()->verbose("Preparing information store...");
     $self->prepareInformationStore();
