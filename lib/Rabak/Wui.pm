@@ -164,7 +164,8 @@ sub _Api {
 
     my $oSession= _getSession($params);
     return encode_json(
-        $oSession->{user_name} ? Rabak::API($params) : { error => 401, error_text => 'Authorization required' }
+        # Later: $oSession->{user_name} ? Rabak::API($params) : { error => 401, error_text => 'Authorization required' }
+        Rabak::API($params)
     );
 }
 

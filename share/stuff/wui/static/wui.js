@@ -54,6 +54,46 @@ jQuery(function($) {
 
 // TEST ----------------------- [[
 
+    var confs= {};
+
+    var mergeData= function(data) {
+
+        var _mergeData= function(src, dst) {
+            for (var i in src) {
+                if (typeof src[i] == 'object') {
+                    if (typeof dst[i] != 'object') dst[i]= {};
+                    _mergeData(src[i], dst[i]);
+                    continue;
+                }
+                dst[i]= src[i];
+            }
+        };
+
+        _mergeData(data.confs, confs);
+    };
+
+/*
+    function mergeData(data) {
+        for (var conf_file in data.confs) {
+            var conf= data.confs[conf_file];
+            if (!confs[conf_file]) {
+                confs[conf_file]= conf;
+                continue;
+            }
+            for (var bakset_name in conf.baksets) {
+                var bakset= conf.baksets[bakset_name];
+                if (!confs[conf_file]['baksets'][bakset_name]) {
+                    confs[conf_file]['baksets']= bakset;
+                    continue;
+                }
+                for (var session_dates in bakset.sessions) {
+                    var session= bakset.sessions[session_dates];
+                }
+            }
+        }
+    };
+*/
+
     api('GetBaksets', null, function(data) {
         console.log(data);
         if (data.error) {
@@ -61,10 +101,17 @@ jQuery(function($) {
             return;
         }
 
+        mergeData(data);
+
         var html= [];
-        for (var baksets_i in data.baksets) {
-            var bakset= data.baksets[baksets_i];
-            html.push('<li><a href="#show_backup_result:bakset=' + bakset.name + '">' + bakset.title + '</a></li>');
+        for (var conf_name in confs) {
+            var conf= confs[conf_name];
+            html.push('<li>' + conf.title + '</li>');
+
+            for (var bakset_name in conf.baksets) {
+                var bakset= conf.baksets[bakset_name];
+                html.push('<li><a href="#show_backup_result:conf=' + conf_name + ':bakset=' + bakset.name + '">' + bakset.title + '</a></li>');
+            }
         }
 
         $("#sidebar").html('<ol>' + html.join('') + '</ol>'
@@ -82,13 +129,71 @@ jQuery(function($) {
 
     var cmds= {};
 
+    var map= function(obj, fn) {
+        for (var i in obj) fn(i, obj[i]);
+    };
+
+    var timeStrToDateObj= function(timeStr, cmpTime) {
+        timeStr= timeStr.replace(/^(....)(..)(..)(..)(..)(..)(.*)$/, "$2 $3, $1 $4:$5:$6$7");
+        return new Date(timeStr);
+    };
+
+    var fmtDateObj= function(d, cmpDate) {
+        var f2= function(i) { return i < 10 ? '0' + i : i; };
+        var ymd= d.getFullYear() + '-' + f2(d.getMonth() + 1) + '-' + f2(d.getDate())
+        var hms= f2(d.getHours()) + ':' + f2(d.getMinutes()) + ':' + f2(d.getSeconds());
+        if (cmpDate) {
+            var cmpYMD= d.getFullYear() + '-' + f2(d.getMonth() + 1) + '-' + f2(d.getDate());
+            if (ymd == cmpYMD) return hms;
+        }
+        return ymd + ' ' + hms;
+    };
+
+    var fmtTime= function(timeObj) {
+        var start= timeStrToDateObj(timeObj.start);
+        var end= timeStrToDateObj(timeObj.end);
+        return fmtDateObj(start) + ' ... ' + fmtDateObj(end, start);
+    };
+
+    var tableHtml= function(table) {
+        var html= '';
+        map(table, function(row_i, row) {
+            html += '<tr><td>' + row.join('</td><td>') + '</td></tr>';
+        });
+        return '<table border=1>' + html + '<table>';
+    };
+
     cmds.show_backup_result= function(params) {
         api('GetSessions', params, function(data) {
             console.log(data);
-
             if (data.error) return;
 
-            $("#body").html('<h1>' + data.result.confs + '</h1>');
+            mergeData(data);
+            console.log(confs);
+
+            var html= [];
+
+            map(confs, function(conf_name, conf) {
+                html.push('<h1>' + conf.title + '</h1>');
+
+                map(conf.baksets, function(bakset_name, bakset) {
+                    html.push('<h2>' + bakset.title + '</h2>');
+
+                    map(bakset.sessions, function(session_id, session) {
+                        html.push('<h3>Session ' + session.title + '</h3>');
+
+                        var table= [];
+
+                        map(session.sources, function(source_name, source) {
+                            table.push(['Source ' + source_name, source.title, fmtTime(source.time), source.stats]);
+                        });
+
+                        html.push(tableHtml(table));
+                    });
+                });
+            });
+
+            $("#body").html(html.join(''));
         })
     };
 
