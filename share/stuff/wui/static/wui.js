@@ -134,7 +134,7 @@ jQuery(function($) {
     };
 
     var timeStrToDateObj= function(timeStr, cmpTime) {
-        timeStr= timeStr.replace(/^(....)(..)(..)(..)(..)(..)(.*)$/, "$2 $3, $1 $4:$5:$6$7");
+        timeStr= timeStr.replace(/^(....)(..)(..)(..)(..)(..)$/, "$2 $3, $1 $4:$5:$6 GMT");
         return new Date(timeStr);
     };
 
