@@ -12,13 +12,13 @@ use Rabak::ConfFile;
 
 use Data::Dumper;
 
-sub _apiTest {
+sub _ApiTest {
     # print Dumper(@_);
     
     return { error => 500, error_text => 'Not implemented' };
 }
 
-sub _apiGetBaksets {
+sub _ApiGetBaksets {
     my $param= shift; # UNUSED
 
     my $oConfFile= Rabak::ConfFile->new();
@@ -55,7 +55,7 @@ sub _apiGetBaksets {
     };
 }
 
-sub _apiGetBaksetStatus {
+sub _ApiGetBaksetStatus {
     my $param= shift;
 
     # $param->{bakset}..
@@ -63,15 +63,7 @@ sub _apiGetBaksetStatus {
     return { error => 500, error_text => 'Not implemented' };
 }
 
-=pod
-
-sub _apiGet {
-}
-
-=cut
-
-# STUB!
-sub _apiGetSessions {
+sub _ApiGetSessions {
     my $param= shift;
 
     # $param->{bakset}
@@ -154,7 +146,7 @@ sub API {
     eval {
         no strict "refs";
 
-        my $do_cmd= "_api$cmd";
+        my $do_cmd= "_Api$cmd";
         $result= &$do_cmd($params);
     };
     return { error => 500, error_text => "Command '$cmd' unknown" } if $@;

@@ -183,11 +183,12 @@ jQuery(function($) {
                         html.push('<h3>Session ' + session.title + '</h3>');
 
                         var table= [];
-
                         map(session.sources, function(source_name, source) {
-                            table.push(['Source ' + source_name, source.title, fmtTime(source.time), source.stats]);
+                            table.push(['Source ' + source_name, source.title,
+                                // bakset.sources[source_name].path,
+                                source.path,
+                                fmtTime(source.time), source.stats]);
                         });
-
                         html.push(tableHtml(table));
                     });
                 });
