@@ -34,7 +34,7 @@ sub _getBakset {
     return undef
 }
 
-sub _apiGetBaksets {
+sub _ApiGetBaksets {
     my $param= shift; # UNUSED
 
     my ($oConf, $sConfFileName)= _getConf();
@@ -154,7 +154,7 @@ sub _apiGetSessions_______stub {
     };
 }
 
-sub _apiGetSessions {
+sub _ApiGetSessions {
     my $param= shift;
 
 
