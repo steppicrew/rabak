@@ -200,37 +200,38 @@ sub backup {
     }
 
     my $hBaksetData= $oTargetPeer->prepareForBackup($self->GetAllPathExtensions($self));
-    
+
     $iResult= $hBaksetData->{ERROR};
-    goto cleanup if $iResult;
 
-    $oTargetPeer->initLogging($hBaksetData) if $self->getSwitch('logging');
+    unless ($iResult) {
 
-    # now try backing up every source 
-    my %sNames= ();
-    for my $oSourcePeer (@oSourcePeers) {
-        my $sSourceName= $oSourcePeer->getFullName();
-        $oSourcePeer->setValue('name', '') if $sSourceName=~ s/^\*//;
-        if ($sNames{$sSourceName}) {
-            logger->error("Source object named \"$sSourceName\" was already backed up. Skipping.");
-            next;
+        $oTargetPeer->initLogging($hBaksetData) if $self->getSwitch('logging');
+
+        # now try backing up every source 
+        my %sNames= ();
+        for my $oSourcePeer (@oSourcePeers) {
+            my $sSourceName= $oSourcePeer->getFullName();
+            $oSourcePeer->setValue('name', '') if $sSourceName=~ s/^\*//;
+            if ($sNames{$sSourceName}) {
+                logger->error("Source object named \"$sSourceName\" was already backed up. Skipping.");
+                next;
+            }
+            $sNames{$sSourceName}= 1;
+
+            my $oBackup= Rabak::Backup->new($oSourcePeer, $oTargetPeer);
+            eval {
+                $iSuccessCount++ unless $oBackup->run($hBaksetData);
+                1;
+            };
+            if ($@) {
+                logger->error("An error occured during backup: '$@'");
+                $oBackup->setMetaBackupError($@);
+            }
         }
-        $sNames{$sSourceName}= 1;
 
-        my $oBackup= Rabak::Backup->new($oSourcePeer, $oTargetPeer);
-        eval {
-            $iSuccessCount++ unless $oBackup->run($hBaksetData);
-            1;
-        };
-        if ($@) {
-            logger->error("An error occured during backup: '$@'");
-            $oBackup->setMetaBackupError($@);
-        }
+        $iResult= scalar(@oSourcePeers) - $iSuccessCount;
     }
 
-    $iResult= scalar(@oSourcePeers) - $iSuccessCount;
-
-cleanup:
     $oTargetPeer->finishBackup();
 
     my $sSubject= "successfully finished";

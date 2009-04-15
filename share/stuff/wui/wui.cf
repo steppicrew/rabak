@@ -14,7 +14,17 @@ password=s
 groups=op1
 
 [conf.raisin]
+title=Raisin's Backups
 file=/home/raisin/.rabak/rabak.cf
+include_path=.:/etc/rabak
+
+access_all=op1
+access_cf_read=op1
+access_baklog_read=op1
+
+[conf.lisa]
+title=B48 Backups
+file=/etc/rabak/b48.cf
 include_path=.:/etc/rabak
 
 access_all=op1

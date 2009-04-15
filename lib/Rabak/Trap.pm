@@ -47,14 +47,14 @@ sub restore {
         delete $self->{signals}{$sSig};
     }
 
-	return $self->terminated();
+    return $self->terminated();
 }
 
 sub DESTROY {
 
-	# TODO: Warn if $self->{signals} is not empty instead of calling restore
+    # TODO: Warn if $self->{signals} is not empty instead of calling restore
 
-	shift->restore();
+    shift->restore();
 }
 
 1;

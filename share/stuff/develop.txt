@@ -27,4 +27,11 @@ WUI:
 - conf edit how?
 - restore files
 - clean backups?
-        
+
+cf= readconf()
+session
+session->setconf(cf)
+session->backup
+
+
+
