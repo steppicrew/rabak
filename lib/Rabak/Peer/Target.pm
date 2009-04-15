@@ -15,6 +15,7 @@ use Rabak::Version;
 use Rabak::Peer;
 use POSIX qw(strftime);
 use Data::Dumper;
+use Data::UUID;
 
 use vars qw(@ISA);
 
@@ -37,6 +38,11 @@ sub PropertyNames {
 sub mountable {
     my $self= shift;
     return $self->{MOUNTABLE};
+}
+
+sub _getDevConfFile {
+    my $self= shift;
+    return $self->getSwitch('dev_conf_file', "rabak.dev.cf");
 }
 
 # tests if device is mounted and is a valid rabak target
@@ -71,7 +77,7 @@ sub checkMount {
         $sqTargetValue.= '(\.\w+)?';
     }
 
-    my $sDevConfFile= File::Spec->join($sMountPath, $self->getSwitch('dev_conf_file', "rabak.dev.cf"));
+    my $sDevConfFile= File::Spec->join($sMountPath, $self->_getDevConfFile());
     if ($self->isReadable("$sDevConfFile")) {
         if ($sTargetValue) {
             my $oDevConfFile= Rabak::ConfFile->new($self->getLocalFile($sDevConfFile, SUFFIX => '.dev.cf'));
@@ -220,6 +226,7 @@ sub _prepare {
 sub prepareForBackup {
     my $self= shift;
     my $asBaksetExts= shift;
+    my $hSessionData= shift;
 
     my $hResult= $self->_prepare($asBaksetExts);
     return $hResult if $hResult;
@@ -228,6 +235,22 @@ sub prepareForBackup {
     my $aBaksetTime= [ localtime ];
     my $sBaksetDir= strftime("%Y-%m", @$aBaksetTime) . $sBaksetExt;
     my $sBaksetMeta= '.meta';
+
+    my $sDevConfFile= $self->_getDevConfFile();
+    my $sUUID;
+    if ($self->isFile($sDevConfFile)) {
+        my $oDevConfFile= Rabak::ConfFile->new($self->getLocalFile($sDevConfFile, SUFFIX => '.dev.cf'));
+        my $oDevConf= $oDevConfFile->conf();
+        $sUUID= $oDevConf->getValue('uuid');
+    }
+    unless ($sUUID) {
+        $sUUID= Data::UUID->new()->create_str();
+        # TODO: we need a ConfFile->write()
+        $self->echo($sDevConfFile, '', '[]', "uuid = $sUUID");
+    }
+    $hSessionData->{target}= {
+        'uuid' => $sUUID,
+    };
 
     $self->mkdir($sBaksetDir);
     $self->mkdir($sBaksetMeta);
@@ -259,6 +282,8 @@ sub finish {
 
 sub finishBackup {
     my $self= shift;
+    my $hBaksetData= shift;
+    my $hSessionData= shift;
 
     my $aDf = $self->_checkDf();
     if (defined $aDf) {
@@ -273,6 +298,11 @@ sub finishBackup {
     }
 
     $self->_closeLogging();
+    
+    my $sFileName= $hBaksetData->{BAKSET_META_DIR} . '/session.'
+        . $hSessionData->{time}{start} . '.'
+        . $hSessionData->{time}{end};
+    $self->echo($sFileName, Data::Dumper->Dump([$hSessionData], ['session']));
     
     $self->finish();
     

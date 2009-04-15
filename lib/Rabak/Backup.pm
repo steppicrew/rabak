@@ -37,18 +37,25 @@ my %METAFILENAMES=(
 sub run {
     my $self= shift;
     my $hBaksetData= shift;
+    my $hSourceData= shift;
     
-    $self->_run() unless $self->_setup($hBaksetData);
+    $self->_run() unless $self->_setup($hBaksetData, $hSourceData);
     return $self->_cleanup();
 }
 
 sub _setup {
     my $self= shift;
     my $hBaksetData= shift;
+    my $hSourceData= shift;
 
     my $oSourcePeer= $self->{SOURCE};
     my $oTargetPeer= $self->{TARGET};
     
+    $hSourceData->{time}= {
+        start => Rabak::Conf->GetTimeString(),
+    };
+    $hSourceData->{path}= $oSourcePeer->getFullPath();
+
     my $sSourceName= $oSourcePeer->getName() || $oSourcePeer->getFullPath();
     logger->info('Backup start at ' . strftime('%F %X', localtime) . ': ' . $sSourceName);
     logger->incIndent();
@@ -89,6 +96,11 @@ sub _setup {
     my $sBakDataDir= $sBakDir . '/data';
     my $sBakMetaDir= $sBakDir . '/meta';
     
+    $hSourceData->{target}= {
+        datadir => $sBakDataDir,
+        metadir => $sBakMetaDir,
+    };
+
     $self->_convertBackupDirs(\@sBakBaseDirs);
 
     $self->{BACKUP_DATA}{OLD_BACKUP_DATA_DIRS}= [map { $_ . '/data' } @sBakBaseDirs];
@@ -265,6 +277,12 @@ sub _setup {
         else {
             logger->info("Done!");
         }
+    };
+
+    # add finish function to update $hSourceData
+    push @fFinish, sub {
+        $hSourceData->{time}{end}= Rabak::Conf->GetTimeString();
+        $hSourceData->{result}= $self->{BACKUP_DATA}{BACKUP_RESULT};
     };
 
     unless ($oTargetPeer->pretend()) {

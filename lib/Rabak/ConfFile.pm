@@ -68,7 +68,7 @@ sub new {
         return $self;
     }
 
-    $self->_readFile($sFile) if $sFile;
+    $self->readFile($sFile) if $sFile;
     return $self;
 }
 
@@ -154,7 +154,7 @@ sub _error {
     exit 3;
 }
 
-sub _readFile {
+sub readFile {
     my $self= shift;
 
     # use absolute paths only (needed for includes)

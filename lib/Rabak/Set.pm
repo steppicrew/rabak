@@ -193,13 +193,20 @@ sub backup {
 
     my $oTargetPeer= $self->getTargetPeer();
     my @oSourcePeers= $self->getSourcePeers();
-    
+
     if ($self->getSwitch('pretend')) {
         $oTargetPeer->setPretend(1);
         $_->setPretend(1) for @oSourcePeers;
     }
 
-    my $hBaksetData= $oTargetPeer->prepareForBackup($self->GetAllPathExtensions($self));
+    my $hSessionData= {
+        cmdline => $self->cmdData("command_line"),
+        time => {
+            start => $self->GetTimeString(),
+        },
+    };
+
+    my $hBaksetData= $oTargetPeer->prepareForBackup($self->GetAllPathExtensions($self), $hSessionData);
 
     $iResult= $hBaksetData->{ERROR};
 
@@ -208,19 +215,20 @@ sub backup {
         $oTargetPeer->initLogging($hBaksetData) if $self->getSwitch('logging');
 
         # now try backing up every source 
-        my %sNames= ();
         for my $oSourcePeer (@oSourcePeers) {
             my $sSourceName= $oSourcePeer->getFullName();
             $oSourcePeer->setValue('name', '') if $sSourceName=~ s/^\*//;
-            if ($sNames{$sSourceName}) {
+            if ($hSessionData->{sources}{$sSourceName}) {
                 logger->error("Source object named \"$sSourceName\" was already backed up. Skipping.");
                 next;
             }
-            $sNames{$sSourceName}= 1;
+            $hSessionData->{sources}{$sSourceName}= {};
 
             my $oBackup= Rabak::Backup->new($oSourcePeer, $oTargetPeer);
             eval {
-                $iSuccessCount++ unless $oBackup->run($hBaksetData);
+                unless ($oBackup->run($hBaksetData, $hSessionData->{sources}{$sSourceName})) {
+                    $iSuccessCount++;
+                }
                 1;
             };
             if ($@) {
@@ -232,15 +240,17 @@ sub backup {
         $iResult= scalar(@oSourcePeers) - $iSuccessCount;
     }
 
-    $oTargetPeer->finishBackup();
-
+    $hSessionData->{time}{end}= $self->GetTimeString();
+    
+    $oTargetPeer->finishBackup($hBaksetData, $hSessionData);
+    
     my $sSubject= "successfully finished";
     $sSubject= "$iSuccessCount of " . scalar(@oSourcePeers) . " backups $sSubject" if $iResult;
     $sSubject= "ERROR: all backups failed" unless $iSuccessCount;
     $sSubject= "*PRETENDED* $sSubject" if $self->getSwitch("pretend");
 
     # send admin mail
-   logger->mailLog($sSubject);
+    logger->mailLog($sSubject);
     
     # return number of failed backups or error code (negative)
     return $iResult;

@@ -3,6 +3,9 @@ In Progress:
 
 + Tests
 
+Bugs To Fix:
+- if switch.verbose=1 in config, rabak prints "ERROR:" and exits
+
 Code:
 
 + Build POD from config-file

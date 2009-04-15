@@ -10,6 +10,7 @@ no warnings 'redefine';
 
 use Data::Dumper;
 use Storable qw(dclone);
+use POSIX qw(strftime);
 use Rabak::Log;
 
 our $iElemNo= 0;
@@ -704,6 +705,10 @@ sub simplifyShow {
     push @sResult, "[]";
     ## push @sResult, "[]" unless $sScope eq '';
     return \@sResult;
+}
+
+sub GetTimeString {
+    return strftime("%Y%m%d%H%M%S", gmtime);
 }
 
 sub getFullName {
