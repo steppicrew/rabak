@@ -24,7 +24,7 @@ sub _apiGetBaksets {
     my $oConfFile= Rabak::ConfFile->new();
     my $oConf= $oConfFile->conf();
     
-    my $aSets= [];
+    my $hSets= {};
     for my $oSet (Rabak::Set->GetSets($oConf)) {
         my $oTarget= $oSet->getTargetPeer();
         my $hData= {
@@ -32,24 +32,25 @@ sub _apiGetBaksets {
             'name' => $oSet->getFullName(),
             'target' => $oTarget->getFullName(),
         };
-        my $aSources= [];
+        my $hSources= {};
         for my $oSource ($oSet->getSourcePeers()) {
             my $hSourceData= {
                 'name' => $oSource->getFullName(),
             };
-            push @$aSources, $hSourceData;
+            $hSources->{$oSource->getName()}= $hSourceData;
         }
-        $hData->{sources}= $aSources;
-        push @$aSets, $hData;
+        $hData->{sources}= $hSources;
+        $hSets->{$oSet->getName()}= $hData;
     }
     
     return {
         error => 0,
         confs => {
-            '/home/raisin/.rabak/rabak.cf' => {
-                title => 'Test config',
-                baksets => $aSets,
-            }
+            raisin => {
+                file => '/home/raisin/.rabak/rabak.cf',
+                title => 'Raisin\'s Config',
+                baksets => $hSets,
+            },
         }
     };
 }
@@ -99,10 +100,10 @@ sub _apiGetSessions {
             },
 
             'sessions' => {
-                '20090409000001:20090409000810' => {
+                12 => {
                     'time' => {
-                        'start' => '20090409000001',
-                        'end' => '20090409000810',
+                        'start' => '20090409000001 GMT',
+                        'end' => '20090409000810 GMT',
                     },
                     'target' => {
                         'uuid' => 'BF733C62-29F7-11DE-A32E-A9BFECDD0C97',
@@ -110,8 +111,8 @@ sub _apiGetSessions {
                     'sources' => {
                         'source_pg' => {
                             'time' => {
-                                'start' => '20090409000211',
-                                'end' => '20090409000810',
+                                'start' => '20090409000210 GMT',
+                                'end' => '20090409000810 GMT',
                             },
                             'stats' => '140MB copied',
                             'result' => '1'
@@ -120,8 +121,8 @@ sub _apiGetSessions {
                             'warnings' => '3',
                             'errors' => '0',
                             'time' => {
-                                'end' => '20090409000210',
-                                'start' => '20090409000001'
+                                'end' => '20090409000210 GMT',
+                                'start' => '20090409000001 GMT'
                             },
                             'stats' => '123 files written',
                             'result' => '0'
@@ -133,9 +134,13 @@ sub _apiGetSessions {
 
     return {
         error => 0,
-        'baksets' => {
-            '/home/raisin/.rabak/rabak.cf' => {
-                'example' => $example1,
+        'confs' => {
+            raisin => {
+                file => '/home/raisin/.rabak/rabak.cf',
+                title => 'Raisin\'s Config',
+                baksets => {
+                    'example' => $example1,
+                },
             },
         }
     };
