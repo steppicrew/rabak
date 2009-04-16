@@ -46,15 +46,13 @@ sub run {
 sub _setup {
     my $self= shift;
     my $hBaksetData= shift;
-    my $hSourceData= shift;
+    my $oSourceData= shift;
 
     my $oSourcePeer= $self->{SOURCE};
     my $oTargetPeer= $self->{TARGET};
     
-    $hSourceData->{time}= {
-        start => Rabak::Conf->GetTimeString(),
-    };
-    $hSourceData->{path}= $oSourcePeer->getFullPath();
+    $oSourceData->setValue('time.start', Rabak::Conf->GetTimeString());
+    $oSourceData->setValue('path', $oSourcePeer->getFullPath());;
 
     my $sSourceName= $oSourcePeer->getName() || $oSourcePeer->getFullPath();
     logger->info('Backup start at ' . strftime('%F %X', localtime) . ': ' . $sSourceName);
@@ -96,10 +94,8 @@ sub _setup {
     my $sBakDataDir= $sBakDir . '/data';
     my $sBakMetaDir= $sBakDir . '/meta';
     
-    $hSourceData->{target}= {
-        datadir => $sBakDataDir,
-        metadir => $sBakMetaDir,
-    };
+    $oSourceData->setValue('target.datadir', $sBakDataDir);
+    $oSourceData->setValue('target.metadir', $sBakMetaDir);
 
     $self->_convertBackupDirs(\@sBakBaseDirs);
 
@@ -279,10 +275,10 @@ sub _setup {
         }
     };
 
-    # add finish function to update $hSourceData
+    # add finish function to update $oSourceData
     push @fFinish, sub {
-        $hSourceData->{time}{end}= Rabak::Conf->GetTimeString();
-        $hSourceData->{result}= $self->{BACKUP_DATA}{BACKUP_RESULT};
+        $oSourceData->setQuotedValue('time.end', Rabak::Conf->GetTimeString());
+        $oSourceData->setQuotedValue('result', $self->{BACKUP_DATA}{BACKUP_RESULT});
     };
 
     unless ($oTargetPeer->pretend()) {

@@ -231,6 +231,15 @@ sub removeBackslashes {
     return $self->removeBackslashesPart2($self->removeBackslashesPart1($sValue));
 }
 
+sub QuoteValue {
+    my $self= shift;
+    my $sValue= shift;
+    return $sValue unless $sValue=~ /[\s\,\'\"]/;
+    $sValue=~ s/\\/\\\\/g;
+    $sValue=~ s/\'/\\\'/g;
+    return "'$sValue'";
+}
+
 # returns scalar value (references to other objects are already resolved, backslashes are cleaned)
 sub getValue {
     my $self= shift;
@@ -409,18 +418,26 @@ sub setValue {
 
     my @sName= split(/\./, $sName);
     $sName= pop @sName;
-    for (@sName) {
-        $self->{VALUES}{$_}= Rabak::Conf->new($_, $self) unless exists $self->{VALUES}{$_};
-        unless (ref $self->{VALUES}{$_}) {
-            logger->error("'" . $self->getFullName() . ".$_' is not an object!");
+    for my $sSubName (@sName) {
+        $self->{VALUES}{$sSubName}= Rabak::Conf->new($sSubName, $self) unless exists $self->{VALUES}{$sSubName};
+        unless (ref $self->{VALUES}{$sSubName}) {
+            logger->error("'" . $self->getFullName() . ".$sSubName' is not an object!");
             exit 3;
         }
         
-        $self= $self->{VALUES}{$_};
+        $self= $self->{VALUES}{$sSubName};
     }
     
     # TODO: only allow assignment of undef to refs?
     $self->{VALUES}{$sName}= $sValue;
+}
+
+sub setQuotedValue {
+    my $self= shift;
+    my $sName= shift;
+    my $sValue= shift;
+    $sValue= $self->QuoteValue($sValue) if $sValue;
+    $self->setValue($sName, $sValue);
 }
 
 # expand macro given in $sMacroName
@@ -729,10 +746,12 @@ sub writeToFile {
     my $self= shift;
     my $sFileName= shift;
     
-    my @sConf= @{ $self->simplifyShow($self->show()) };
+    my $hConfShowCache= {};
     
-    print join "\n", @sConf, "";
-    
+    my $aConf= $self->show($hConfShowCache);
+    push @$aConf, $self->showUncachedReferences($hConfShowCache);
+    my @sConf= @ { $self->simplifyShow($aConf) };
+
     pop @sConf;  # remove last []. (See RabalLib::Conf::show)
     my $fh;
     unless (open $fh, '>', $sFileName) {

@@ -231,7 +231,7 @@ sub GetMetaDir {
 sub prepareForBackup {
     my $self= shift;
     my $asBaksetExts= shift;
-    my $hSessionData= shift;
+    my $oSessionData= shift;
 
     my $hResult= $self->_prepare($asBaksetExts);
     return $hResult if $hResult;
@@ -257,13 +257,11 @@ sub prepareForBackup {
     }
     unless ($sUUID) {
         $sUUID= Data::UUID->new()->create_str();
-        $oDevConf->setValue('uuid', $sUUID);
+        $oDevConf->setQuotedValue('uuid', $sUUID);
         $oDevConf->writeToFile($sLocalDevConfFile);
         $self->copyLocalFileToRemote($sLocalDevConfFile, $sDevConfFile);
     }
-    $hSessionData->{target}= {
-        'uuid' => $sUUID,
-    };
+    $oSessionData->setQuotedValue('target.uuid', $sUUID);
 
     $self->mkdir($sBaksetDir);
     $self->mkdir($sBaksetMeta);
@@ -296,7 +294,7 @@ sub finish {
 sub finishBackup {
     my $self= shift;
     my $hBaksetData= shift;
-    my $hSessionData= shift;
+    my $oSessionData= shift;
 
     my $aDf = $self->_checkDf();
     if (defined $aDf) {
@@ -314,10 +312,10 @@ sub finishBackup {
     
     if ($hBaksetData->{BAKSET_META_DIR}) {
         my $sFileName= $hBaksetData->{BAKSET_META_DIR} . '/session.'
-            . $hSessionData->{time}{start} . '.'
-            . $hSessionData->{time}{end}
+            . $oSessionData->getValue('time.start') . '.'
+            . $oSessionData->getValue('time.end')
             . $hBaksetData->{BAKSET_EXT};
-        $self->echo($sFileName, Data::Dumper->Dump([$hSessionData], ['session']));
+        $oSessionData->writeToFile($self->getPath($sFileName));
     }
     
     $self->finish();

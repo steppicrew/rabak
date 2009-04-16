@@ -20,6 +20,7 @@ RDEPEND=">=dev-lang/perl-5.8.2
 		>=net-misc/openssh-3.7.1_p2-r1
 		>=net-misc/rsync-2.6.0
 		dev-perl/IPC-Run
+		dev-perl/Data-UUID
 		dev-perl/MailTools
 		dev-perl/Digest-SHA1
 		dev-perl/DBD-SQLite

@@ -199,14 +199,11 @@ sub backup {
         $_->setPretend(1) for @oSourcePeers;
     }
 
-    my $hSessionData= {
-        cmdline => $self->cmdData("command_line"),
-        time => {
-            start => $self->GetTimeString(),
-        },
-    };
+    my $oSessionData= Rabak::Conf->new('*');
+    $oSessionData->setQuotedValue('cmdline', $self->cmdData("command_line"));
+    $oSessionData->setQuotedValue('time.start', $self->GetTimeString());
 
-    my $hBaksetData= $oTargetPeer->prepareForBackup($self->GetAllPathExtensions($self), $hSessionData);
+    my $hBaksetData= $oTargetPeer->prepareForBackup($self->GetAllPathExtensions($self), $oSessionData);
 
     $iResult= $hBaksetData->{ERROR};
 
@@ -214,19 +211,22 @@ sub backup {
 
         $oTargetPeer->initLogging($hBaksetData) if $self->getSwitch('logging');
 
+        my $hDoneSources= {};
         # now try backing up every source 
         for my $oSourcePeer (@oSourcePeers) {
             my $sSourceName= $oSourcePeer->getFullName();
             $oSourcePeer->setValue('name', '') if $sSourceName=~ s/^\*//;
-            if ($hSessionData->{sources}{$sSourceName}) {
+            if ($hDoneSources->{$sSourceName}) {
                 logger->error("Source object named \"$sSourceName\" was already backed up. Skipping.");
                 next;
             }
-            $hSessionData->{sources}{$sSourceName}= {};
-
+            my $oSourceConf= Rabak::Conf->new('source_' . scalar(keys %$hDoneSources), $oSessionData);
+            $hDoneSources->{$sSourceName}= $oSourceConf;
+            $oSourceConf->setQuotedValue('fullname', $sSourceName);
+            $oSessionData->setQuotedValue($oSourceConf->getName(), $oSourceConf);
             my $oBackup= Rabak::Backup->new($oSourcePeer, $oTargetPeer);
             eval {
-                unless ($oBackup->run($hBaksetData, $hSessionData->{sources}{$sSourceName})) {
+                unless ($oBackup->run($hBaksetData, $hSourceConf)) {
                     $iSuccessCount++;
                 }
                 1;
@@ -236,13 +236,15 @@ sub backup {
                 $oBackup->setMetaBackupError($@);
             }
         }
+        
+        $oSessionData->setValue('sources', join ", ", map { '&/' . $_->getName() } values %$hDoneSources);
 
         $iResult= scalar(@oSourcePeers) - $iSuccessCount;
     }
 
-    $hSessionData->{time}{end}= $self->GetTimeString();
+    $oSessionData->setQuotedValue('time.end', $self->GetTimeString());
     
-    $oTargetPeer->finishBackup($hBaksetData, $hSessionData);
+    $oTargetPeer->finishBackup($hBaksetData, $oSessionData);
     
     my $sSubject= "successfully finished";
     $sSubject= "$iSuccessCount of " . scalar(@oSourcePeers) . " backups $sSubject" if $iResult;
