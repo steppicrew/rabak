@@ -241,17 +241,25 @@ sub prepareForBackup {
     my $sBaksetDir= strftime("%Y-%m", @$aBaksetTime) . $sBaksetExt;
     my $sBaksetMeta= $self->GetMetaDir();
 
-    my $sDevConfFile= $self->_getDevConfFile();
+    my $sDevConfFile= $self->getPath($self->_getDevConfFile());
+    my $sLocalDevConfFile= $sDevConfFile;
+    my $oDevConf;
     my $sUUID;
     if ($self->isFile($sDevConfFile)) {
-        my $oDevConfFile= Rabak::ConfFile->new($self->getLocalFile($sDevConfFile, SUFFIX => '.dev.cf'));
-        my $oDevConf= $oDevConfFile->conf();
+        $sLocalDevConfFile= $self->getLocalFile($sDevConfFile, SUFFIX => '.dev.cf');
+        my $oDevConfFile= Rabak::ConfFile->new($sLocalDevConfFile);
+        $oDevConf= $oDevConfFile->conf();
         $sUUID= $oDevConf->getValue('uuid');
+    }
+    else {
+        $sLocalDevConfFile= $self->localTempfile(SUFFIX => '.dev.cf') if $self->isRemote();
+        $oDevConf= Rabak::Conf->new('*');
     }
     unless ($sUUID) {
         $sUUID= Data::UUID->new()->create_str();
-        # TODO: we need a ConfFile->write()
-        $self->echo($sDevConfFile, '', '[]', "uuid = $sUUID");
+        $oDevConf->setValue('uuid', $sUUID);
+        $oDevConf->writeToFile($sLocalDevConfFile);
+        $self->copyLocalFileToRemote($sLocalDevConfFile, $sDevConfFile);
     }
     $hSessionData->{target}= {
         'uuid' => $sUUID,

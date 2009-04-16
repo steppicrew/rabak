@@ -725,4 +725,22 @@ sub getFullName {
     return $sName;
 }
 
+sub writeToFile {
+    my $self= shift;
+    my $sFileName= shift;
+    
+    my @sConf= @{ $self->simplifyShow($self->show()) };
+    
+    print join "\n", @sConf, "";
+    
+    pop @sConf;  # remove last []. (See RabalLib::Conf::show)
+    my $fh;
+    unless (open $fh, '>', $sFileName) {
+        logger->error("Could not open conf file '$sFileName' for writing!");
+        return 1;
+    }
+    print $fh join "\n", @sConf, '';
+    close $fh;
+}
+
 1;
