@@ -10,6 +10,7 @@ html {
         apparently it does (at least in FF3) and it's default value is auto.
     */
     height: 100%;
+    overflow: hidden;   /* Not standard, but it works: without FF lets you scroll even with body.overflow == 'hidden */
 }
 
 body {
