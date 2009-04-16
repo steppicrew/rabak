@@ -54,7 +54,7 @@ jQuery(function($) {
 
 // TEST ----------------------- [[
 
-    var confs= {};
+    var conf= {};
 
     var mergeData= function(data) {
 
@@ -69,30 +69,8 @@ jQuery(function($) {
             }
         };
 
-        _mergeData(data.confs, confs);
+        _mergeData(data.conf, conf);
     };
-
-/*
-    function mergeData(data) {
-        for (var conf_file in data.confs) {
-            var conf= data.confs[conf_file];
-            if (!confs[conf_file]) {
-                confs[conf_file]= conf;
-                continue;
-            }
-            for (var bakset_name in conf.baksets) {
-                var bakset= conf.baksets[bakset_name];
-                if (!confs[conf_file]['baksets'][bakset_name]) {
-                    confs[conf_file]['baksets']= bakset;
-                    continue;
-                }
-                for (var session_dates in bakset.sessions) {
-                    var session= bakset.sessions[session_dates];
-                }
-            }
-        }
-    };
-*/
 
     api('GetBaksets', null, function(data) {
         console.log(data);
@@ -104,14 +82,11 @@ jQuery(function($) {
         mergeData(data);
 
         var html= [];
-        for (var conf_name in confs) {
-            var conf= confs[conf_name];
-            html.push('<li>' + conf.title + '</li>');
+        html.push('<li>' + conf.title + '</li>');
 
-            for (var bakset_name in conf.baksets) {
-                var bakset= conf.baksets[bakset_name];
-                html.push('<li><a href="#show_backup_result:conf=' + conf_name + ':bakset=' + bakset.name + '">' + bakset.title + '</a></li>');
-            }
+        for (var bakset_name in conf.baksets) {
+            var bakset= conf.baksets[bakset_name];
+            html.push('<li><a href="#show_backup_result:bakset=' + bakset.name + '">' + bakset.title + '</a></li>');
         }
 
         $("#sidebar").html('<ol>' + html.join('') + '</ol>'
@@ -169,33 +144,31 @@ jQuery(function($) {
             if (data.error) return;
 
             mergeData(data);
-            console.log(confs);
+            console.log(conf);
 
             var html= [];
 
-            map(confs, function(conf_name, conf) {
-                html.push('<h1>' + conf.title + '</h1>');
+            html.push('<h1>' + conf.title + '</h1>');
 
-                map(conf.baksets, function(bakset_name, bakset) {
-                    html.push('<h2>' + bakset.title + '</h2>');
+            map(conf.baksets, function(bakset_name, bakset) {
+                html.push('<h2>' + bakset.title + '</h2>');
 
-                    map(bakset.sessions, function(session_id, session) {
-                        session.title= fmtTime(session.time);
-                        html.push('<h3>Session ' + session.title + '</h3>');
+                map(bakset.sessions, function(session_id, session) {
+                    session.title= fmtTime(session.time);
+                    html.push('<h3>Session ' + session.title + '</h3>');
 
-                        var table= [];
-                        map(session.sources, function(source_name, source) {
-                            var icon= source.result ? '/static/icon_cancel.png' : '/static/icon_ok.png';
-                            icon= '<img src="' + icon + '" width="16" height="16" />';
-                            table.push([
-                                icon,
-                                'Source ' + source_name, source.title,
-                                // bakset.sources[source_name].path,
-                                source.path,
-                                fmtTime(source.time), source.stats]);
-                        });
-                        html.push(tableHtml(table));
+                    var table= [];
+                    map(session.sources, function(source_name, source) {
+                        var icon= source.result ? '/static/icon_cancel.png' : '/static/icon_ok.png';
+                        icon= '<img src="' + icon + '" width="16" height="16" />';
+                        table.push([
+                            icon,
+                            'Source ' + source_name, source.title,
+                            // bakset.sources[source_name].path,
+                            source.path,
+                            fmtTime(source.time), source.stats]);
                     });
+                    html.push(tableHtml(table));
                 });
             });
 

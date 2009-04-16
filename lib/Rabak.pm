@@ -60,12 +60,10 @@ sub _ApiGetBaksets {
     
     return {
         error => 0,
-        confs => {
-            raisin => {
-                file => $sConfFileName,
-                title => 'Raisin\'s Config',
-                baksets => $hSets,
-            },
+        conf => {
+            file => $sConfFileName,
+            title => 'Raisin\'s Config',
+            baksets => $hSets,
         }
     };
 }
@@ -142,13 +140,11 @@ sub _apiGetSessions_______stub {
 
     return {
         error => 0,
-        'confs' => {
-            raisin => {
-                file => '/home/raisin/.rabak/rabak.cf',
-                title => 'Raisin\'s Config',
-                baksets => {
-                    'example' => $example1,
-                },
+        conf => {
+            file => '/home/raisin/.rabak/rabak.cf',
+            title => 'Raisin\'s Config',
+            baksets => {
+                'example' => $example1,
             },
         }
     };
@@ -194,13 +190,11 @@ sub _ApiGetSessions {
 
     return {
         error => 0,
-        'confs' => {
-            raisin => {
-                file => '/home/raisin/.rabak/rabak.cf',
-                title => 'Raisin\'s Config',
-                baksets => {
-                    'example' => $hResult,
-                },
+        conf => {
+            file => '/home/raisin/.rabak/rabak.cf',
+            title => 'Raisin\'s Config',
+            baksets => {
+                'example' => $hResult,
             },
         }
     };
