@@ -15,7 +15,6 @@ use Rabak::Version;
 use Rabak::Peer;
 use POSIX qw(strftime);
 use Data::Dumper;
-use Data::UUID;
 
 use vars qw(@ISA);
 
@@ -26,6 +25,7 @@ sub new {
 
     my $self= $class->SUPER::new(@_);
     $self->{MOUNTABLE}= Rabak::Mountable->new($self);
+    $self->{UUID}= undef;
 
     return $self;
 }
@@ -223,6 +223,11 @@ sub GetMetaDir {
     return '.meta';
 }
 
+sub getUuid {
+    my $self= shift;
+    return $self->{UUID};
+}
+
 # prepare target for backup
 # 1. mounts all target mount objects
 # 2. checks existance and permissions of target's directory
@@ -231,7 +236,6 @@ sub GetMetaDir {
 sub prepareForBackup {
     my $self= shift;
     my $asBaksetExts= shift;
-    my $oSessionData= shift;
 
     my $hResult= $self->_prepare($asBaksetExts);
     return $hResult if $hResult;
@@ -244,24 +248,23 @@ sub prepareForBackup {
     my $sDevConfFile= $self->getPath($self->_getDevConfFile());
     my $sLocalDevConfFile= $sDevConfFile;
     my $oDevConf;
-    my $sUUID;
     if ($self->isFile($sDevConfFile)) {
         $sLocalDevConfFile= $self->getLocalFile($sDevConfFile, SUFFIX => '.dev.cf');
         my $oDevConfFile= Rabak::ConfFile->new($sLocalDevConfFile);
         $oDevConf= $oDevConfFile->conf();
-        $sUUID= $oDevConf->getValue('uuid');
+        $self->{UUID}= $oDevConf->getValue('uuid');
     }
     else {
         $sLocalDevConfFile= $self->localTempfile(SUFFIX => '.dev.cf') if $self->isRemote();
         $oDevConf= Rabak::Conf->new('*');
     }
-    unless ($sUUID) {
-        $sUUID= Data::UUID->new()->create_str();
-        $oDevConf->setQuotedValue('uuid', $sUUID);
+    unless ($self->{UUID}) {
+        # create new uuid and write into target's directory
+        $self->{UUID}= $self->CreateUuid();
+        $oDevConf->setQuotedValue('uuid', $self->{UUID});
         $oDevConf->writeToFile($sLocalDevConfFile);
         $self->copyLocalFileToRemote($sLocalDevConfFile, $sDevConfFile);
     }
-    $oSessionData->setQuotedValue('target.uuid', $sUUID);
 
     $self->mkdir($sBaksetDir);
     $self->mkdir($sBaksetMeta);
@@ -294,7 +297,6 @@ sub finish {
 sub finishBackup {
     my $self= shift;
     my $hBaksetData= shift;
-    my $oSessionData= shift;
 
     my $aDf = $self->_checkDf();
     if (defined $aDf) {
@@ -309,14 +311,6 @@ sub finishBackup {
     }
 
     $self->_closeLogging();
-    
-    if ($hBaksetData->{BAKSET_META_DIR}) {
-        my $sFileName= $hBaksetData->{BAKSET_META_DIR} . '/session.'
-            . $oSessionData->getValue('time.start') . '.'
-            . $oSessionData->getValue('time.end')
-            . $hBaksetData->{BAKSET_EXT};
-        $oSessionData->writeToFile($self->getPath($sFileName));
-    }
     
     $self->finish();
     

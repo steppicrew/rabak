@@ -12,6 +12,7 @@ use Data::Dumper;
 use Storable qw(dclone);
 use POSIX qw(strftime);
 use Rabak::Log;
+use Data::UUID;
 
 our $iElemNo= 0;
 
@@ -429,6 +430,7 @@ sub setValue {
     }
     
     # TODO: only allow assignment of undef to refs?
+    $sValue->{PARENT_CONF}= $self if ref $sValue && $sValue->isa('Rabak::Conf');
     $self->{VALUES}{$sName}= $sValue;
 }
 
@@ -627,6 +629,13 @@ sub getName {
     return $self->getValue('name', '');
 }
 
+sub setName {
+    my $self= shift;
+    my $sName= shift;
+    $self->{NAME}= $sName;
+    return $self->setValue('name', $sName);
+}
+
 sub getShowName {
     my $self= shift;
     my $sName= $self->{NAME};
@@ -726,6 +735,10 @@ sub simplifyShow {
 
 sub GetTimeString {
     return strftime("%Y%m%d%H%M%S", gmtime);
+}
+
+sub CreateUuid {
+    return Data::UUID->new()->create_str();
 }
 
 sub getFullName {
