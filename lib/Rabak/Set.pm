@@ -226,7 +226,7 @@ sub backup {
             $oSessionData->setQuotedValue($oSourceConf->getName(), $oSourceConf);
             my $oBackup= Rabak::Backup->new($oSourcePeer, $oTargetPeer);
             eval {
-                unless ($oBackup->run($hBaksetData, $hSourceConf)) {
+                unless ($oBackup->run($hBaksetData, $oSourceConf)) {
                     $iSuccessCount++;
                 }
                 1;
