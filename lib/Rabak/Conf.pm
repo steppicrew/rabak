@@ -259,6 +259,19 @@ sub getValue {
     return $sValue;
 }
 
+# returns all values as hash
+sub getValues {
+    my $self= shift;
+    
+    my $hValues= {};
+    for my $sName (keys %{ $self->{VALUES} }) {
+        my $sValue= $self->getProperty($sName);
+        $sValue= $sValue->getValues() if ref $sValue && $sValue->isa('Rabak::Conf');
+        $hValues->{$sName}= $sValue;
+    }
+    return $hValues;
+}
+
 # TODO: Which is correct: findProperty? getValue? get_prep_value? $oCOnf->{VALUES}?
 sub getValueRequiredMessage {
     my $self= shift;

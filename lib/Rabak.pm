@@ -170,27 +170,30 @@ sub _ApiGetSessions {
     my $oTargetPeer= $oSet->getTargetPeer();
     my $sMetaDir= $oTargetPeer->getPath($oTargetPeer->GetMetaDir());
     
-    my $hResult= {
+    my $hSessionData= {
         conf_file => $sConfFileName,
         bakset => $sBakset,
         target => {
-            'name' => $oTargetPeer->getFullName(),
-            'path' => $oTargetPeer->getFullPath(),
-        },
+            name => $oTargetPeer->getFullName(),
+            path => $oTargetPeer->getFullPath(),
+        }
     };
-    
-    my $hSessions= {};
     
     my @sSessionFiles= $oTargetPeer->glob("$sMetaDir/session.*.$sBakset");
     for my $sSessionFile (@sSessionFiles) {
-        my $sContent= $oTargetPeer->cat($sSessionFile);
-        my $session;
-        eval "$sContent; 1;";
-        next unless defined $session;
-        $hSessions->{scalar keys %$hSessions}= $session;
+        my $sLocalSessionFile= $oTargetPeer->getLocalFile($sSessionFile, SUFFIX => '.session');
+        my $hSession= Rabak::ConfFile->new($sLocalSessionFile)->conf()->getValues();
+        my $sSessionName= $sSessionFile;
+        $sSessionName=~ s/.*\///;
+        my $hSources= {};
+        for my $sSource (split(/[\s\,]+/, $hSession->{sources})) {
+            $sSource=~ s/^\&//;
+            $hSources->{$sSource}= $hSession->{$sSource};
+            delete $hSession->{$sSource};
+        }
+        $hSession->{sources}= $hSources;
+        $hSessionData->{$sSessionName}= $hSession;
     }
-    
-    $hResult->{sessions}= $hSessions;
 
     return {
         error => 0,
@@ -199,7 +202,7 @@ sub _ApiGetSessions {
                 file => '/home/raisin/.rabak/rabak.cf',
                 title => 'Raisin\'s Config',
                 baksets => {
-                    'example' => $hResult,
+                    $sBakset => $hSessionData,
                 },
             },
         }
