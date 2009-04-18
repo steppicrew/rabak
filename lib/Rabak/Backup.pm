@@ -37,9 +37,9 @@ my %METAFILENAMES=(
 sub run {
     my $self= shift;
     my $hBaksetData= shift;
-    my $hSourceData= shift;
+    my $oSourceDataConf= shift;
     
-    $self->_run() unless $self->_setup($hBaksetData, $hSourceData);
+    $self->_run() unless $self->_setup($hBaksetData, $oSourceDataConf);
     return $self->_cleanup();
 }
 
@@ -109,6 +109,13 @@ sub _setup {
     $oTargetPeer->mkdir($sBakDataDir);
     $oTargetPeer->mkdir($sBakMetaDir);
     $self->_writeVersion($sBakDir);
+    
+    $self->{BACKUP_DATA}{STATISTICS_CALLBACK}= sub {
+        my $sStatName= shift;
+        my $sStatInfo= shift;
+        $sStatName=~ s/\W/_/g;
+        $oSourceDataConf->setValue('stats.' . $sStatName, Rabak::Conf->QuoteValue($sStatInfo));
+    };
     
     ########################################################
     # set cleanup chain
@@ -316,10 +323,9 @@ sub _run {
         $self->{TARGET},
         {
             DATA_DIR => $self->{TARGET}->getPath($self->{BACKUP_DATA}{BACKUP_DATA_DIR}),
-            META_DIR => $self->{TARGET}->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR}),
             OLD_DATA_DIRS => $self->{BACKUP_DATA}{OLD_BACKUP_DATA_DIRS},
             FILE_CALLBACK => $self->{BACKUP_DATA}{FILE_CALLBACK},
-            STATISTICS_CALLBACK => sub {$self->_setMetaBackupStatistics(@_)},
+            STATISTICS_CALLBACK => $self->{BACKUP_DATA}{STATISTICS_CALLBACK},
         },
     );
     $self->_setMetaBackupResult($self->{BACKUP_DATA}{BACKUP_RESULT});

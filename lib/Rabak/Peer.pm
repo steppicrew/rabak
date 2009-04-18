@@ -420,7 +420,7 @@ sub runPerl {
 
     # run script as command if it's remote or STDIN/STDOUT handles are defined
     # (will be "eval"ed otherwise)
-    my $bRunAsCommand= $hHandles || $self->isRemote();
+    my $bRunAsCommand= scalar %$hHandles || $self->isRemote();
 
     # define and set "incoming" variables
     my $sPerlVars= '';
@@ -618,7 +618,7 @@ sub getLocalFile {
 # copies a local (temp) file to the remote host
 sub copyLocalFileToRemote {
     my $self= shift;
-    my $sLocFile= $self->getPath(shift);
+    my $sLocFile= shift;
     my $sRemFile= $self->getPath(shift);
     my %hParams= @_;
 
@@ -641,6 +641,7 @@ sub copyLocalFileToRemote {
 
     unless ($self->isRemote()) {
         $sLocFile= $self->getPath($sLocFile);
+        $sqLocFile= $self->ShellQuote($sLocFile);
         return 1 if $sLocFile eq $sRemFile;
         if ($hParams{APPEND}) {
             $self->_setError(`cat $sqLocFile 2>&1 >> $sqRemFile`);
@@ -682,7 +683,16 @@ sub mkdir {
 
     return ${$self->runPerl('
             # mkdir()
-            $result= -d $sPath || CORE::mkdir $sPath;
+            my @sDirToDo= split /\//, $sPath;
+            my @sDir= ();
+            $result= 1;
+            while (scalar @sDirToDo) {
+                push @sDir, shift(@sDirToDo);
+                my $sDir= join "/", @sDir;
+                next unless $sDir;
+                $result= -d $sDir || CORE::mkdir $sDir;
+                last unless $result;
+            }
         ', { "sPath" => $sPath }, '$result'
     ) || \undef};
 }

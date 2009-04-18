@@ -297,6 +297,7 @@ sub finish {
 sub finishBackup {
     my $self= shift;
     my $hBaksetData= shift;
+    my $fCallback= shift;
 
     my $aDf = $self->_checkDf();
     if (defined $aDf) {
@@ -309,6 +310,8 @@ sub finishBackup {
             @$aDf
         );
     }
+    
+    $fCallback->() if $fCallback;
 
     $self->_closeLogging();
     

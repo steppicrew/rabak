@@ -176,7 +176,8 @@ sub _ApiGetSessions {
         target => {
             name => $oTargetPeer->getFullName(),
             path => $oTargetPeer->getFullPath(),
-        }
+        },
+        sessions => {},
     };
     
     my @sSessionFiles= $oTargetPeer->glob("$sMetaDir/session.*.$sBakset");
@@ -192,7 +193,7 @@ sub _ApiGetSessions {
             delete $hSession->{$sSource};
         }
         $hSession->{sources}= $hSources;
-        $hSessionData->{$sSessionName}= $hSession;
+        $hSessionData->{sessions}{$sSessionName}= $hSession;
     }
 
     return {

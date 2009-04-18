@@ -235,7 +235,7 @@ sub removeBackslashes {
 sub QuoteValue {
     my $self= shift;
     my $sValue= shift;
-    return $sValue unless $sValue=~ /[\s\,\'\"]/;
+    return $sValue unless $sValue=~ /[\s\,\'\"]/ || $sValue eq '';
     $sValue=~ s/\\/\\\\/g;
     $sValue=~ s/\'/\\\'/g;
     return "'$sValue'";
@@ -267,6 +267,7 @@ sub getValues {
     for my $sName (keys %{ $self->{VALUES} }) {
         my $sValue= $self->getProperty($sName);
         $sValue= $sValue->getValues() if ref $sValue && $sValue->isa('Rabak::Conf');
+        $sValue= $self->removeBackslashes($sValue) unless ref $sValue;
         $hValues->{$sName}= $sValue;
     }
     return $hValues;

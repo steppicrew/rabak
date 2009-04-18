@@ -171,6 +171,16 @@ sub GetAllPathExtensions {
     ];
 }
 
+sub getMetaDir {
+    my $self= shift;
+    
+    my $sMetaDir= '/var/lib/rabak';
+    $sMetaDir= $ENV{HOME} . '/.rabak/meta' unless -d $sMetaDir && -w $sMetaDir;
+    $sMetaDir.= '/' . $self->getTargetPeer()->getUuid();
+    return $sMetaDir if Rabak::Peer->new()->mkdir($sMetaDir);
+    return undef;
+}
+
 sub backup {
     my $self= shift;
 
@@ -243,17 +253,24 @@ sub backup {
         $iResult= scalar(@oSourcePeers) - $iSuccessCount;
     }
 
-    $oSessionDataConf->setQuotedValue('time.end', $self->GetTimeString());
-    if ($hBaksetData->{BAKSET_META_DIR}) {
+    my $fWriteSessionData= sub {
+        return if $self->getSwitch('pretend');
+        $oSessionDataConf->setQuotedValue('time.end', $self->GetTimeString());
         my $sSessionName= 'session.'
             . $oSessionDataConf->getValue('time.start') . '.'
-            . $oSessionDataConf->getValue('time.end')
-            . $hBaksetData->{BAKSET_EXT};
-        my $sFileName= $hBaksetData->{BAKSET_META_DIR} . '/' . $sSessionName;
-        $oSessionDataConf->writeToFile($oTargetPeer->getPath($sFileName)) unless $self->getSwitch('pretend');
-    }
+            . $oSessionDataConf->getValue('time.end') . '.'
+            . $self->getName();
+        my $sMetaDir= $self->getMetaDir();
+        return unless $sMetaDir;
+        my $sMetaFile= $sMetaDir . '/' . $sSessionName;
+        $oSessionDataConf->writeToFile($sMetaFile);
+        if ($hBaksetData->{BAKSET_META_DIR}) {
+            my $sFileName= $hBaksetData->{BAKSET_META_DIR} . '/' . $sSessionName;
+            $oTargetPeer->copyLocalFileToRemote($sMetaFile, $sFileName);
+        }
+    };
     
-    $oTargetPeer->finishBackup($hBaksetData);
+    $oTargetPeer->finishBackup($hBaksetData, $fWriteSessionData);
     
     my $sSubject= "successfully finished";
     $sSubject= "$iSuccessCount of " . scalar(@oSourcePeers) . " backups $sSubject" if $iResult;
