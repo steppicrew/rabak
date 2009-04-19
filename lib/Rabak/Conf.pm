@@ -12,6 +12,7 @@ use Data::Dumper;
 use Storable qw(dclone);
 use POSIX qw(strftime);
 use Rabak::Log;
+use Data::UUID;
 
 our $iElemNo= 0;
 
@@ -231,6 +232,15 @@ sub removeBackslashes {
     return $self->removeBackslashesPart2($self->removeBackslashesPart1($sValue));
 }
 
+sub QuoteValue {
+    my $self= shift;
+    my $sValue= shift;
+    return $sValue unless $sValue=~ /[\s\,\'\"]/ || $sValue eq '';
+    $sValue=~ s/\\/\\\\/g;
+    $sValue=~ s/\'/\\\'/g;
+    return "'$sValue'";
+}
+
 # returns scalar value (references to other objects are already resolved, backslashes are cleaned)
 sub getValue {
     my $self= shift;
@@ -247,6 +257,20 @@ sub getValue {
     return $sDefault if ref $sValue;
     return $sDefault if $sValue eq '*default*';
     return $sValue;
+}
+
+# returns all values as hash
+sub getValues {
+    my $self= shift;
+    
+    my $hValues= {};
+    for my $sName (keys %{ $self->{VALUES} }) {
+        my $sValue= $self->getProperty($sName);
+        $sValue= $sValue->getValues() if ref $sValue && $sValue->isa('Rabak::Conf');
+        $sValue= $self->removeBackslashes($sValue) unless ref $sValue;
+        $hValues->{$sName}= $sValue;
+    }
+    return $hValues;
 }
 
 # TODO: Which is correct: findProperty? getValue? get_prep_value? $oCOnf->{VALUES}?
@@ -409,18 +433,27 @@ sub setValue {
 
     my @sName= split(/\./, $sName);
     $sName= pop @sName;
-    for (@sName) {
-        $self->{VALUES}{$_}= Rabak::Conf->new($_, $self) unless exists $self->{VALUES}{$_};
-        unless (ref $self->{VALUES}{$_}) {
-            logger->error("'" . $self->getFullName() . ".$_' is not an object!");
+    for my $sSubName (@sName) {
+        $self->{VALUES}{$sSubName}= Rabak::Conf->new($sSubName, $self) unless exists $self->{VALUES}{$sSubName};
+        unless (ref $self->{VALUES}{$sSubName}) {
+            logger->error("'" . $self->getFullName() . ".$sSubName' is not an object!");
             exit 3;
         }
         
-        $self= $self->{VALUES}{$_};
+        $self= $self->{VALUES}{$sSubName};
     }
     
     # TODO: only allow assignment of undef to refs?
+    $sValue->{PARENT_CONF}= $self if ref $sValue && $sValue->isa('Rabak::Conf');
     $self->{VALUES}{$sName}= $sValue;
+}
+
+sub setQuotedValue {
+    my $self= shift;
+    my $sName= shift;
+    my $sValue= shift;
+    $sValue= $self->QuoteValue($sValue) if $sValue;
+    $self->setValue($sName, $sValue);
 }
 
 # expand macro given in $sMacroName
@@ -610,6 +643,13 @@ sub getName {
     return $self->getValue('name', '');
 }
 
+sub setName {
+    my $self= shift;
+    my $sName= shift;
+    $self->{NAME}= $sName;
+    return $self->setValue('name', $sName);
+}
+
 sub getShowName {
     my $self= shift;
     my $sName= $self->{NAME};
@@ -711,6 +751,10 @@ sub GetTimeString {
     return strftime("%Y%m%d%H%M%S", gmtime);
 }
 
+sub CreateUuid {
+    return Data::UUID->new()->create_str();
+}
+
 sub getFullName {
     my $self= shift;
     my $sName= shift || '';
@@ -723,6 +767,26 @@ sub getFullName {
     }
     $sName=~ s/\.$//;
     return $sName;
+}
+
+sub writeToFile {
+    my $self= shift;
+    my $sFileName= shift;
+    
+    my $hConfShowCache= {};
+    
+    my $aConf= $self->show($hConfShowCache);
+    push @$aConf, $self->showUncachedReferences($hConfShowCache);
+    my @sConf= @ { $self->simplifyShow($aConf) };
+
+    pop @sConf;  # remove last []. (See RabalLib::Conf::show)
+    my $fh;
+    unless (open $fh, '>', $sFileName) {
+        logger->error("Could not open conf file '$sFileName' for writing!");
+        return 1;
+    }
+    print $fh join "\n", @sConf, '';
+    close $fh;
 }
 
 1;

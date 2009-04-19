@@ -14,7 +14,7 @@ password=s
 groups=op1
 
 [conf.raisin]
-title=Raisin's Backups
+title="Raisin's Backups"
 file=/home/raisin/.rabak/rabak.cf
 include_path=.:/etc/rabak
 

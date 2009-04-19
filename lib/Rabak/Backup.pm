@@ -37,24 +37,22 @@ my %METAFILENAMES=(
 sub run {
     my $self= shift;
     my $hBaksetData= shift;
-    my $hSourceData= shift;
+    my $oSourceDataConf= shift;
     
-    $self->_run() unless $self->_setup($hBaksetData, $hSourceData);
+    $self->_run() unless $self->_setup($hBaksetData, $oSourceDataConf);
     return $self->_cleanup();
 }
 
 sub _setup {
     my $self= shift;
     my $hBaksetData= shift;
-    my $hSourceData= shift;
+    my $oSourceDataConf= shift;
 
     my $oSourcePeer= $self->{SOURCE};
     my $oTargetPeer= $self->{TARGET};
     
-    $hSourceData->{time}= {
-        start => Rabak::Conf->GetTimeString(),
-    };
-    $hSourceData->{path}= $oSourcePeer->getFullPath();
+    $oSourceDataConf->setValue('time.start', Rabak::Conf->GetTimeString());
+    $oSourceDataConf->setValue('path', $oSourcePeer->getFullPath());;
 
     my $sSourceName= $oSourcePeer->getName() || $oSourcePeer->getFullPath();
     logger->info('Backup start at ' . strftime('%F %X', localtime) . ': ' . $sSourceName);
@@ -96,10 +94,8 @@ sub _setup {
     my $sBakDataDir= $sBakDir . '/data';
     my $sBakMetaDir= $sBakDir . '/meta';
     
-    $hSourceData->{target}= {
-        datadir => $sBakDataDir,
-        metadir => $sBakMetaDir,
-    };
+    $oSourceDataConf->setValue('target.datadir', $sBakDataDir);
+    $oSourceDataConf->setValue('target.metadir', $sBakMetaDir);
 
     $self->_convertBackupDirs(\@sBakBaseDirs);
 
@@ -113,6 +109,13 @@ sub _setup {
     $oTargetPeer->mkdir($sBakDataDir);
     $oTargetPeer->mkdir($sBakMetaDir);
     $self->_writeVersion($sBakDir);
+    
+    $self->{BACKUP_DATA}{STATISTICS_CALLBACK}= sub {
+        my $sStatName= shift;
+        my $sStatInfo= shift;
+        $sStatName=~ s/\W/_/g;
+        $oSourceDataConf->setValue('stats.' . $sStatName, Rabak::Conf->QuoteValue($sStatInfo));
+    };
     
     ########################################################
     # set cleanup chain
@@ -279,10 +282,10 @@ sub _setup {
         }
     };
 
-    # add finish function to update $hSourceData
+    # add finish function to update $oSourceDataConf
     push @fFinish, sub {
-        $hSourceData->{time}{end}= Rabak::Conf->GetTimeString();
-        $hSourceData->{result}= $self->{BACKUP_DATA}{BACKUP_RESULT};
+        $oSourceDataConf->setQuotedValue('time.end', Rabak::Conf->GetTimeString());
+        $oSourceDataConf->setQuotedValue('result', $self->{BACKUP_DATA}{BACKUP_RESULT});
     };
 
     unless ($oTargetPeer->pretend()) {
@@ -320,10 +323,9 @@ sub _run {
         $self->{TARGET},
         {
             DATA_DIR => $self->{TARGET}->getPath($self->{BACKUP_DATA}{BACKUP_DATA_DIR}),
-            META_DIR => $self->{TARGET}->getPath($self->{BACKUP_DATA}{BACKUP_META_DIR}),
             OLD_DATA_DIRS => $self->{BACKUP_DATA}{OLD_BACKUP_DATA_DIRS},
             FILE_CALLBACK => $self->{BACKUP_DATA}{FILE_CALLBACK},
-            STATISTICS_CALLBACK => sub {$self->_setMetaBackupStatistics(@_)},
+            STATISTICS_CALLBACK => $self->{BACKUP_DATA}{STATISTICS_CALLBACK},
         },
     );
     $self->_setMetaBackupResult($self->{BACKUP_DATA}{BACKUP_RESULT});

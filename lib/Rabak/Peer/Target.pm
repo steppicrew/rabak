@@ -15,7 +15,6 @@ use Rabak::Version;
 use Rabak::Peer;
 use POSIX qw(strftime);
 use Data::Dumper;
-use Data::UUID;
 
 use vars qw(@ISA);
 
@@ -26,6 +25,7 @@ sub new {
 
     my $self= $class->SUPER::new(@_);
     $self->{MOUNTABLE}= Rabak::Mountable->new($self);
+    $self->{UUID}= undef;
 
     return $self;
 }
@@ -223,6 +223,11 @@ sub GetMetaDir {
     return '.meta';
 }
 
+sub getUuid {
+    my $self= shift;
+    return $self->{UUID};
+}
+
 # prepare target for backup
 # 1. mounts all target mount objects
 # 2. checks existance and permissions of target's directory
@@ -231,7 +236,6 @@ sub GetMetaDir {
 sub prepareForBackup {
     my $self= shift;
     my $asBaksetExts= shift;
-    my $hSessionData= shift;
 
     my $hResult= $self->_prepare($asBaksetExts);
     return $hResult if $hResult;
@@ -241,21 +245,26 @@ sub prepareForBackup {
     my $sBaksetDir= strftime("%Y-%m", @$aBaksetTime) . $sBaksetExt;
     my $sBaksetMeta= $self->GetMetaDir();
 
-    my $sDevConfFile= $self->_getDevConfFile();
-    my $sUUID;
+    my $sDevConfFile= $self->getPath($self->_getDevConfFile());
+    my $sLocalDevConfFile= $sDevConfFile;
+    my $oDevConf;
     if ($self->isFile($sDevConfFile)) {
-        my $oDevConfFile= Rabak::ConfFile->new($self->getLocalFile($sDevConfFile, SUFFIX => '.dev.cf'));
-        my $oDevConf= $oDevConfFile->conf();
-        $sUUID= $oDevConf->getValue('uuid');
+        $sLocalDevConfFile= $self->getLocalFile($sDevConfFile, SUFFIX => '.dev.cf');
+        my $oDevConfFile= Rabak::ConfFile->new($sLocalDevConfFile);
+        $oDevConf= $oDevConfFile->conf();
+        $self->{UUID}= $oDevConf->getValue('uuid');
     }
-    unless ($sUUID) {
-        $sUUID= Data::UUID->new()->create_str();
-        # TODO: we need a ConfFile->write()
-        $self->echo($sDevConfFile, '', '[]', "uuid = $sUUID");
+    else {
+        $sLocalDevConfFile= $self->localTempfile(SUFFIX => '.dev.cf') if $self->isRemote();
+        $oDevConf= Rabak::Conf->new('*');
     }
-    $hSessionData->{target}= {
-        'uuid' => $sUUID,
-    };
+    unless ($self->{UUID}) {
+        # create new uuid and write into target's directory
+        $self->{UUID}= $self->CreateUuid();
+        $oDevConf->setQuotedValue('uuid', $self->{UUID});
+        $oDevConf->writeToFile($sLocalDevConfFile);
+        $self->copyLocalFileToRemote($sLocalDevConfFile, $sDevConfFile);
+    }
 
     $self->mkdir($sBaksetDir);
     $self->mkdir($sBaksetMeta);
@@ -288,7 +297,7 @@ sub finish {
 sub finishBackup {
     my $self= shift;
     my $hBaksetData= shift;
-    my $hSessionData= shift;
+    my $fCallback= shift;
 
     my $aDf = $self->_checkDf();
     if (defined $aDf) {
@@ -301,14 +310,10 @@ sub finishBackup {
             @$aDf
         );
     }
+    
+    $fCallback->() if $fCallback;
 
     $self->_closeLogging();
-    
-    my $sFileName= $hBaksetData->{BAKSET_META_DIR} . '/session.'
-        . $hSessionData->{time}{start} . '.'
-        . $hSessionData->{time}{end}
-        . $hBaksetData->{BAKSET_EXT};
-    $self->echo($sFileName, Data::Dumper->Dump([$hSessionData], ['session']));
     
     $self->finish();
     

@@ -161,11 +161,13 @@ jQuery(function($) {
 
                     var table= [];
                     map(session.sources, function(source_name, source) {
-                        var icon= source.result ? '/static/icon_cancel.png' : '/static/icon_ok.png';
+
+                        // TODO: Why parseInt?
+                        var icon= parseInt(source.result) ? '/static/icon_cancel.png' : '/static/icon_ok.png';
                         icon= '<img src="' + icon + '" width="16" height="16" />';
                         table.push([
                             icon,
-                            'Source ' + source_name, source.title,
+                            'Source ' + source_name, source.fullname, source.title,
                             // bakset.sources[source_name].path,
                             source.path,
                             fmtTime(source.time), source.stats]);

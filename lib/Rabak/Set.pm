@@ -171,6 +171,16 @@ sub GetAllPathExtensions {
     ];
 }
 
+sub getMetaDir {
+    my $self= shift;
+    
+    my $sMetaDir= '/var/lib/rabak';
+    $sMetaDir= $ENV{HOME} . '/.rabak/meta' unless -d $sMetaDir && -w $sMetaDir;
+    $sMetaDir.= '/' . $self->getTargetPeer()->getUuid();
+    return $sMetaDir if Rabak::Peer->new()->mkdir($sMetaDir);
+    return undef;
+}
+
 sub backup {
     my $self= shift;
 
@@ -199,14 +209,12 @@ sub backup {
         $_->setPretend(1) for @oSourcePeers;
     }
 
-    my $hSessionData= {
-        cmdline => $self->cmdData("command_line"),
-        time => {
-            start => $self->GetTimeString(),
-        },
-    };
+    my $oSessionDataConf= Rabak::Conf->new('*');
+    $oSessionDataConf->setQuotedValue('cmdline', $self->cmdData("command_line"));
+    $oSessionDataConf->setQuotedValue('time.start', $self->GetTimeString());
 
-    my $hBaksetData= $oTargetPeer->prepareForBackup($self->GetAllPathExtensions($self), $hSessionData);
+    my $hBaksetData= $oTargetPeer->prepareForBackup($self->GetAllPathExtensions($self));
+    $oSessionDataConf->setQuotedValue('target.uuid', $oTargetPeer->getUuid());
 
     $iResult= $hBaksetData->{ERROR};
 
@@ -214,19 +222,22 @@ sub backup {
 
         $oTargetPeer->initLogging($hBaksetData) if $self->getSwitch('logging');
 
+        my $hDoneSources= {};
         # now try backing up every source 
         for my $oSourcePeer (@oSourcePeers) {
             my $sSourceName= $oSourcePeer->getFullName();
             $oSourcePeer->setValue('name', '') if $sSourceName=~ s/^\*//;
-            if ($hSessionData->{sources}{$sSourceName}) {
+            if ($hDoneSources->{$sSourceName}) {
                 logger->error("Source object named \"$sSourceName\" was already backed up. Skipping.");
                 next;
             }
-            $hSessionData->{sources}{$sSourceName}= {};
-
+            my $oSourceDataConf= Rabak::Conf->new('source_' . scalar(keys %$hDoneSources), $oSessionDataConf);
+            $hDoneSources->{$sSourceName}= $oSourceDataConf;
+            $oSourceDataConf->setQuotedValue('fullname', $sSourceName);
+            $oSessionDataConf->setQuotedValue($oSourceDataConf->getName(), $oSourceDataConf);
             my $oBackup= Rabak::Backup->new($oSourcePeer, $oTargetPeer);
             eval {
-                unless ($oBackup->run($hBaksetData, $hSessionData->{sources}{$sSourceName})) {
+                unless ($oBackup->run($hBaksetData, $oSourceDataConf)) {
                     $iSuccessCount++;
                 }
                 1;
@@ -236,13 +247,30 @@ sub backup {
                 $oBackup->setMetaBackupError($@);
             }
         }
+        
+        $oSessionDataConf->setValue('sources', join ", ", map { '&' . $_->getName() } values %$hDoneSources);
 
         $iResult= scalar(@oSourcePeers) - $iSuccessCount;
     }
 
-    $hSessionData->{time}{end}= $self->GetTimeString();
+    my $fWriteSessionData= sub {
+        return if $self->getSwitch('pretend');
+        $oSessionDataConf->setQuotedValue('time.end', $self->GetTimeString());
+        my $sSessionName= 'session.'
+            . $oSessionDataConf->getValue('time.start') . '.'
+            . $oSessionDataConf->getValue('time.end') . '.'
+            . $self->getName();
+        my $sMetaDir= $self->getMetaDir();
+        return unless $sMetaDir;
+        my $sMetaFile= $sMetaDir . '/' . $sSessionName;
+        $oSessionDataConf->writeToFile($sMetaFile);
+        if ($hBaksetData->{BAKSET_META_DIR}) {
+            my $sFileName= $hBaksetData->{BAKSET_META_DIR} . '/' . $sSessionName;
+            $oTargetPeer->copyLocalFileToRemote($sMetaFile, $sFileName);
+        }
+    };
     
-    $oTargetPeer->finishBackup($hBaksetData, $hSessionData);
+    $oTargetPeer->finishBackup($hBaksetData, $fWriteSessionData);
     
     my $sSubject= "successfully finished";
     $sSubject= "$iSuccessCount of " . scalar(@oSourcePeers) . " backups $sSubject" if $iResult;
