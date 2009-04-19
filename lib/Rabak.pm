@@ -183,6 +183,9 @@ sub _ApiGetSessions {
         my $session;
         eval "$sContent; 1;";
         next unless defined $session;
+        
+        $session->{saved}= int(rand(200000) + 30000);
+
         $hSessions->{scalar keys %$hSessions}= $session;
     }
     
