@@ -176,7 +176,7 @@ jQuery(function($) {
             var dashboardHtml= html.add('<div id="dashboard">', '</div>');
 
             map(conf.baksets, function(bakset_name, bakset) {
-                var baksetHtml= dashboardHtml.add('<div style="border: 1px solidblack; float: left; width: 200px;">', '</div>');
+                var baksetHtml= dashboardHtml.add('<div style="border: 1px solid black; margin: 10px; float: left; width: 220px;">', '</div>');
                 baksetHtml.add('<h2>' + bakset.title + '</h2>');
 
                 sortMap(bakset.sessions,
