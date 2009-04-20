@@ -175,12 +175,11 @@ sub _setup {
                         STDOUT => sub {
                             for my $sLine (@_) {
                                 chomp $sLine;
-                                my @sParams= split /\:/, $sLine, 15;        #/
+                                my @sParams= split /\:/, $sLine, 15;        #/ # result is 14 lstat values, flags, file name 
                                 if (scalar @sParams < 15) {
                                     logger->error("Error parsing inventory data (\"$sLine\").");
                                     next;
                                 }
-                                # rotate file name from end to front
                                 my $sFileName= pop @sParams;
                                 my $sFlags= pop @sParams;
                                 $inodeStore->addFile($sFileName, @sParams);
