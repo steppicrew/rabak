@@ -86,7 +86,7 @@ jQuery(function($) {
 
         for (var bakset_name in conf.baksets) {
             var bakset= conf.baksets[bakset_name];
-            html.push('<li><a href="#show_backup_result:bakset=' + bakset.name + '">' + bakset.title + '</a></li>');
+            html.push('<li><a href="#show_backup_result:bakset=' + bakset.name + '">' + bakset.title + ' (' + bakset.name + ')' + '</a></li>');
         }
 
         $("#sidebar").html('<ol>' + html.join('') + '</ol>'
@@ -177,7 +177,7 @@ jQuery(function($) {
                     var table= [];
                     map(session.sources, function(source_name, source) {
 
-                        // TODO: Why parseInt?
+                        // TODO: Why parseInt? Because source result is returned as a  string.
                         var icon= parseInt(source.result) ? '/static/icon_cancel.png' : '/static/icon_ok.png';
                         icon= '<img src="' + icon + '" width="16" height="16" />';
                         table.push([
@@ -185,7 +185,9 @@ jQuery(function($) {
                             'Source ' + source_name, source.fullname, source.title,
                             // bakset.sources[source_name].path,
                             source.path,
-                            fmtTime(source.time), source.stats.total_bytes_sent]);
+
+//                            fmtTime(source.time), source.stats.total_bytes_sent]);
+                            fmtTime(source.time), source.total_bytes + ' Bytes']);
                     });
                     html.push(tableHtml(table));
                 });

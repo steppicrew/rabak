@@ -603,7 +603,9 @@ sub run {
                 }
                 elsif ($hMetaInfo->{STATISTICS_CALLBACK}) {
                     my ($sName, $sInfo)= ($1, $2) if $sLine=~ /^(.+?)\:\s*(.+)/;
-                    $hMetaInfo->{STATISTICS_CALLBACK}->($sStatPrefix . $sName, $sInfo) if $sName && $sInfo;
+                    if ($sName && $sInfo) {
+                        $hMetaInfo->{STATISTICS_CALLBACK}->($sStatPrefix . $sName, $sInfo) if $sName && $sInfo;
+                    }
                 }
                 logger->info($sLine);
             } 

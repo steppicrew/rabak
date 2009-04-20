@@ -12,7 +12,7 @@ SRC_URI="http://www.raisin.de/rabak/stable/${PF}.tar.gz"
 SLOT="0"
 LICENSE="Artistic"
 KEYWORDS="alpha amd64 ppc ppc64 sparc x86"
-IUSE=""
+IUSE="wui"
 
 RDEPEND=">=dev-lang/perl-5.8.2
 		>=sys-apps/util-linux-2.12-r4
@@ -24,6 +24,7 @@ RDEPEND=">=dev-lang/perl-5.8.2
 		dev-perl/MailTools
 		dev-perl/Digest-SHA1
 		dev-perl/DBD-SQLite
+		wui? ( dev-perl/JSON-XS )
 		>=perl-core/Getopt-Long-2.36"
 
 src_compile() {
@@ -42,6 +43,9 @@ src_install () {
 
 	# Move rabak to bin where it belongs.
 	dobin rabak
+	# TODO: install wui if USE wui is set
+	# if use wui; then
+	# fi
 	# Copy sample config files
 	insinto /etc
 	doins -r etc/rabak
