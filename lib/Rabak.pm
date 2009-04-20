@@ -24,16 +24,17 @@ sub _getConf {
     return $oConfFile->conf();
 }
 
-sub _getBakset {
+sub _getBaksets {
     my $oConf= shift;
     my $sBakset= shift;
     
-    return undef unless defined $sBakset;
+    return () unless defined $sBakset;
     
+    my @aSets= ();
     for my $oSet (Rabak::Set->GetSets($oConf)) {
-        return $oSet if $oSet->getFullName eq $sBakset;
+        push @aSets, $oSet if $oSet->getFullName eq $sBakset || $sBakset eq '*';
     }
-    return undef
+    return @aSets;
 }
 
 sub _ApiGetBaksets {
@@ -85,53 +86,58 @@ sub _ApiGetSessions {
     my ($oConf, $sConfFileName)= _getConf();
     my $sBakset= $param->{bakset};
     
-    my $oSet= _getBakset($oConf, $sBakset);
+    my @aSets= _getBaksets($oConf, $sBakset);
     return {
         error => 500,
         error_text => "Bakset '$sBakset' does not exist.",
-    } unless $oSet;
+    } unless @aSets;
 
-    my $sMetaDir= $oSet->GetMetaBaseDir();
-    my $oTargetPeer= $oSet->getTargetPeer();
-    
-    my $hSessionData= {
-        conf_file => $sConfFileName,
-        bakset => $sBakset,
-        target => {
-            name => $oTargetPeer->getFullName(),
-            path => $oTargetPeer->getFullPath(),
-        },
-        sessions => {},
-    };
-    
-    my @sSessionFiles= glob "$sMetaDir/*/session.*.$sBakset";
-    for my $sSessionFile (@sSessionFiles) {
-        my $hSession= Rabak::ConfFile->new($sSessionFile)->conf()->getValues();
-        my $sSessionName= $sSessionFile;
-        $sSessionName=~ s/.*\///;
-        my $hSources= {};
-        my $iTotalBytes= 0;
-        my $iTransferredBytes= 0;
-        my $iTotalFiles= 0;
-        my $iTransferredFiles= 0;
-        my $iFailedFiles= 0;
-        for my $sSource (split(/[\s\,]+/, $hSession->{sources})) {
-            $sSource=~ s/^\&//;
-            $hSources->{$sSource}= $hSession->{$sSource};
-            $iTotalBytes+= $hSources->{$sSource}{stats}{total_bytes} || 0;
-            $iTransferredBytes+= $hSources->{$sSource}{stats}{transferred_bytes} || 0;
-            $iTotalFiles+= $hSources->{$sSource}{stats}{total_files} || 0;
-            $iTransferredFiles+= $hSources->{$sSource}{stats}{transferred_files} || 0;
-            $iFailedFiles+= $hSources->{$sSource}{stats}{failed_files} || 0;
-            delete $hSession->{$sSource};
+    my $hBaksets= {};
+    for my $oSet (@aSets) {
+        my $sMetaDir= $oSet->GetMetaBaseDir();
+        my $oTargetPeer= $oSet->getTargetPeer();
+        
+        my $sBakset= $oSet->getFullName();
+
+        my $hSessionData= {
+            conf_file => $sConfFileName,
+            bakset => $sBakset,
+            target => {
+                name => $oTargetPeer->getFullName(),
+                path => $oTargetPeer->getFullPath(),
+            },
+            sessions => {},
+        };
+        
+        my @sSessionFiles= glob "$sMetaDir/*/session.*.$sBakset";
+        for my $sSessionFile (@sSessionFiles) {
+            my $hSession= Rabak::ConfFile->new($sSessionFile)->conf()->getValues();
+            my $sSessionName= $sSessionFile;
+            $sSessionName=~ s/.*\///;
+            my $hSources= {};
+            my $iTotalBytes= 0;
+            my $iTransferredBytes= 0;
+            my $iTotalFiles= 0;
+            my $iTransferredFiles= 0;
+            my $iFailedFiles= 0;
+            for my $sSource (split(/[\s\,]+/, $hSession->{sources})) {
+                $sSource=~ s/^\&//;
+                $hSources->{$sSource}= $hSession->{$sSource};
+                $iTotalBytes+= $hSources->{$sSource}{stats}{total_bytes} || 0;
+                $iTransferredBytes+= $hSources->{$sSource}{stats}{transferred_bytes} || 0;
+                $iTotalFiles+= $hSources->{$sSource}{stats}{total_files} || 0;
+                $iTransferredFiles+= $hSources->{$sSource}{stats}{transferred_files} || 0;
+                $iFailedFiles+= $hSources->{$sSource}{stats}{failed_files} || 0;
+                delete $hSession->{$sSource};
+            }
+            $hSession->{sources}= $hSources;
+            $hSession->{total_files}= $iTotalFiles || -1;
+            $hSession->{transferred_files}= $iTransferredFiles || -1;
+            $hSession->{failed_files}= $iFailedFiles || -1;
+            $hSessionData->{sessions}{$sSessionName}= $hSession;
         }
-        $hSession->{sources}= $hSources;
-        $hSession->{total_files}= $iTotalFiles || -1;
-        $hSession->{transferred_files}= $iTransferredFiles || -1;
-        $hSession->{failed_files}= $iFailedFiles || -1;
-        $hSessionData->{sessions}{$sSessionName}= $hSession;
+        $hBaksets->{$sBakset}= $hSessionData
     }
-
 # print Dumper($hSessionData);
 
     return {
@@ -139,9 +145,7 @@ sub _ApiGetSessions {
         conf => {
             file => '/home/raisin/.rabak/rabak.cf',
             title => 'Raisin\'s Config',
-            baksets => {
-                $sBakset => $hSessionData,
-            },
+            baksets => $hBaksets,
         }
     };
 }
