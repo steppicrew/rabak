@@ -127,7 +127,7 @@ jQuery(function($) {
     var Html= function(pre, post) {
         var items= [];
 
-        this.add= function(html1, html2) {
+        this.add= function(pre, post) {
             var item= new Html(pre, post);
             items.push(item);
             return item;
@@ -144,7 +144,7 @@ jQuery(function($) {
         this.render= function() {
             var result= pre ? [ pre ] : [];
             for (var i in items) {
-                result.push(items.render());
+                result.push(items[i].render());
             }
             if (post) result.push(post);
             return result.join('');
@@ -189,7 +189,7 @@ jQuery(function($) {
 
 // source.stats.text ? source.stats.text.split('\n').join('<br>\n') : '',
 
-                        var tableHtml= basketHtml.addTable();
+                        var tableHtml= baksetHtml.addTable();
                         map(session.sources, function(source_name, source) {
 
                             // TODO: Why parseInt? Because source result is returned as a  string.
@@ -198,11 +198,7 @@ jQuery(function($) {
                             tableHtml.addRow([
                                 icon,
                                 'Source ' + source_name,
-                                source.fullname,
-                                source.title,
-                                // bakset.sources[source_name].path,
-                                source.path,
-                                fmtTime(source.time), source.stats.transferred_bytes + '/' + source.stats.total_bytes + ' Bytes',
+                                source.stats.transferred_bytes + '/' + source.stats.total_bytes + ' Bytes',
                             ]);
                         });
                     }
@@ -224,10 +220,13 @@ jQuery(function($) {
 
             var html= [];
 
-            html.push('<h1>' + conf.title + '</h1>');
+            var html= new Html();
+            html.add('<h1>' + conf.title + '</h1>');
 
             map(conf.baksets, function(bakset_name, bakset) {
-                html.push('<h2>' + bakset.title + '</h2>');
+                if (params.bakset && bakset_name != params.bakset) return;
+
+                html.add('<h2>' + bakset.title + '</h2>');
 
                 sortMap(bakset.sessions,
                     function(a, b) {
@@ -235,33 +234,32 @@ jQuery(function($) {
                     },
                     function(session_id, session) {
                         session.title= fmtTime(session.time);
-                        html.push('<h3>Session ' + session.title + '</h3>');
+                        html.add('<h3>Session ' + session.title + '</h3>');
 
 // source.stats.text ? source.stats.text.split('\n').join('<br>\n') : '',
 
-                        var table= [];
+                        var tableHtml= html.addTable();
                         map(session.sources, function(source_name, source) {
 
                             // TODO: Why parseInt? Because source result is returned as a  string.
                             var icon= parseInt(source.result) ? '/static/icon_cancel.png' : '/static/icon_ok.png';
                             icon= '<img src="' + icon + '" width="16" height="16" />';
-                            table.push([
+                            tableHtml.addRow([
                                 icon,
                                 'Source ' + source_name,
                                 source.fullname,
                                 source.title,
-                                // bakset.sources[source_name].path,
                                 source.path,
-                                fmtTime(source.time), source.stats.transferred_bytes + '/' + source.stats.total_bytes + ' Bytes',
+                                fmtTime(source.time),
+                                source.stats.transferred_bytes + '/' + source.stats.total_bytes + ' Bytes',
                             ]);
                         });
-                        html.push(tableHtml(table));
                     }
                 );
 
             });
 
-            $("#body").html(html.join(''));
+            $("#body").html(html.render());
         })
     };
 
@@ -352,7 +350,8 @@ jQuery(function($) {
             + '<h2>Jobs</h2>'
             + '<ol>' + baksetHtml.join('') + '</ol>'
             + '<hr />'
-            + '<a href="#test1">Test1</a>'
+            + '<p><a href="#test1">Test1</a></p>'
+            + '<p><a href="#show_dashboard">Dashboard</a></p>'
         );
 
         cmds.show_dashboard();
