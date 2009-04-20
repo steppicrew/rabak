@@ -179,6 +179,7 @@ sub run {
                 my $sError= $oDumpPeer->getLastError;
                 chomp $sError;
                 logger->error("Dump failed. Skipping dump of \"$_\": $sError");
+                $hMetaInfo->{FAILED_FILE_CALLBACK}->("$sDestFile") if $hMetaInfo->{FAILED_FILE_CALLBACK};
                 next;
             }
             $hMetaInfo->{FILE_CALLBACK}->($sDestFile) if $hMetaInfo->{FILE_CALLBACK};

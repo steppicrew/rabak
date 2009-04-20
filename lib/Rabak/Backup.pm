@@ -97,7 +97,7 @@ sub _setup {
     $oSourceDataConf->setQuotedValue('target.fullpath', $oTargetPeer->getFullPath());
     $oSourceDataConf->setQuotedValue('target.datadir', $sBakDataDir);
     $oSourceDataConf->setQuotedValue('target.metadir', $sBakMetaDir);
-    $oSourceDataConf->setQuotedValue('target.df.start', scalar $oTargetPeer->getDf('-B', 1));
+    $oSourceDataConf->setQuotedValue('target.df.start', scalar $oTargetPeer->getDf('-B1'));
 
     $self->_convertBackupDirs(\@sBakBaseDirs);
 
@@ -130,7 +130,9 @@ sub _setup {
     my $iTransferredBytes= 0;
     my $iTotalFiles= 0;
     my $iTransferredFiles= 0;
+    my $iFailedFiles= 0;
     unless ($oTargetPeer->pretend()) {
+        $self->{BACKUP_DATA}{FAILED_FILE_CALLBACK}= sub { $iFailedFiles++; };
         # add finish function for inode inventory (and create per-file-callback function)
         if ($oSourcePeer->getValue('inode_inventory')) {
             my $sInodesDb= $oTargetPeer->getPath($hBaksetData->{BAKSET_META_DIR} . '/inodes.db');
@@ -312,7 +314,8 @@ sub _setup {
         $oSourceDataConf->setQuotedValue('stats.transferred_bytes', $iTransferredBytes);
         $oSourceDataConf->setQuotedValue('stats.total_files', $iTotalFiles);
         $oSourceDataConf->setQuotedValue('stats.transferred_files', $iTransferredFiles);
-        $oSourceDataConf->setQuotedValue('target.df.end', scalar $oTargetPeer->getDf('-B', 1));
+        $oSourceDataConf->setQuotedValue('stats.failed_files', $iFailedFiles);
+        $oSourceDataConf->setQuotedValue('target.df.end', scalar $oTargetPeer->getDf('-B1'));
     };
 
     unless ($oTargetPeer->pretend()) {
