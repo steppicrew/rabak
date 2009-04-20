@@ -176,8 +176,7 @@ sub GetMetaBaseDir {
     
     my $sMetaDir= '/var/lib/rabak';
     $sMetaDir= $ENV{HOME} . '/.rabak/meta' unless -d $sMetaDir && -w $sMetaDir;
-    return $sMetaDir if Rabak::Peer->new()->mkdir($sMetaDir);
-    return undef;
+    return $sMetaDir;
 }
 
 sub getMetaDir {
