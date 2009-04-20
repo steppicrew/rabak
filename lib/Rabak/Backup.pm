@@ -114,7 +114,7 @@ sub _setup {
         my $sStatName= shift;
         my $sStatInfo= shift;
         $sStatName=~ s/\W/_/g;
-        $oSourceDataConf->setValue('stats.' . $sStatName, Rabak::Conf->QuoteValue($sStatInfo));
+        $oSourceDataConf->setQuotedValue('stats.' . $sStatName, $sStatInfo);
     };
     
     ########################################################
@@ -286,6 +286,9 @@ sub _setup {
     push @fFinish, sub {
         $oSourceDataConf->setQuotedValue('time.end', Rabak::Conf->GetTimeString());
         $oSourceDataConf->setQuotedValue('result', $self->{BACKUP_DATA}{BACKUP_RESULT});
+        my $sTotalBytes= $oTargetPeer->du($self->{BACKUP_DATA}{BACKUP_DATA_DIR}, '-sb') || '(unknown)';
+        $sTotalBytes= $1 if $sTotalBytes=~ /^(\d+)/;
+        $oSourceDataConf->setQuotedValue('total_bytes', $sTotalBytes);
     };
 
     unless ($oTargetPeer->pretend()) {

@@ -170,7 +170,7 @@ jQuery(function($) {
                             'Source ' + source_name, source.fullname, source.title,
                             // bakset.sources[source_name].path,
                             source.path,
-                            fmtTime(source.time), source.stats]);
+                            fmtTime(source.time), source.total_bytes + ' Bytes']);
                     });
                     html.push(tableHtml(table));
                 });

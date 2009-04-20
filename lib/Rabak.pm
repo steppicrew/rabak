@@ -183,15 +183,19 @@ sub _ApiGetSessions {
         my $sSessionName= $sSessionFile;
         $sSessionName=~ s/.*\///;
         my $hSources= {};
+        my $iTotalBytes= 0;
         for my $sSource (split(/[\s\,]+/, $hSession->{sources})) {
             $sSource=~ s/^\&//;
             $hSources->{$sSource}= $hSession->{$sSource};
+            $iTotalBytes+= $hSources->{$sSource}{total_bytes} || 0;
             delete $hSession->{$sSource};
         }
         $hSession->{sources}= $hSources;
-        $hSession->{saved}= int(rand(200000) + 30000);
+        $hSession->{saved}= $iTotalBytes || '(unknown)';
         $hSessionData->{sessions}{$sSessionName}= $hSession;
     }
+
+#print Dumper($hSessionData);
 
     return {
         error => 0,
