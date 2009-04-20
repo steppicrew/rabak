@@ -161,6 +161,8 @@ jQuery(function($) {
     var cmds= {};
 
     cmds.show_dashboard= function(params) {
+
+        params= $.extend(params, { bakset: '*' });
         api('GetSessions', params, function(data) {
             console.log(data);
             if (data.error) return;
