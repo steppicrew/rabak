@@ -729,7 +729,15 @@ sub df {
     my $sDir= $self->getPath(shift);
     my @sParams= @_;
 
-    return $self->_savecmd($self->ShellQuote('df', @sParams, $sDir));
+    return $self->_savecmd(scalar $self->ShellQuote('df', @sParams, $sDir));
+}
+
+sub du {
+    my $self= shift;
+    my $sDir= $self->getPath(shift);
+    my @sParams= @_;
+
+    return $self->_savecmd(scalar $self->ShellQuote('du', @sParams, $sDir));
 }
 
 sub isDir {
