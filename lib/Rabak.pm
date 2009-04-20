@@ -30,11 +30,12 @@ sub _getBaksets {
     
     return () unless defined $sBakset;
     
-    my @aSets= ();
-    for my $oSet (Rabak::Set->GetSets($oConf)) {
-        push @aSets, $oSet if $oSet->getFullName eq $sBakset || $sBakset eq '*';
+    my @aSets= Rabak::Set->GetSets($oConf);
+    return @aSets if $sBakset eq '*';
+    for my $oSet (@aSets) {
+        return ($oSet) if $oSet->getFullName eq $sBakset;
     }
-    return @aSets;
+    return ();
 }
 
 sub _ApiGetBaksets {
