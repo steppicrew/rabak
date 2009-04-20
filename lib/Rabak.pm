@@ -192,8 +192,8 @@ sub _ApiGetSessions {
             delete $hSession->{$sSource};
         }
         $hSession->{sources}= $hSources;
-        $hSession->{total_bytes}= $iTotalBytes || '(unknown)';
-        $hSession->{transferred_bytes}= $iTransferredBytes || '(unknown)';
+        $hSession->{total_bytes}= $iTotalBytes || -1;
+        $hSession->{transferred_bytes}= $iTransferredBytes || -1;
         $hSessionData->{sessions}{$sSessionName}= $hSession;
     }
 

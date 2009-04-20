@@ -1,6 +1,17 @@
 
 jQuery(function($) {
 
+// ============================================================================
+//      Globals
+// ============================================================================
+
+    var conf= {};
+
+
+// ============================================================================
+//      Utility Functions
+// ============================================================================
+
     var strcmp= function(a, b) {
         if (a < b) return -1;
         if (a > b) return 1;
@@ -30,7 +41,7 @@ jQuery(function($) {
         args['cmd']= cmd;
         args['sid']= sid;
         
-        jQuery.ajax({
+        $.ajax({
             url: "/api",
             type: "GET",
             data: args,
@@ -52,14 +63,6 @@ jQuery(function($) {
         });
     };
 
-    var welcome= userTitle ? userTitle: userName;
-    welcome= welcome ? '<br />Welcome, ' + welcome + '!<br /><a href="/logout?sid=' + sid + '">Log out</a>' : '';
-    $('#head').html(
-        '<div style="float: right">' + welcome + '</div>'
-    );
-
-    var conf= {};
-
     var mergeData= function(data) {
 
         var _mergeData= function(src, dst) {
@@ -76,54 +79,23 @@ jQuery(function($) {
         _mergeData(data.conf, conf);
     };
 
-    api('GetBaksets', null, function(data) {
-        console.log(data);
-        if (data.error) {
-            // error stuff
-            return;
-        }
-
-        mergeData(data);
-
-        // TODO: conf.backsets.sort();
-
-        var baksetHtml= [];
-        for (var bakset_name in conf.baksets) {
-            var bakset= conf.baksets[bakset_name];
-            baksetHtml.push('<li><a href="#show_backup_result:bakset=' + bakset.name + '">' + bakset.title + ' (' + bakset.name + ')' + '</a></li>');
-        }
-
-        $("#sidebar").html( ''
-            + '<h1>' + conf.title + '</h1>'
-            + '<h2>Jobs</h2>'
-            + '<ol>' + baksetHtml.join('') + '</ol>'
-            + '<hr />'
-            + '<a href="#test1">Test1</a>'
-        );
-    });
-
-
-// TEST ----------------------- [[
-
-    api('Test', null, function(data) {
-        console.log(data);
-    })
-
-// TEST ----------------------- ]]
-
-
-    var cmds= {};
 
     var map= function(objs, fn) {
         for (var i in objs) fn(i, objs[i]);
     };
 
+    // Same as "map", but sorts the object properties before mapping
     var sortMap= function(objs, sortFn, mapFn) {
         var lookup= [];
         for (var i in objs) lookup.push(i);
         lookup.sort(function(a,b) { return sortFn(objs[a], objs[b]); });
         for (var i in lookup) mapFn(lookup[i], objs[lookup[i]]);
     };
+
+
+// ============================================================================
+//      Date/Time Utils
+// ============================================================================
 
     var timeStrToDateObj= function(timeStr, cmpTime) {
         timeStr= timeStr.replace(/^(....)(..)(..)(..)(..)(..)$/, "$2 $3, $1 $4:$5:$6 GMT");
@@ -147,12 +119,97 @@ jQuery(function($) {
         return fmtDateObj(start) + ' ... ' + fmtDateObj(end, start);
     };
 
-    var tableHtml= function(table) {
-        var html= '';
-        map(table, function(row_i, row) {
-            html += '<tr><td>' + row.join('</td><td>') + '</td></tr>';
-        });
-        return '<table border=1>' + html + '<table>';
+    
+// ============================================================================
+//      Html Builder Helper Class
+// ============================================================================
+
+    var Html= function(pre, post) {
+        var items= [];
+
+        this.add= function(html1, html2) {
+            var item= new Html(pre, post);
+            items.push(item);
+            return item;
+        };
+
+        this.addTable= function() {
+            return this.add('<table border="1">', '</table>');
+        };
+
+        this.addRow= function(row) {
+            return this.add('<tr><td>' + row.join('</td><td>') + '</td></tr>');
+        };
+
+        this.render= function() {
+            var result= pre ? [ pre ] : [];
+            for (var i in items) {
+                result.push(items.render());
+            }
+            if (post) result.push(post);
+            return result.join('');
+        };
+        
+        return this;
+    };
+
+
+// ============================================================================
+//      Commands
+// ============================================================================
+
+    var cmds= {};
+
+    cmds.show_dashboard= function(params) {
+        api('GetSessions', params, function(data) {
+            console.log(data);
+            if (data.error) return;
+
+            mergeData(data);
+            console.log(conf);
+
+            var html= new Html();
+            html.add('<h1>' + conf.title + '</h1>');
+
+            var dashboardHtml= html.add('<div id="dashboard">', '</div>');
+
+            map(conf.baksets, function(bakset_name, bakset) {
+                var baksetHtml= dashboardHtml.add('<div style="border: 1px solidblack; float: left; width: 200px;">', '</div>');
+                baksetHtml.add('<h2>' + bakset.title + '</h2>');
+
+                sortMap(bakset.sessions,
+                    function(a, b) {
+                        return strcmp(b.time.start, a.time.start);
+                    },
+                    function(session_id, session) {
+                        session.title= fmtTime(session.time);
+                        baksetHtml.add('<h3>Session ' + session.title + '</h3>');
+
+// source.stats.text ? source.stats.text.split('\n').join('<br>\n') : '',
+
+                        var tableHtml= basketHtml.addTable();
+                        map(session.sources, function(source_name, source) {
+
+                            // TODO: Why parseInt? Because source result is returned as a  string.
+                            var icon= parseInt(source.result) ? '/static/icon_cancel.png' : '/static/icon_ok.png';
+                            icon= '<img src="' + icon + '" width="16" height="16" />';
+                            tableHtml.addRow([
+                                icon,
+                                'Source ' + source_name,
+                                source.fullname,
+                                source.title,
+                                // bakset.sources[source_name].path,
+                                source.path,
+                                fmtTime(source.time), source.stats.transferred_bytes + '/' + source.stats.total_bytes + ' Bytes',
+                            ]);
+                        });
+                    }
+                );
+
+            });
+
+            $("#body").html(html.render());
+        })
     };
 
     cmds.show_backup_result= function(params) {
@@ -178,22 +235,6 @@ jQuery(function($) {
                         session.title= fmtTime(session.time);
                         html.push('<h3>Session ' + session.title + '</h3>');
 
-                    html.push('<p>Saved: ' + session.transferred_bytes + ' Bytes<p>');
-// files
-
-// traffic
-// file_list_generation_time = 0
-// file_list_size = 47593
-// file_list_transfer_time = 0
-// literal_data = 17415
-// matched_data = 0
-// number_of_files = 1269
-// number_of_files_transferred = 1
-// total_bytes_received = 5103
-// total_bytes_sent = 70136
-// total_file_size = 2908299
-// total_transferred_file_size = 17415
-
 // source.stats.text ? source.stats.text.split('\n').join('<br>\n') : '',
 
                         var table= [];
@@ -204,7 +245,9 @@ jQuery(function($) {
                             icon= '<img src="' + icon + '" width="16" height="16" />';
                             table.push([
                                 icon,
-                                'Source ' + source_name, source.fullname, source.title,
+                                'Source ' + source_name,
+                                source.fullname,
+                                source.title,
                                 // bakset.sources[source_name].path,
                                 source.path,
                                 fmtTime(source.time), source.stats.transferred_bytes + '/' + source.stats.total_bytes + ' Bytes',
@@ -242,6 +285,11 @@ jQuery(function($) {
         $.plot($("#placeholder"), d);
     };
 
+
+// ============================================================================
+//      Live Event Handlers
+// ============================================================================
+
     $('a').live('click', function() {
         console.log("Clicked:", $(this).attr('href'));
 
@@ -268,5 +316,52 @@ jQuery(function($) {
         cmdFn(params);  // return cmdFn(params) ???
         return false;   // Oder evt abhaenging von nem params['omit_history'] ??
     });
+
+
+// ============================================================================
+//      Init
+// ============================================================================
+
+    var welcome= userTitle ? userTitle: userName;
+    welcome= welcome ? '<br />Welcome, ' + welcome + '!<br /><a href="/logout?sid=' + sid + '">Log out</a>' : '';
+    $('#head').html(
+        '<div style="float: right">' + welcome + '</div>'
+    );
+
+    api('GetBaksets', null, function(data) {
+        console.log(data);
+        if (data.error) {
+            // error stuff
+            return;
+        }
+
+        mergeData(data);
+
+        // TODO: conf.backsets.sort();
+
+        var baksetHtml= [];
+        for (var bakset_name in conf.baksets) {
+            var bakset= conf.baksets[bakset_name];
+            baksetHtml.push('<li><a href="#show_backup_result:bakset=' + bakset.name + '">' + bakset.title + ' (' + bakset.name + ')' + '</a></li>');
+        }
+
+        $("#sidebar").html( ''
+            + '<h1>' + conf.title + '</h1>'
+            + '<h2>Jobs</h2>'
+            + '<ol>' + baksetHtml.join('') + '</ol>'
+            + '<hr />'
+            + '<a href="#test1">Test1</a>'
+        );
+
+        cmds.show_dashboard();
+    });
+
+
+// TEST ----------------------- [[
+
+    api('Test', null, function(data) {
+        console.log(data);
+    })
+
 
 });
