@@ -187,8 +187,8 @@ sub _ApiGetSessions {
         for my $sSource (split(/[\s\,]+/, $hSession->{sources})) {
             $sSource=~ s/^\&//;
             $hSources->{$sSource}= $hSession->{$sSource};
-            $iTotalBytes+= $hSources->{$sSource}{total_bytes} || 0;
-            $iTransferredBytes+= $hSources->{$sSource}{transferred_bytes} || 0;
+            $iTotalBytes+= $hSources->{$sSource}{stats}{total_bytes} || 0;
+            $iTransferredBytes+= $hSources->{$sSource}{stats}{transferred_bytes} || 0;
             delete $hSession->{$sSource};
         }
         $hSession->{sources}= $hSources;

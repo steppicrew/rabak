@@ -158,6 +158,20 @@ jQuery(function($) {
                     html.push('<h3>Session ' + session.title + '</h3>');
 
                     html.push('<p>Saved: ' + session.transferred_bytes + ' Bytes<p>');
+// files
+
+// traffic
+// file_list_generation_time = 0
+// file_list_size = 47593
+// file_list_transfer_time = 0
+// literal_data = 17415
+// matched_data = 0
+// number_of_files = 1269
+// number_of_files_transferred = 1
+// total_bytes_received = 5103
+// total_bytes_sent = 70136
+// total_file_size = 2908299
+// total_transferred_file_size = 17415
 
                     var table= [];
                     map(session.sources, function(source_name, source) {
