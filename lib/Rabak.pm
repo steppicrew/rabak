@@ -178,16 +178,6 @@ sub _ApiGetSessions {
     
     my @sSessionFiles= $oTargetPeer->glob("$sMetaDir/session.*.$sBakset");
     for my $sSessionFile (@sSessionFiles) {
-<<<<<<< HEAD:lib/Rabak.pm
-        my $sContent= $oTargetPeer->cat($sSessionFile);
-        my $session;
-        eval "$sContent; 1;";
-        next unless defined $session;
-        
-        $session->{saved}= int(rand(200000) + 30000);
-
-        $hSessions->{scalar keys %$hSessions}= $session;
-=======
         my $sLocalSessionFile= $oTargetPeer->getLocalFile($sSessionFile, SUFFIX => '.session');
         my $hSession= Rabak::ConfFile->new($sLocalSessionFile)->conf()->getValues();
         my $sSessionName= $sSessionFile;
@@ -199,27 +189,17 @@ sub _ApiGetSessions {
             delete $hSession->{$sSource};
         }
         $hSession->{sources}= $hSources;
+        $hSession->{saved}= int(rand(200000) + 30000);
         $hSessionData->{sessions}{$sSessionName}= $hSession;
->>>>>>> 6d02c6748f6a2d66041cd4c9637220406d2ecf49:lib/Rabak.pm
     }
 
     return {
         error => 0,
-<<<<<<< HEAD:lib/Rabak.pm
         conf => {
             file => '/home/raisin/.rabak/rabak.cf',
             title => 'Raisin\'s Config',
             baksets => {
-                'example' => $hResult,
-=======
-        'confs' => {
-            raisin => {
-                file => '/home/raisin/.rabak/rabak.cf',
-                title => 'Raisin\'s Config',
-                baksets => {
-                    $sBakset => $hSessionData,
-                },
->>>>>>> 6d02c6748f6a2d66041cd4c9637220406d2ecf49:lib/Rabak.pm
+                $sBakset => $hSessionData,
             },
         }
     };
