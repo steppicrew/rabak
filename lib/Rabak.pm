@@ -184,16 +184,25 @@ sub _ApiGetSessions {
         my $hSources= {};
         my $iTotalBytes= 0;
         my $iTransferredBytes= 0;
+        my $iTotalFiles= 0;
+        my $iTransferredFiles= 0;
+        my $iFailedFiles= 0;
         for my $sSource (split(/[\s\,]+/, $hSession->{sources})) {
             $sSource=~ s/^\&//;
             $hSources->{$sSource}= $hSession->{$sSource};
             $iTotalBytes+= $hSources->{$sSource}{stats}{total_bytes} || 0;
             $iTransferredBytes+= $hSources->{$sSource}{stats}{transferred_bytes} || 0;
+            $iTotalFiles+= $hSources->{$sSource}{stats}{total_files} || 0;
+            $iTransferredFiles+= $hSources->{$sSource}{stats}{transferred_files} || 0;
+            $iFailedFiles+= $hSources->{$sSource}{stats}{failed_files} || 0;
             delete $hSession->{$sSource};
         }
         $hSession->{sources}= $hSources;
         $hSession->{total_bytes}= $iTotalBytes || '(unknown)';
         $hSession->{transferred_bytes}= $iTransferredBytes || '(unknown)';
+        $hSession->{total_files}= $iTotalFiles || -1;
+        $hSession->{transferred_files}= $iTransferredFiles || -1;
+        $hSession->{failed_files}= $iFailedFiles || -1;
         $hSessionData->{sessions}{$sSessionName}= $hSession;
     }
 
