@@ -555,8 +555,11 @@ sub run {
             for my $sLine (@_) {
                 chomp $sLine;
                 # detect some warnings
-                if ($sLine =~ /^file has vanished\: \".*\"$/) {
+                if ($sLine =~ /^file has vanished\: \"(.*)\"$/) {
+                    my $sFile= $1;
                     logger->warn($sLine);
+                    $hMetaInfo->{FAILED_FILE_CALLBACK}->("$sTargetDir/$sFile") if $hMetaInfo->{FAILED_FILE_CALLBACK};
+                    
                     next;
                 }
                 if ($sLine =~ /^total\:/) {
@@ -601,7 +604,9 @@ sub run {
             for my $sLine (@_) {
                 chomp $sLine;
                 if ($sLine =~ /^rsync\: link \"$sqTargetDir\/(.+)\" \=\> .+ failed\: Too many links/) {
-                    push @sLinkErrors, $1;
+                    my $sFile= $1;
+                    push @sLinkErrors, $sFile;
+                    $hMetaInfo->{FAILED_FILE_CALLBACK}->("$sTargetDir/$sFile") if $hMetaInfo->{FAILED_FILE_CALLBACK};
                     logger->verbose($sLine);
                     next;
                 }

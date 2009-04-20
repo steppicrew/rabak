@@ -94,9 +94,10 @@ sub _setup {
     my $sBakDataDir= $sBakDir . '/data';
     my $sBakMetaDir= $sBakDir . '/meta';
     
-    $oSourceDataConf->setValue('target.fullpath', $oTargetPeer->getFullPath());
-    $oSourceDataConf->setValue('target.datadir', $sBakDataDir);
-    $oSourceDataConf->setValue('target.metadir', $sBakMetaDir);
+    $oSourceDataConf->setQuotedValue('target.fullpath', $oTargetPeer->getFullPath());
+    $oSourceDataConf->setQuotedValue('target.datadir', $sBakDataDir);
+    $oSourceDataConf->setQuotedValue('target.metadir', $sBakMetaDir);
+    $oSourceDataConf->setQuotedValue('target.df.start', scalar $oTargetPeer->getDf('-B1'));
 
     $self->_convertBackupDirs(\@sBakBaseDirs);
 
@@ -127,7 +128,11 @@ sub _setup {
     
     my $iTotalBytes= 0;
     my $iTransferredBytes= 0;
+    my $iTotalFiles= 0;
+    my $iTransferredFiles= 0;
+    my $iFailedFiles= 0;
     unless ($oTargetPeer->pretend()) {
+        $self->{BACKUP_DATA}{FAILED_FILE_CALLBACK}= sub { $iFailedFiles++; };
         # add finish function for inode inventory (and create per-file-callback function)
         if ($oSourcePeer->getValue('inode_inventory')) {
             my $sInodesDb= $oTargetPeer->getPath($hBaksetData->{BAKSET_META_DIR} . '/inodes.db');
@@ -155,7 +160,7 @@ sub _setup {
                     logger->debug("done");
                     $inodeStore= Rabak::InodeCache->new({
                         inodes_db => $sLocalInodesDb,
-                    });
+                    }); 
                     my $sLocalFilesInodeDb= $oTargetPeer->localTempfile(SUFFIX => '.files_inode.db');
                     $hTempFilesMap->{$sFilesInodeDb}= $sLocalFilesInodeDb;
                     $inodeStore->prepareInformationStore(
@@ -184,7 +189,11 @@ sub _setup {
                                 my $sFlags= pop @sParams;
                                 $inodeStore->addFile($sFileName, @sParams);
                                 $iTotalBytes+= $sParams[7];
-                                $iTransferredBytes+= $sParams[7] unless $sFlags=~ /h/;
+                                $iTotalFiles++;
+                                unless ($sFlags=~ /h/) {
+                                    $iTransferredBytes+= $sParams[7];
+                                    $iTransferredFiles++;
+                                }
                             }
                         },
                         STDERR => sub {
@@ -251,7 +260,11 @@ sub _setup {
                             my @sStat= lstat $sFile;
                             $inodeStore->addFile($sFile, @sStat);
                             $iTotalBytes+= $sStat[7];
-                            $iTransferredBytes+= $sStat[7] unless $sFlags=~ /h/;
+                            $iTotalFiles++;
+                            unless ($sFlags=~ /h/) {
+                                $iTransferredBytes+= $sStat[7];
+                                $iTransferredFiles++;
+                            }
                             next;
                         }
                         push @sInventFiles, [$sFile, $sFlags];
@@ -299,6 +312,10 @@ sub _setup {
         $oSourceDataConf->setQuotedValue('result', $self->{BACKUP_DATA}{BACKUP_RESULT});
         $oSourceDataConf->setQuotedValue('stats.total_bytes', $iTotalBytes);
         $oSourceDataConf->setQuotedValue('stats.transferred_bytes', $iTransferredBytes);
+        $oSourceDataConf->setQuotedValue('stats.total_files', $iTotalFiles);
+        $oSourceDataConf->setQuotedValue('stats.transferred_files', $iTransferredFiles);
+        $oSourceDataConf->setQuotedValue('stats.failed_files', $iFailedFiles);
+        $oSourceDataConf->setQuotedValue('target.df.end', scalar $oTargetPeer->getDf('-B1'));
     };
 
     unless ($oTargetPeer->pretend()) {
