@@ -1,6 +1,12 @@
 
 jQuery(function($) {
 
+    var strcmp= function(a, b) {
+        if (a < b) return -1;
+        if (a > b) return 1;
+        return 0;
+    };
+
     var show_login_form= function() {
         var message= loginError ? "Login failed!! Please try again..." : "Welcome, please log in!";
         $('#body').html(''
@@ -52,8 +58,6 @@ jQuery(function($) {
         '<div style="float: right">' + welcome + '</div>'
     );
 
-// TEST ----------------------- [[
-
     var conf= {};
 
     var mergeData= function(data) {
@@ -81,19 +85,25 @@ jQuery(function($) {
 
         mergeData(data);
 
-        var html= [];
-        html.push('<li>' + conf.title + '</li>');
+        // TODO: conf.backsets.sort();
 
+        var baksetHtml= [];
         for (var bakset_name in conf.baksets) {
             var bakset= conf.baksets[bakset_name];
-            html.push('<li><a href="#show_backup_result:bakset=' + bakset.name + '">' + bakset.title + ' (' + bakset.name + ')' + '</a></li>');
+            baksetHtml.push('<li><a href="#show_backup_result:bakset=' + bakset.name + '">' + bakset.title + ' (' + bakset.name + ')' + '</a></li>');
         }
 
-        $("#sidebar").html('<ol>' + html.join('') + '</ol>'
+        $("#sidebar").html( ''
+            + '<h1>' + conf.title + '</h1>'
+            + '<h2>Jobs</h2>'
+            + '<ol>' + baksetHtml.join('') + '</ol>'
             + '<hr />'
             + '<a href="#test1">Test1</a>'
         );
     });
+
+
+// TEST ----------------------- [[
 
     api('Test', null, function(data) {
         console.log(data);
@@ -104,8 +114,15 @@ jQuery(function($) {
 
     var cmds= {};
 
-    var map= function(obj, fn) {
-        for (var i in obj) fn(i, obj[i]);
+    var map= function(objs, fn) {
+        for (var i in objs) fn(i, objs[i]);
+    };
+
+    var sortMap= function(objs, sortFn, mapFn) {
+        var lookup= [];
+        for (var i in objs) lookup.push(i);
+        lookup.sort(function(a,b) { return sortFn(objs[a], objs[b]); });
+        for (var i in lookup) mapFn(lookup[i], objs[lookup[i]]);
     };
 
     var timeStrToDateObj= function(timeStr, cmpTime) {
@@ -153,9 +170,13 @@ jQuery(function($) {
             map(conf.baksets, function(bakset_name, bakset) {
                 html.push('<h2>' + bakset.title + '</h2>');
 
-                map(bakset.sessions, function(session_id, session) {
-                    session.title= fmtTime(session.time);
-                    html.push('<h3>Session ' + session.title + '</h3>');
+                sortMap(bakset.sessions,
+                    function(a, b) {
+                        return strcmp(b.time.start, a.time.start);
+                    },
+                    function(session_id, session) {
+                        session.title= fmtTime(session.time);
+                        html.push('<h3>Session ' + session.title + '</h3>');
 
 // files
 
@@ -172,25 +193,26 @@ jQuery(function($) {
 // total_file_size = 2908299
 // total_transferred_file_size = 17415
 
-                    // html.push('<p>Saved: ' + session.saved + ' Bytes<p>');
+                        // html.push('<p>Saved: ' + session.saved + ' Bytes<p>');
 
-                    var table= [];
-                    map(session.sources, function(source_name, source) {
+                        var table= [];
+                        map(session.sources, function(source_name, source) {
 
-                        // TODO: Why parseInt? Because source result is returned as a  string.
-                        var icon= parseInt(source.result) ? '/static/icon_cancel.png' : '/static/icon_ok.png';
-                        icon= '<img src="' + icon + '" width="16" height="16" />';
-                        table.push([
-                            icon,
-                            'Source ' + source_name, source.fullname, source.title,
-                            // bakset.sources[source_name].path,
-                            source.path,
+                            // TODO: Why parseInt? Because source result is returned as a  string.
+                            var icon= parseInt(source.result) ? '/static/icon_cancel.png' : '/static/icon_ok.png';
+                            icon= '<img src="' + icon + '" width="16" height="16" />';
+                            table.push([
+                                icon,
+                                'Source ' + source_name, source.fullname, source.title,
+                                // bakset.sources[source_name].path,
+                                source.path,
 
 //                            fmtTime(source.time), source.stats.total_bytes_sent]);
-                            fmtTime(source.time), source.total_bytes + ' Bytes']);
-                    });
-                    html.push(tableHtml(table));
-                });
+                                fmtTime(source.time), source.total_bytes + ' Bytes']);
+                        });
+                        html.push(tableHtml(table));
+                    }
+                );
             });
 
             $("#body").html(html.join(''));
