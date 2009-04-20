@@ -213,7 +213,8 @@ sub removeBackslashesPart2 {
     return $sValue if ref $sValue;
 
     # Insert support for tab etc.. here
-    # $sValue =~ s/\\t/\t/g;
+    $sValue =~ s/\\t/\t/g;
+    $sValue =~ s/\\n/\n/g;
 
     # remove all backslashes not followed by "~"
     $sValue =~ s/\\(?!\~)//g;
@@ -238,6 +239,8 @@ sub QuoteValue {
     return $sValue unless $sValue=~ /[\s\,\'\"]/ || $sValue eq '';
     $sValue=~ s/\\/\\\\/g;
     $sValue=~ s/\'/\\\'/g;
+    $sValue=~ s/\n/\\n/g;
+    $sValue=~ s/\t/\\t/g;
     return "'$sValue'";
 }
 

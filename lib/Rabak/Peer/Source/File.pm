@@ -544,20 +544,12 @@ sub run {
     my @sLinkErrors= ();
     my $sTargetDir= $hMetaInfo->{DATA_DIR};
     my $sqTargetDir= quotemeta $sTargetDir;
-    my $fHandleHardLinksTo= sub{
-        my $sFile= shift;
-        my $sLink= shift;
-#        logger->verbose("Linking file \"$sFile\" to \"$sLink\"");
-    };
-    my $fHandleHardLinksToPrev= sub{
-        my $sFile= shift;
-#        logger->verbose("Linking file \"$sFile\" to a previous version")
-    };
+    my $fHandleLinkedFile= undef;
     my $fHandleChangedFile= sub{
         my $sFile= shift;
         logger->verbose("backed up \"$sFile\"")
     };
-    my $sStatPrefix= '';
+    my @sStatText= ();
     my %Handles= (
         STDOUT => sub {
             for my $sLine (@_) {
@@ -583,29 +575,24 @@ sub run {
                     }
                     if ($sLine =~ /^([\>\<ch\.\*][fdLDS][ \.\+\?cstpoguax]{9})\s(.+)$/) {
                         my ($flags, $sFile) = ($1, $2);
+                        my $sCallbackFlags= '';
                         next if $sFile eq './';
                         # skip symlinks
                         next if $flags=~ /^.L/;
-                        $hMetaInfo->{FILE_CALLBACK}->("$sTargetDir/$sFile") if $hMetaInfo->{FILE_CALLBACK};
+                        # handle hard links
                         if ($flags=~ /^h/) {
-                            if ($sFile =~ s/ \=\> (.+)$//) {
-                                $fHandleHardLinksTo->($sFile, $1);
-                            }
-                            else {
-                                $fHandleHardLinksToPrev->($sFile);
-                            }
+                            $fHandleLinkedFile->($sFile) if $fHandleLinkedFile;
+                            $sCallbackFlags.= 'h';
                         }
                         else {
-                            $fHandleChangedFile->($sFile);
+                            $fHandleChangedFile->($sFile) if $fHandleChangedFile;
                         }
+                        $hMetaInfo->{FILE_CALLBACK}->("$sTargetDir/$sFile", $sCallbackFlags) if $hMetaInfo->{FILE_CALLBACK};
                         next;
                     }
                 }
                 elsif ($hMetaInfo->{STATISTICS_CALLBACK}) {
-                    my ($sName, $sInfo)= ($1, $2) if $sLine=~ /^(.+?)\:\s*(.+)/;
-                    if ($sName && $sInfo) {
-                        $hMetaInfo->{STATISTICS_CALLBACK}->($sStatPrefix . $sName, $sInfo) if $sName && $sInfo;
-                    }
+                    push @sStatText, $sLine;
                 }
                 logger->info($sLine);
             } 
@@ -638,7 +625,7 @@ sub run {
         print $fhwFiles join("\n", @sLinkErrors), "\n";
         close $fhwFiles;
 
-        $sStatPrefix= 'hardlink_fixup_';
+        push @sStatText, "", "Statistic for fixed hard links";
 
         # copy files file to source if rsync is run remotely
         if ($oRsyncPeer->isRemote()) {
@@ -661,6 +648,8 @@ sub run {
         logger->decIndent();
         logger->info("...done fixing hard link errors.");
     }
+
+    $hMetaInfo->{STATISTICS_CALLBACK}->(@sStatText);
 
     # return success for partial transfer errors (errors were logged already above)
     return 0 if $iRsyncExit == 23 || $iRsyncExit == 24;

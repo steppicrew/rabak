@@ -163,8 +163,8 @@ sub _ApiGetSessions {
         error_text => "Bakset '$sBakset' does not exist.",
     } unless $oSet;
 
+    my $sMetaDir= $oSet->GetMetaBaseDir();
     my $oTargetPeer= $oSet->getTargetPeer();
-    my $sMetaDir= $oTargetPeer->getPath($oTargetPeer->GetMetaDir());
     
     my $hSessionData= {
         conf_file => $sConfFileName,
@@ -176,26 +176,28 @@ sub _ApiGetSessions {
         sessions => {},
     };
     
-    my @sSessionFiles= $oTargetPeer->glob("$sMetaDir/session.*.$sBakset");
+    my @sSessionFiles= glob "$sMetaDir/*/session.*.$sBakset";
     for my $sSessionFile (@sSessionFiles) {
-        my $sLocalSessionFile= $oTargetPeer->getLocalFile($sSessionFile, SUFFIX => '.session');
-        my $hSession= Rabak::ConfFile->new($sLocalSessionFile)->conf()->getValues();
+        my $hSession= Rabak::ConfFile->new($sSessionFile)->conf()->getValues();
         my $sSessionName= $sSessionFile;
         $sSessionName=~ s/.*\///;
         my $hSources= {};
         my $iTotalBytes= 0;
+        my $iTransferredBytes= 0;
         for my $sSource (split(/[\s\,]+/, $hSession->{sources})) {
             $sSource=~ s/^\&//;
             $hSources->{$sSource}= $hSession->{$sSource};
-            $iTotalBytes+= $hSources->{$sSource}{total_bytes} || 0;
+            $iTotalBytes+= $hSources->{$sSource}{stats}{total_bytes} || 0;
+            $iTransferredBytes+= $hSources->{$sSource}{stats}{transferred_bytes} || 0;
             delete $hSession->{$sSource};
         }
         $hSession->{sources}= $hSources;
-        $hSession->{saved}= $iTotalBytes || '(unknown)';
+        $hSession->{total_bytes}= $iTotalBytes || '(unknown)';
+        $hSession->{transferred_bytes}= $iTransferredBytes || '(unknown)';
         $hSessionData->{sessions}{$sSessionName}= $hSession;
     }
 
-#print Dumper($hSessionData);
+# print Dumper($hSessionData);
 
     return {
         error => 0,
@@ -220,7 +222,7 @@ sub API {
         my $do_cmd= "_Api$cmd";
         $result= &$do_cmd($params);
     };
-    return { error => 500, error_text => "Command '$cmd' unknown" } if $@;
+    return { error => 500, error_text => "Command '$cmd' unknown\n$@" } if $@;
     
     return $result;
 }
