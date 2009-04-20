@@ -114,6 +114,8 @@ sub _setup {
         my $sStatName= shift;
         my $sStatInfo= shift;
         $sStatName=~ s/\W/_/g;
+        $sStatInfo= $1 if $sStatInfo =~ /^(\d+)\s+bytes?$/;
+        $sStatInfo= $1 if $sStatInfo =~ /^(\d+)(?:\.\d+)?\s+seconds?$/;
         $oSourceDataConf->setValue('stats.' . $sStatName, Rabak::Conf->QuoteValue($sStatInfo));
     };
     
