@@ -28,6 +28,8 @@ sub _getBakset {
     my $oConf= shift;
     my $sBakset= shift;
     
+    return undef unless defined $sBakset;
+    
     for my $oSet (Rabak::Set->GetSets($oConf)) {
         return $oSet if $oSet->getFullName eq $sBakset;
     }
@@ -74,80 +76,6 @@ sub _ApiGetBaksetStatus {
     # $param->{bakset}..
 
     return { error => 500, error_text => 'Not implemented' };
-}
-
-# STUB!
-sub _apiGetSessions_______stub {
-    my $param= shift;
-
-    # $param->{bakset}
-    # $param->{from}
-    # $param->{until}
-
-    # gebaut mit 20090409000021
-    my $example1 = {
-            'cmdline' => './rabak backup example',
-            'bakset' => 'example',
-            'blaim' => 'steppi@hamail.de',
-            # 'version' => '1',
-
-            'target' => {
-                'name' => 'blubtarget',
-                'title' => 'Platte unterm Tisch'
-            },
-
-            'sources' => {
-                'source0' => {
-                    'path' => 'file:///',
-                },
-                'source_pg' => {
-                    'path' => 'psql://localhost/bctiny',
-                },
-            },
-
-            'sessions' => {
-                12 => {
-                    'time' => {
-                        'start' => '20090409000001 GMT',
-                        'end' => '20090409000810 GMT',
-                    },
-                    'target' => {
-                        'uuid' => 'BF733C62-29F7-11DE-A32E-A9BFECDD0C97',
-                    },
-                    'sources' => {
-                        'source_pg' => {
-                            'time' => {
-                                'start' => '20090409000210 GMT',
-                                'end' => '20090409000810 GMT',
-                            },
-                            'stats' => '140MB copied',
-                            'result' => '1'
-                        },
-                        'source0' => {
-                            'warnings' => '3',
-                            'errors' => '0',
-                            'time' => {
-                                'end' => '20090409000210 GMT',
-                                'start' => '20090409000001 GMT'
-                            },
-                            'stats' => '123 files written',
-                            'result' => '0'
-                        },
-                    },
-                }
-            },
-    };
-
-    return {
-        error => 0,
-        conf => {
-            file => '/home/raisin/.rabak/rabak.cf',
-            title => 'Raisin\'s Config',
-            baksets => {
-                'example' => $example1,
-            },
-        }
-    };
 }
 
 sub _ApiGetSessions {
