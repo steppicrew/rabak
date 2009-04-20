@@ -111,6 +111,20 @@ sub mountErrorIsFatal {
     return $iMountResult;
 }
 
+sub getDf {
+    my $self= shift;
+    my @sParams= @_;
+    
+    my $sDfResult = $self->df(undef, @sParams);
+
+    unless ($sDfResult =~ /^\S+\s+(\d+)\s+(\d+)\s+(\d+)\s+/m && $1 > 100) {
+        logger->error("Could not get free disc space!", $sDfResult);
+        return (undef, undef, undef);
+    }
+    return ($1, $2, $3) if wantarray;
+    return $2;
+}
+
 sub _checkDf {
     my $self= shift;
 
@@ -120,13 +134,7 @@ sub _checkDf {
     my $iStValue= $sSpaceThreshold =~ /\b([\d\.]+)/ ? $1 : 0;
     my $sStUnit= 'K';
     $sStUnit = uc($1) if $sSpaceThreshold =~ /$iStValue\s*([gmkb\%])/i;
-    my $sDfResult = $self->df(undef, '-k');
-
-    unless ($sDfResult =~ /^\S+\s+(\d+)\s+\d+\s+(\d+)\s+/m && $1 > 100) {
-        logger->error("Could not get free disc space!", $sDfResult);
-        return undef;
-    }
-    my ($iDfSize, $iDfAvail) = ($1, $2);
+    my ($iDfSize, $iDfAvail) = $self->getDf('-k');
     $iDfAvail /= $iDfSize / 100 if $sStUnit eq '%';
     $iDfAvail >>= 20            if $sStUnit eq 'G';
     $iDfAvail >>= 10            if $sStUnit eq 'M';
