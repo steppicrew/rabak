@@ -157,7 +157,7 @@ jQuery(function($) {
                     session.title= fmtTime(session.time);
                     html.push('<h3>Session ' + session.title + '</h3>');
 
-                    html.push('<p>Saved: ' + session.saved + ' Bytes<p>');
+                    html.push('<p>Saved: ' + session.transferred_bytes + ' Bytes<p>');
 
                     var table= [];
                     map(session.sources, function(source_name, source) {
@@ -170,7 +170,9 @@ jQuery(function($) {
                             'Source ' + source_name, source.fullname, source.title,
                             // bakset.sources[source_name].path,
                             source.path,
-                            fmtTime(source.time), source.total_bytes + ' Bytes']);
+                            fmtTime(source.time), source.stats.transferred_bytes + '/' + source.stats.total_bytes + ' Bytes',
+//                            source.stats.text ? source.stats.text.split('\n').join('<br>\n') : '',
+                        ]);
                     });
                     html.push(tableHtml(table));
                 });

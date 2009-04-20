@@ -94,6 +94,7 @@ sub _setup {
     my $sBakDataDir= $sBakDir . '/data';
     my $sBakMetaDir= $sBakDir . '/meta';
     
+    $oSourceDataConf->setValue('target.fullpath', $oTargetPeer->getFullPath());
     $oSourceDataConf->setValue('target.datadir', $sBakDataDir);
     $oSourceDataConf->setValue('target.metadir', $sBakMetaDir);
 
@@ -111,10 +112,8 @@ sub _setup {
     $self->_writeVersion($sBakDir);
     
     $self->{BACKUP_DATA}{STATISTICS_CALLBACK}= sub {
-        my $sStatName= shift;
-        my $sStatInfo= shift;
-        $sStatName=~ s/\W/_/g;
-        $oSourceDataConf->setQuotedValue('stats.' . $sStatName, $sStatInfo);
+        my @sStatText= @_;
+        $oSourceDataConf->setQuotedValue('stats.text', join("\n", @sStatText));
     };
     
     ########################################################
@@ -126,6 +125,8 @@ sub _setup {
         sub {$oSourcePeer->finishBackup($self->{BACKUP_DATA}{BACKUP_RESULT})},
     );
     
+    my $iTotalBytes= 0;
+    my $iTransferredBytes= 0;
     unless ($oTargetPeer->pretend()) {
         # add finish function for inode inventory (and create per-file-callback function)
         if ($oSourcePeer->getValue('inode_inventory')) {
@@ -136,7 +137,9 @@ sub _setup {
                 my ($fh, $sFileListFile)= $oTargetPeer->localTempfile(SUFFIX => '.filelist.txt');
 
                 $self->{BACKUP_DATA}{FILE_CALLBACK}= sub {
-                    print $fh join "\n", @_, '';
+                    my $sFileName= shift;
+                    my $sFlags= shift || '';
+                    print $fh "$sFlags:$sFileName\n";
                 };
 
                 # remember temporary->remote file names for later uploading
@@ -172,14 +175,17 @@ sub _setup {
                         STDOUT => sub {
                             for my $sLine (@_) {
                                 chomp $sLine;
-                                my @sParams= split /\:/, $sLine, 14;        #/
-                                if (scalar @sParams < 14) {
+                                my @sParams= split /\:/, $sLine, 15;        #/
+                                if (scalar @sParams < 15) {
                                     logger->error("Error parsing inventory data (\"$sLine\").");
                                     next;
                                 }
                                 # rotate file name from end to front
-                                unshift @sParams, pop(@sParams);
-                                $inodeStore->addFile(@sParams);
+                                my $sFileName= pop @sParams;
+                                my $sFlags= pop @sParams;
+                                $inodeStore->addFile($sFileName, @sParams);
+                                $iTotalBytes+= $sParams[7];
+                                $iTransferredBytes+= $sParams[7] unless $sFlags=~ /h/;
                             }
                         },
                         STDERR => sub {
@@ -190,7 +196,8 @@ sub _setup {
                         '# get data for indoe inventory
                         while (<>) {
                             chomp;
-                            print join(":", lstat, $_), "\n";
+                            my ($sFlags, $sFileName)= split /\:/, $_, 2;
+                            print join(":", lstat $sFileName, $sFlags, $sFileName), "\n";
                         }',
                         undef, undef, \%Handles,
                     );
@@ -235,15 +242,20 @@ sub _setup {
  
                 $self->{BACKUP_DATA}{FILE_CALLBACK}= sub {
                     # add only existant files, remember nonexistant (files may be created after logging)
-                    push @sInventFiles, @_;
+                    my $sFile= shift;
+                    my $sFlags= shift || '';
+                    push @sInventFiles, [$sFile, $sFlags] if defined $sFile;
                     my $count= scalar @sInventFiles;
                     while ($count--) {
-                        my $sFile= shift @sInventFiles;
+                        ($sFile, $sFlags)= @{ shift @sInventFiles };
                         if (-e $sFile) {
-                            $inodeStore->addFile($sFile);
+                            my @sStat= lstat $sFile;
+                            $inodeStore->addFile($sFile, @sStat);
+                            $iTotalBytes+= $sStat[7];
+                            $iTransferredBytes+= $sStat[7] unless $sFlags=~ /h/;
                             next;
                         }
-                        push @sInventFiles, $sFile;
+                        push @sInventFiles, [$sFile, $sFlags];
                     }
                     return scalar @sInventFiles;
                 };
@@ -286,9 +298,8 @@ sub _setup {
     push @fFinish, sub {
         $oSourceDataConf->setQuotedValue('time.end', Rabak::Conf->GetTimeString());
         $oSourceDataConf->setQuotedValue('result', $self->{BACKUP_DATA}{BACKUP_RESULT});
-        my $sTotalBytes= $oTargetPeer->du($self->{BACKUP_DATA}{BACKUP_DATA_DIR}, '-sb') || '(unknown)';
-        $sTotalBytes= $1 if $sTotalBytes=~ /^(\d+)/;
-        $oSourceDataConf->setQuotedValue('total_bytes', $sTotalBytes);
+        $oSourceDataConf->setQuotedValue('stats.total_bytes', $iTotalBytes);
+        $oSourceDataConf->setQuotedValue('stats.transferred_bytes', $iTransferredBytes);
     };
 
     unless ($oTargetPeer->pretend()) {
