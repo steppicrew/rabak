@@ -143,6 +143,22 @@ jQuery(function($) {
             return this.add('<tr><td>' + row.join('</td><td>') + '</td></tr>');
         };
 
+        // extraClass: undefined, "open", "detail"
+        this.addFlex= function(title, extraClass) {
+            if (extraClass) extraClass= ' ' + extraClass;
+            var flexHtml= this.add('<div class="flex' + extraClass + '">', '</div>');
+            flexHtml.add('<div class="title">' + title + '</div>');
+            return flexHtml.add('<div class="body">', '</div>');
+        };
+
+        // Only call once for each flex, then simply call add
+        // pre and post are optional
+        this.addFlexDetail= function(pre, post) {
+            var detailHtml=  this.add('<div class="flex-detail">', '</div>');
+            detailHtml.add(pre, post);
+            return detailHtml;
+        };
+
         this.render= function() {
             var result= pre ? [ pre ] : [];
             for (var i in items) {
@@ -175,10 +191,14 @@ jQuery(function($) {
             var html= new Html();
             html.add('<h1>' + conf.title + '</h1>');
 
+            var flexHtml= html.addFlex('TextFlex', 'open');
+            flexHtml.add('TestFlex');
+            flextHtml.addFlexDetail('TestFlex Detail');
+
             var dashboardHtml= html.add('<div id="dashboard">', '</div>');
 
             map(conf.baksets, function(bakset_name, bakset) {
-                var baksetHtml= dashboardHtml.add('<div style="border: 1px solid black; margin: 10px; float: left; width: 220px;">', '</div>');
+                var baksetHtml= dashboardHtml.add('<div class="bakset">', '</div>');
                 baksetHtml.add('<h2>' + bakset.title + '</h2>');
 
                 sortMap(bakset.sessions,
@@ -319,6 +339,9 @@ jQuery(function($) {
         return false;   // Oder evt abhaenging von nem params['omit_history'] ??
     });
 
+    $('.flex').live('click', function() {
+        $(this).toggleClass('open');
+    });
 
 // ============================================================================
 //      Init
