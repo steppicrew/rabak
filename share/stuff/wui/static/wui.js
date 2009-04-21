@@ -98,8 +98,10 @@ jQuery(function($) {
 // ============================================================================
 
     var timeStrToDateObj= function(timeStr, cmpTime) {
-        timeStr= timeStr.replace(/^(....)(..)(..)(..)(..)(..)$/, "$2 $3, $1 $4:$5:$6 GMT");
-        return new Date(timeStr);
+        var re= timeStr.match(/^(....)(..)(..)(..)(..)(..)$/);
+        if (!re) return null;
+
+        return new Date(Date.UTC(re[1], re[2], re[3], re[4], re[5], re[6])); 
     };
 
     var fmtDateObj= function(d, cmpDate) {
