@@ -161,7 +161,7 @@ The line C<[]> resets the object's prefix to nothing.
 Identifiers in C<[...]> are simply prepended to following identifiers, so
 you can have multiple ini sections with the same name.
 
-You define I<backup sets>, each must have a title, one or more sources and a target.
+You define I<jobs>, each must have a title, one or more sources and a target.
 As a default, B<rabak> looks for F<rabak.cf> as its configuration file, which may look like this:
 
   [mybackup]
@@ -184,7 +184,7 @@ To make the actual backup, drop the C<-p> switch:
 
   rabak backup mybackup
 
-You can have multiple backup sets in your configuration file and use variables:
+You can have multiple jobs in your configuration file and use variables:
 
   []
   my_target = /mnt/sda1/rabak
@@ -245,7 +245,7 @@ You can specify file system type and additional mount options with
   type= cifs
   opts= "username=$smb_user,password=$smb_passwd,ro"
 
-Probably you want to use the same mount point for several backup sets.
+Probably you want to use the same mount point for several jobs.
 So you can use a variable to define it.
 Replace the last addition by this code:
 
@@ -312,7 +312,7 @@ in the following form:
 
   targetvalues= <target group>[.<target value>]
 
-You can specify a target group in your backup set by:
+You can specify a target group in your job by:
 
   mytarget.group = byweekday
 
@@ -380,14 +380,14 @@ Valid units are 'B'yte, 'K' (default), 'M'ega, 'G'iga and '%'.
 All target pathes are relative to the path specified in target
 object's path property.
 
-The backup's path consists of a monthly directory with an extension set by bak set
+The backup's path consists of a monthly directory with an extension set by job's
 name and a daily directory with an extension set by source object in the
 following form:
-C<YYYY-MM.[bak set's extension]/YYYY-MM-DD.[source's extension]>
+C<YYYY-MM.[job's extension]/YYYY-MM-DD.[source's extension]>
 (C<YYYY> is the current year with four digets, C<MM> is the current month with
 two digits and C<DD> is the current day with two digets).
 
-By default the name of bak set and source are used as directory extensions.
+By default the name of job and source are used as directory extensions.
 
 The following example would create a backup directory
 C</mnt/rabak/YYYY-MM.full/YYYY-MM-DD.sample_source>:
@@ -399,16 +399,16 @@ C</mnt/rabak/YYYY-MM.full/YYYY-MM-DD.sample_source>:
 
 You may set the extension explicitly by specifying a C<path_extension> property.
 The following example would create a backup directory
-C</mnt/rabak/YYYY-MM.baksets_ext/YYYY-MM-DD.sources_ext>:
+C</mnt/rabak/YYYY-MM.jobs_ext/YYYY-MM-DD.sources_ext>:
   sample_source.path = /
   sample_source.path_extension = sources_ext
   [full]
   title = Complete Backup
   source = &sample_source
   target = /mnt/rabak
-  path_extension = baksets_ext
+  path_extension = jobs_ext
 
-To support path changes (caused by renaming bak sets or sources for example)
+To support path changes (caused by renaming jobs or sources for example)
 you may specify one or more previous extensions for hard link support or
 correct tracking of old versions with C<keep> property in source's object.
 This is done with C<previous_path_extensions>. It is assumed, that an
@@ -451,19 +451,19 @@ Example:
   exclude= /tmp/
     /home/*/temp/
   include= /home/
-  bakset1.title= My Bakset Title
-  bakset1.name= My Bakset Name
-  bakset1.type= file 
-  bakset1.mount.path= /mnt/backup 
+  job1.title= My Job Title
+  job1.name= My Job Name
+  job1.type= file 
+  job1.mount.path= /mnt/backup 
 
 You may group settings for the same object in ini file sytle:
-  [bakset1]
-  title= My Bakset Title
-  name= My Bakset Name
+  [job1]
+  title= My Job Title
+  name= My Job Name
   type= file 
   mount.path= /mnt/backup 
 
-This defines the same C<bakset1> object as above. With C<[]> you can reset
+This defines the same C<job1> object as above. With C<[]> you can reset
 to the root namespace.
 
 Names (left from the C<=>-char) have to start with a letter (C<a>-C<z>) or C<_>
@@ -562,7 +562,7 @@ Example:
 For details on object expansion see L<mount>, L<source>, L<target> and L<filter>.
 
 Currently the following object types are known:
-L<Bak Set Objects>, L<Mount Objects>, L<Source Objects>,
+L<Job Objects>, L<Mount Objects>, L<Source Objects>,
 and L<Target Objects>
 
 =head2 Global Values
@@ -601,7 +601,7 @@ specific target value that has to exist on the target
 
 =back
 
-=head2 Backup Set Values
+=head2 Job Values
 
 You have to specify all values B<title>, B<name>, B<source>, and B<target>.
 
@@ -609,11 +609,11 @@ You have to specify all values B<title>, B<name>, B<source>, and B<target>.
 
 =item title
 
-descriptive title for backup set
+descriptive title for job
 
 =item name
 
-name of backup set. Will be used to name the target directory.
+name of the job. Will be used to name the target directory.
 
 =item source
 
@@ -714,7 +714,7 @@ Backup type. May be overwritten with L<path> (default: C<file>)
 
 =item path
 
-Backup source. May start with "<type>:" specifying the bakset type. (see L<type>)
+Backup source. May start with "<type>:" specifying the job type. (see L<type>)
 
 For types I<mysql> and I<pgsql>: Path can be C<*> for all databases or comma separated
 list with database names. (Example: C<path=mysql:*> or C<path=pgsql:template1,template2>)
@@ -763,7 +763,7 @@ Variable expansion is done at runtime (late expansion).
 (default: C<-&exclude +&include -/> if both macros exist, C<-&exclude> if only macro
 C<exclude> exists, C<+&include -/> if only C<include> exists, or empty if none exists.)
 
-Effective filter rules can be displayed with C<rabak conf --filter E<lt>baksetE<gt>>.
+Effective filter rules can be displayed with C<rabak conf --filter E<lt>jobE<gt>>.
 B<Attention:> Pathes beginning with C</> are absolute (not relative to C<source> as in
 rsync filters)
 

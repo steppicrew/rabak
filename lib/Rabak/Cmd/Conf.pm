@@ -30,12 +30,12 @@ sub getOptions {
 sub Help {
     my $self= shift;
     return $self->SUPER::Help(
-        'rabak conf [options] [<backup set>]',
+        'rabak conf [options] [<job name>]',
         'Displays the effective configuration.',
-        'If no argument is given, prints the available backup sets defined in the default',
+        'If no argument is given, prints the available jobs defined in the default',
         'configuration file or in the configuration file specified by the "--conf" option.',
         '',
-        'If a backup set name is given as a argument, prints the details of that confi-',
+        'If a job name is given as a argument, prints the details of that confi-',
         'guration. Note that the output itself is a valid configuration file.',
     );
 }
@@ -47,23 +47,23 @@ sub run {
 
     $self->warnOptions([ 'conf' ]);
 
-    my $sBakset= $self->{ARGS}[0] || '';
+    my $sJob= $self->{ARGS}[0] || '';
 
-    if ($sBakset eq '') {
+    if ($sJob eq '') {
         if ($self->{OPTS}{all}) {
             $self->readConfFile()->printAll();
             return 1;
         }
         my $oConfFile= $self->readConfFile();
-        logger->print("Available backup sets in \"" . $oConfFile->filename() . "\":");
-        $oConfFile->printSetList();
+        logger->print("Available jobs in \"" . $oConfFile->filename() . "\":");
+        $oConfFile->printJobList();
         return 1;
     }
 
-    my ($oBakset, $oConf)= $self->getBakset($sBakset);
-    return 0 unless $oBakset;
+    my ($oJob, $oConf)= $self->getJob($sJob);
+    return 0 unless $oJob;
 
-    ## FIXME: Muss das auch bei ($sBakset eq '') passieren?? Nee!
+    ## FIXME: Muss das auch bei ($sJob eq '') passieren?? Nee!
     $oConf->setValue("*.switch.warn_on_remote_access", 1);
     
     my $hConfShowCache= {};
@@ -74,8 +74,8 @@ sub run {
         $oDefaultConf->show($hConfShowCache) if $oDefaultConf;
     }
 
-    $oBakset->setValue('/*.switch.show_filter', $self->{OPTS}{filter});
-    my @sConf= @{ $oBakset->show($hConfShowCache) };
+    $oJob->setValue('/*.switch.show_filter', $self->{OPTS}{filter});
+    my @sConf= @{ $oJob->show($hConfShowCache) };
     pop @sConf;  # remove last []. (See RabalLib::Conf::show)
     logger->print(@sConf);
 

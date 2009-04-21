@@ -18,7 +18,7 @@ BEGIN {
 use Data::Dumper;
 
 use Rabak::ConfFile;
-use Rabak::Set;
+use Rabak::Job;
 
 use vars qw(@ISA);
 
@@ -35,7 +35,7 @@ sub new {
     my $self= $class->SUPER::new();
     $self->{CONF_FILE}= undef;
     $self->{CONF}= undef;
-    $self->{SET}= undef;
+    $self->{JOB}= undef;
     $self->{TERM}= Term::ReadLine->new('Rabak::Cmd::Admin');
     $self->{RANGE_FROM}= undef;
     $self->{RANGE_UNTIL}= undef;
@@ -46,7 +46,7 @@ sub new {
 sub Help {
     my $self= shift;
     return $self->SUPER::Help(
-        'rabak admin [options] [<backup set>]',
+        'rabak admin [options] [<job name>]',
         'one liner',
         'description',
     );
@@ -73,79 +73,79 @@ sub _noArg {
     return 0;
 }
 
-sub _needSet {
+sub _needJob {
     my $self= shift;
 
-    unless ($self->{SET}) {
-        print "Try 'set SET' or 'mount SET' first!\n";
+    unless ($self->{JOB}) {
+        print "Try 'job JOB' or 'mount JOB' first!\n";
         return undef;
     }
-    return $self->{SET};
+    return $self->{JOB};
 }
 
-sub _checkSet {
+sub _checkJob {
     my $self= shift;
-    my $sSet= shift;
+    my $sJob= shift;
 
-    return $self->_needSet() unless $sSet;
+    return $self->_needJob() unless $sJob;
 
-    my $oSet= $self->_getSet($sSet);
-    # my $oSet= $self->{CONF}{VALUES}{$sSet};
-    return $oSet if $oSet;
+    my $oJob= $self->_getJob($sJob);
+    # my $oJob= $self->{CONF}{VALUES}{$sJob};
+    return $oJob if $oJob;
 
-    print "Try 'set' for a list of available backup sets!\n";
+    print "Try 'job' for a list of available job names!\n";
     return undef;
 }
 
-sub _getSet {
+sub _getJob {
     my $self= shift;
-    my $sSet= shift;
+    my $sJob= shift;
 
-    my $oSet= Rabak::Set->new($sSet, $self->{CONF});
-    if ($oSet->{ERROR}) {
-        print $oSet->{ERROR} . ".\n";
+    my $oJob= Rabak::Job->new($sJob, $self->{CONF});
+    if ($oJob->{ERROR}) {
+        print $oJob->{ERROR} . ".\n";
         return undef;
     }
-    return $oSet;
+    return $oJob;
 }
 
-sub _doSetList {
+sub _doJobList {
     my $self= shift;
 
     _noArg(shift) or return;
 
-    $self->{CONF_FILE}->printSetList();
+    $self->{CONF_FILE}->printJobList();
 }
 
-# DETECTED UNUSED: doSet
-sub doSet {
+# DETECTED UNUSED: doJob
+sub doJob {
     my $self= shift;
-    my $sSet= shift || '';
+    my $sJob= shift || '';
 
     _noArg(shift) or return;
 
     my $oConf= $self->{CONF};
-    if (defined $oConf->{VALUES}{$sSet}) {
-        # $self->{SET}= $oConf->{VALUES}{$sSet};
-        $self->{SET}= $self->_getSet($sSet);
+    if (defined $oConf->{VALUES}{$sJob}) {
+        # $self->{JOB}= $oConf->{VALUES}{$sJob};
+        $self->{JOB}= $self->_getJob($sJob);
         return;
     }
 
-    # Reset SET. If we do batch processing one day, we don't want to process on the wrong set.
-    if ($sSet) {
-        $self->{SET}= undef;
-        print "Backup set \"$sSet\" doesn't exist. Try 'set'!\n";
+    # Reset JOB. If we do batch processing one day, we don't want to process on the wrong set.
+    if ($sJob) {
+        $self->{JOB}= undef;
+        print "Job \"$sJob\" doesn't exist. Try 'job'!\n";
         return;
     }
-    $self->_doSetList();
+    $self->_doJobList();
 }
 
 # DETECTED UNUSED: doHelp
 sub doHelp {
-    print "set         List available sets\n";
-    print "set SET     Use backup set SET\n";
-    print "mount [SET] Mount set (Current if SET is omitted)\n";
-    print "conf [SET]  Show set config (Current if SET is omitted)\n";
+    print "job         List available jobs\n";
+    print "job JOB     Use job JOB\n";
+    print "mount [JOB] Mount JOB (Current if JOB is omitted)\n";
+    print "conf [JOB]  Show JOB's config (Current if JOB is omitted)\n";
     print "quit        Quit program\n";
     # bakdirs
 }
@@ -153,12 +153,12 @@ sub doHelp {
 # DETECTED UNUSED: doMount
 sub doMount {
     my $self= shift;
-    my $sSet= shift || '';
+    my $sJob= shift || '';
 
     _noArg(shift) or return;
 
-    $self->{SET}= $self->_checkSet($sSet) or return;
-    $self->{SET}->mount();
+    $self->{JOB}= $self->_checkJob($sJob) or return;
+    $self->{JOB}->mount();
 }
 
 # DETECTED UNUSED: doUmount
@@ -169,8 +169,8 @@ sub doUmount() {
 sub _doUnmount() {
     my $self= shift;
 
-    my $oSet= $self->_needSet() or return;
-    $self->{SET}->unmount();
+    my $oJob= $self->_needJob() or return;
+    $self->{JOB}->unmount();
 }
 
 # DETECTED UNUSED: doBakdirs
@@ -179,8 +179,8 @@ sub doBakdirs {
 
     _noArg(shift) or return;
 
-    my $oSet= $self->_needSet() or return;
-    my @sDirs= $oSet->collect_bakdirs([ '.' . $oSet->getValue('name') ], [ '' ]);
+    my $oJob= $self->_needJob() or return;
+    my @sDirs= $oJob->collect_bakdirs([ '.' . $oJob->getValue('name') ], [ '' ]);
 
     map { print "$_\n"; } @sDirs;
 }
@@ -221,12 +221,12 @@ sub doRange {
 # DETECTED UNUSED: doConf
 sub doConf {
     my $self= shift;
-    my $sSet= shift || '';
+    my $sJob= shift || '';
 
     _noArg(shift) or return;
 
-    my $oSet= $self->_checkSet($sSet) or return;
-    $oSet->show();
+    my $oJob= $self->_checkJob($sJob) or return;
+    $oJob->show();
 }
 
 sub loop() {
@@ -238,10 +238,10 @@ sub loop() {
 
     while (1) {
         my $sPrompt= $self->{CONF_FILE}->filename();
-        if ($self->{SET}) {
-            $sPrompt .= '/' . $self->{SET}->getValue('name');
+        if ($self->{JOB}) {
+            $sPrompt .= '/' . $self->{JOB}->getValue('name');
 
-            # my $iMounts= scalar @{ $self->{SET}->getMounts() };
+            # my $iMounts= scalar @{ $self->{JOB}->getMounts() };
             my $iMounts= 0;
 
             $sPrompt .= ':' . $iMounts if $iMounts;

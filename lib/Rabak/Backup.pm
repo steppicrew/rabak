@@ -36,16 +36,16 @@ my %METAFILENAMES=(
 
 sub run {
     my $self= shift;
-    my $hBaksetData= shift;
+    my $hJobData= shift;
     my $oSourceDataConf= shift;
     
-    $self->_run() unless $self->_setup($hBaksetData, $oSourceDataConf);
+    $self->_run() unless $self->_setup($hJobData, $oSourceDataConf);
     return $self->_cleanup();
 }
 
 sub _setup {
     my $self= shift;
-    my $hBaksetData= shift;
+    my $hJobData= shift;
     my $oSourceDataConf= shift;
 
     my $oSourcePeer= $self->{SOURCE};
@@ -59,14 +59,14 @@ sub _setup {
     logger->incIndent();
 
     # prepare target for backup
-    my $asSourceExts= Rabak::Set->GetAllPathExtensions($oSourcePeer);
+    my $asSourceExts= Rabak::Job->GetAllPathExtensions($oSourcePeer);
     # TODO: may be we only need "%d" as $sBakDay?
-    my $sBakDay= strftime("%Y-%m-%d", @{$hBaksetData->{BAKSET_TIME}});
+    my $sBakDay= strftime("%Y-%m-%d", @{$hJobData->{JOB_TIME}});
 
-    my $hDirs= $hBaksetData->{ALL_BAKSET_DIRS};
+    my $hDirs= $hJobData->{ALL_JOB_DIRS};
 
     my @sBakBaseDirs= $oTargetPeer->getBakdirsByExts(
-        $hBaksetData->{ALL_BAKSET_EXTS},
+        $hJobData->{ALL_JOB_EXTS},
         $asSourceExts,
         $hDirs,
     );
@@ -90,7 +90,7 @@ sub _setup {
     my $sSourceExt= $asSourceExts->[0];
     my $sSourceSet= $sBakDay . $sSubSet;
     my $sSourceSubdir= $sSourceSet . $sSourceExt;
-    my $sBakDir= $hBaksetData->{BAKSET_DIR} . '/' . $sSourceSubdir;
+    my $sBakDir= $hJobData->{JOB_DIR} . '/' . $sSourceSubdir;
     my $sBakDataDir= $sBakDir . '/data';
     my $sBakMetaDir= $sBakDir . '/meta';
     
@@ -135,7 +135,7 @@ sub _setup {
     
     unless ($oTargetPeer->pretend()) {
         # add finish function for inode inventory (and create per-file-callback function)
-        my $sInodesDb= $oTargetPeer->getPath($hBaksetData->{BAKSET_META_DIR} . '/inodes.db');
+        my $sInodesDb= $oTargetPeer->getPath($hJobData->{JOB_META_DIR} . '/inodes.db');
         my $sFilesInodeDb= $oTargetPeer->getPath($sBakMetaDir . '/files_inode.db');
         if ($oTargetPeer->isRemote()) {
             # special handling for remote targets (see idea below)
@@ -323,7 +323,7 @@ sub _setup {
             }
     
             $sSourceExt=~ s/^\./\-/;
-            my $sCurrentLink= "current" . $hBaksetData->{BAKSET_EXT} . $sSourceExt;
+            my $sCurrentLink= "current" . $hJobData->{JOB_EXT} . $sSourceExt;
             $oTargetPeer->unlink($sCurrentLink);
             $oTargetPeer->symlink($sBakDir, $sCurrentLink);
         };

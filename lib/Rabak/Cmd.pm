@@ -172,37 +172,37 @@ sub readConfFile {
     return $oConfFile;
 }
 
-sub getBakset {
+sub getJob {
     my $self= shift;
-    my $sBakSet= shift || '';
+    my $sJob= shift || '';
 
     my $oConf= $self->readConfFile->conf();
-    my $hSetConf= $oConf->getNode($sBakSet);
+    my $hJobConf= $oConf->getNode($sJob);
 
-    unless ($hSetConf) {
-    	$self->{ERROR}= "Backup Set '$sBakSet' does not exist!";
+    unless ($hJobConf) {
+    	$self->{ERROR}= "Job '$sJob' does not exist!";
     	return;
     }
 
-    # Build a Set from Hash
-    my $oSet= Rabak::Set->newFromConf($hSetConf);
-    my $sError= $oSet->getValidationMessage();
+    # Build a Job from Hash
+    my $oJob= Rabak::Job->newFromConf($hJobConf);
+    my $sError= $oJob->getValidationMessage();
 
     if ($sError) {
-    	$self->{ERROR}= "Backup Set '$sBakSet' is not properly defined!";
+    	$self->{ERROR}= "Job '$sJob' is not properly defined!";
 
         logger->setStdoutPrefix("#");
-    	logger->warn("Backup Set '$sBakSet' is not properly defined:",
+    	logger->warn("Job '$sJob' is not properly defined:",
             "$sError",
             "The following values were found in the configuration:",
         );
         logger->setStdoutPrefix();
-        logger->print(@{ $hSetConf->show() });
+        logger->print(@{ $hJobConf->show() });
     	return undef;
     }
 
-    return ($oSet, $oConf) if wantarray;
-    return $oSet;
+    return ($oJob, $oConf) if wantarray;
+    return $oJob;
 }
 
 sub getOptionsHelp {

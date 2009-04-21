@@ -197,7 +197,7 @@ sub removeOld {
 
 sub _prepare {
     my $self= shift;
-    my $asBaksetExts= shift;
+    my $asJobExts= shift;
 
     my $mountable= $self->mountable();
 
@@ -206,7 +206,7 @@ sub _prepare {
     my $iMountResult= $mountable->mountAll(\@sMountMessage);
 
     unless ($iMountResult) { # fatal mount error
-        logger->error("There was at least one fatal mount error on target. Backup set skipped.");
+        logger->error("There was at least one fatal mount error on target. Job skipped.");
         logger->error(@sMountMessage);
         return { ERROR => -3 };
     }
@@ -215,18 +215,18 @@ sub _prepare {
     # check target dir
     unless ($self->isDir()) {
         logger->error(@sMountMessage);
-        logger->error("Target \"".$self->getValue("path")."\" is not a directory. Backup set skipped.");
+        logger->error("Target \"".$self->getValue("path")."\" is not a directory. Job skipped.");
         return { ERROR => -1 };
     }
     unless ($self->isWritable()) {
         logger->error(@sMountMessage);
-        logger->error("Target \"".$self->getValue("path")."\" is not writable. Backup set skipped.");
+        logger->error("Target \"".$self->getValue("path")."\" is not writable. Job skipped.");
         return { ERROR => -2 };
     }
     return undef;
 }
 
-# return meta dir of bakset
+# return meta dir of Job
 sub GetMetaDir {
     return '.meta';
 }
@@ -239,19 +239,19 @@ sub getUuid {
 # prepare target for backup
 # 1. mounts all target mount objects
 # 2. checks existance and permissions of target's directory
-# 3. creates bakset's target directory
+# 3. creates Job's target directory
 # sets some session data
 sub prepareForBackup {
     my $self= shift;
-    my $asBaksetExts= shift;
+    my $asJobExts= shift;
 
-    my $hResult= $self->_prepare($asBaksetExts);
+    my $hResult= $self->_prepare($asJobExts);
     return $hResult if $hResult;
 
-    my $sBaksetExt= $asBaksetExts->[0];
-    my $aBaksetTime= [ localtime ];
-    my $sBaksetDir= strftime("%Y-%m", @$aBaksetTime) . $sBaksetExt;
-    my $sBaksetMeta= $self->GetMetaDir();
+    my $sJobExt= $asJobExts->[0];
+    my $aJobTime= [ localtime ];
+    my $sJobDir= strftime("%Y-%m", @$aJobTime) . $sJobExt;
+    my $sJobMeta= $self->GetMetaDir();
 
     my $sDevConfFile= $self->getPath($self->_getDevConfFile());
     my $sLocalDevConfFile= $sDevConfFile;
@@ -274,20 +274,20 @@ sub prepareForBackup {
         $self->copyLocalFileToRemote($sLocalDevConfFile, $sDevConfFile);
     }
 
-    $self->mkdir($sBaksetDir);
-    $self->mkdir($sBaksetMeta);
+    $self->mkdir($sJobDir);
+    $self->mkdir($sJobMeta);
 
-    # if ($self->isWritable("$sBakset/target.cf")) {
+    # if ($self->isWritable("$sJob/target.cf")) {
     #     $oConf= new Rabak::ConfFile();
     # }
 
     return {
-        BAKSET_EXT => $sBaksetExt,     # path extension for current bakset
-        ALL_BAKSET_EXTS => $asBaksetExts,  # path extensions for this and all previous backsets
-        BAKSET_DIR => $sBaksetDir, # back set's directory (relative to target dir)
-        BAKSET_TIME => $aBaksetTime,   # date of bak set start
-        ALL_BAKSET_DIRS => $self->_getAllBakdirs(),  # hash of all bak set dirs
-        BAKSET_META_DIR => $sBaksetMeta,
+        JOB_EXT => $sJobExt,     # path extension for current Job
+        ALL_JOB_EXTS => $asJobExts,  # path extensions for this and all previous jobs
+        JOB_DIR => $sJobDir, # job's directory (relative to target dir)
+        JOB_TIME => $aJobTime,   # date of job start
+        ALL_JOB_DIRS => $self->_getAllBakdirs(),  # hash of all job dirs
+        JOB_META_DIR => $sJobMeta,
     };
 }
 
@@ -304,7 +304,7 @@ sub finish {
 
 sub finishBackup {
     my $self= shift;
-    my $hBaksetData= shift;
+    my $hJobData= shift;
     my $fCallback= shift;
 
     my $aDf = $self->_checkDf();
@@ -325,19 +325,19 @@ sub finishBackup {
     
     $self->finish();
     
-    $self->{BAKSET_DATA}= undef;
+    $self->{JOB_DATA}= undef;
     return 0;
 }
 
 sub _getLogFileInfo {
     my $self= shift;
 
-    my $aBaksetTime= shift;
-    my $sBaksetDir= shift;
-    my $sBaksetExt= shift;
+    my $aJobTime= shift;
+    my $sJobDir= shift;
+    my $sJobExt= shift;
 
-    my $sLogDir= strftime("%Y-%m", @$aBaksetTime) . "-log";
-    my $sLogFile= $sLogDir . '/' . strftime("%Y-%m-%d", @$aBaksetTime) . $sBaksetExt . '.log';
+    my $sLogDir= strftime("%Y-%m", @$aJobTime) . "-log";
+    my $sLogFile= $sLogDir . '/' . strftime("%Y-%m-%d", @$aJobTime) . $sJobExt . '.log';
 
     return {
         DIR => $sLogDir,
@@ -348,23 +348,23 @@ sub _getLogFileInfo {
 
 sub initLogging {
     my $self= shift;
-    my $hBaksetData= shift || {};
+    my $hJobData= shift || {};
 
-    my $aBaksetTime= $hBaksetData->{BAKSET_TIME};
-    my $sBaksetDir= $hBaksetData->{BAKSET_DIR};
-    my $sBaksetExt= $hBaksetData->{BAKSET_EXT};
+    my $aJobTime= $hJobData->{JOB_TIME};
+    my $sJobDir= $hJobData->{JOB_DIR};
+    my $sJobExt= $hJobData->{JOB_EXT};
 
-    my $hInfo= $self->_getLogFileInfo($aBaksetTime, $sBaksetDir, $sBaksetExt);
+    my $hInfo= $self->_getLogFileInfo($aJobTime, $sJobDir, $sJobExt);
 
     my $sLogDir= $hInfo->{DIR};
     my $sLogFile= $hInfo->{FILE};
     my $sLogFilePath= $hInfo->{FULL_FILE};
 
-    my $sBaksetMonth= strftime("%Y-%m", @$aBaksetTime);
+    my $sJobMonth= strftime("%Y-%m", @$aJobTime);
 
     unless ($self->pretend()) {
         $self->mkdir($sLogDir);
-        my $sLogLink= $sBaksetDir . '/' . strftime("%Y-%m-%d", @$aBaksetTime) . $sBaksetExt . '.log';
+        my $sLogLink= $sJobDir . '/' . strftime("%Y-%m-%d", @$aJobTime) . $sJobExt . '.log';
 
         my $sError= logger->open($sLogFilePath, $self);
         if ($sError) {
@@ -372,7 +372,7 @@ sub initLogging {
         }
         else {
             $self->symlink("../$sLogFile", $sLogLink);
-            my $sCurrentLogFileName= 'current-log' . $sBaksetExt;
+            my $sCurrentLogFileName= 'current-log' . $sJobExt;
             $self->unlink($sCurrentLogFileName);
             $self->symlink($sLogFile, $sCurrentLogFileName);
         }
@@ -425,7 +425,7 @@ sub _getAllBakdirs {
         map {
             $hResult{$_}= {
                 path => $1,
-                set_ext => $2,
+                job_ext => $2,
                 date => $3,
                 year => $4,
                 month => $5,
@@ -443,12 +443,12 @@ sub _getAllBakdirs {
 
 sub getBakdirsByExts {
     my $self= shift;
-    my $asSetExts= shift;
+    my $asJobExts= shift;
     my $asSourceExts= shift;
     my $hDirs= shift || $self->_getAllBakdirs();
 
     my $i= 1;
-    my %hSetExts=    map { $_ => $i++ } @$asSetExts;
+    my %hJobExts=    map { $_ => $i++ } @$asJobExts;
     my %hSourceExts= map { $_ => $i++ } @$asSourceExts;
 
     my @sBakDirs= ();
@@ -458,7 +458,7 @@ sub getBakdirsByExts {
         my $bd= $hDirs->{$b};
         return
             $bd->{date} cmp $ad->{date}
-                || $hSetExts{$ad->{set_ext}} cmp $hSetExts{$bd->{set_ext}}
+                || $hJobExts{$ad->{job_ext}} cmp $hJobExts{$bd->{job_ext}}
                 || $hSourceExts{$ad->{source_ext}} cmp $hSourceExts{$bd->{source_ext}}
                 || $bd->{subset} cmp $ad->{subset}
         ;
@@ -467,7 +467,7 @@ sub getBakdirsByExts {
     # go away if you don't grok this:
     @sBakDirs= sort $cmp grep {
         my $hDir= $hDirs->{$_};
-        exists $hSetExts{$hDir->{set_ext}} && exists $hSourceExts{$hDir->{source_ext}}
+        exists $hJobExts{$hDir->{job_ext}} && exists $hSourceExts{$hDir->{source_ext}}
     } keys %$hDirs;
 
     return @sBakDirs;

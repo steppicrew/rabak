@@ -1,24 +1,24 @@
 #!/usr/bin/perl
 
-package Rabak::SetDot;
+package Rabak::JobDot;
 
 use warnings;
 use strict;
 
-use Rabak::Set;
+use Rabak::Job;
 
 # =============================================================================
-#  For Sets: Generate Output for dot (graphviz)
+#  For Jobs: Generate Output for dot (graphviz)
 #  UNTESTED!
 # =============================================================================
 
 sub new {
     my $class= shift;
-    my $oSet= shift;
+    my $oJob= shift;
 
     my $self= {};
-    $self->{SET}= $oSet;
-    $self->{_BOX_ADDED}= $oSet;
+    $self->{JOB}= $oJob;
+    $self->{_BOX_ADDED}= $oJob;
     bless $self, $class;
 }
 
@@ -129,25 +129,25 @@ sub toDot {
     $self->{_BOX_ADDED}= {};
 
     # print "]\n[";
-    # print $self->{SET}->getValue("name");
+    # print $self->{JOB}->getValue("name");
     # print "]\n[";
-    # print $self->{SET}->getValue("title");
+    # print $self->{JOB}->getValue("title");
     # print "]\n[";
 
-    my @oSources= $self->{SET}->getSourcePeers();
+    my @oSources= $self->{JOB}->getSourcePeers();
 
     my $sResult= '';
 
-    $sResult .= $self->_dotAddBox('set', $self->{SET});
+    $sResult .= $self->_dotAddBox('job', $self->{SET});
 
     for my $oSource (@oSources) {
-        $sResult .= $self->_dotAddBox('source', $oSource, $self->{SET});
+        $sResult .= $self->_dotAddBox('source', $oSource, $self->{JOB});
     }
 
-    my $oTarget= $self->{SET}->getTargetPeer();
-    $sResult .= $self->_dotAddBox('target', $oTarget, $self->{SET});
+    my $oTarget= $self->{JOB}->getTargetPeer();
+    $sResult .= $self->_dotAddBox('target', $oTarget, $self->{JOB});
 
-    my $sTitle= _dotify(_dotConfTitle('set', $self->{SET}));
+    my $sTitle= _dotify(_dotConfTitle('job', $self->{JOB}));
 
     $sResult= qq(
         subgraph cluster1 {
@@ -170,7 +170,7 @@ sub toDot {
     $sResult= qq(
         digraph {
             // rankdir="LR"
-            $self->{SET}{NAME} [ shape="rect" ]
+            $self->{JOB}{NAME} [ shape="rect" ]
             $sResult
         }
     );
