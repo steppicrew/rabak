@@ -358,7 +358,6 @@ sub _run {
             STATISTICS_CALLBACK => $self->{BACKUP_DATA}{STATISTICS_CALLBACK},
         },
     );
-    $self->_setMetaBackupResult($self->{BACKUP_DATA}{BACKUP_RESULT});
     return $self->{BACKUP_DATA}{BACKUP_RESULT};
 }
 
@@ -487,27 +486,6 @@ sub _writeMetaFile {
     $sMetaFile= ($self->{BACKUP_DATA}{BACKUP_META_DIR} || '.') . '/' . $sMetaFile unless $sMetaFile =~ /\//;
     $self->{TARGET}->unlink($sMetaFile);
     $self->{TARGET}->echo($sMetaFile, @sContent);
-}
-
-sub _setMetaBackupResult {
-    my $self= shift;
-    my $sResult= shift;
-
-    $self->_writeMetaFile($METAFILENAMES{result}, $sResult);
-}
-
-sub setMetaBackupError {
-    my $self= shift;
-    my $sError= shift;
-
-    $self->_writeMetaFile($METAFILENAMES{error}, $sError);
-}
-
-sub _setMetaBackupStatistics {
-    my $self= shift;
-    my @sStatistics= @_;
-
-    $self->_writeMetaFile($METAFILENAMES{statistics}, @sStatistics);
 }
 
 1;
