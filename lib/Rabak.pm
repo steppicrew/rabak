@@ -99,16 +99,14 @@ sub _ApiGetSessions {
 
     my $hJobs= {};
     my $sMetaDir= Rabak::Job->GetMetaBaseDir();
-    my @sSessionFiles= glob "$sMetaDir/$sTargetUuid/session.*";
     for my $oJob (@aJobs) {
         my $oTargetPeer= $oJob->getTargetPeer();
         
-        my $sJob= $oJob->getFullName();
-        my $sqJob= quotemeta $sJob;
+        my $sJobName= $oJob->getFullName();
 
         my $hSessionData= {
             conf_file => $sConfFileName,
-            job => $sJob,
+            job => $sJobName,
             target => {
                 name => $oTargetPeer->getFullName(),
                 path => $oTargetPeer->getFullPath(),
@@ -116,13 +114,12 @@ sub _ApiGetSessions {
             sessions => {},
         };
         
-        my $regJob= qr/\/session\.\d+\.\d+\.$sqJob$/;
-        for my $sSessionFile (grep {/$regJob/} @sSessionFiles) {
+        for my $sSessionFile (glob "$sMetaDir/$sTargetUuid/$sJobName/session.*") {
             my $sSessionName= $sSessionFile;
             $sSessionName=~ s/.*\///;
             $hSessionData->{sessions}{$sSessionName}= _parseSessionFile($sSessionFile);
         }
-        $hJobs->{$sJob}= $hSessionData
+        $hJobs->{$sJobName}= $hSessionData
     }
 # print Dumper($hSessionData);
 

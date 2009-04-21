@@ -181,8 +181,10 @@ sub GetMetaBaseDir {
 
 sub getMetaDir {
     my $self= shift;
+    my $sSubDir= shift;
     
     my $sMetaDir= $self->GetMetaBaseDir() . '/' . $self->getTargetPeer()->getUuid();
+    $sMetaDir.= '/' . $sSubDir if defined $sSubDir;
     return $sMetaDir if Rabak::Peer->new()->mkdir($sMetaDir);
     return undef;
 }
@@ -264,15 +266,18 @@ sub backup {
         $oSessionDataConf->setQuotedValue('time.end', $self->GetTimeString());
         my $sSessionName= 'session.'
             . $oSessionDataConf->getValue('time.start') . '.'
-            . $oSessionDataConf->getValue('time.end') . '.'
-            . $self->getName();
-        my $sMetaDir= $self->getMetaDir();
+            . $oSessionDataConf->getValue('time.end');
+        my $sMetaSubDir= $self->getFullName();
+        my $sMetaDir= $self->getMetaDir($sMetaSubDir);
         return unless $sMetaDir;
         my $sMetaFile= $sMetaDir . '/' . $sSessionName;
         $oSessionDataConf->writeToFile($sMetaFile);
         if ($hJobData->{JOB_META_DIR}) {
-            my $sFileName= $hJobData->{JOB_META_DIR} . '/' . $sSessionName;
-            $oTargetPeer->copyLocalFileToRemote($sMetaFile, $sFileName);
+            $sMetaDir= $hJobData->{JOB_META_DIR} . '/' . $sMetaSubDir;
+            if ($oTargetPeer->mkdir($sMetaDir)) {
+                my $sFileName= $sMetaDir . '/' . $sSessionName;
+                $oTargetPeer->copyLocalFileToRemote($sMetaFile, $sFileName);
+            }
         }
     };
     
