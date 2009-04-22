@@ -208,7 +208,7 @@ jQuery(function($) {
 
             map(conf.jobs, function(job_name, job) {
                 var jobHtml= dashboardHtml.add('<div class="bakset">', '</div>');
-                jobHtml.add('<h2>' + job.title + '</h2>');
+                var jobFlexHtml= jobHtml.addFlex(job.title);
 
                 sortMap(job.sessions,
                     function(a, b) {
@@ -216,14 +216,14 @@ jQuery(function($) {
                     },
                     function(session_id, session) {
                         session.title= fmtTime(session.time);
-                        jobHtml.add('<h3>Session ' + session.title + '</h3>');
+                        var flexHtml= jobFlexHtml.addFlex('Session ' + session.title);
 
 // source.stats.text ? source.stats.text.split('\n').join('<br>\n') : '',
 
-                        var tableHtml= jobHtml.addTable();
+                        var tableHtml= flexHtml.addTable();
                         map(session.sources, function(source_name, source) {
 
-                            // TODO: Why parseInt? Because source result is returned as a  string.
+                            // TODO: Why parseInt? Because source result is returned as a string.
                             var icon= parseInt(source.result) ? '/static/icon_cancel.png' : '/static/icon_ok.png';
                             icon= '<img src="' + icon + '" width="16" height="16" />';
                             tableHtml.addRow([
@@ -265,14 +265,14 @@ jQuery(function($) {
                     },
                     function(session_id, session) {
                         session.title= fmtTime(session.time);
-                        html.add('<h3>Session ' + session.title + '</h3>');
+                        var flexHtml= html.addFlex('Session ' + session.title, 'open');
 
 // source.stats.text ? source.stats.text.split('\n').join('<br>\n') : '',
 
-                        var tableHtml= html.addTable();
+                        var tableHtml= flexHtml.addTable();
                         map(session.sources, function(source_name, source) {
 
-                            // TODO: Why parseInt? Because source result is returned as a  string.
+                            // TODO: Why parseInt? Because source result is returned as a string.
                             var icon= parseInt(source.result) ? '/static/icon_cancel.png' : '/static/icon_ok.png';
                             icon= '<img src="' + icon + '" width="16" height="16" />';
                             tableHtml.addRow([
@@ -364,7 +364,7 @@ jQuery(function($) {
         else if ($('> .body > .detail', this).length) {
             class_= $this.hasClass('open') ? 'detail' : ($this.hasClass('detail') ? 'closed' : 'open');
         }
-        else if ($this.hasClass('open')) {
+        else if ($this.hasClass('closed')) {
             class_= 'open';
         }
         $this.removeClass('closed open detail').addClass(class_);
