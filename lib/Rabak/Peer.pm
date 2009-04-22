@@ -941,7 +941,7 @@ sub rsync {
     }
     logger->error($sError) if $sError;
     logger->warn("rsync exited with result $iExit") if $iExit;
-    return $iExit;
+    return $iExit || 0;
 }
 
 sub tempfile {
