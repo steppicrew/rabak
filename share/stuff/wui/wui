@@ -120,6 +120,7 @@ while ($conn = $d->accept) {
             $status= RC_NOT_FOUND;
         }
         $conn->send_error($status, status_message($status));
+        $conn->force_last_request();
     }
     $conn->close;
     undef($conn);
