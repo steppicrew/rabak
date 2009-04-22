@@ -869,6 +869,81 @@ sub umount {
     return $self->_savecmd(scalar $self->ShellQuote('umount', @sParams));
 }
 
+sub rsync {
+    my $self= shift;
+    my %params= @_;
+    
+    my @sSourceFiles= ref $params{source_files} ? @{ $params{source_files} } : ($params{source_files});
+    my $sTargetPath= $params{target_path};
+    my $oTargetPeer= $params{target_peer};
+    my @sRsyncOpts= @{ $params{opts} || [] };
+    my $hIoHandles= $params{handles} || {};
+    
+    # $oSshPeer contains ssh parameters for rsync (seen from $oRsyncPeer)
+    # - is $oTargetPeer if target is remote (rsync will be run on self)
+    # - is $self if target is local and source is remote (rsync will be run locally)
+    # $oRsyncPeer contains peer rsync is running from
+    # - is $oTargetPeer if target is local and source is remote
+    # - is $self otherwise
+    my $oSshPeer;
+    my $oRsyncPeer = $self;
+    my $sSourceDirPref = "";
+    my $sTargetDirPref = "";
+    if ($oTargetPeer->isRemote()) {
+        # unless target and source on same host/user/port
+        unless ($oTargetPeer->getUserHostPort() eq $self->getUserHostPort()) {
+            $oSshPeer = $oTargetPeer;
+            $sTargetDirPref= $oTargetPeer->getUserHost(":");
+        }
+    }
+    elsif ($self->isRemote()) {
+        $oSshPeer= $self;
+        $sSourceDirPref= $self->getUserHost(":");
+        $oRsyncPeer = $oTargetPeer;
+    }
+    if ($oSshPeer) {
+        my $sPort= $oSshPeer->getValue("port") || 22;
+        my $sTimeout= $oSshPeer->getValue("timeout") || 150;
+        my $sBandwidth= $oSshPeer->getValue("bandwidth") || '';
+        my @sIdentityFiles= $oSshPeer->getValue("identity_files") ? split(/\s+/, $oSshPeer->getValue("identity_files")) : undef;
+
+        my @sSshCmd= (
+            'ssh',
+            '-p', $sPort,
+        );
+        my $sSshCmd= "ssh -p $sPort";
+        push @sSshCmd, map { ('-i', $_) } grep {$_} @sIdentityFiles;
+        if ($oSshPeer->getValue("protocol")) {
+            push @sSshCmd, '-1' if $oSshPeer->getValue('protocol') eq '1';
+            push @sSshCmd, '-2' if $oSshPeer->getValue('protocol') eq '2';
+        }
+        push @sRsyncOpts, '--rsh=' . $self->ShellQuote(@sSshCmd), "--timeout=$sTimeout", '--compress';
+        push @sRsyncOpts, "--bwlimit=$sBandwidth" if $sBandwidth;
+    }
+
+    my $sRsyncCmd= scalar $self->ShellQuote('rsync', @sRsyncOpts, (map {$sSourceDirPref . $self->getPath($_)} @sSourceFiles), $sTargetDirPref . $sTargetPath);
+
+    if ($params{logging}) {
+        logger->info("Running" .
+            ($oRsyncPeer->isRemote() ?
+                " on '" . $oRsyncPeer->getUserHostPort() . "'" :
+                "") .
+            ": $sRsyncCmd");
+        logger->incIndent();
+    }
+
+    # run rsync command
+    my (undef, undef, $iExit, $sError)= $oRsyncPeer->runCmd($sRsyncCmd, $hIoHandles);
+
+    if ($params{logging}) {
+        logger->decIndent();
+        logger->info("rsync finished successfully") unless $iExit;
+    }
+    logger->error($sError) if $sError;
+    logger->warn("rsync exited with result $iExit") if $iExit;
+    return $iExit;
+}
+
 sub tempfile {
     my $self= shift;
     my %hParams= @_;
