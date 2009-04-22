@@ -24,41 +24,42 @@ sub _getConf {
     return $oConfFile->conf();
 }
 
-sub _getBaksets {
+sub _getJobs {
     my $oConf= shift;
-    my $sBakset= shift;
+    my $sJob= shift;
     
-    return () unless defined $sBakset;
+    return () unless defined $sJob;
     
-    my @aSets= ();
-    for my $oSet (Rabak::Set->GetSets($oConf)) {
-        push @aSets, $oSet if $oSet->getFullName eq $sBakset || $sBakset eq '*';
+    my @aJobs= Rabak::Job->GetJobs($oConf);
+    return @aJobs if $sJob eq '*';
+    for my $oJob (@aJobs) {
+        return ($oJob) if $oJob->getFullName eq $sJob;
     }
-    return @aSets;
+    return ();
 }
 
-sub _ApiGetBaksets {
+sub _ApiGetJobs {
     my $param= shift; # UNUSED
 
     my ($oConf, $sConfFileName)= _getConf();
     
-    my $hSets= {};
-    for my $oSet (Rabak::Set->GetSets($oConf)) {
-        my $oTarget= $oSet->getTargetPeer();
+    my $hJobs= {};
+    for my $oJob (Rabak::Job->GetJobs($oConf)) {
+        my $oTarget= $oJob->getTargetPeer();
         my $hData= {
-            'title' => $oSet->getValue('title'),
-            'name' => $oSet->getFullName(),
+            'title' => $oJob->getValue('title'),
+            'name' => $oJob->getFullName(),
             'target' => $oTarget->getFullName(),
         };
         my $hSources= {};
-        for my $oSource ($oSet->getSourcePeers()) {
+        for my $oSource ($oJob->getSourcePeers()) {
             my $hSourceData= {
                 'name' => $oSource->getFullName(),
             };
             $hSources->{$oSource->getName()}= $hSourceData;
         }
         $hData->{sources}= $hSources;
-        $hSets->{$oSet->getFullName()}= $hData;
+        $hJobs->{$oJob->getFullName()}= $hData;
     }
     
     return {
@@ -66,42 +67,46 @@ sub _ApiGetBaksets {
         conf => {
             file => $sConfFileName,
             title => 'Raisin\'s Config',
-            baksets => $hSets,
+            jobs => $hJobs,
         }
     };
 }
 
-sub _ApiGetBaksetStatus {
+sub _ApiGetJobStatus {
     my $param= shift;
 
-    # $param->{bakset}..
+    # $param->{job}..
 
     return { error => 500, error_text => 'Not implemented' };
 }
 
+# valid parameters:
+#   job: name of the job or empty or '*' for all
+#   target_uuid: target's uuid or empty or '*' for all
 sub _ApiGetSessions {
     my $param= shift;
 
 
     my ($oConf, $sConfFileName)= _getConf();
-    my $sBakset= $param->{bakset};
+    my $sJob= $param->{job};
+    my $sTargetUuid= $param->{target_uuid} || '*';
     
-    my @aSets= _getBaksets($oConf, $sBakset);
+    my @aJobs= _getJobs($oConf, $sJob);
     return {
         error => 500,
-        error_text => "Bakset '$sBakset' does not exist.",
-    } unless @aSets;
+        error_text => "Job '$sJob' does not exist.",
+    } unless @aJobs;
 
-    my $hBaksets= {};
-    for my $oSet (@aSets) {
-        my $sMetaDir= $oSet->GetMetaBaseDir();
-        my $oTargetPeer= $oSet->getTargetPeer();
+    my $hJobs= {};
+    my $sMetaDir= Rabak::Job->GetMetaBaseDir();
+    for my $oJob (@aJobs) {
+        my $oTargetPeer= $oJob->getTargetPeer();
         
-        my $sBakset= $oSet->getFullName();
+        my $sJobName= $oJob->getFullName();
 
         my $hSessionData= {
             conf_file => $sConfFileName,
-            bakset => $sBakset,
+            job => $sJobName,
             target => {
                 name => $oTargetPeer->getFullName(),
                 path => $oTargetPeer->getFullPath(),
@@ -109,45 +114,51 @@ sub _ApiGetSessions {
             sessions => {},
         };
         
-        my @sSessionFiles= glob "$sMetaDir/*/session.*.$sBakset";
-        for my $sSessionFile (@sSessionFiles) {
-            my $hSession= Rabak::ConfFile->new($sSessionFile)->conf()->getValues();
+        for my $sSessionFile (glob "$sMetaDir/$sTargetUuid/$sJobName/session.*") {
             my $sSessionName= $sSessionFile;
             $sSessionName=~ s/.*\///;
-            my $hSources= {};
-            my $iTotalBytes= 0;
-            my $iTransferredBytes= 0;
-            my $iTotalFiles= 0;
-            my $iTransferredFiles= 0;
-            my $iFailedFiles= 0;
-            for my $sSource (split(/[\s\,]+/, $hSession->{sources})) {
-                $sSource=~ s/^\&//;
-                $hSources->{$sSource}= $hSession->{$sSource};
-                $iTotalBytes+= $hSources->{$sSource}{stats}{total_bytes} || 0;
-                $iTransferredBytes+= $hSources->{$sSource}{stats}{transferred_bytes} || 0;
-                $iTotalFiles+= $hSources->{$sSource}{stats}{total_files} || 0;
-                $iTransferredFiles+= $hSources->{$sSource}{stats}{transferred_files} || 0;
-                $iFailedFiles+= $hSources->{$sSource}{stats}{failed_files} || 0;
-                delete $hSession->{$sSource};
-            }
-            $hSession->{sources}= $hSources;
-            $hSession->{total_files}= $iTotalFiles || -1;
-            $hSession->{transferred_files}= $iTransferredFiles || -1;
-            $hSession->{failed_files}= $iFailedFiles || -1;
-            $hSessionData->{sessions}{$sSessionName}= $hSession;
+            $hSessionData->{sessions}{$sSessionName}= _parseSessionFile($sSessionFile);
         }
-        $hBaksets->{$sBakset}= $hSessionData
+        $hJobs->{$sJobName}= $hSessionData
     }
 # print Dumper($hSessionData);
 
     return {
         error => 0,
         conf => {
-            file => '/home/raisin/.rabak/rabak.cf',
+            file => $sConfFileName,
             title => 'Raisin\'s Config',
-            baksets => $hBaksets,
+            jobs => $hJobs,
         }
     };
+}
+
+sub _parseSessionFile {
+    my $sSessionFile= shift;
+    
+    my $hSession= Rabak::ConfFile->new($sSessionFile)->conf()->getValues();
+    my $hSources= {};
+    my $iTotalBytes= 0;
+    my $iTransferredBytes= 0;
+    my $iTotalFiles= 0;
+    my $iTransferredFiles= 0;
+    my $iFailedFiles= 0;
+    for my $sSource (split(/[\s\,]+/, $hSession->{sources})) {
+        $sSource=~ s/^\&//;
+        $hSources->{$sSource}= $hSession->{$sSource};
+        $iTotalBytes+= $hSources->{$sSource}{stats}{total_bytes} || 0;
+        $iTransferredBytes+= $hSources->{$sSource}{stats}{transferred_bytes} || 0;
+        $iTotalFiles+= $hSources->{$sSource}{stats}{total_files} || 0;
+        $iTransferredFiles+= $hSources->{$sSource}{stats}{transferred_files} || 0;
+        $iFailedFiles+= $hSources->{$sSource}{stats}{failed_files} || 0;
+        delete $hSession->{$sSource};
+    }
+    $hSession->{sources}= $hSources;
+    $hSession->{total_files}= $iTotalFiles || -1;
+    $hSession->{transferred_files}= $iTransferredFiles || -1;
+    $hSession->{failed_files}= $iFailedFiles || -1;
+    
+    return $hSession;
 }
 
 sub API {

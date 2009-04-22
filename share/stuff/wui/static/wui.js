@@ -189,7 +189,7 @@ jQuery(function($) {
 
     cmds.show_dashboard= function(params) {
 
-        params= $.extend(params, { bakset: '*' });
+        params= $.extend(params, { job: '*' });
         api('GetSessions', params, function(data) {
             console.log(data);
             if (data.error) return;
@@ -206,21 +206,21 @@ jQuery(function($) {
 
             var dashboardHtml= html.add('<div id="dashboard">', '</div>');
 
-            map(conf.baksets, function(bakset_name, bakset) {
+            map(conf.jobs, function(job_name, job) {
                 var baksetHtml= dashboardHtml.add('<div class="bakset">', '</div>');
-                baksetHtml.add('<h2>' + bakset.title + '</h2>');
+                jobHtml.add('<h2>' + job.title + '</h2>');
 
-                sortMap(bakset.sessions,
+                sortMap(job.sessions,
                     function(a, b) {
                         return strcmp(b.time.start, a.time.start);
                     },
                     function(session_id, session) {
                         session.title= fmtTime(session.time);
-                        baksetHtml.add('<h3>Session ' + session.title + '</h3>');
+                        jobHtml.add('<h3>Session ' + session.title + '</h3>');
 
 // source.stats.text ? source.stats.text.split('\n').join('<br>\n') : '',
 
-                        var tableHtml= baksetHtml.addTable();
+                        var tableHtml= jobHtml.addTable();
                         map(session.sources, function(source_name, source) {
 
                             // TODO: Why parseInt? Because source result is returned as a  string.
@@ -254,12 +254,12 @@ jQuery(function($) {
             var html= new Html();
             html.add('<h1>' + conf.title + '</h1>');
 
-            map(conf.baksets, function(bakset_name, bakset) {
-                if (params.bakset && bakset_name != params.bakset) return;
+            map(conf.jobs, function(job_name, job) {
+                if (params.job && job_name != params.job) return;
 
-                html.add('<h2>' + bakset.title + '</h2>');
+                html.add('<h2>' + job.title + '</h2>');
 
-                sortMap(bakset.sessions,
+                sortMap(job.sessions,
                     function(a, b) {
                         return strcmp(b.time.start, a.time.start);
                     },
@@ -303,10 +303,10 @@ jQuery(function($) {
         $("#body").html('<div id="placeholder" style="width:600px;height:300px;"></div>');
 
         var d= [];
-        map(conf.baksets, function(bakset_name, bakset) {
+        map(conf.jobs, function(job_name, job) {
             var dd= [];
             var i= 0;
-            map(bakset.sessions, function(session_id, session) {
+            map(job.sessions, function(session_id, session) {
                 dd.push([ i++, session.saved ]);
             });
             d.push(dd);
@@ -382,7 +382,7 @@ jQuery(function($) {
         '<div style="float: right">' + welcome + '</div>'
     );
 
-    api('GetBaksets', null, function(data) {
+    api('GetJobs', null, function(data) {
         console.log(data);
         if (data.error) {
             // error stuff
@@ -391,18 +391,18 @@ jQuery(function($) {
 
         mergeData(data);
 
-        // TODO: conf.backsets.sort();
+        // TODO: conf.jobs.sort();
 
-        var baksetHtml= [];
-        for (var bakset_name in conf.baksets) {
-            var bakset= conf.baksets[bakset_name];
-            baksetHtml.push('<li><a href="#show_backup_result:bakset=' + bakset.name + '">' + bakset.title + ' (' + bakset.name + ')' + '</a></li>');
+        var jobHtml= [];
+        for (var job_name in conf.jobs) {
+            var job= conf.jobs[job_name];
+            jobHtml.push('<li><a href="#show_backup_result:job=' + job.name + '">' + job.title + ' (' + job.name + ')' + '</a></li>');
         }
 
         $("#sidebar").html( ''
             + '<h1>' + conf.title + '</h1>'
             + '<h2>Jobs</h2>'
-            + '<ol>' + baksetHtml.join('') + '</ol>'
+            + '<ol>' + jobHtml.join('') + '</ol>'
             + '<hr />'
             + '<p><a href="#test1">Test1</a></p>'
             + '<p><a href="#show_dashboard">Dashboard</a></p>'

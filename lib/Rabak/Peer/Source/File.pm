@@ -349,11 +349,11 @@ sub _validSourceDir {
     my $sSourceDir= $self->getFullPath();
 
     unless ($self->isDir()) {
-        logger->error("Source \"$sSourceDir\" is not a directory. Backup set skipped.");
+        logger->error("Source \"$sSourceDir\" is not a directory. Job skipped.");
         return undef;
     }
     unless ($self->isReadable()) {
-        logger->error("Source \"$sSourceDir\" is not readable. Backup set skipped.");
+        logger->error("Source \"$sSourceDir\" is not readable. Job skipped.");
         return undef;
     }
 
@@ -438,7 +438,7 @@ sub run {
 
     # print '**$bPretend**'; die;
 
-    # Unused: my $sBakSet= $self->getValue('name');
+    # Unused: my $sJob= $self->getValue('name');
 
     my @sRsyncOpts = $self->resolveObjects('rsync_opts') || ();
 

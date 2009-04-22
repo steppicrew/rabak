@@ -63,7 +63,7 @@ sub Factory {
 
 # IMPORTANT: define all used properties here, order will be used for show
 sub PropertyNames {
-    return ('type', shift->SUPER::PropertyNames(), 'keep', 'path_extension', 'previous_path_extensions', 'inode_inventory', 'merge_duplicates');
+    return ('type', shift->SUPER::PropertyNames(), 'keep', 'path_extension', 'previous_path_extensions', 'merge_duplicates');
 }
 
 sub getPathExtension {

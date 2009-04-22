@@ -160,10 +160,10 @@ Running
   ../rabak -c rabak.tutorial1.cf conf
 will produce following output:
 
-  Available backup sets in "tutorial/rabak.tutorial1.cf":
+  Available jobs in "tutorial/rabak.tutorial1.cf":
     tutorial - Tutorial1, backs up "tutorial/source" to "tutorial/target"
 
-b<Rabak> sees one backup set named 'tutorial', which will backup all files
+b<Rabak> sees one job named 'tutorial', which will backup all files
 from the directory 'tutorial/source' into the directory 'tutorial/target'.
 
 Try this by running
@@ -189,7 +189,7 @@ You'll find your backup in 'tutorial/target/2007-07.tutorial/2007-07-30'.
 TBD!
 
 
-=head1 TUTORIAL1: Multiple Backup Sets; Variables Basics
+=head1 TUTORIAL1: Multiple Jobs; Variables Basics
 
   target_path= tutorial/target
 
@@ -234,7 +234,7 @@ TBD!
   mount2.directory = $target_base
   mount2.unmount = 1
 
-  # Backup set "Tutorial1 A"
+  # Job "Tutorial1 A"
   # The [tutorial1_a] sets the scope to "tutorial1_a". All assignments are now inside this scope.
 
   [tutorial1_a]
@@ -243,7 +243,7 @@ TBD!
   target.path = tutorial/target
   target.mount = &mount1
 
-  # Backup set "Tutorial1 B"
+  # Job "Tutorial1 B"
   # The [] clears the scope. Unlike "tutorial1_a" the scope must be written explicitly.
 
   []
@@ -312,7 +312,7 @@ TBD!
 TBD!
 
 
-=head1 TUTORIAL1: Multiple Sources per Backup Set
+=head1 TUTORIAL1: Multiple Sources per Job
 
 TBD!
 

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package Rabak::Set;
+package Rabak::Job;
 
 use warnings;
 use strict;
@@ -55,7 +55,7 @@ sub PropertyNames {
     return ('title', 'source', 'target', 'email', shift->SUPER::PropertyNames(), 'path_extension', 'previous_path_extensions');
 }
 
-sub GetSets {
+sub GetJobs {
     my $class= shift;
     my $oConf= shift;
     return map { $class->newFromConf($oConf->{VALUES}{$_}) } grep {
@@ -181,8 +181,10 @@ sub GetMetaBaseDir {
 
 sub getMetaDir {
     my $self= shift;
+    my $sSubDir= shift;
     
     my $sMetaDir= $self->GetMetaBaseDir() . '/' . $self->getTargetPeer()->getUuid();
+    $sMetaDir.= '/' . $sSubDir if defined $sSubDir;
     return $sMetaDir if Rabak::Peer->new()->mkdir($sMetaDir);
     return undef;
 }
@@ -219,14 +221,14 @@ sub backup {
     $oSessionDataConf->setQuotedValue('cmdline', $self->cmdData("command_line"));
     $oSessionDataConf->setQuotedValue('time.start', $self->GetTimeString());
 
-    my $hBaksetData= $oTargetPeer->prepareForBackup($self->GetAllPathExtensions($self));
+    my $hJobData= $oTargetPeer->prepareForBackup($self->GetAllPathExtensions($self));
     $oSessionDataConf->setQuotedValue('target.uuid', $oTargetPeer->getUuid());
 
-    $iResult= $hBaksetData->{ERROR};
+    $iResult= $hJobData->{ERROR};
 
     unless ($iResult) {
 
-        $oTargetPeer->initLogging($hBaksetData) if $self->getSwitch('logging');
+        $oTargetPeer->initLogging($hJobData) if $self->getSwitch('logging');
 
         my $hDoneSources= {};
         # now try backing up every source 
@@ -243,7 +245,7 @@ sub backup {
             $oSessionDataConf->setQuotedValue($oSourceDataConf->getName(), $oSourceDataConf);
             my $oBackup= Rabak::Backup->new($oSourcePeer, $oTargetPeer);
             eval {
-                unless ($oBackup->run($hBaksetData, $oSourceDataConf)) {
+                unless ($oBackup->run($hJobData, $oSourceDataConf)) {
                     $iSuccessCount++;
                 }
                 1;
@@ -264,19 +266,22 @@ sub backup {
         $oSessionDataConf->setQuotedValue('time.end', $self->GetTimeString());
         my $sSessionName= 'session.'
             . $oSessionDataConf->getValue('time.start') . '.'
-            . $oSessionDataConf->getValue('time.end') . '.'
-            . $self->getName();
-        my $sMetaDir= $self->getMetaDir();
+            . $oSessionDataConf->getValue('time.end');
+        my $sMetaSubDir= $self->getFullName();
+        my $sMetaDir= $self->getMetaDir($sMetaSubDir);
         return unless $sMetaDir;
         my $sMetaFile= $sMetaDir . '/' . $sSessionName;
         $oSessionDataConf->writeToFile($sMetaFile);
-        if ($hBaksetData->{BAKSET_META_DIR}) {
-            my $sFileName= $hBaksetData->{BAKSET_META_DIR} . '/' . $sSessionName;
-            $oTargetPeer->copyLocalFileToRemote($sMetaFile, $sFileName);
+        if ($hJobData->{JOB_META_DIR}) {
+            $sMetaDir= $hJobData->{JOB_META_DIR} . '/' . $sMetaSubDir;
+            if ($oTargetPeer->mkdir($sMetaDir)) {
+                my $sFileName= $sMetaDir . '/' . $sSessionName;
+                $oTargetPeer->copyLocalFileToRemote($sMetaFile, $sFileName);
+            }
         }
     };
     
-    $oTargetPeer->finishBackup($hBaksetData, $fWriteSessionData);
+    $oTargetPeer->finishBackup($hJobData, $fWriteSessionData);
     
     my $sSubject= "successfully finished";
     $sSubject= "$iSuccessCount of " . scalar(@oSourcePeers) . " backups $sSubject" if $iResult;
@@ -314,17 +319,17 @@ sub _rmFile {
     my %aFiles= ();
     my %iFoundMask= ();
 
-    my $sBakSet= $self->getName();
-    my $sBakSetDay= $sBakSet;
+    my $sJob= $self->getName();
+    my $sJobDay= $sJob;
     my $sSourceName= $oSource->getName();
-    $sBakSetDay.= "-$sSourceName"  if $sSourceName;
+    $sJobDay.= "-$sSourceName"  if $sSourceName;
     my $oTargetPeer= $self->getTargetPeer();
 
     # TODO: Make a better check!
-    logger->exitError(3, "Can't remove! \"$sBakSet.target\" is empty or points to file system root.") if $oTargetPeer->getPath eq '' || $oTargetPeer->getPath eq '/';
+    logger->exitError(3, "Can't remove! \"$sJob.target\" is empty or points to file system root.") if $oTargetPeer->getPath eq '' || $oTargetPeer->getPath eq '/';
 
     die "wrong parameters for collect_bakdirs()";
-    my @sBakDir= $self->collect_bakdirs($sBakSet, $sBakSetDay);
+    my @sBakDir= $self->collect_bakdirs($sJob, $sJobDay);
 
     # print Dumper(\@sBakDir);
 

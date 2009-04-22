@@ -9,7 +9,7 @@ no warnings 'redefine';
 use Rabak::Conf;
 use Rabak::Log;
 
-use Rabak::Set;      # benoetigt in printSetList
+use Rabak::Job;      # benoetigt in printJobList
 
 use Term::ANSIColor;
 
@@ -87,22 +87,22 @@ sub conf {
     return $self->{CONF};
 }
 
-=item printSetList
+=item printJobList
 
-Prints a list of available backup sets.
+Prints a list of available jobs.
 
 =cut
 
-sub printSetList {
+sub printJobList {
     my $self= shift;
     
     return unless defined $self->filename();
 
     my $bFound= 0;
     my $oConf= $self->{CONF};
-    for my $oSet (Rabak::Set->GetSets($oConf)) {
-        my $oTarget= $oSet->getTargetPeer(); 
-        my @oSources= $oSet->getSourcePeers();
+    for my $oJob (Rabak::Job->GetJobs($oConf)) {
+        my $oTarget= $oJob->getTargetPeer(); 
+        my @oSources= $oJob->getSourcePeers();
         next unless $oTarget && scalar @oSources;
 
         my @aSources= ();
@@ -110,7 +110,7 @@ sub printSetList {
             push @aSources, $_->getFullPath();
         }
         my $sSources= join '", "', @aSources;
-        logger->print('  ' . colored($oSet->getName(), 'bold') . ' - ' . $oSet->getValue("title")
+        logger->print('  ' . colored($oJob->getName(), 'bold') . ' - ' . $oJob->getValue("title")
             . ", backs up \"$sSources\" to \""
             . $oTarget->getFullPath() . "\"");
         $bFound= 1;
