@@ -86,6 +86,83 @@ a {
     overflow: auto;
 }
 
+/** in development **/
+
+#dashboard {
+}
+
+#dashboard .bakset {
+    border: 1px solid black;
+    margin-right: 20px;
+    margin-bottom: 20px;
+    float: left;
+    width: 220px;
+}
+
+#dashboard .bakset > h2 {
+    padding: 5px;
+    margin: 0;
+    background-color: orange;
+}
+
+
+.flex {
+    border: 1px solid black;
+}
+
+.flex .icon {
+    width: 16px;
+    height: 16px;
+    border: 1px solid transparent;
+    vertical-align: bottom;
+    margin: 1px;
+    padding: 1px;
+}
+
+.flex > .title {
+    padding: 5px;
+    margin: 0;
+    background-color: orange;
+}
+
+.flex > .body {
+    padding: 5px;
+    margin: 0;
+    display: none;
+}
+
+.flex > .body > .detail {
+    margin: 0;
+    display: none;
+    border-top: 1px dotted #666;
+}
+
+.flex > .body {
+    padding: 5px;
+    margin: 0;
+    display: none;
+}
+
+.flex.open > .body, .flex.detail > .body {
+    display: block;
+}
+
+.flex.detail > .body > .detail {
+    display: block;
+}
+
+.flex.closed .icon_closed {
+    border-color: red;
+}
+
+.flex.open .icon_open {
+    border-color: red;
+}
+
+.flex.detail .icon_detail {
+    border-color: red;
+}
+
 /*****************************************************************************
     EOF
  *****************************************************************************/

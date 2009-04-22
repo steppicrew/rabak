@@ -98,8 +98,10 @@ jQuery(function($) {
 // ============================================================================
 
     var timeStrToDateObj= function(timeStr, cmpTime) {
-        timeStr= timeStr.replace(/^(....)(..)(..)(..)(..)(..)$/, "$2 $3, $1 $4:$5:$6 GMT");
-        return new Date(timeStr);
+        var re= timeStr.match(/^(....)(..)(..)(..)(..)(..)$/);
+        if (!re) return null;
+
+        return new Date(Date.UTC(re[1], re[2], re[3], re[4], re[5], re[6])); 
     };
 
     var fmtDateObj= function(d, cmpDate) {
@@ -141,13 +143,38 @@ jQuery(function($) {
             return this.add('<tr><td>' + row.join('</td><td>') + '</td></tr>');
         };
 
-        this.render= function() {
+        // state: "closed", "open", "detail"
+        this.addFlex= function(title, state, extraClass) {
+            if (!state) state= 'closed';
+            var flexHtml= this.add('<div class="flex ' + state + '">', '</div>', 'flex');
+            flexHtml.add('<div class="title">'
+                + '<img class="icon icon_closed" src="/static/flex-icon_closed.png" />'
+                + '<img class="icon icon_open"   src="/static/flex-icon_open.png"   />'
+                + '<img class="icon icon_detail" src="/static/flex-icon_detail.png" />'
+                + title + '</div>');
+            return flexHtml.add('<div class="body">', '</div>');
+        };
+
+        // Only call once for each flex, then simply call add
+        // pre and post are optional
+        this.addFlexDetail= function(pre, post) {
+            var detailHtml= this.add('<div class="detail">', '</div>');
+            detailHtml.add(pre, post);
+            return detailHtml;
+        };
+
+        this._render= function() {
             var result= pre ? [ pre ] : [];
             for (var i in items) {
-                result.push(items[i].render());
+                result.push(items[i]._render());
             }
             if (post) result.push(post);
             return result.join('');
+        };
+        
+        this.render= function($el) {
+            $el.html(this._render())
+                .find('.title').disableTextSelect();
         };
         
         return this;
@@ -173,10 +200,14 @@ jQuery(function($) {
             var html= new Html();
             html.add('<h1>' + conf.title + '</h1>');
 
+            var flexHtml= html.addFlex('TextFlex', 'open');
+            flexHtml.add('TestFlex');
+            flexHtml.addFlexDetail('TestFlex Detail');
+
             var dashboardHtml= html.add('<div id="dashboard">', '</div>');
 
             map(conf.jobs, function(job_name, job) {
-                var jobHtml= dashboardHtml.add('<div style="border: 1px solid black; margin: 10px; float: left; width: 220px;">', '</div>');
+                var jobHtml= dashboardHtml.add('<div class="bakset">', '</div>');
                 jobHtml.add('<h2>' + job.title + '</h2>');
 
                 sortMap(job.sessions,
@@ -206,7 +237,7 @@ jQuery(function($) {
 
             });
 
-            $("#body").html(html.render());
+            html.render($('#body'));
         })
     };
 
@@ -259,7 +290,7 @@ jQuery(function($) {
 
             });
 
-            $("#body").html(html.render());
+            html.render($('#body'));
         })
     };
 
@@ -312,11 +343,34 @@ jQuery(function($) {
             params[key]= paramsl.shift();
         }
 
-                        // Wenn true zurckgegeben wird, landets in der history und ist bookmarkable
-        cmdFn(params);  // return cmdFn(params) ???
-        return false;   // Oder evt abhaenging von nem params['omit_history'] ??
+                        // TODO: Wenn true zurckgegeben wird, landets in der history und ist bookmarkable
+        cmdFn(params);  //      return cmdFn(params) ???
+        return false;   //      Oder evt abhaenging von nem params['omit_history'] ??
     });
 
+    $('.flex').live('click', function(ev) {
+        var class_= 'closed';
+        var $this= $(this);
+        var $target= $(ev.target);
+        if ($target.hasClass('icon_closed')) {
+            // class_= 'closed'; class_ already 'closed'
+        }
+        else if ($target.hasClass('icon_open')) {
+            class_= 'open';
+        }
+        else if ($target.hasClass('icon_detail')) {
+            class_= 'detail';
+        }
+        else if ($('> .body > .detail', this).length) {
+            class_= $this.hasClass('open') ? 'detail' : ($this.hasClass('detail') ? 'closed' : 'open');
+        }
+        else if ($this.hasClass('open')) {
+            class_= 'open';
+        }
+        $this.removeClass('closed open detail').addClass(class_);
+
+        console.log(this.className);
+    });
 
 // ============================================================================
 //      Init
