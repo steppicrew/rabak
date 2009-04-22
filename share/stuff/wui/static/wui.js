@@ -207,7 +207,7 @@ jQuery(function($) {
             var dashboardHtml= html.add('<div id="dashboard">', '</div>');
 
             map(conf.jobs, function(job_name, job) {
-                var baksetHtml= dashboardHtml.add('<div class="bakset">', '</div>');
+                var jobHtml= dashboardHtml.add('<div class="bakset">', '</div>');
                 jobHtml.add('<h2>' + job.title + '</h2>');
 
                 sortMap(job.sessions,
