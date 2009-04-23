@@ -697,6 +697,21 @@ sub mkdir {
     ) || \undef};
 }
 
+# creates file if it doesn't exist
+sub createFile {
+    my $self= shift;
+    my $sFile= $self->getPath(shift);
+    
+    return 1 if $self->pretend();
+
+    return ${$self->runPerl('
+            # touch()
+            my $fh;
+            $result= -e $sFile || CORE::open $fh, ">$sFile";
+        ', { "sFile" => $sFile }, '$result'
+    ) || \undef};
+}
+
 sub symlink {
     my $self= shift;
 #    my $sOrigFile= $self->getPath(shift);
@@ -921,23 +936,23 @@ sub rsync {
         push @sRsyncOpts, "--bwlimit=$sBandwidth" if $sBandwidth;
     }
 
-    my $sRsyncCmd= scalar $self->ShellQuote('rsync', @sRsyncOpts, (map {$sSourceDirPref . $self->getPath($_)} @sSourceFiles), $sTargetDirPref . $sTargetPath);
+    my $sRsyncCmd= scalar $self->ShellQuote('rsync', @sRsyncOpts, (map {$sSourceDirPref . $self->getPath($_)} @sSourceFiles), $sTargetDirPref . $oTargetPeer->getPath($sTargetPath));
 
-    if ($params{logging}) {
-        logger->info("Running" .
+    if ($params{log_level}) {
+        logger->log([$params{log_level}, "Running" .
             ($oRsyncPeer->isRemote() ?
                 " on '" . $oRsyncPeer->getUserHostPort() . "'" :
                 "") .
-            ": $sRsyncCmd");
+            ": $sRsyncCmd"]);
         logger->incIndent();
     }
 
     # run rsync command
     my (undef, undef, $iExit, $sError)= $oRsyncPeer->runCmd($sRsyncCmd, $hIoHandles);
 
-    if ($params{logging}) {
+    if ($params{log_level}) {
         logger->decIndent();
-        logger->info("rsync finished successfully") unless $iExit;
+        logger->log([$params{log_level}, "rsync finished successfully"]) unless $iExit;
     }
     logger->error($sError) if $sError;
     logger->warn("rsync exited with result $iExit") if $iExit;
