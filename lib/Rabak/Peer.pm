@@ -825,7 +825,7 @@ sub absPath {
 
 sub glob {
     my $self= shift;
-    my $sFile= shift;
+    my $sFile= $self->getPath(shift);
 
     return @{$self->runPerl('
             # glob()
@@ -836,8 +836,8 @@ sub glob {
 
 sub rename {
     my $self= shift;
-    my $sOldFile= shift;
-    my $sNewFile= shift;
+    my $sOldFile= $self->getPath(shift);
+    my $sNewFile= $self->getPath(shift);
 
     return ${$self->runPerl('
             # rename()
@@ -888,11 +888,14 @@ sub rsync {
     my $self= shift;
     my %params= @_;
     
-    my @sSourceFiles= ref $params{source_files} ? @{ $params{source_files} } : ($params{source_files});
+    my @sSourceFiles= map {$self->glob($_)} ref $params{source_files} ? @{ $params{source_files} } : ($params{source_files});
     my $sTargetPath= $params{target_path};
     my $oTargetPeer= $params{target_peer};
     my @sRsyncOpts= @{ $params{opts} || [] };
     my $hIoHandles= $params{handles} || {};
+    
+    # return success on empty source file list
+    return 0 unless scalar @sSourceFiles;
     
     # $oSshPeer contains ssh parameters for rsync (seen from $oRsyncPeer)
     # - is $oTargetPeer if target is remote (rsync will be run on self)

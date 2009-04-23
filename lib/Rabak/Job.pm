@@ -304,24 +304,37 @@ sub _syncMetaDataFromTarget {
     
     my $sTargetPath= $self->getMetaDir();
     
-    my $iResult= $oTargetPeer->isDir('./meta') && $oTargetPeer->rsync(
+    logger->verbose("Syncing meta data from target to local meta dir \"$sTargetPath\"...");
+    logger->incIndent();
+    my $iResult= $oTargetPeer->rsync(
         source_files => '.meta/*',
         target_path => $sTargetPath,
         target_peer => $oLocalPeer,
         opts => \@sOpts,
         log_level => logger->LOG_DEBUG_LEVEL,
     );
+    logger->error(
+        "Error syncing inodes.db and session data from target: \""
+        . $oTargetPeer->getLastError() . "\""
+    ) if $oTargetPeer->getLastError();
     
     push @sOpts, map {$sIncludePath.= "$_/"; "--include=$sIncludePath"} split /\//, '/*/*/meta';
     push @sOpts, '--include=/*/*/meta/*.db';
     push @sOpts, '--exclude=/***';
-    return $oTargetPeer->rsync(
+    $iResult ||= $oTargetPeer->rsync(
         source_files => '*',
         target_path => $sTargetPath . '/.meta',
         target_peer => $oLocalPeer,
         opts => \@sOpts,
         log_level => logger->LOG_DEBUG_LEVEL,
-    ) || $iResult;
+    );
+    logger->error(
+        "Error syncing filesinode.db data from target: \""
+        . $oTargetPeer->getLastError() . "\""
+    ) if $oTargetPeer->getLastError();
+    logger->decIndent();
+    logger->verbose('done');
+    return $iResult;
 }
 
 # sync session files and inodes/inode_files.db TO target
@@ -335,22 +348,35 @@ sub _syncMetaDataToTarget {
     
     my $sSourcePath= $self->getMetaDir();
     
+    logger->verbose("Syncing meta data from local meta dir \"$sSourcePath\" to target...");
+    logger->incIndent();
     my $iResult= $oLocalPeer->rsync(
-        source_files => [$oLocalPeer->glob("$sSourcePath/*")],
+        source_files => "$sSourcePath/*",
         target_path => '.meta/',
         target_peer => $oTargetPeer,
         opts => \@sOpts,
         log_level => logger->LOG_DEBUG_LEVEL,
     );
+    logger->error(
+        "Error syncing inodes.db and session data to target: \""
+        . $oLocalPeer->getLastError() . "\""
+    ) if $oLocalPeer->getLastError();
 
     push @sOpts, '--existing';
-    return $oLocalPeer->rsync(
-        source_files => [$oLocalPeer->glob("$sSourcePath/.meta/*")],
+    $iResult ||= $oLocalPeer->rsync(
+        source_files => "$sSourcePath/.meta/*",
         target_path => './',
         target_peer => $oTargetPeer,
         opts => \@sOpts,
         log_level => logger->LOG_DEBUG_LEVEL,
-    ) || $iResult;
+    );
+    logger->error(
+        "Error syncing filesinode.db data to target: \""
+        . $oLocalPeer->getLastError() . "\""
+    ) if $oLocalPeer->getLastError();
+    logger->decIndent();
+    logger->verbose('done');
+    return $iResult;
 }
 
 # -----------------------------------------------------------------------------
