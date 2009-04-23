@@ -536,7 +536,7 @@ sub run {
         target_peer => $oTargetPeer,
         opts => [@sFlags],
         handles => {%Handles},
-        logging => 1,
+        log_level => logger->LOG_INFO_LEVEL,
     );
 
     if (scalar @sLinkErrors) {
@@ -571,7 +571,7 @@ sub run {
             target_peer => $oTargetPeer,
             opts => [@sFlags, "--files-from=$sFilesFile"],
             handles => {%Handles},
-            logging => 1,
+            log_level => logger->LOG_INFO_LEVEL,
         );
 
         logger->decIndent();

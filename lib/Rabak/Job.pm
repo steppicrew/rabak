@@ -173,20 +173,20 @@ sub GetAllPathExtensions {
 
 sub GetMetaBaseDir {
     my $self= shift;
+    my $sSubDir= shift;
     
     my $sMetaDir= '/var/lib/rabak';
     $sMetaDir= $ENV{HOME} . '/.rabak/meta' unless -d $sMetaDir && -w $sMetaDir;
-    return $sMetaDir;
+    $sMetaDir.= '/' . $sSubDir if defined $sSubDir;
+    return $sMetaDir if Rabak::Peer->new()->mkdir($sMetaDir);
+    return undef;
 }
 
 sub getMetaDir {
     my $self= shift;
-    my $sSubDir= shift;
+    my $sSubDir= shift || '';
     
-    my $sMetaDir= $self->GetMetaBaseDir() . '/' . $self->getTargetPeer()->getUuid();
-    $sMetaDir.= '/' . $sSubDir if defined $sSubDir;
-    return $sMetaDir if Rabak::Peer->new()->mkdir($sMetaDir);
-    return undef;
+    return $self->GetMetaBaseDir($self->getTargetPeer()->getUuid() . '/' . $sSubDir);
 }
 
 sub backup {
@@ -220,9 +220,11 @@ sub backup {
     my $oSessionDataConf= Rabak::Conf->new('*');
     $oSessionDataConf->setQuotedValue('cmdline', $self->cmdData("command_line"));
     $oSessionDataConf->setQuotedValue('time.start', $self->GetTimeString());
-
+    
     my $hJobData= $oTargetPeer->prepareForBackup($self->GetAllPathExtensions($self));
     $oSessionDataConf->setQuotedValue('target.uuid', $oTargetPeer->getUuid());
+
+    $self->_syncMetaDataFromTarget();
 
     $iResult= $hJobData->{ERROR};
 
@@ -272,13 +274,8 @@ sub backup {
         return unless $sMetaDir;
         my $sMetaFile= $sMetaDir . '/' . $sSessionName;
         $oSessionDataConf->writeToFile($sMetaFile);
-        if ($hJobData->{JOB_META_DIR}) {
-            $sMetaDir= $hJobData->{JOB_META_DIR} . '/' . $sMetaSubDir;
-            if ($oTargetPeer->mkdir($sMetaDir)) {
-                my $sFileName= $sMetaDir . '/' . $sSessionName;
-                $oTargetPeer->copyLocalFileToRemote($sMetaFile, $sFileName);
-            }
-        }
+
+        $self->_syncMetaDataToTarget();
     };
     
     $oTargetPeer->finishBackup($hJobData, $fWriteSessionData);
@@ -293,6 +290,67 @@ sub backup {
     
     # return number of failed backups or error code (negative)
     return $iResult;
+}
+
+# sync session files and inodes/inode_files.db FROM target
+sub _syncMetaDataFromTarget {
+    my $self= shift;
+    
+    my $oTargetPeer= $self->getTargetPeer();
+    my $oLocalPeer= Rabak::Peer->new();
+
+    my $sIncludePath= '';
+    my @sOpts= ('--update', '--prune-empty-dirs', '--archive', '--hard-links');
+    
+    my $sTargetPath= $self->getMetaDir();
+    
+    my $iResult= $oTargetPeer->isDir('./meta') && $oTargetPeer->rsync(
+        source_files => '.meta/*',
+        target_path => $sTargetPath,
+        target_peer => $oLocalPeer,
+        opts => \@sOpts,
+        log_level => logger->LOG_DEBUG_LEVEL,
+    );
+    
+    push @sOpts, map {$sIncludePath.= "$_/"; "--include=$sIncludePath"} split /\//, '/*/*/meta';
+    push @sOpts, '--include=/*/*/meta/*.db';
+    push @sOpts, '--exclude=/***';
+    return $oTargetPeer->rsync(
+        source_files => '*',
+        target_path => $sTargetPath . '/.meta',
+        target_peer => $oLocalPeer,
+        opts => \@sOpts,
+        log_level => logger->LOG_DEBUG_LEVEL,
+    ) || $iResult;
+}
+
+# sync session files and inodes/inode_files.db TO target
+sub _syncMetaDataToTarget {
+    my $self= shift;
+    
+    my $oTargetPeer= $self->getTargetPeer();
+    my $oLocalPeer= Rabak::Peer->new();
+
+    my @sOpts= ('--update', '--archive', '--hard-links');
+    
+    my $sSourcePath= $self->getMetaDir();
+    
+    my $iResult= $oLocalPeer->rsync(
+        source_files => [$oLocalPeer->glob("$sSourcePath/*")],
+        target_path => '.meta/',
+        target_peer => $oTargetPeer,
+        opts => \@sOpts,
+        log_level => logger->LOG_DEBUG_LEVEL,
+    );
+
+    push @sOpts, '--existing';
+    return $oLocalPeer->rsync(
+        source_files => [$oLocalPeer->glob("$sSourcePath/.meta/*")],
+        target_path => './',
+        target_peer => $oTargetPeer,
+        opts => \@sOpts,
+        log_level => logger->LOG_DEBUG_LEVEL,
+    ) || $iResult;
 }
 
 # -----------------------------------------------------------------------------
