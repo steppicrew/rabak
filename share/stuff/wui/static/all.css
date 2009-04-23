@@ -86,7 +86,10 @@ a {
     overflow: auto;
 }
 
-/** in development **/
+
+/* ============================================================================
+//      Dashboard
+// ============================================================================ */
 
 #dashboard {
 }
@@ -105,6 +108,10 @@ a {
     background-color: orange;
 }
 
+
+/* ============================================================================
+//      Flex Boxes
+// ============================================================================ */
 
 .flex {
     border: 1px solid black;
@@ -135,15 +142,11 @@ a {
     margin: 0;
     display: none;
     border-top: 1px dotted #666;
+    margin-top: 5px;
 }
 
-.flex > .body {
-    padding: 5px;
-    margin: 0;
-    display: none;
-}
-
-.flex.open > .body, .flex.detail > .body {
+.flex.open > .body,
+.flex.detail > .body {
     display: block;
 }
 
@@ -151,22 +154,34 @@ a {
     display: block;
 }
 
-.flex.no-detail > .title > .icon_detail {
-    display: none !important;
+.flex.no-detail > .title > .icon {
+    display: none;
 }
 
-.flex.closed > .title > .icon_closed {
+.flex.no-detail.closed > .title > .icon_closed,
+.flex.no-detail.open   > .title > .icon_open {
+    display: inline;
+}
+
+.flex.has-detail.closed > .title > .icon_closed,
+.flex.has-detail.open   > .title > .icon_open,
+.flex.has-detail.detail > .title > .icon_detail {
     border-color: red;
 }
 
-.flex.open > .title > .icon_open {
-    border-color: red;
+/* develop */
+
+table.std {
+    border-collapse: collapse;
+    border: 1px solid #666;
 }
 
-.flex.detail > .title > .icon_detail {
-    border-color: red;
+table.std td {
+    border: 1px solid #CCC;
+    padding: 5px;
 }
 
-/*****************************************************************************
-    EOF
- *****************************************************************************/
+
+/* ============================================================================
+//      EOF
+// ============================================================================ */
