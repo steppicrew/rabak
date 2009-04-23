@@ -173,8 +173,19 @@ jQuery(function($) {
         };
         
         this.render= function($el) {
-            $el.html(this._render())
-                .find('.title').disableTextSelect();
+            var $html= $(this._render());
+            $html.find('.title').disableTextSelect();
+            
+            // Make things easier for CSS and add a class to all ".flex" divs,
+            // indicating whether there is a ".detail" div or not.
+            $html.find('.flex').each(function(el_i, el) {
+                var $el= $(el);
+                $el.addClass(
+                    $el.find('> .body > .detail').length
+                        ? 'has-detail'
+                        : 'no-detail');
+            });
+            $el.html($html);
         };
         
         return this;

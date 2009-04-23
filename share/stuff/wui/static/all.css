@@ -151,15 +151,19 @@ a {
     display: block;
 }
 
-.flex.closed .icon_closed {
+.flex.no-detail > .title > .icon_detail {
+    display: none !important;
+}
+
+.flex.closed > .title > .icon_closed {
     border-color: red;
 }
 
-.flex.open .icon_open {
+.flex.open > .title > .icon_open {
     border-color: red;
 }
 
-.flex.detail .icon_detail {
+.flex.detail > .title > .icon_detail {
     border-color: red;
 }
 
