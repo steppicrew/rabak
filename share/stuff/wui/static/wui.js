@@ -86,12 +86,13 @@ jQuery(function($) {
 
     // Similar to "map", but:
     // - sorts the object properties before mapping
+    // - "sortFn" gets four arguments: two ojects and the corresponding two keys
     // - "mapFn" must return a bool. If true, "sortMap" is done.
     // - "mapFn" receives a third argument: The total number of elements
     var sortMap= function(objs, sortFn, mapFn) {
         var lookup= [];
         for (var i in objs) lookup.push(i);
-        lookup.sort(function(a,b) { return sortFn(objs[a], objs[b]); });
+        lookup.sort(function(a,b) { return sortFn(objs[a], objs[b], a, b); });
         for (var i in lookup) if (mapFn(lookup[i], objs[lookup[i]], lookup.length)) break;
     };
 
@@ -327,19 +328,43 @@ jQuery(function($) {
 // kann mit fehlenden daten umgehen
 // alternative: http://code.google.com/p/protovis-js/downloads/list
 
-
-        $("#body").html('<div id="placeholder" style="width:600px;height:300px;"></div>');
+        var html= new Html();
+        
+        var selectHtml= html.add('<select id="bla">', '</select>');
+        selectHtml.add('<option value="x">All</option>');
+        
+        html.add('<div id="placeholder" style="width:600px;height:300px;"></div>');
 
         var d= [];
         map(conf.jobs, function(job_name, job) {
-            var dd= [];
+            var dd= { trans: [], total: [] };
             var i= 0;
-            map(job.sessions, function(session_id, session) {
-                dd.push([ i++, session.saved ]);
-            });
-            d.push(dd);
+            sortMap(job.sessions,
+                function(a, b) {
+                    return strcmp(a.time.start, b.time.start);
+                },
+                function(session_id, session) {
+                    sortMap(session.sources,
+                        function(a, b, ai, bi) {
+                            return strcmp(ai, bi);
+                        },
+                        function(source_name, source) {
+                        
+                        console.warn(source);
+                        
+                            dd.trans.push([ i, source.stats.transferred_bytes ]);
+                            dd.total.push([ i, source.stats.total_bytes ]);
+                            i++;
+                        }
+                    );
+                }
+            );
+            d.push(dd.trans);
+            d.push(dd.total);
         });
         console.log(d);
+
+        html.render($("#body"));
 
         $.plot($("#placeholder"), d);
     };

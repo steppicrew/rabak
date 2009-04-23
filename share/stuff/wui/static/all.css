@@ -133,15 +133,15 @@ a {
 }
 
 .flex > .body {
+    display: none;
     padding: 5px;
     margin: 0;
-    display: none;
 }
 
 .flex > .body > .detail {
-    margin: 0;
     display: none;
     border-top: 1px dotted #666;
+    margin: 0;
     margin-top: 5px;
 }
 
