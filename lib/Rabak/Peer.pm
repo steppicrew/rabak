@@ -889,8 +889,8 @@ sub rsync {
     my %params= @_;
     
     my @sSourceFiles= map {$self->glob($_)} ref $params{source_files} ? @{ $params{source_files} } : ($params{source_files});
-    my $sTargetPath= $params{target_path};
     my $oTargetPeer= $params{target_peer};
+    my $sTargetPath= $oTargetPeer->getPath($params{target_path});
     my @sRsyncOpts= @{ $params{opts} || [] };
     my $hIoHandles= $params{handles} || {};
     
@@ -939,7 +939,12 @@ sub rsync {
         push @sRsyncOpts, "--bwlimit=$sBandwidth" if $sBandwidth;
     }
 
-    my $sRsyncCmd= scalar $self->ShellQuote('rsync', @sRsyncOpts, (map {$sSourceDirPref . $self->getPath($_)} @sSourceFiles), $sTargetDirPref . $oTargetPeer->getPath($sTargetPath));
+    my $sRsyncCmd= scalar $self->ShellQuote(
+        'rsync',
+        @sRsyncOpts,
+        (map {$sSourceDirPref . $_} @sSourceFiles),
+        $sTargetDirPref . $sTargetPath,
+    );
 
     if ($params{log_level}) {
         logger->log([$params{log_level}, "Running" .
