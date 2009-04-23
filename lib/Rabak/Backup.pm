@@ -97,7 +97,7 @@ sub _setup {
     $oSourceDataConf->setQuotedValue('target.fullpath', $oTargetPeer->getFullPath());
     $oSourceDataConf->setQuotedValue('target.datadir', $sBakDataDir);
     $oSourceDataConf->setQuotedValue('target.metadir', $sBakMetaDir);
-    $oSourceDataConf->setQuotedValue('target.df.start', scalar $oTargetPeer->getDf('-B1'));
+    $oSourceDataConf->setQuotedValue('target.diskfree.start', scalar $oTargetPeer->getDf('-B1'));
 
     $self->_convertBackupDirs(\@sBakBaseDirs);
 
@@ -300,7 +300,7 @@ sub _setup {
         $oSourceDataConf->setQuotedValue('stats.total_files', $iTotalFiles);
         $oSourceDataConf->setQuotedValue('stats.transferred_files', $iTransferredFiles);
         $oSourceDataConf->setQuotedValue('stats.failed_files', $iFailedFiles);
-        $oSourceDataConf->setQuotedValue('target.df.end', scalar $oTargetPeer->getDf('-B1'));
+        $oSourceDataConf->setQuotedValue('target.diskfree.end', scalar $oTargetPeer->getDf('-B1'));
     };
 
     unless ($oTargetPeer->pretend()) {
