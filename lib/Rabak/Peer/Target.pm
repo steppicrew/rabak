@@ -266,20 +266,20 @@ sub prepareForBackup {
         $sLocalDevConfFile= $self->localTempfile(SUFFIX => '.dev.cf') if $self->isRemote();
         $oDevConf= Rabak::Conf->new('*');
     }
-    unless ($self->{UUID}) {
+    if ($self->{UUID}) {
+        logger->info('Target has UUID ' . $self->{UUID} . '.');
+    }
+    else {
         # create new uuid and write into target's directory
         $self->{UUID}= $self->CreateUuid();
         $oDevConf->setQuotedValue('uuid', $self->{UUID});
         $oDevConf->writeToFile($sLocalDevConfFile);
         $self->copyLocalFileToRemote($sLocalDevConfFile, $sDevConfFile);
+        logger->info('Target has no UUID. Assigning UUID ' . $self->{UUID} . '.');
     }
 
     $self->mkdir($sJobDir);
     $self->mkdir($sJobMeta);
-
-    # if ($self->isWritable("$sJob/target.cf")) {
-    #     $oConf= new Rabak::ConfFile();
-    # }
 
     return {
         JOB_EXT => $sJobExt,     # path extension for current Job
