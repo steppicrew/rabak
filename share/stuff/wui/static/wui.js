@@ -84,12 +84,16 @@ jQuery(function($) {
         for (var i in objs) fn(i, objs[i]);
     };
 
-    // Same as "map", but sorts the object properties before mapping
+    // Similar to "map", but:
+    // - sorts the object properties before mapping
+    // - "sortFn" gets four arguments: two ojects and the corresponding two keys
+    // - "mapFn" must return a bool. If true, "sortMap" is done.
+    // - "mapFn" receives a third argument: The total number of elements
     var sortMap= function(objs, sortFn, mapFn) {
         var lookup= [];
         for (var i in objs) lookup.push(i);
-        lookup.sort(function(a,b) { return sortFn(objs[a], objs[b]); });
-        for (var i in lookup) mapFn(lookup[i], objs[lookup[i]]);
+        lookup.sort(function(a,b) { return sortFn(objs[a], objs[b], a, b); });
+        for (var i in lookup) if (mapFn(lookup[i], objs[lookup[i]], lookup.length)) break;
     };
 
 
@@ -136,7 +140,7 @@ jQuery(function($) {
         };
 
         this.addTable= function() {
-            return this.add('<table border="1">', '</table>');
+            return this.add('<table class="std">', '</table>');
         };
 
         this.addRow= function(row) {
@@ -173,8 +177,22 @@ jQuery(function($) {
         };
         
         this.render= function($el) {
-            $el.html(this._render())
-                .find('.title').disableTextSelect();
+
+            // Hmm, jQuery: How does one find all nodes with a certain class
+            // _including_ the root node? Dunno. So I wrap it into a div:
+            var $html= $('<div>' + this._render() + '</div>');
+            $html.find('.title').disableTextSelect();
+
+            // Make things easier for CSS and add a class to all ".flex" divs,
+            // indicating whether there is a ".detail" div or not.
+            $html.find('.flex').each(function(el_i, el) {
+                var $el= $(el);
+                $el.addClass(
+                    $el.find('> .body > .detail').length
+                        ? 'has-detail'
+                        : 'no-detail');
+            });
+            $el.html($html);
         };
         
         return this;
@@ -186,6 +204,10 @@ jQuery(function($) {
 // ============================================================================
 
     var cmds= {};
+
+    var sessionCmp= function(a, b) {
+        return strcmp(b.time.start, a.time.start);
+    };
 
     cmds.show_dashboard= function(params) {
 
@@ -208,13 +230,14 @@ jQuery(function($) {
 
             map(conf.jobs, function(job_name, job) {
                 var jobHtml= dashboardHtml.add('<div class="bakset">', '</div>');
-                var jobFlexHtml= jobHtml.addFlex(job.title);
+                var jobFlexHtml= jobHtml.addFlex(job.title, 'open');
 
                 sortMap(job.sessions,
-                    function(a, b) {
-                        return strcmp(b.time.start, a.time.start);
-                    },
-                    function(session_id, session) {
+                    sessionCmp,
+                    function(session_id, session, count) {
+                    
+                        jobFlexHtml.add('Newest of ' + count + ' sessions:');
+                    
                         session.title= fmtTime(session.time);
                         var flexHtml= jobFlexHtml.addFlex('Session ' + session.title);
 
@@ -232,6 +255,9 @@ jQuery(function($) {
                                 source.stats.transferred_bytes + '/' + source.stats.total_bytes + ' Bytes',
                             ]);
                         });
+                        
+                        // Only show newest Session
+                        return true;
                     }
                 );
 
@@ -260,9 +286,7 @@ jQuery(function($) {
                 html.add('<h2>' + job.title + '</h2>');
 
                 sortMap(job.sessions,
-                    function(a, b) {
-                        return strcmp(b.time.start, a.time.start);
-                    },
+                    sessionCmp,
                     function(session_id, session) {
                         session.title= fmtTime(session.time);
                         var flexHtml= html.addFlex('Session ' + session.title, 'open');
@@ -284,7 +308,12 @@ jQuery(function($) {
                                 fmtTime(source.time),
                                 source.stats.transferred_bytes + '/' + source.stats.total_bytes + ' Bytes',
                             ]);
+                            var flexDetailHtml= flexHtml.addFlexDetail();
+                            if (source.stats.text) {
+                                flexDetailHtml.add(source.stats.text.split('\n').join('<br>\n'));
+                            }
                         });
+                        return false;
                     }
                 );
 
@@ -299,19 +328,43 @@ jQuery(function($) {
 // kann mit fehlenden daten umgehen
 // alternative: http://code.google.com/p/protovis-js/downloads/list
 
-
-        $("#body").html('<div id="placeholder" style="width:600px;height:300px;"></div>');
+        var html= new Html();
+        
+        var selectHtml= html.add('<select id="bla">', '</select>');
+        selectHtml.add('<option value="x">All</option>');
+        
+        html.add('<div id="placeholder" style="width:600px;height:300px;"></div>');
 
         var d= [];
         map(conf.jobs, function(job_name, job) {
-            var dd= [];
+            var dd= { trans: [], total: [] };
             var i= 0;
-            map(job.sessions, function(session_id, session) {
-                dd.push([ i++, session.saved ]);
-            });
-            d.push(dd);
+            sortMap(job.sessions,
+                function(a, b) {
+                    return strcmp(a.time.start, b.time.start);
+                },
+                function(session_id, session) {
+                    sortMap(session.sources,
+                        function(a, b, ai, bi) {
+                            return strcmp(ai, bi);
+                        },
+                        function(source_name, source) {
+                        
+                        console.warn(source);
+                        
+                            dd.trans.push([ i, source.stats.transferred_bytes ]);
+                            dd.total.push([ i, source.stats.total_bytes ]);
+                            i++;
+                        }
+                    );
+                }
+            );
+            d.push(dd.trans);
+            d.push(dd.total);
         });
         console.log(d);
+
+        html.render($("#body"));
 
         $.plot($("#placeholder"), d);
     };
