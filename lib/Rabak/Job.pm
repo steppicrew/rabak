@@ -293,6 +293,7 @@ sub backup {
 }
 
 # sync session files and inodes/inode_files.db FROM target
+# TODO: do something if sync fails (disk full etc.)
 sub _syncMetaDataFromTarget {
     my $self= shift;
     
