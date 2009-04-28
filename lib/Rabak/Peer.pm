@@ -942,6 +942,7 @@ sub rsync {
     my $sRsyncCmd= scalar $self->ShellQuote(
         'rsync',
         @sRsyncOpts,
+        '--protect-args',
         (map {$sSourceDirPref . $_} @sSourceFiles),
         $sTargetDirPref . $sTargetPath,
     );
