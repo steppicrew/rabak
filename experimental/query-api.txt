@@ -1,0 +1,83 @@
+
+QUERIES:
+--------
+
+
+-- jobs with errors:
+
+    count job:
+        session:
+            source-session:
+                error-count > 0
+
+    job:
+        session:
+            limit 1
+            order-desc time.start
+            source-session:
+                error-count > 0
+        count session:
+            source-session:
+                error-count > 0
+
+-- last jobs:
+
+    job:
+        session:
+            limit 1
+            order-desc time.start
+            source-session:
+
+-- messages:
+
+    message:
+        session-id = "session-uuid"
+        level = 2
+        range 0, 100
+        order-by ((time? message id?))
+
+-- mediums:
+
+    medium:
+        source-session:
+            via session
+            limit 1
+            order-desc time.end
+        job:
+            distinct        -- id?
+
+-- search file
+
+    file:
+        regex = 'steppi.*idee'
+        source-session:
+            url = file:///lisa/
+            time.start = 2009-02-01
+            order-desc time.start
+        distinct inode
+        order-desc source-session.time.start
+
+--
+
+----
+
+
+    job {
+        important-session {
+            table session
+            limit 1
+            order-desc time.start
+            source-session {
+                error-count > 0
+                admin = 'steppi'
+            }
+        }
+        session {
+            source-session {
+                error-count > 0
+            }
+        }
+    }
+
+
+
