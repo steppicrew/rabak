@@ -1,0 +1,11 @@
+
+This directory contains some build tools:
+
+makeDist.sh
+    Build distribution, mainly to prepare Gentoo ebuild file.
+
+rabak.ebuild
+    Gentoo ebuild for installing Rabak
+
+make-tutorial-configs
+    Build 'cf'-files for stuff/tutorial
