@@ -58,12 +58,21 @@ sub PropertyNames {
 sub GetJobs {
     my $class= shift;
     my $oConf= shift;
-    return map { $class->newFromConf($oConf->{VALUES}{$_}) } grep {
+    my $sJob= shift || '*';
+
+    my @aJobs= map { $class->newFromConf($oConf->{VALUES}{$_}) } grep {
         ref $oConf->{VALUES}{$_}
         && defined $oConf->{VALUES}{$_}->{VALUES}{title}
         && defined $oConf->{VALUES}{$_}->{VALUES}{source}
         && defined $oConf->{VALUES}{$_}->{VALUES}{target}
     } sort keys %{ $oConf->{VALUES} };
+
+    return @aJobs if $sJob eq '*';
+
+    for my $oJob (@aJobs) {
+        return ($oJob) if $oJob->getFullName() eq $sJob;
+    }
+    return ();
 }
 
 sub getValidationMessage {
@@ -265,6 +274,7 @@ sub backup {
 
     my $fWriteSessionData= sub {
         return if $self->getSwitch('pretend');
+
         $oSessionDataConf->setQuotedValue('time.end', $self->GetTimeString());
         my $sSessionName= 'session.'
             . $oSessionDataConf->getValue('time.start') . '.'
@@ -272,6 +282,7 @@ sub backup {
         my $sMetaSubDir= $self->getFullName();
         my $sMetaDir= $self->getMetaDir($sMetaSubDir);
         return unless $sMetaDir;
+
         my $sMetaFile= $sMetaDir . '/' . $sSessionName;
         $oSessionDataConf->writeToFile($sMetaFile);
 

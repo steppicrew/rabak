@@ -29,13 +29,7 @@ sub _getJobs {
     my $sJob= shift;
     
     return () unless defined $sJob;
-    
-    my @aJobs= Rabak::Job->GetJobs($oConf);
-    return @aJobs if $sJob eq '*';
-    for my $oJob (@aJobs) {
-        return ($oJob) if $oJob->getFullName eq $sJob;
-    }
-    return ();
+    return Rabak::Job->GetJobs($oConf, $sJob);
 }
 
 sub _ApiGetJobs {
@@ -66,7 +60,7 @@ sub _ApiGetJobs {
         error => 0,
         conf => {
             file => $sConfFileName,
-            title => 'Raisin\'s Config',
+            title => $oConf->getValue('title') || '(Untitled Config)',
             jobs => $hJobs,
         }
     };
@@ -127,7 +121,7 @@ sub _ApiGetSessions {
         error => 0,
         conf => {
             file => $sConfFileName,
-            title => 'Raisin\'s Config',
+            title => $oConf->getValue('title') || '(Untitled Config)',
             jobs => $hJobs,
         }
     };

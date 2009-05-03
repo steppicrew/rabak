@@ -134,6 +134,7 @@ sub _createHandle {
     return $dbh;
 }
 
+# protected
 sub _initTables {
     my $self= shift;
     my @sTableNames= @_;

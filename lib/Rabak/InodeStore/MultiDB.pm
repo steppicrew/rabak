@@ -49,7 +49,7 @@ sub newDirectory {
     }
     my $bDbIsNew= ! -f $sDBFileName;
     $self->{current_db}= Rabak::InodeStore::DBBackend->new(
-        $sDBFileName, $self->{db_backend}, $self->{temp_dir}, {directory=> $sDirectory}
+        $sDBFileName, $self->{db_backend}, $self->{temp_dir}, { directory => $sDirectory }
     );
     $self->{current_db}->_initTables('files_inode');
     push @{$self->{dbs}}, $self->{current_db};
