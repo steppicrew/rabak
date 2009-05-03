@@ -1,5 +1,13 @@
 #!/usr/bin/perl
 
+
+# Frage: warum kein bless in Target.pm etc ???
+# job_name sollte warscheinlich sein:
+#   job_id = conf_file//job_name
+# oder
+#   job_url = file://host/conf_file#job_name
+
+
 use strict;
 use warnings;
 
@@ -14,7 +22,15 @@ use Rabak::ConfFile;
 
 use Data::Dumper;
 
+use Carp ();
+$SIG{__WARN__} = \&Carp::cluck;
+$SIG{__DIE__} = \&Carp::cluck;
+
 my $dbpath= "/home/raisin/git/rabak.WORK/develop-storage-test/";
+
+sub dumper {
+    return Dumper([ @_ ]);
+}
 
 sub _getConf {
     my $oConfFile= Rabak::ConfFile->new();
@@ -60,59 +76,86 @@ $cmd= {
 };
 
 my %schema= (
+
+    # == SESSION ===
+
     'medium' => {
         'fields' => {
-            'medium_uuid' => { 'pkey' => 1, 'type' => 'TEXT' },
-            'title' => { 'type' => 'TEXT' },
+            'medium_uuid' =>    { 'pkey' => 1, 'type' => 'TEXT' },
+            'title' =>          { 'type' => 'TEXT' },
         },
         'location' => 'session',
-        'provider' => sub {
-        },
     },
     'session' => {
         'fields' => {
-            'session_uuid' => { 'pkey' => 1, 'type' => 'TEXT' },
-            'title' => { 'type' => 'TEXT' },
-            'time_start' => { 'type' => 'TEXT' },
-            'time_end' => { 'type' => 'TEXT' },
-            'medium_uuid' => { 'fkey' => [ 'medium', 'medium_uuid' ], 'type' => 'TEXT' },
+            'session_uuid' =>   { 'pkey' => 1, 'type' => 'TEXT' },
+            'title' =>          { 'type' => 'TEXT' },
+            'job_name' =>       { 'type' => 'TEXT' },
+            'target_name' =>    { 'type' => 'TEXT' },
+            'target_uuid' =>    { 'type' => 'TEXT' },
+            'target_url' =>     { 'type' => 'TEXT' },
+            'time_start' =>     { 'type' => 'TEXT' },
+            'time_end' =>       { 'type' => 'TEXT' },
+            'medium_uuid' =>    { 'fkey' => [ 'medium', 'medium_uuid' ], 'type' => 'TEXT' },
         },
         'location' => 'session',
     },
     'source_session' => {
         'fields' => {
             'source_session_uuid' => { 'pkey' => 1, 'type' => 'TEXT' },
-            'title' => { 'type' => 'TEXT' },
-            'url' => { 'type' => 'TEXT' },
-            'time_start' => { 'type' => 'TEXT' },
-            'time_end' => { 'type' => 'TEXT' },
-            'session_uuid' => { fkey => [ 'session', 'session_uuid' ], 'type' => 'TEXT' },
+            'title' =>          { 'type' => 'TEXT' },
+            'session_uuid' =>   { 'fkey' => [ 'session', 'session_uuid' ], 'type' => 'TEXT' },
+
+            'target_df_start' => { 'type' => 'INTEGER' },
+            'target_df_end' =>  { 'type' => 'INTEGER' },
+
+            'target_metadir' => { 'type' => 'TEXT' },
+            'target_fullpath' => { 'type' => 'TEXT' },
+            'target_datadir' => { 'type' => 'TEXT' },
+
+            'time_start' =>     { 'type' => 'TEXT' },
+            'time_end' =>       { 'type' => 'TEXT' },
+
+            'source_name' =>    { 'type' => 'TEXT' },
+
+            'stats_text' =>     { 'type' => 'TEXT' },
+            'stats_total_files' => { 'type' => 'INTEGER' },
+            'stats_failed_files' => { 'type' => 'INTEGER' },
+            'stats_transferred_files' => { 'type' => 'INTEGER' },
+            'stats_total_bytes' => { 'type' => 'INTEGER' },
+            'stats_transferred_bytes' => { 'type' => 'INTEGER' },
+
+            'url' =>            { 'type' => 'TEXT' },
+            'error_code' =>     { 'type' => 'INTEGER' },
         },
         'location' => 'session',
     },
     'file' => {
         'fields' => {
-            'file_name' => { 'pkey' => 1, 'type' => 'TEXT' },
-            'inode' => { 'type' => 'INTEGER' },
+            'file_name' =>      { 'pkey' => 1, 'type' => 'TEXT' },
+            'inode' =>          { 'type' => 'INTEGER' },
             'source_session_uuid' => { 'fkey' => [ 'source_session', 'source_session_uuid' ], 'type' => 'TEXT' },
         },
         'location' => 'session',
     },
 
+    # == CONF ===
+
     'job' => {
         'fields' => {
-            'job_name' => { 'pkey' => 1, 'type' => 'TEXT' },
-            'title' => { 'type' => 'TEXT' },
-            'target_name' => { 'type' => 'TEXT' },
-            'target_url' => { 'type' => 'TEXT' },
+            'job_name' =>       { 'pkey' => 1, 'type' => 'TEXT' },
+            'title' =>          { 'type' => 'TEXT' },
+            'target_name' =>    { 'type' => 'TEXT' },
+            'target_url' =>     { 'type' => 'TEXT' },
+            'conf_filename' =>  { 'type' => 'TEXT' },
         },
         'location' => 'conf',
     },
     'source' => {
         'fields' => {
-            'source_name' => { 'pkey' => 1, 'type' => 'TEXT' },
-            'job_name' => { 'fkey' => [ 'job', 'job_name' ], 'type' => 'TEXT' },
-            'url' => { 'type' => 'TEXT' },
+            'source_name' =>    { 'pkey' => 1, 'type' => 'TEXT' },
+            'job_name' =>       { 'fkey' => [ 'job', 'job_name' ], 'type' => 'TEXT' },
+            'url' =>            { 'type' => 'TEXT' },
         },
         'location' => 'conf',
     },
@@ -140,8 +183,6 @@ $cmd= {
 
 print Dumper($cmd);
 
-
-# Frage: warum kein bless in Target.pm etc ???
 
 package Object;
 
@@ -225,6 +266,21 @@ sub createTables {
     }
 }
 
+sub new_instance {
+    my $self= shift;
+    my $class= shift;
+    my $instanceRef= shift;
+
+    return $$instanceRef if $$instanceRef;
+
+    $self= $class->SUPER::new(@_);
+    bless $self, $class;
+
+    $self->_build_db();
+    return $$instanceRef= $self;
+}
+
+
 package DB::Conf;
 
 use base 'DB';
@@ -232,24 +288,17 @@ use base 'DB';
 # Singleton
 # TODO: Need a DB::Conf per conf file. For now this always uses the default conf file.
 
-my $instance;
+our $instance;
 
 sub new {
     my $class= shift;
-
-    return $instance if $instance;
-
-    my $self= $class->SUPER::new(@_);
-    bless $self, $class;
-
-    $self->_build_db();
-    return $instance= $self;
+    return $class->SUPER::new_instance($class, \$instance);
 }
 
 sub _build_db {
     my $self= shift;
 
-    my $oConf= ::_getConf();
+    my ($oConf, $sConfFilename)= ::_getConf();
     my @aJobs= Rabak::Job->GetJobs($oConf);
 
     $self->connect("${dbpath}conf.db");
@@ -257,19 +306,20 @@ sub _build_db {
 
     for my $oJob (Rabak::Job->GetJobs($oConf)) {
 
-        my $oTarget= $oJob->getTargetPeer();
+        my $oTargetPeer= $oJob->getTargetPeer();
         $self->insert('job', {
             'job_name' => $oJob->getFullName(),
             'title' => $oJob->getValue('title'),
-            'target_name' => $oTarget->getName(),
-            'target_url' => $oTarget->getPath(),
+            'target_name' => $oTargetPeer->getName(),
+            'target_url' => $oTargetPeer->getPath(),
+            'conf_filename' => $sConfFilename,
         });
 
-        for my $oSource ($oJob->getSourcePeers()) {
+        for my $oSourcePeer ($oJob->getSourcePeers()) {
             $self->insert('source', {
-                'source_name' => $oSource->getName(),
+                'source_name' => $oSourcePeer->getName(),
                 'job_name' => $oJob->getFullName(),
-                'url' => 'file:///' . $oSource->getFullName(),
+                'url' => 'file:///' . $oSourcePeer->getFullName(),
             });
         }
     }
@@ -287,10 +337,178 @@ sub query {
     }
 }
 
+
+package DB::Session;
+
+use base 'DB';
+
+# Singleton
+# TODO: Need a DB::Conf per conf file. For now this always uses the default conf file.
+
+our $instance;
+
+sub new {
+    my $class= shift;
+    return $class->SUPER::new_instance($class, \$instance);
+}
+
+
+=pod
+
+sub _ApiGetSessions {
+    my $param= shift;
+
+
+    my ($oConf, $sConfFileName)= _getConf();
+    my $sJob= $param->{job};
+    my $sTargetUuid= $param->{target_uuid} || '*';
+    
+    my @aJobs= _getJobs($oConf, $sJob);
+    return {
+        error => 500,
+        error_text => "Job '$sJob' does not exist.",
+    } unless @aJobs;
+
+    my $hJobs= {};
+    my $sMetaDir= Rabak::Job->GetMetaBaseDir();
+    for my $oJob (@aJobs) {
+        my $oTargetPeer= $oJob->getTargetPeer();
+        
+        my $sJobName= $oJob->getFullName();
+
+        my $hSessionData= {
+            conf_file => $sConfFileName,
+            job => $sJobName,
+            target => {
+                name => $oTargetPeer->getFullName(),
+                path => $oTargetPeer->getFullPath(),
+            },
+            sessions => {},
+        };
+        
+        for my $sSessionFile (glob "$sMetaDir/$sTargetUuid/$sJobName/session.*") {
+            my $sSessionName= $sSessionFile;
+            $sSessionName=~ s/.*\///;
+            $hSessionData->{sessions}{$sSessionName}= _parseSessionFile($sSessionFile);
+        }
+        $hJobs->{$sJobName}= $hSessionData
+    }
+# print Dumper($hSessionData);
+
+    return {
+        error => 0,
+        conf => {
+            file => $sConfFileName,
+            title => $oConf->getValue('title') || '(Untitled Config)',
+            jobs => $hJobs,
+        }
+    };
+}
+
+sub _parseSessionFile {
+    my $sSessionFile= shift;
+    
+    my $hSession= Rabak::ConfFile->new($sSessionFile)->conf()->getValues();
+    my $hSources= {};
+    my $iTotalBytes= 0;
+    my $iTransferredBytes= 0;
+    my $iTotalFiles= 0;
+    my $iTransferredFiles= 0;
+    my $iFailedFiles= 0;
+    for my $sSource (split(/[\s\,]+/, $hSession->{sources})) {
+        $sSource=~ s/^\&//;
+        $hSources->{$sSource}= $hSession->{$sSource};
+        $iTotalBytes+= $hSources->{$sSource}{stats}{total_bytes} || 0;
+        $iTransferredBytes+= $hSources->{$sSource}{stats}{transferred_bytes} || 0;
+        $iTotalFiles+= $hSources->{$sSource}{stats}{total_files} || 0;
+        $iTransferredFiles+= $hSources->{$sSource}{stats}{transferred_files} || 0;
+        $iFailedFiles+= $hSources->{$sSource}{stats}{failed_files} || 0;
+        delete $hSession->{$sSource};
+    }
+    $hSession->{sources}= $hSources;
+    $hSession->{total_files}= $iTotalFiles || -1;
+    $hSession->{transferred_files}= $iTransferredFiles || -1;
+    $hSession->{failed_files}= $iFailedFiles || -1;
+    
+    return $hSession;
+}
+
+=cut
+
+
+sub _build_db {
+    my $self= shift;
+
+    my $oConf= ::_getConf();
+    my @aJobs= Rabak::Job->GetJobs($oConf);
+    my $sMetaDir= Rabak::Job->GetMetaBaseDir();
+
+    $self->connect("${dbpath}session.db");
+    $self->createTables('session');
+
+    for my $oJob (@aJobs) {
+        my $oTargetPeer= $oJob->getTargetPeer();
+        my $sJobName= $oJob->getFullName();
+
+        # FIXME: Was ist wenn der Job-Name nicht mehr exisitert?? Oops!!
+
+        for my $sSessionFile (glob "$sMetaDir/*/$sJobName/session.*") {
+            my $sSessionName= $sSessionFile;
+            $sSessionName=~ s/.*\///;
+
+#            my $data= _parseSessionFile($sSessionFile);
+
+            my $hSession= Rabak::ConfFile->new($sSessionFile)->conf()->getValues();
+
+            $self->insert('session', {
+                'session_uuid' => rand(),         # FIXME: real uuid
+                'job_name' => $sJobName,
+                'target_name' => $oTargetPeer->getName(),
+                'target_url' => $oTargetPeer->getPath(),
+                'target_uuid' => $hSession->{'target'}{'uuid'},
+                'time_start' => $hSession->{'time'}{'start'},
+                'time_end' => $hSession->{'time'}{'end'},
+            });
+
+            for (my $i= 0; ; $i++) {
+                my $hSource= $hSession->{"source_$i"} || last;
+                $self->insert('source_session', {
+                    'source_session_uuid' => rand(),         # FIXME: real uuid
+
+                    'session_uuid' => '123456',         # FIXME: real uuid
+
+                    'target_df_start' => $hSource->{'target'}{'df'}{'start'},
+                    'target_df_end' => $hSource->{'target'}{'df'}{'end'},
+
+                    'target_metadir' => $hSource->{'target'}{'metadir'},
+                    'target_fullpath' => $hSource->{'target'}{'fullpath'},
+                    'target_datadir' => $hSource->{'target'}{'datadir'},
+
+                    'time_start' => $hSource->{'time'}{'start'},
+                    'time_end' => $hSession->{'time'}{'end'},
+
+                    'source_name' => $hSource->{'fullname'},
+
+                    'stats_text' => $hSource->{'stats'}{'text'},
+                    'stats_total_files' => $hSource->{'stats'}{'total_files'},
+                    'stats_failed_files' => $hSource->{'stats'}{'failed_files'},
+                    'stats_transferred_files' => $hSource->{'stats'}{'transferred_files'},
+                    'stats_total_bytes' => $hSource->{'stats'}{'total_bytes'},
+                    'stats_transferred_bytes' => $hSource->{'stats'}{'transferred_bytes'},
+
+                    'url' => $hSource->{'path'},
+                    'error_code' => $hSource->{'result'},
+                });
+            }
+        }
+    }
+}
+
+
 package main;
 
 my $oConfDb= DB::Conf->new();
-my $oConfDb= DB::Conf->new();
+my $oSessionDb= DB::Session->new();
 die "DONE";
 
 sub _ex {
