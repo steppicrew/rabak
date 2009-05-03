@@ -50,7 +50,6 @@ sub new {
     $self->{PRETEND}= undef;
 
     bless $self, $class;
-
 }
 
 # IMPORTANT: define all used properties here, order will be used for show

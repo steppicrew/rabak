@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use lib "../../lib";
+use lib "rabak/lib";
 
 use Data::Dumper;
 use SQL::Abstract;
@@ -13,7 +14,7 @@ use Rabak::ConfFile;
 
 use Data::Dumper;
 
-my $dbpath= "/home/raisin/git/rabak.WORK/storage-test/";
+my $dbpath= "/home/raisin/git/rabak.WORK/develop-storage-test/";
 
 sub _getConf {
     my $oConfFile= Rabak::ConfFile->new();
@@ -140,20 +141,44 @@ $cmd= {
 print Dumper($cmd);
 
 
+# Frage: warum kein bless in Target.pm etc ???
 
+package Object;
 
-
-
-package Table::source_session;
-
-my $dbh;
-
-sub db_exec {
-    return shift->prepare(shift)->execute(@_);
+sub new {
+    bless {}, shift;
 }
 
-sub db_insert {
-    my $dbh= shift;
+
+
+package DB;
+
+use base 'Object';
+
+sub new {
+    my $class= shift;
+
+    my $self= $class->SUPER::new(@_);
+    $self->{DBH}= undef;
+
+    bless $self, $class;
+}
+
+sub connect {
+    my $self= shift;
+    my $dbfile= shift;
+
+    return $self->{DBH}= DBI->connect("dbi:SQLite:dbname=$dbfile");
+}
+
+sub execute {
+    my $self= shift;
+
+    return $self->{DBH}->prepare(shift)->execute(@_);
+}
+
+sub insert {
+    my $self= shift;
     my $table= shift;
     my $data= shift;
 
@@ -167,7 +192,7 @@ sub db_insert {
             push @fields, $field;
             push @values, $value;
         }
-        db_exec($dbh, "INSERT INTO $table ("
+        $self->execute("INSERT INTO $table ("
                 . join(',', @fields) . ') VALUES ('
                 . join(',', map { '?' } @fields) . ')'
             , @values)
@@ -175,7 +200,7 @@ sub db_insert {
 }
 
 sub _createTable {
-    my $dbh= shift;
+    my $self= shift;
     my $table= shift;
 
     my $tableDef= $schema{$table} || die "Unknown table '$table'";
@@ -187,59 +212,70 @@ print "_createTable: $table\n";
         push @fields, $field . " " . $def->{'type'}
             . ($def->{'pkey'} ? ' PRIMARY KEY' : '');
     }
-    db_exec($dbh, 'DROP TABLE IF EXISTS ' . $table);
-    db_exec($dbh, 'CREATE TABLE ' . $table . ' (' . join(',', @fields) . ')');
+    $self->execute('DROP TABLE IF EXISTS ' . $table);
+    $self->execute('CREATE TABLE ' . $table . ' (' . join(',', @fields) . ')');
 }
 
 sub createTables {
-    my $dbh= shift;
+    my $self= shift;
     my $location= shift;
 
     for (keys %schema) {
-        _createTable($dbh, $_) if $schema{$_}{'location'} eq $location;
+        $self->_createTable($_) if $schema{$_}{'location'} eq $location;
     }
 }
 
-sub db {
+package DB::Conf;
+
+use base 'DB';
+
+# Singleton
+# TODO: Need a DB::Conf per conf file. For now this always uses the default conf file.
+
+my $instance;
+
+sub new {
+    my $class= shift;
+
+    return $instance if $instance;
+
+    my $self= $class->SUPER::new(@_);
+    bless $self, $class;
+
+    $self->_build_db();
+    return $instance= $self;
+}
+
+sub _build_db {
+    my $self= shift;
+
     my $oConf= ::_getConf();
     my @aJobs= Rabak::Job->GetJobs($oConf);
 
-    $dbh= DBI->connect("dbi:SQLite:dbname=${dbpath}conf.db");
-    createTables($dbh, 'conf');
+    $self->connect("${dbpath}conf.db");
+    $self->createTables('conf');
 
-    my $hJobs= {};
     for my $oJob (Rabak::Job->GetJobs($oConf)) {
+
         my $oTarget= $oJob->getTargetPeer();
-        db_insert($dbh, 'job', {
+        $self->insert('job', {
             'job_name' => $oJob->getFullName(),
             'title' => $oJob->getValue('title'),
             'target_name' => $oTarget->getName(),
             'target_url' => $oTarget->getPath(),
         });
 
-# print Data::Dumper->Dumper($oTarget); die;
-
         for my $oSource ($oJob->getSourcePeers()) {
-            db_insert($dbh, 'source', {
+            $self->insert('source', {
                 'source_name' => $oSource->getName(),
                 'job_name' => $oJob->getFullName(),
                 'url' => 'file:///' . $oSource->getFullName(),
             });
         }
     }
-    
-    return {
-        error => 0,
-        conf => {
-            file => $oConf->filename(),
-            title => $oConf->getValue('title') || '(Untitled Config)',
-            jobs => $hJobs,
-        }
-    };
 }
 
-my $sessionsDbh;
-
+#unused
 sub query {
     my $args= shift;
 
@@ -253,7 +289,8 @@ sub query {
 
 package main;
 
-Table::source_session::db();
+my $oConfDb= DB::Conf->new();
+my $oConfDb= DB::Conf->new();
 die "DONE";
 
 sub _ex {
