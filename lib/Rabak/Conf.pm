@@ -2,6 +2,39 @@
 
 # TODO: make verbosity levels specifyable in clear text ('error', 'warning', 'info'...)
 
+package Rabak::Conf::Value;
+
+use warnings;
+use strict;
+no warnings 'redefine';
+
+use Data::Dumper;
+use Storable qw(dclone);
+use POSIX qw(strftime);
+use Rabak::Log;
+use Data::UUID;
+
+sub new {
+    my $class = shift;
+    my $oConf= shift;
+    my $sName= shift;
+    my $sValue= shift;
+    
+    my $self= {
+        VALUE => $sValue,
+        CONF  => $oConf,
+        NAME  => $sName,
+    };
+    bless $self, $class;
+}
+
+sub value {
+};
+
+
+
+
+
 package Rabak::Conf;
 
 use warnings;
@@ -133,8 +166,8 @@ sub _joinValue {
             $bError= 1;
         }
         else {
-            # removeBackslashesPart2 should already have been called
-#            $self->removeBackslashesPart2($_);
+            # RemoveBackslashesPart2 should already have been called
+            # RemoveBackslashesPart2($_);
             $_;
         }
     } @$aValue;
@@ -151,7 +184,7 @@ sub _joinValue {
 #     my $sDefault= shift;
 #     
 #     return $self->_splitValue(
-#         $self->removeBackslashesPart1(
+#         RemoveBackslashesPart1(
 #             $self->getRawValue($sName, $sDefault)
 #         )
 #     );
@@ -174,8 +207,7 @@ sub getRawValue {
     return $sValue;
 }
 
-sub removeBackslashesPart1 {
-    my $self= shift;
+sub RemoveBackslashesPart1 {
     my $sValue= shift;
 
     return $sValue unless defined $sValue;
@@ -193,8 +225,7 @@ sub removeBackslashesPart1 {
     return $sValue;
 }
 
-sub undoRemoveBackslashesPart1 {
-    my $self= shift;
+sub UndoRemoveBackslashesPart1 {
     my $sValue= shift;
 
     return $sValue unless defined $sValue;
@@ -205,8 +236,7 @@ sub undoRemoveBackslashesPart1 {
     return $sValue;
 }
 
-sub removeBackslashesPart2 {
-    my $self= shift;
+sub RemoveBackslashesPart2 {
     my $sValue= shift;
 
     return $sValue unless defined $sValue;
@@ -225,12 +255,10 @@ sub removeBackslashesPart2 {
     return $sValue;
 }
 
-# DETECTED UNUSED: removeBackslashes
-sub removeBackslashes {
-    my $self= shift;
+sub RemoveBackslashes {
     my $sValue= shift;
 
-    return $self->removeBackslashesPart2($self->removeBackslashesPart1($sValue));
+    return RemoveBackslashesPart2(RemoveBackslashesPart1($sValue));
 }
 
 sub QuoteValue {
@@ -270,7 +298,7 @@ sub getValues {
     for my $sName (keys %{ $self->{VALUES} }) {
         my $sValue= $self->getProperty($sName);
         $sValue= $sValue->getValues() if ref $sValue && $sValue->isa('Rabak::Conf');
-        $sValue= $self->removeBackslashes($sValue) unless ref $sValue;
+        $sValue= RemoveBackslashes($sValue) unless ref $sValue;
         $hValues->{$sName}= $sValue;
     }
     return $hValues;
@@ -525,7 +553,7 @@ sub expandMacroHash {
     }
     my $aMacro= $self->_splitValue(
         $fPreParse->(
-            $self->removeBackslashesPart1($sMacro)
+            RemoveBackslashesPart1($sMacro)
         )
     );
     my $aNewMacroStack= [ "${sMacroPath}[$sMacroName]" ];
@@ -541,7 +569,7 @@ sub resolveObjects {
     my $sProperty= shift;
     my $aStack= shift || [];
     
-    return map { $self->removeBackslashesPart2($_) } $self->_expandMacro($sProperty, $self, $aStack);
+    return map { RemoveBackslashesPart2($_) } $self->_expandMacro($sProperty, $self, $aStack);
 }
 
 sub _resolveObjects {
