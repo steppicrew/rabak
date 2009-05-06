@@ -3,6 +3,39 @@
 DEVELOPER'S NOTES
 =================
 
+Jetzt:
+
+backup: target:[jobdir]/[backupdir]/meta/filenode-db
+backup: target:.meta/inode-db
+job:    target:.meta/[job]/session-conf
+
+backup: /vlr/[medium]/.meta/[jobdir]/[backupdir]/meta/filenode-db
+backup: /vlr/[medium]/inode-db
+job:    /vlr/[medium]/[job]/session-conf
+
+---
+Soll:
+
+backup:
+        vlrmed:meta/YYYYMMDD/[backup-uuid]/files_inode.db
+        target:meta/YYYYMMDD/[backup-uuid] -> [jobdir]/[backupdir]/meta
+        target:[jobdir]/[backupdir]/meta/files_inode.db
+
+backup:
+        vlrmed:meta/[controller-uuid].inode.db
+        target:meta/[controller-uuid].inode.db
+
+job:
+        vlrmed:meta/[controller-uuid].session.db
+        target:meta/[controller-uuid].session.db
+
+???:
+        vlrmed:meta/[controller-uuid].files_inode.db
+
+
+
+
+
 API
 ---
 
