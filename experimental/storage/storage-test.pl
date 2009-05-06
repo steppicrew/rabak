@@ -111,9 +111,9 @@ my %schema= (
         },
         'location' => 'session',
     },
-    'source_session' => {
+    'backup' => {
         'fields' => {
-            'source_session_uuid' => { 'pkey' => 1, 'type' => 'TEXT' },
+            'backup_uuid' => { 'pkey' => 1, 'type' => 'TEXT' },
             'title'             => { 'type' => 'TEXT' },
             'session_uuid'      => { 'fkey' => [ 'session', 'session_uuid' ], 'type' => 'TEXT' },
 
@@ -148,7 +148,7 @@ my %schema= (
         'fields' => {
             'file_name'         => { 'pkey' => 1, 'type' => 'TEXT' },
             'inode'             => { 'fkey' => [ 'inode', 'inode' ], 'type' => 'INTEGER' },
-            'source_session_uuid' => { 'fkey' => [ 'source_session', 'source_session_uuid' ], 'type' => 'TEXT' },
+            'backup_uuid' => { 'fkey' => [ 'backup', 'backup_uuid' ], 'type' => 'TEXT' },
         },
         'location' => 'file',
     },
@@ -394,8 +394,8 @@ sub _build_db {
             );
             for (my $i= 0; ; $i++) {
                 my $hSource= $hSession->{"source_$i"} || last;
-                $self->insert('source_session', {
-                    'source_session_uuid' => rand(),         # FIXME: real uuid
+                $self->insert('backup', {
+                    'backup_uuid' => rand(),         # FIXME: real uuid
 
                     'session_uuid'      => '123456',         # FIXME: real uuid
 
@@ -459,10 +459,10 @@ $cmd= {
                 'select' => '*',
                 'limit' => 1,
                 'order' => {
-                    'source_session.time_start' => 'desc',
+                    'backup.time_start' => 'desc',
                 },
                 'inner-join' => {
-                    'source_session' => {
+                    'backup' => {
                         'where' => [
                             [ 'error-count', '>', 0 ],
                         ],
@@ -473,7 +473,7 @@ $cmd= {
                 'table' => 'session',
                 'select' => 'count',
                 'inner-join' => {
-                    'source_session' => {
+                    'backup' => {
                         'where' => [
                             [ 'error-count', '>', 0 ],
                         ]
@@ -491,7 +491,7 @@ $cmd= {
             [ 'file_name', 'regex', 'steppi.*idee' ],
         ],
         'inner-join' => {
-            'source_session' => {
+            'backup' => {
                 'select' => [ 'time_start' ],
                 'where' => [
                     [ 'url', '=', 'file:///lisa/' ],
@@ -500,12 +500,12 @@ $cmd= {
             },
         },
         'distinct' => 'inode',
-        'order-by' => 'source_session.time_start',
+        'order-by' => 'backup.time_start',
     }
 };
 
 $cmd= {
-    'source_session' => {
+    'backup' => {
         'select' => '*',
         'inner-join' => {
             'source' => {

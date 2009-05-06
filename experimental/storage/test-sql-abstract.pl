@@ -22,11 +22,11 @@ my $sql = SQL::Abstract->new;
 # my @bind = $sql->values(\%fieldvals);
 
 my $table= [
-    'session.source_session',
+    'session.backup',
     'conf.source',
 ];
 my @fields= (
-    'source_session.title',
+    'backup.title',
     'source.source_name',
     'source.job_name',
 );

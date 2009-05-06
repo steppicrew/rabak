@@ -35,13 +35,13 @@ package Result::Schema::Result::SourceSession;
 use base qw/DBIx::Class/;
 
 __PACKAGE__->load_components(qw/ Core /);
-__PACKAGE__->table('session.source_session');
+__PACKAGE__->table('session.backup');
 __PACKAGE__->add_columns(
-        'source_session_uuid' => { 'data_type' => 'TEXT' },
+        'backup_uuid' => { 'data_type' => 'TEXT' },
         'title'             => { 'data_type' => 'TEXT' },
         'session_uuid'      => { 'data_type' => 'TEXT' },
 );
-__PACKAGE__->set_primary_key('source_session_uuid');
+__PACKAGE__->set_primary_key('backup_uuid');
 
 ## __PACKAGE__->has_many('albums', 'Rabak::Schema::Result::Artist', 'album_id');
 
@@ -292,11 +292,11 @@ my $sql = SQL::Abstract->new;
 # my @bind = $sql->values(\%fieldvals);
 
 my $table= [
-    'session.source_session',
+    'session.backup',
     'conf.source',
 ];
 my @fields= (
-    'source_session.title',
+    'backup.title',
     'source.source_name',
     'source.job_name',
 );
