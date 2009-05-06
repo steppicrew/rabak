@@ -166,8 +166,8 @@ sub _joinValue {
             $bError= 1;
         }
         else {
-            # RemoveBackslashesPart2 should already have been called
-            # RemoveBackslashesPart2($_);
+            # SweepBackslashes should already have been called
+            # SweepBackslashes($_);
             $_;
         }
     } @$aValue;
@@ -184,7 +184,7 @@ sub _joinValue {
 #     my $sDefault= shift;
 #     
 #     return $self->_splitValue(
-#         RemoveBackslashesPart1(
+#         MarkBackslashes(
 #             $self->getRawValue($sName, $sDefault)
 #         )
 #     );
@@ -207,7 +207,7 @@ sub getRawValue {
     return $sValue;
 }
 
-sub RemoveBackslashesPart1 {
+sub MarkBackslashes {
     my $sValue= shift;
 
     return $sValue unless defined $sValue;
@@ -225,7 +225,7 @@ sub RemoveBackslashesPart1 {
     return $sValue;
 }
 
-sub UndoRemoveBackslashesPart1 {
+sub UnmarkBackslashes {
     my $sValue= shift;
 
     return $sValue unless defined $sValue;
@@ -236,7 +236,7 @@ sub UndoRemoveBackslashesPart1 {
     return $sValue;
 }
 
-sub RemoveBackslashesPart2 {
+sub SweepBackslashes {
     my $sValue= shift;
 
     return $sValue unless defined $sValue;
@@ -258,7 +258,7 @@ sub RemoveBackslashesPart2 {
 sub RemoveBackslashes {
     my $sValue= shift;
 
-    return RemoveBackslashesPart2(RemoveBackslashesPart1($sValue));
+    return SweepBackslashes(MarkBackslashes($sValue));
 }
 
 sub QuoteValue {
@@ -553,7 +553,7 @@ sub expandMacroHash {
     }
     my $aMacro= $self->_splitValue(
         $fPreParse->(
-            RemoveBackslashesPart1($sMacro)
+            MarkBackslashes($sMacro)
         )
     );
     my $aNewMacroStack= [ "${sMacroPath}[$sMacroName]" ];
@@ -569,7 +569,7 @@ sub resolveObjects {
     my $sProperty= shift;
     my $aStack= shift || [];
     
-    return map { RemoveBackslashesPart2($_) } $self->_expandMacro($sProperty, $self, $aStack);
+    return map { SweepBackslashes($_) } $self->_expandMacro($sProperty, $self, $aStack);
 }
 
 sub _resolveObjects {
