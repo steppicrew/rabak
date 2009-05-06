@@ -30,12 +30,7 @@ sub Factory {
     my $oSourcePeer= shift;
     my $oTargetPeer= shift;
     
-    my $sType= $oSourcePeer->getValue("type");
-    unless (defined $sType) {
-       $sType= "file";
-       $oSourcePeer->setValue("type", $sType);
-    } 
-    $sType= ucfirst lc $sType;
+    my $sType= ucfirst lc $oSourcePeer->getValue("type");
 
     my $new;
     eval {
@@ -74,6 +69,10 @@ sub getSource {
 sub getTarget {
     my $self= shift;
     return $self->{TARGET};
+}
+
+sub sourcePropertyNames {
+    return ();
 }
 
 sub run {

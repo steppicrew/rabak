@@ -21,7 +21,7 @@ sub new {
     
     my $self= $class->SUPER::new(@_);
 
-    my $sPacker= lc $oSourcePeer->getValue("packer");
+    my $sPacker= lc $self->getSource()->getValue("packer");
 
     logger->warn("Unknown packer '$sPacker'. Valid Values are: '"
         . join("', '", keys %sPackers)
@@ -38,8 +38,8 @@ sub DEFAULT_USER {
 }
 
 # IMPORTANT: define all used properties here, order will be used for show
-sub PropertyNames {
-    return (shift->SUPER::PropertyNames(), 'dbuser', 'dbpassword');
+sub sourcePropertyNames {
+    return (shift->SUPER::sourcePropertyNames(), 'dbuser', 'dbpassword');
 }
 
 sub getShowCmd {
