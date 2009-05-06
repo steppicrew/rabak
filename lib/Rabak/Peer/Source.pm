@@ -48,7 +48,7 @@ sub propertyNames {
     my $self= shift;
 
     my $oBackup= Rabak::Backup->Factory($self);
-    return $oBackup->sourcePropertyNames('type', $self->SUPER::propertyName(), 'keep', 'path_extension', 'previous_path_extensions', 'merge_duplicates');
+    return $oBackup->sourcePropertyNames('type', $self->SUPER::propertyNames(), 'keep', 'path_extension', 'previous_path_extensions', 'merge_duplicates');
 }
 
 sub getPathExtension {
@@ -59,25 +59,12 @@ sub getPathExtension {
     return ".$sName";
 }
 
-sub prepareBackup {
-    my $self= shift;
-
-    logger->info("Source: " . $self->getFullPath());
-    logger->setPrefix($self->getValue("type"));
-    return 0;
-}
-sub finishBackup {
-    my $self= shift;
-    my $iBackupResult= shift;
-    
-    logger->setPrefix();
-    $self->cleanupTempfiles();
-}
-
 sub show {
     my $self= shift;
     my $hConfShowCache= shift || {};
     
+    my $oBackup= Rabak::Backup->Factory($self);
+
     my @sSuperResult= @{$self->SUPER::show($hConfShowCache)};
 
     return [] unless @sSuperResult;
@@ -87,7 +74,8 @@ sub show {
         "#" . "=" x 79,
         "# Source \"" . $self->getShowName() . "\": " . $self->getFullPath(),
         "#" . "=" x 79,
-        @sSuperResult
+        @sSuperResult,
+        $oBackup->sourceShow($hConfShowCache),
     ];
 }
 

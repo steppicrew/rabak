@@ -18,7 +18,7 @@ sub new {
     
     my $self= $class->SUPER::new(@_);
 
-    $self->{MOUNTABLE}= Rabak::Mountable->new($self->getSource());
+    $self->{MOUNTABLE}= Rabak::Mountable->new($self->_getSource());
     
     bless $self, $class;
 }
@@ -26,7 +26,7 @@ sub new {
 sub sourcePropertyNames {
     my $self= shift;
     
-    return ($self->SUPER::propertyNames(@_), $self->mountable()->propertyNames(), 'filter', 'exclude', 'include', 'scan_bak_dirs');
+    return ($self->SUPER::sourcePropertyNames(@_), $self->mountable()->propertyNames(), 'filter', 'exclude', 'include', 'scan_bak_dirs');
 }
 
 sub mountable {
@@ -39,21 +39,23 @@ sub mountable {
 sub _getFilter {
     my $self= shift;
     my $aMacroStack= shift || [];
-    my $oTargetPeer= shift;
+    
+    my $oSourcePeer= $self->_getSource();
+    my $oTargetPeer= $self->_getTarget();
 
-    my $sFilter= $self->getRawValue('filter'); 
+    my $sFilter= $oSourcePeer->getRawValue('filter'); 
     
     # target path is always excluded
     my $aFilter= [];
-    if ($oTargetPeer && $oTargetPeer->getUserHostPort() eq $self->getUserHostPort()) {
+    if ($oTargetPeer && $oTargetPeer->getUserHostPort() eq $oSourcePeer->getUserHostPort()) {
         push @$aFilter, "-" . $oTargetPeer->getPath() . "/";
     }
     if (defined $sFilter) {
         push @$aFilter, "&filter";
     }
     else {
-        push @$aFilter, "-(", "&exclude", ")" if defined $self->getRawValue('exclude');
-        push @$aFilter, "+(", "&include", ")", "-/" if defined $self->getRawValue('include');
+        push @$aFilter, "-(", "&exclude", ")" if defined $oSourcePeer->getRawValue('exclude');
+        push @$aFilter, "+(", "&include", ")", "-/" if defined $oSourcePeer->getRawValue('include');
     }
 
     return $self->_parseFilter($aFilter, $self->getPath(), $aMacroStack);
@@ -72,7 +74,7 @@ sub _parseFilter {
     $sBaseDir=~ s/\/?$/\//;
     my $sqBaseDir= quotemeta $sBaseDir;
 
-    my $sFilter= $self->_expand($aFilter, $self, $aMacroStack);
+    my $sFilter= $self->_expand($aFilter, $self->_getSource(), $aMacroStack);
 # print Dumper($sFilter);
     my @sFilter= @{$self->_flattenFilter($sFilter)};
 
@@ -174,7 +176,7 @@ sub _parseFilter {
 sub _expand {
     my $self= shift;
     my $aEntries= shift;
-    my $oScope= shift || $self;
+    my $oScope= shift || $self->_getSource();
     my $aMacroStack= shift || [];
 
 #print "expanding: [".join("n", @$aEntries)."]\n";
@@ -205,11 +207,11 @@ sub _expand {
             $hEntries= $hMixed;
         }
         if ($sEntry =~ /^\&/) {
-            my $hMacro= $self->expandMacroHash($sEntry, $oScope, $aMacroStack,
+            my $hMacro= $self->_getSource()->expandMacroHash($sEntry, $oScope, $aMacroStack,
                 sub {$self->_expand(@_)}, # function to expand macro's content
                 sub{ # function to modify macro's text before splitting
                     my $sEntry= shift;
-                    my $sregIdent= $self->REGIDENTREF;
+                    my $sregIdent= Rabak::Conf->REGIDENTREF;
                     # remove spaces between +/- and path, a +/- always separates
                     $sEntry=~ s/(?<!\\)\s*(?<!\\)([\-\+])\s+/ $1/g;
                     # enclose all macros &... with parantheses
@@ -316,46 +318,48 @@ sub _flattenMixedFilter {
     return $aTails;
 }
 
-sub show {
+sub sourceShow {
     my $self= shift;
     my $hConfShowCache= shift || {};
-    my $oTarget= shift;
+
+    my $oSource= $self->_getSource();
 
     # overwrite Source's SUPER class with Mountable
-    my $aResult = $self->SUPER::show($hConfShowCache);
-    push @$aResult, @{$self->mountable()->show($hConfShowCache)};
+    my @sResult = $self->SUPER::sourceShow($hConfShowCache);
+    push @sResult, @{$self->mountable()->show($hConfShowCache)};
     
     my $aMacroStack= [];
 
-    my @sFilter= $self->_getFilter($aMacroStack, $oTarget);
+    my @sFilter= $self->_getFilter($aMacroStack);
     my $sLastScope= "";
     my @sSubResult= ();
-    for my $sMacroName ($self->getAllReferences($aMacroStack)) {
-        push @sSubResult, $self->showConfValue($sMacroName, $hConfShowCache);
+    for my $sMacroName ($oSource->getAllReferences($aMacroStack)) {
+        push @sSubResult, $oSource->showConfValue($sMacroName, $hConfShowCache);
     }
-    push @$aResult, "", "# Referenced filters:", @sSubResult if scalar @sSubResult;
-    push @$aResult, "[]" unless $sLastScope eq "";
+    push @sResult, "", "# Referenced filters:", @sSubResult if scalar @sSubResult;
+    push @sResult, "[]" unless $sLastScope eq "";
     
     shift @$aMacroStack if scalar @$aMacroStack;
     push @{$hConfShowCache->{'.'}}, @$aMacroStack;
     
-    return $aResult unless $self->getSwitch("show_filter", 0);
+    return @sResult unless $oSource->getSwitch("show_filter", 0);
 
     my $sBaseDir= $self->getFullPath();
-    push @$aResult, "", "# Expanded rsync filter (relative to '$sBaseDir'):", map {"#\t$_"} @sFilter;
-    return $aResult;
+    push @sResult, "", "# Expanded rsync filter (relative to '$sBaseDir'):", map {"#\t$_"} @sFilter;
+    return @sResult;
 }
 
 sub _validSourceDir {
     my $self= shift;
 
-    my $sSourceDir= $self->getFullPath();
+    my $oSourcePeer= $self->_getSource();
+    my $sSourceDir= $oSourcePeer->getFullPath();
 
-    unless ($self->isDir()) {
+    unless ($oSourcePeer->isDir()) {
         logger->error("Source \"$sSourceDir\" is not a directory. Job skipped.");
         return undef;
     }
-    unless ($self->isReadable()) {
+    unless ($oSourcePeer->isReadable()) {
         logger->error("Source \"$sSourceDir\" is not readable. Job skipped.");
         return undef;
     }
@@ -363,10 +367,10 @@ sub _validSourceDir {
     return $self->getPath();
 }
 
-sub prepareBackup {
+sub _prepareBackup {
     my $self= shift;
     
-    $self->SUPER::prepareBackup();
+    $self->SUPER::_prepareBackup();
     
     my @sMountMessage;
     my $iMountResult= $self->mountable()->mountAll(\@sMountMessage);
@@ -376,12 +380,12 @@ sub prepareBackup {
     return $self->_validSourceDir() ? 0 : 1;
 }
 
-sub finishBackup {
+sub _finishBackup {
     my $self= shift;
     
     $self->mountable()->unmountAll();
 
-    $self->SUPER::finishBackup();
+    $self->SUPER::_finishBackup();
     return 0;
 }
 
@@ -393,39 +397,33 @@ sub checkMount {
     return $self->mountable()->checkMount($sMountDevice, $arMountMessages);
 }
 
-sub mountErrorIsFatal {
+sub _backup {
     my $self= shift;
-    my $iMountResult= shift;
-
-    return 0;
-}
-
-sub run {
-    my $self= shift;
-    my $oTargetPeer= shift;
     my $hMetaInfo= shift;
 
+    my $oSourcePeer= $self->_getSource();
+    my $oTargetPeer= $self->_getTarget();
     # print Dumper($self); die;
 
     # print '**$bPretend**'; die;
 
     # Unused: my $sJob= $self->getValue('name');
 
-    my @sRsyncOpts = $self->resolveObjects('rsync_opts') || ();
+    my @sRsyncOpts = $oSourcePeer->resolveObjects('rsync_opts') || ();
 
     # Write filter rules to temp file:
-    my ($fhwRules, $sRulesFile)= $self->localTempfile(SUFFIX => '.filter');
+    my ($fhwRules, $sRulesFile)= $oSourcePeer->localTempfile(SUFFIX => '.filter');
 
-    my @sFilter= $self->_getFilter(undef, $oTargetPeer);
+    my @sFilter= $self->_getFilter();
     # print join("\n", @sFilter), "\n"; #die;
 
     print $fhwRules join("\n", @sFilter), "\n";
     close $fhwRules;
 
     # copy filter rules to source if target AND source are remote
-    if ($oTargetPeer->isRemote() && $self->isRemote()) {
-        my $sRemRulesFile= $self->tempfile(SUFFIX => '.filter');
-        $self->copyLocalFileToRemote($sRulesFile, $sRemRulesFile);
+    if ($oTargetPeer->isRemote() && $oSourcePeer->isRemote()) {
+        my $sRemRulesFile= $oSourcePeer->tempfile(SUFFIX => '.filter');
+        $oSourcePeer->copyLocalFileToRemote($sRulesFile, $sRemRulesFile);
         $sRulesFile = $sRemRulesFile;
     }
 
@@ -443,10 +441,10 @@ sub run {
         '--itemize-changes',
     );
 
-    push @sFlags, '--dry-run' if $self->pretend();
+    push @sFlags, '--dry-run' if $self->_pretend();
     push @sFlags, @sRsyncOpts;
     
-    my $iScanBakDirs= $self->getValue('scan_bak_dirs', 4);
+    my $iScanBakDirs= $self->_getSourceValue('scan_bak_dirs', 4);
 
     my @sBakDir= @{$hMetaInfo->{OLD_DATA_DIRS}};
     splice @sBakDir, $iScanBakDirs if $#sBakDir >= $iScanBakDirs;
@@ -533,7 +531,7 @@ sub run {
         },
     );
 
-    my $iRsyncExit= $self->rsync(
+    my $iRsyncExit= $oSourcePeer->rsync(
         source_files => $sSourceDir,
         target_path => $sTargetDir,
         target_peer => $oTargetPeer,
@@ -550,16 +548,16 @@ sub run {
         logger->info("Fixing hard link errors...");
         logger->incIndent();
         # Write failed link files to temp file:
-        my ($fhwFiles, $sFilesFile)= $self->localTempfile(SUFFIX => '.filelist');
+        my ($fhwFiles, $sFilesFile)= $oSourcePeer->localTempfile(SUFFIX => '.filelist');
         print $fhwFiles join("\n", @sLinkErrors), "\n";
         close $fhwFiles;
 
         push @sStatText, "", "Statistic for fixed hard links";
 
         # copy filter rules to source if target AND source are remote
-        if ($oTargetPeer->isRemote() && $self->isRemote()) {
-            my $sRemFilesFile= $self->tempfile(SUFFIX => '.filelist');
-            $self->copyLocalFileToRemote($sFilesFile, $sRemFilesFile);
+        if ($oTargetPeer->isRemote() && $oSourcePeer->isRemote()) {
+            my $sRemFilesFile= $oSourcePeer->tempfile(SUFFIX => '.filelist');
+            $oSourcePeer->copyLocalFileToRemote($sFilesFile, $sRemFilesFile);
             $sFilesFile = $sRemFilesFile;
         }
         # reset StdOut flag for STDOUT handler
@@ -568,7 +566,7 @@ sub run {
         $Handles{STDERR} = sub {logger->error(@_)};
 
         # run rsync cmd (drop exit code - has been logged anyway)
-        my $iRsyncExit= $self->rsync(
+        my $iRsyncExit= $oSourcePeer->rsync(
             source_files => $sSourceDir,
             target_path => $sTargetDir,
             target_peer => $oTargetPeer,

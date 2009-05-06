@@ -35,7 +35,7 @@ sub getProbeCmd {
     my $self= shift;
     my $sDb= shift;
 
-    return ('mysqldump', '--no-data', $self->_get_log_credentials(), '--result-file=/dev/null', $sDb);
+    return ('mysqldump', '--no-data', $self->_getCredentials(), '--result-file=/dev/null', $sDb);
 }
 
 sub getDumpCmd {

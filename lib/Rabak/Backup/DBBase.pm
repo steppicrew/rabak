@@ -21,7 +21,7 @@ sub new {
     
     my $self= $class->SUPER::new(@_);
 
-    my $sPacker= lc $self->getSource()->getValue("packer");
+    my $sPacker= lc $self->_getSourceValue("packer");
 
     logger->warn("Unknown packer '$sPacker'. Valid Values are: '"
         . join("', '", keys %sPackers)
@@ -62,7 +62,7 @@ sub getValidDb {
 
 sub getUser {
     my $self= shift;
-    my $sUser= $self->getValue('dbuser', $self->DEFAULT_USER());
+    my $sUser= $self->_getSourceValue('dbuser', $self->DEFAULT_USER());
     # simple taint
     $sUser =~ s/[^a-z0-9_]//g;
     return $sUser;
@@ -70,7 +70,7 @@ sub getUser {
 
 sub getPasswd {
     my $self= shift;
-    my $sPassword= $self->getValue('dbpassword');
+    my $sPassword= $self->_getSourceValue('dbpassword');
     return $sPassword;
 }
 
@@ -80,7 +80,7 @@ sub _buildDbCmd {
     
     my $sPassword= $self->getPasswd;
     
-    my $sCommand= $self->ShellQuote(@sCommand);
+    my $sCommand= Rabak::Conf->ShellQuote(@sCommand);
     $sCommand=~ s/\{\{PASSWORD\}\}/$sPassword/ if defined $sPassword;
     return $sCommand;
 }
@@ -88,7 +88,7 @@ sub _buildDbCmd {
 sub _dbCmd {
     my $self= shift;
     my @sCommand= @_;
-    $self->runCmd($self->_buildDbCmd(@sCommand));
+    $self->_getSource()->runCmd($self->_buildDbCmd(@sCommand));
 }
 
 sub _logCmd {
@@ -96,17 +96,19 @@ sub _logCmd {
     my $sLogPretext= shift;
     my @sCommand= @_;
     
-    logger->info($sLogPretext . ': ' . $self->ShellQuote(@sCommand));
+    logger->info($sLogPretext . ': ' . Rabak::Conf->ShellQuote(@sCommand));
 }
 
 # TODO
 # plan: build a tunnel, fetch the db, delete old baks, release tunnel
 # TODO: option dump_oids
 # TODO: support large objects (pg_dump -Fc)
-sub run {
+sub _backup {
     my $self= shift;
-    my $oTargetPeer= shift;
     my $hMetaInfo= shift;
+    
+    my $oSourcePeer= $self->_getSource();
+    my $oTargetPeer= $self->_getTarget();
 
     my %sValidDb= ();
     my @sDb= ();
@@ -115,12 +117,12 @@ sub run {
     my $i= 0;
     $self->_dbCmd($self->getShowCmd());
     if ($self->getLastExit) {
-        logger->error("show databases command failed with: " . $self->getError);
+        logger->error("show databases command failed with: " . $oSourcePeer->getError);
         return 9;
     }
-    %sValidDb= $self->parseValidDb($self->getLastOut);
+    %sValidDb= $self->parseValidDb($oSourcePeer->getLastOut);
 
-    my $sSource= $self->getValue("path");
+    my $sSource= $oSourcePeer->getValue("path");
 
     if ($sSource eq '*') {
         @sDb= sort keys %sValidDb;
@@ -138,47 +140,47 @@ sub run {
     my $sZipCmd= $self->{PACKER}{cmd};
     my $sZipExt= $self->{PACKER}{ext};
 
-    foreach (@sDb) {
-        my $sDestFile= $hMetaInfo->{DATA_DIR} . "/$_.$sZipExt";
-        my @sProbeCmd= $self->getProbeCmd($_);
+    foreach my $sDb (@sDb) {
+        my $sDestFile= $hMetaInfo->{DATA_DIR} . "/$sDb.$sZipExt";
+        my @sProbeCmd= $self->getProbeCmd($sDb);
         $self->_logCmd('Running probe', @sProbeCmd);
 
-        unless ($self-pretend()) {
+        unless ($self->_pretend()) {
             $self->_dbCmd(@sProbeCmd);
-            if ($self->getLastExit) {
-                my $sError= $self->getLastError;
+            if ($oSourcePeer->getLastExit()) {
+                my $sError= $oSourcePeer->getLastError();
                 chomp $sError;
-                logger->error("Probe failed. Skipping \"$_\": $sError");
+                logger->error("Probe failed. Skipping \"$sDb\": $sError");
                 next;
             }
         }
 
-        my @sDumpCmd= $self->getDumpCmd($_);
+        my @sDumpCmd= $self->getDumpCmd($sDb);
         $self->_logCmd('Running dump', @sDumpCmd, '|', $sZipCmd);
 
-        my $oDumpPeer= $self;
+        my $oDumpPeer= $oSourcePeer;
         my $sPipeCmd= "cat > '$sDestFile'";
         
-        my $sDumpCmd= $self->_buildDbCmd(@sDumpCmd) . " | " . $self->ShellQuote($sZipCmd);
+        my $sDumpCmd= $self->_buildDbCmd(@sDumpCmd) . " | " . Rabak::Conf->ShellQuote($sZipCmd);
 
         if ($oTargetPeer->isRemote()) {
             # if target is remote, dump on source peer and write output remotely to target
             # TODO: check if target and source are the same users on the same host
             $sPipeCmd= $oTargetPeer->buildSshCmd($sPipeCmd);
         }
-        elsif ($self->isRemote()) {
+        elsif ($oSourcePeer->isRemote()) {
             # if target is local and soure is remote, dump over ssh and write directly to file
             $oDumpPeer= $oTargetPeer;
             $sDumpCmd= $self->buildSshCmd($sDumpCmd);
         }
 
         # now execute dump command on target
-        unless ($self->pretend()) {
+        unless ($self->_pretend()) {
             $oDumpPeer->_dbCmd("$sDumpCmd | $sPipeCmd");
             if ($oDumpPeer->getLastExit) {
                 my $sError= $oDumpPeer->getLastError;
                 chomp $sError;
-                logger->error("Dump failed. Skipping dump of \"$_\": $sError");
+                logger->error("Dump failed. Skipping dump of \"$sDb\": $sError");
                 $hMetaInfo->{FAILED_FILE_CALLBACK}->("$sDestFile") if $hMetaInfo->{FAILED_FILE_CALLBACK};
                 next;
             }

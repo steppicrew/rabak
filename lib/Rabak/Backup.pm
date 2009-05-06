@@ -21,6 +21,7 @@ sub new {
         SOURCE => $oSourcePeer,
         TARGET => $oTargetPeer,
         BACKUP_DATA => undef,
+        PRETEND => $oSourcePeer->pretend(),
     };
     bless $self, $class;
 }
@@ -61,14 +62,26 @@ my %METAFILENAMES=(
     statistics => 'Statistics',
 );
 
-sub getSource {
+sub _pretend {
+    my $self= shift;
+    return $self->{PRETEND};
+}
+
+sub _getSource {
     my $self= shift;
     return $self->{SOURCE};
 }
 
-sub getTarget {
+sub _getTarget {
     my $self= shift;
     return $self->{TARGET};
+}
+
+sub _getSourceValue {
+    my $self= shift;
+    my $sName= shift;
+    
+    return $self->_getSource()->getValue($sName);
 }
 
 sub sourcePropertyNames {
@@ -83,6 +96,25 @@ sub run {
     
     $self->_run() unless $self->_setup($hJobData, $oSourceDataConf);
     return $self->_cleanup();
+}
+
+sub _prepareBackup {
+    my $self= shift;
+
+    logger->info("Source: " . $self->_getSource()->getFullPath());
+    logger->setPrefix($self->_getSourceValue("type"));
+    return 0;
+}
+sub _finishBackup {
+    my $self= shift;
+    my $iBackupResult= shift;
+    
+    logger->setPrefix();
+    $self->_getSource()->cleanupTempfiles();
+}
+
+sub sourceShow {
+    return ();
 }
 
 sub _setup {
@@ -172,10 +204,10 @@ sub _setup {
     
     # start finish functions with cleaning up source
     my @fFinish= (
-        sub {$oSourcePeer->finishBackup($self->{BACKUP_DATA}{BACKUP_RESULT})},
+        sub {$self->_finishBackup($self->{BACKUP_DATA}{BACKUP_RESULT})},
     );
     
-    unless ($oTargetPeer->pretend()) {
+    unless ($self->_pretend()) {
         # add finish function for inode inventory (and create per-file-callback function)
         my $sMetaDir= Rabak::Job->GetMetaBaseDir($oTargetPeer->getUuid());
         my $sInodesDb= "$sMetaDir/inodes.db";
@@ -345,7 +377,7 @@ sub _setup {
         $oSourceDataConf->setQuotedValue('target.diskfree.end', scalar $oTargetPeer->getDf('-B1'));
     };
 
-    unless ($oTargetPeer->pretend()) {
+    unless ($self->_pretend()) {
         # add finish function to remove old backups and symlink current directory
         push @fFinish, sub {
             unless ($self->{BACKUP_DATA}{BACKUP_RESULT}) {
@@ -368,16 +400,14 @@ sub _setup {
     
     $self->{BACKUP_DATA}{FINISH_BACKUP}= \@fFinish;
     
-    
-    $self->{BACKUP_DATA}{BACKUP_RESULT}= $oSourcePeer->prepareBackup();
+    $self->{BACKUP_DATA}{BACKUP_RESULT}= $self->_prepareBackup();
     return $self->{BACKUP_DATA}{BACKUP_RESULT};
 }
 
 sub _run {
     my $self= shift;
 
-    $self->{BACKUP_DATA}{BACKUP_RESULT}= $self->{SOURCE}->run(
-        $self->{TARGET},
+    $self->{BACKUP_DATA}{BACKUP_RESULT}= $self->_backup(
         {
             DATA_DIR => $self->{TARGET}->getPath($self->{BACKUP_DATA}{BACKUP_DATA_DIR}),
             OLD_DATA_DIRS => $self->{BACKUP_DATA}{OLD_BACKUP_DATA_DIRS},
@@ -483,7 +513,7 @@ sub _writeVersion {
     my $sDir= shift;
     my $sVersion= shift || $self->METAVERSION();
     
-    return if $self->{TARGET}->pretend();
+    return if $self->_pretend();
     
     $self->_writeMetaFile($self->_getMetaVersionFile($sDir), $sVersion);
 }

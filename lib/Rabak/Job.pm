@@ -160,7 +160,7 @@ sub getSourcePeers {
             $oConf= Rabak::Conf->new(undef, $self);
             $oConf->setValue("path", $sPath);
         }
-        push @oSources, Rabak::Peer::Source->Factory($oConf);
+        push @oSources, Rabak::Peer::Source->newFromConf($oConf);
     } 
     return @oSources;
 }
@@ -257,7 +257,7 @@ sub backup {
             $hDoneSources->{$sSourceName}= $oSourceDataConf;
             $oSourceDataConf->setQuotedValue('fullname', $sSourceName);
             $oSessionDataConf->setQuotedValue($oSourceDataConf->getName(), $oSourceDataConf);
-            my $oBackup= Rabak::Backup->new($oSourcePeer, $oTargetPeer);
+            my $oBackup= Rabak::Backup->Factory($oSourcePeer, $oTargetPeer);
             eval {
                 unless ($oBackup->run($hJobData, $oSourceDataConf)) {
                     $iSuccessCount++;
@@ -266,7 +266,7 @@ sub backup {
             };
             if ($@) {
                 logger->error("An error occured during backup: '$@'");
-                $oBackup->setMetaBackupError($@);
+                $oSourceDataConf->setQuotedValue('error', $@);
             }
         }
         
