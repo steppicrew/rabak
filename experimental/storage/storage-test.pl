@@ -1,18 +1,54 @@
 #!/usr/bin/perl
 
+#------------------------------------------------------------------------------
+# warum kein bless in Target.pm etc ???
 
-# Frage: warum kein bless in Target.pm etc ???
+#------------------------------------------------------------------------------
 # job_name sollte warscheinlich sein:
 #   job_id = conf_file//job_name
 # oder
 #   job_url = file://host/conf_file#job_name
 
+#------------------------------------------------------------------------------
+# Jobs umbennennen?
+
+#------------------------------------------------------------------------------
+# AU! /var/lib/rabak ist kaputt wenn
+#
+# - backup-quell-verzeichnis nicht existiert
+# - backup-ziel-verzeichnis nicht existiert
+
+#------------------------------------------------------------------------------
+# warum anderes namens-format fuer session-confs?
+# - koennte gleich sein wie im target/.meta:
+#   2009-05.example/2009-05-03_001.example_source
+#   oder, falls alle sessions in einem verzeichis landen sollen:
+#   session.example/2009-05-03_001.example_source
+#
+# - koennte gleich in session.db geschrieben werden:
+#   2009-05.example/2009-05-03_001.example_source.db
+#   oder:
+#   session.example/2009-05-03_001.example_source.db
+
+#------------------------------------------------------------------------------
+# warum hat inodedb.owner das format '<user>_<group>'?
+
+#------------------------------------------------------------------------------
+#   200905.example/20090503-1903_.example_source
+#   200905.example/20090503-1903a.example_source
+#   200905.example/20090503-1903b.example_source
+
+#------------------------------------------------------------------------------
+# Idee: In die DB-Files eine 'meta'-Tabelle mit Spalten 'key','value'und
+# Werten 'timestamp', '20090402...'
+
+#------------------------------------------------------------------------------
 
 use strict;
 use warnings;
 
-use lib "../../lib";
-use lib "rabak/lib";
+use lib "../../lib";    # FIXME: Only for development
+use lib "rabak/lib";    # FIXME: Only for development
 
 use Data::Dumper;
 use SQL::Abstract;
@@ -26,6 +62,7 @@ use Carp ();
 $SIG{__WARN__} = \&Carp::cluck;
 $SIG{__DIE__} = \&Carp::cluck;
 
+# FIXME: De-hardcode
 my $dbpath= "/home/raisin/git/rabak.WORK/develop-storage-test/";
 
 sub dumper {
@@ -38,42 +75,7 @@ sub _getConf {
     return $oConfFile->conf();
 }
 
-my $cmd;
-
-$cmd= {
-    'job' => {
-        'select' => [
-            'job_name'
-        ],
-        'left-join' => {
-            'session' => {
-                'select' => '*',
-                'limit' => 1,
-                'order' => {
-                    'source_session.time_start' => 'desc',
-                },
-                'inner-join' => {
-                    'source_session' => {
-                        'where' => [
-                            [ 'error-count', '>', 0 ],
-                        ],
-                    },
-                },
-            },
-            'session__count' => {
-                'table' => 'session',
-                'select' => 'count',
-                'inner-join' => {
-                    'source_session' => {
-                        'where' => [
-                            [ 'error-count', '>', 0 ],
-                        ]
-                    },
-                },
-            },
-        },
-    },
-};
+#------------------------------------------------------------------------------
 
 my %schema= (
 
@@ -139,13 +141,29 @@ my %schema= (
         },
         'location' => 'session',
     },
+
+    # == FILE ===
+
     'file' => {
         'fields' => {
             'file_name'         => { 'pkey' => 1, 'type' => 'TEXT' },
-            'inode'             => { 'type' => 'INTEGER' },
+            'inode'             => { 'fkey' => [ 'inode', 'inode' ], 'type' => 'INTEGER' },
             'source_session_uuid' => { 'fkey' => [ 'source_session', 'source_session_uuid' ], 'type' => 'TEXT' },
         },
-        'location' => 'session',
+        'location' => 'file',
+    },
+
+    # == INODE ===
+
+    'inode' => {
+        'fields' => {
+            'inode'         => { 'pkey' => 1, 'type' => 'INTEGER' },
+            'size'          => { 'type' => 'INTEGER' },
+            'owner'         => { 'type' => 'TEXT' },
+            'mtime'         => { 'type' => 'INTEGER' },
+            'digest'        => { 'type' => 'TEXT' },
+        },
+        'location' => 'inode',
     },
 
     # == CONF ===
@@ -170,29 +188,10 @@ my %schema= (
     },
 );
 
-$cmd= {
-    'file' => {
-        'select' => [ 'inode', 'file_name' ],
-        'where' => [
-            [ 'file_name', 'regex', 'steppi.*idee' ],
-        ],
-        'inner-join' => {
-            'source_session' => {
-                'select' => [ 'time_start' ],
-                'where' => [
-                    [ 'url', '=', 'file:///lisa/' ],
-                    [ 'time_start', '>=', '2009-02-01' ],
-                ],
-            },
-        },
-        'distinct' => 'inode',
-        'order-by' => 'source_session.time_start',
-    }
-};
-
-print Dumper($cmd);
-
 #------------------------------------------------------------------------------
+
+#FIXME: This class only enables the new methods of all objects to call SUPER::new.
+#       Is there a better way to do this?
 
 package Object;
 
@@ -256,7 +255,7 @@ sub _createTable {
 
     my $tableDef= $schema{$table} || die "Unknown table '$table'";
 
-print "_createTable: $table\n";
+## print "_createTable: $table\n";
 
     my @fields= ();
     while (my ($field, $def)= each %{ $tableDef->{'fields'} }) {
@@ -445,38 +444,119 @@ sub _build_db {
 
 package main;
 
-my $oConfDb= DB::Conf->new();
-my $oSessionDb= DB::Session->new();
-die "DONE";
+# my $oConfDb= DB::Conf->new();
+# my $oSessionDb= DB::Session->new();
 
-sub _ex {
-    my $cmd= shift;
-    my $parent_location= shift;
+my $cmd;
 
-    for (keys %$cmd) {
-        my $sel= $cmd->{$_};
+$cmd= {
+    'job' => {
+        'select' => [
+            'job_name'
+        ],
+        'left-join' => {
+            'session' => {
+                'select' => '*',
+                'limit' => 1,
+                'order' => {
+                    'source_session.time_start' => 'desc',
+                },
+                'inner-join' => {
+                    'source_session' => {
+                        'where' => [
+                            [ 'error-count', '>', 0 ],
+                        ],
+                    },
+                },
+            },
+            'session__count' => {
+                'table' => 'session',
+                'select' => 'count',
+                'inner-join' => {
+                    'source_session' => {
+                        'where' => [
+                            [ 'error-count', '>', 0 ],
+                        ]
+                    },
+                },
+            },
+        },
+    },
+};
 
-        my $table= $sel->{'table'} || $_;
-        my $table_location= $schema{$table}{'location'} || die "'$table' not a table in schema";
-
-        if ($parent_location ne $table_location) {
-        }
-
-        if ($sel->{'left-join'}) {
-die;
-            my $res= _ex(\%{ $sel->{'left-join'} }, $table_location);
-            next;
-        }
-        if ($sel->{'inner-join'}) {
-            my $res= _ex(\%{ $sel->{'inner-join'} }, $table_location);
-            next;
-        }
+$cmd= {
+    'file' => {
+        'select' => [ 'inode', 'file_name' ],
+        'where' => [
+            [ 'file_name', 'regex', 'steppi.*idee' ],
+        ],
+        'inner-join' => {
+            'source_session' => {
+                'select' => [ 'time_start' ],
+                'where' => [
+                    [ 'url', '=', 'file:///lisa/' ],
+                    [ 'time_start', '>=', '2009-02-01' ],
+                ],
+            },
+        },
+        'distinct' => 'inode',
+        'order-by' => 'source_session.time_start',
     }
-}
+};
+
+$cmd= {
+    'source_session' => {
+        'select' => '*',
+        'inner-join' => {
+            'source' => {
+                'where' => {
+                    'source_name' => 'example_source',
+                },
+            },
+        },
+    }
+};
+
+print Dumper($cmd);
+
+
+
+# die "DONE";
 
 sub ex {
     my %cmd= @_;
-    _ex(\%cmd);
+
+    my %hAttach= ();
+
+    my $_ex; $_ex= sub {        # Perl can't do "my $_ex= sub.."
+        my $cmd= shift;
+        my $parent_location= shift || '';
+
+        for (keys %$cmd) {
+            my $sel= $cmd->{$_};
+
+            my $table= $sel->{'table'} || $_;
+            my $table_location= $schema{$table}{'location'} || die "'$table' not a table in schema";
+
+            if ($parent_location ne $table_location) {
+                $hAttach{$table_location}= 1;
+            }
+
+            if ($sel->{'left-join'}) {
+die;
+                my $res= $_ex->(\%{ $sel->{'left-join'} }, $table_location);
+                next;
+            }
+            if ($sel->{'inner-join'}) {
+                my $res= $_ex->(\%{ $sel->{'inner-join'} }, $table_location);
+                next;
+            }
+        }
+    };
+
+    $_ex->(\%cmd);
+
+    print Dumper(\%hAttach);
 }
 
 ex(%$cmd);
