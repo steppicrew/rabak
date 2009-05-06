@@ -82,7 +82,7 @@ sub _parseFilter {
     my %sExcDirs= ();
     my @sResult= ();
     for my $sEntry (@sFilter) {
-        $sEntry= $self->removeBackslashesPart2($sEntry);
+        $sEntry= Rabak::Conf::RemoveBackslashesPart2($sEntry);
         $sEntry=~ s/^([\-\+\#]*)\s*//;
         my $sIncExc= $1;
         

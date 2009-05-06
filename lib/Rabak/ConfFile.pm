@@ -292,7 +292,7 @@ sub _readFile {
             };
 
             # replace every occurance of a reference with reference's scalar value (or raise an error)
-            $sNewValue= $oConf->removeBackslashesPart1($sNewValue);
+            $sNewValue= Rabak::Conf::RemoveBackslashesPart1($sNewValue);
             while (
                 $sNewValue=~ s/(?<!\\)\$($sregIdentRef)/$f->($1)/ge ||
                 $sNewValue=~ s/(?<!\\)\$\{($sregIdentRef)\}/$f->($1)/ge
@@ -301,7 +301,7 @@ sub _readFile {
             # TODO: what to do with multi line quotes?
             logger->warn("Unescaped '\"' in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ s/(?<!\\)\"/\\\"/;
             logger->warn("Unescaped \"'\" in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ s/(?<!\\)\'/\\\'/;
-            $sNewValue= $oConf->undoRemoveBackslashesPart1($sNewValue);
+            $sNewValue= Rabak::Conf::UndoRemoveBackslashesPart1($sNewValue);
         }
         $oConf->setValue($sName, $sNewValue);
     }
