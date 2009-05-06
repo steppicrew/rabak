@@ -112,12 +112,13 @@ sub getDf {
     
     my $sDfResult = $self->df(undef, @sParams);
 
+    #                             size    used    avail
     unless ($sDfResult =~ /^\S+\s+(\d+)\s+(\d+)\s+(\d+)\s+/m && $1 > 100) {
         logger->error("Could not get free disc space!", $sDfResult);
         return (undef, undef, undef);
     }
     return ($1, $2, $3) if wantarray;
-    return $2;
+    return $3;
 }
 
 sub _checkDf {
@@ -129,7 +130,7 @@ sub _checkDf {
     my $iStValue= $sSpaceThreshold =~ /\b([\d\.]+)/ ? $1 : 0;
     my $sStUnit= 'K';
     $sStUnit = uc($1) if $sSpaceThreshold =~ /$iStValue\s*([gmkb\%])/i;
-    my ($iDfSize, $iDfAvail) = $self->getDf('-k');
+    my ($iDfSize, undef, $iDfAvail) = $self->getDf('-k');
     $iDfAvail /= $iDfSize / 100 if $sStUnit eq '%';
     $iDfAvail >>= 20            if $sStUnit eq 'G';
     $iDfAvail >>= 10            if $sStUnit eq 'M';
