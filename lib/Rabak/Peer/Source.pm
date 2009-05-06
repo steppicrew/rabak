@@ -21,7 +21,7 @@ It provides a static method 'Factory' to create specialized source objects
 
 =cut
 
-sub Factory {
+sub newFromConf {
     my $class= shift;
     my $oOrigConf= shift;
     
@@ -38,26 +38,8 @@ sub Factory {
        $sType= "file";
        $oOrigConf->setValue("type", $sType);
     } 
-    $sType= ucfirst lc $sType;
 
-    my $new;
-    eval {
-        require "Rabak/Peer/Source/$sType.pm";
-        my $sClass= "Rabak::Peer::Source::$sType";
-        $new= $sClass->newFromConf($oOrigConf);
-        1;
-    };
-    if ($@) {
-        if ($@ =~ /^Can\'t locate/) {
-            logger->error("Backup type \"$sType\" is not defined: $@");
-        }
-        else {
-            logger->error("An error occured: $@");
-        }
-        return undef;
-    }
-
-    return $new;
+    return $class->SUPER::newFromConf($oOrigConf);
 }
 
 
@@ -65,7 +47,8 @@ sub Factory {
 sub propertyNames {
     my $self= shift;
 
-    return ('type', $self->SUPER::propertyNames(), 'keep', 'path_extension', 'previous_path_extensions', 'merge_duplicates');
+    my $oBackup= Rabak::Backup->Factory($self);
+    return ('type', $oBackup->sourcePropertyNames(), 'keep', 'path_extension', 'previous_path_extensions', 'merge_duplicates');
 }
 
 sub getPathExtension {

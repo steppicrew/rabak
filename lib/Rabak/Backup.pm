@@ -25,6 +25,33 @@ sub new {
     bless $self, $class;
 }
 
+sub Factory {
+    my $class= shift;
+    my $oSourcePeer= shift;
+    my $oTargetPeer= shift;
+    
+    my $sType= ucfirst lc $oSourcePeer->getValue("type");
+
+    my $new;
+    eval {
+        require "Rabak/Backup/$sType.pm";
+        my $sClass= "Rabak::Backup::$sType";
+        $new= $sClass->new($oSourcePeer, $oTargetPeer);
+        1;
+    };
+    if ($@) {
+        if ($@ =~ /^Can\'t locate/) {
+            logger->error("Backup type \"$sType\" is not defined: $@");
+        }
+        else {
+            logger->error("An error occured: $@");
+        }
+        return undef;
+    }
+
+    return $new;
+}
+
 sub METAVERSION {1};
 
 my %METAFILENAMES=(
@@ -33,6 +60,20 @@ my %METAFILENAMES=(
     result     => 'Result',
     statistics => 'Statistics',
 );
+
+sub getSource {
+    my $self= shift;
+    return $self->{SOURCE};
+}
+
+sub getTarget {
+    my $self= shift;
+    return $self->{TARGET};
+}
+
+sub sourcePropertyNames {
+    return ();
+}
 
 sub run {
     my $self= shift;

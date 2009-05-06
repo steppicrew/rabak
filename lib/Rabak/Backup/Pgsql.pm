@@ -1,16 +1,15 @@
 #!/usr/bin/perl
 
-package Rabak::Peer::Source::Pgsql;
+package Rabak::Backup::Pgsql;
 
 use warnings;
 use strict;
 use vars qw(@ISA);
 
-use Rabak::Peer::Source;
-use Rabak::Peer::Source::DBBase;
+use Rabak::Backup::DBBase;
 use Rabak::Log;
 
-@ISA = qw(Rabak::Peer::Source::DBBase);
+@ISA = qw(Rabak::Backup::DBBase);
 
 sub DEFAULT_USER {'postgres'};
 
