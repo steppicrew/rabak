@@ -1,12 +1,12 @@
 #!/usr/bin/perl
 
-package Rabak::Peer::Source::DBBase;
+package Rabak::Backup::DBBase;
 
 use warnings;
 use strict;
 use vars qw(@ISA);
 
-@ISA = qw(Rabak::Peer::Source);
+@ISA = qw(Rabak::Backup);
 
 use Data::Dumper;
 use Rabak::Log;
@@ -16,22 +16,21 @@ our %sPackers = (
     gzip  => { cmd => "gzip" , ext => "gz"},
 );
 
-sub newFromConf {
+sub new {
     my $class= shift;
-    my $oOrigConf= shift;
     
-    my $new= $class->SUPER::newFromConf($oOrigConf);
+    my $self= $class->SUPER::new(@_);
 
-    my $sPacker= lc $new->getValue("packer");
+    my $sPacker= lc $oSourcePeer->getValue("packer");
 
     logger->warn("Unknown packer '$sPacker'. Valid Values are: '"
         . join("', '", keys %sPackers)
         . "'. Using default 'bzip2'") if $sPacker && !$sPackers{$sPacker};
 
     $sPacker= "bzip2" unless $sPacker && $sPackers{$sPacker};
-    $new->{PACKER} = $sPackers{$sPacker};
+    $self->{PACKER} = $sPackers{$sPacker};
 
-    return $new;
+    bless $self, $class;
 }
 
 sub DEFAULT_USER {

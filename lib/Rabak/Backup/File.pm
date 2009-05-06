@@ -1,12 +1,12 @@
 #!/usr/bin/perl
 
-package Rabak::Peer::Source::File;
+package Rabak::Backup::File;
 
 use warnings;
 use strict;
 use vars qw(@ISA);
 
-@ISA = qw(Rabak::Peer::Source);
+@ISA = qw(Rabak::Backup);
 
 use Data::Dumper;
 use File::Spec;
@@ -15,11 +15,12 @@ use Rabak::Mountable;
 
 sub new {
     my $class= shift;
-
-    my $self= $class->SUPER::new(@_);
-    $self->{MOUNTABLE}= Rabak::Mountable->new($self);
     
-    return $self;
+    my $self= $class->SUPER::new(@_);
+
+    $self->{MOUNTABLE}= Rabak::Mountable->new($self->getSource());
+    
+    bless $self, $class;
 }
 
 # IMPORTANT: define all used properties here, order will be used for show

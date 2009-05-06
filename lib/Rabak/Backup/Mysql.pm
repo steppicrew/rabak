@@ -1,16 +1,15 @@
 #!/usr/bin/perl
 
-package Rabak::Peer::Source::Mysql;
+package Rabak::Backup::Mysql;
 
 use warnings;
 use strict;
 use vars qw(@ISA);
 
-use Rabak::Peer::Source;
-use Rabak::Peer::Source::DBBase;
+use Rabak::Backup::DBBase;
 use Rabak::Log;
 
-@ISA = qw(Rabak::Peer::Source::DBBase);
+@ISA = qw(Rabak::Backup::DBBase);
 
 use Data::Dumper;
 
