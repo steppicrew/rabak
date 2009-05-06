@@ -26,10 +26,12 @@ It provides mount operations.
 sub new {
     my $class= shift;
     my $oPeer= shift;
+    my $fErrorIsFatal= shift;
     
     my $self= {
         PEER => $oPeer,
         PATH_IS_ABSOLUTE => 0,
+        ERROR_IS_FATAL_FUNC => $fErrorIsFatal || sub {0},
     };
 
     bless $self, $class;
@@ -162,7 +164,7 @@ sub mountAll {
         $iResult = $oMount->mount($peer, $arMessage, $arAllMounts);
         # quit if mount failed
         # TODO: is this right for source objects?
-        last if $peer->mountErrorIsFatal($iResult);
+        last if $self->{ERROR_IS_FATAL}->($iResult);
     }
     $self->{_MOUNT_LIST}= $arAllMounts;
 

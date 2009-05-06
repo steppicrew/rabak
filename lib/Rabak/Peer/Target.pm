@@ -24,7 +24,7 @@ sub new {
     my $class= shift;
 
     my $self= $class->SUPER::new(@_);
-    $self->{MOUNTABLE}= Rabak::Mountable->new($self);
+    $self->{MOUNTABLE}= Rabak::Mountable->new($self, sub{shift});
     $self->{UUID}= undef;
 
     return $self;
@@ -104,13 +104,6 @@ sub checkMount {
         return 2;
     }
     return $sMountPath;
-}
-
-sub mountErrorIsFatal {
-    my $self= shift;
-    my $iMountResult= shift;
-
-    return $iMountResult;
 }
 
 sub getDf {
