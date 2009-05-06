@@ -2,39 +2,6 @@
 
 # TODO: make verbosity levels specifyable in clear text ('error', 'warning', 'info'...)
 
-package Rabak::Conf::Value;
-
-use warnings;
-use strict;
-no warnings 'redefine';
-
-use Data::Dumper;
-use Storable qw(dclone);
-use POSIX qw(strftime);
-use Rabak::Log;
-use Data::UUID;
-
-sub new {
-    my $class = shift;
-    my $oConf= shift;
-    my $sName= shift;
-    my $sValue= shift;
-    
-    my $self= {
-        VALUE => $sValue,
-        CONF  => $oConf,
-        NAME  => $sName,
-    };
-    bless $self, $class;
-}
-
-sub value {
-};
-
-
-
-
-
 package Rabak::Conf;
 
 use warnings;
@@ -99,7 +66,7 @@ sub newFromConf {
 }
 
 # IMPORTANT: define all used properties here, order will be used for show
-sub PropertyNames {
+sub propertyNames {
     return ('name');
 }
 
@@ -166,8 +133,8 @@ sub _joinValue {
             $bError= 1;
         }
         else {
-            # RemoveBackslashesPart2 should already have been called
-            # RemoveBackslashesPart2($_);
+            # SweepBackslashes should already have been called
+            # SweepBackslashes($_);
             $_;
         }
     } @$aValue;
@@ -184,7 +151,7 @@ sub _joinValue {
 #     my $sDefault= shift;
 #     
 #     return $self->_splitValue(
-#         RemoveBackslashesPart1(
+#         MarkBackslashes(
 #             $self->getRawValue($sName, $sDefault)
 #         )
 #     );
@@ -207,7 +174,7 @@ sub getRawValue {
     return $sValue;
 }
 
-sub RemoveBackslashesPart1 {
+sub MarkBackslashes {
     my $sValue= shift;
 
     return $sValue unless defined $sValue;
@@ -225,7 +192,7 @@ sub RemoveBackslashesPart1 {
     return $sValue;
 }
 
-sub UndoRemoveBackslashesPart1 {
+sub UnmarkBackslashes {
     my $sValue= shift;
 
     return $sValue unless defined $sValue;
@@ -236,7 +203,7 @@ sub UndoRemoveBackslashesPart1 {
     return $sValue;
 }
 
-sub RemoveBackslashesPart2 {
+sub SweepBackslashes {
     my $sValue= shift;
 
     return $sValue unless defined $sValue;
@@ -258,7 +225,7 @@ sub RemoveBackslashesPart2 {
 sub RemoveBackslashes {
     my $sValue= shift;
 
-    return RemoveBackslashesPart2(RemoveBackslashesPart1($sValue));
+    return SweepBackslashes(MarkBackslashes($sValue));
 }
 
 sub QuoteValue {
@@ -553,7 +520,7 @@ sub expandMacroHash {
     }
     my $aMacro= $self->_splitValue(
         $fPreParse->(
-            RemoveBackslashesPart1($sMacro)
+            MarkBackslashes($sMacro)
         )
     );
     my $aNewMacroStack= [ "${sMacroPath}[$sMacroName]" ];
@@ -569,7 +536,7 @@ sub resolveObjects {
     my $sProperty= shift;
     my $aStack= shift || [];
     
-    return map { RemoveBackslashesPart2($_) } $self->_expandMacro($sProperty, $self, $aStack);
+    return map { SweepBackslashes($_) } $self->_expandMacro($sProperty, $self, $aStack);
 }
 
 sub _resolveObjects {
@@ -617,7 +584,7 @@ sub _sortShowKeys {
     my $self= shift;
     my @sKeys= @_;
     
-    my @sSortOrder= $self->PropertyNames();
+    my @sSortOrder= $self->propertyNames();
     my @sResult= ();
     for my $sSort (@sSortOrder) {
         for (my $i= 0; $i < scalar @sKeys; $i++) {
@@ -733,7 +700,7 @@ sub show {
         push @sResult, $self->showConfValue("$sKey.$sSubKey", $hConfShowCache);
     }
     # try to resolve all properties not defined in current object
-    for my $sSubKey ($self->PropertyNames()) {
+    for my $sSubKey ($self->propertyNames()) {
         next if $self->{VALUES}{$sSubKey};
         $self->getValue($sSubKey, undef,  $hConfShowCache->{'.'});
     }

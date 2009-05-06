@@ -23,7 +23,6 @@ sub new {
     bless $self, $class;
 }
 
-# IMPORTANT: define all used properties here, order will be used for show
 sub sourcePropertyNames {
     my $self= shift;
     
@@ -32,6 +31,7 @@ sub sourcePropertyNames {
 
 sub mountable {
     my $self= shift;
+
     return $self->{MOUNTABLE};
 }
 
@@ -59,7 +59,7 @@ sub _getFilter {
     return $self->_parseFilter($aFilter, $self->getPath(), $aMacroStack);
 }
 
-# parse filter string in $sFilter
+# parse filter strings in $aFilter
 # returns array with rsync's include/exclude rules
 sub _parseFilter {
     my $self= shift;
@@ -82,7 +82,7 @@ sub _parseFilter {
     my %sExcDirs= ();
     my @sResult= ();
     for my $sEntry (@sFilter) {
-        $sEntry= Rabak::Conf::RemoveBackslashesPart2($sEntry);
+        $sEntry= Rabak::Conf::SweepBackslashes($sEntry);
         $sEntry=~ s/^([\-\+\#]*)\s*//;
         my $sIncExc= $1;
         

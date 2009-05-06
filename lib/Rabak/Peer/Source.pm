@@ -46,7 +46,7 @@ sub newFromConf {
 # IMPORTANT: define all used properties here, order will be used for show
 sub propertyNames {
     my $self= shift;
-    
+
     my $oBackup= Rabak::Backup->Factory($self);
     return $oBackup->sourcePropertyNames('type', $self->SUPER::propertyName(), 'keep', 'path_extension', 'previous_path_extensions', 'merge_duplicates');
 }

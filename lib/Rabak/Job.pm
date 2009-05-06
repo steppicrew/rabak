@@ -51,8 +51,10 @@ sub newFromConf {
 }
 
 # IMPORTANT: define all used properties here, order will be used for show
-sub PropertyNames {
-    return ('title', 'source', 'target', 'email', shift->SUPER::PropertyNames(), 'path_extension', 'previous_path_extensions');
+sub propertyNames {
+    my $self= shift;
+
+    return ('title', 'source', 'target', 'email', $self->SUPER::propertyNames(), 'path_extension', 'previous_path_extensions');
 }
 
 sub GetJobs {
@@ -77,6 +79,7 @@ sub GetJobs {
 
 sub getValidationMessage {
     my $self= shift;
+
     return $self->getValueRequiredMessage("title")
         || $self->getValueRequiredMessage("source")
         || $self->getValueRequiredMessage("target");

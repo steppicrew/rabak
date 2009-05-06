@@ -29,8 +29,10 @@ sub new {
 }
 
 # IMPORTANT: define all used properties here, order will be used for show
-sub PropertyNames {
-    return ('device', 'directory', 'type', 'options', 'unmount', 'lazy_unmount', shift->SUPER::PropertyNames());
+sub propertyNames {
+    my $self= shift;
+    
+    return ('device', 'directory', 'type', 'options', 'unmount', 'lazy_unmount', $self->SUPER::propertyNames());
 }
 
 # DETECTED UNUSED: isMounted
