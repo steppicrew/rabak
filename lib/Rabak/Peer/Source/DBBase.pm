@@ -39,8 +39,10 @@ sub DEFAULT_USER {
 }
 
 # IMPORTANT: define all used properties here, order will be used for show
-sub PropertyNames {
-    return (shift->SUPER::PropertyNames(), 'dbuser', 'dbpassword');
+sub propertyNames {
+    my $self= shift;
+
+    return ($self->SUPER::propertyNames(), 'dbuser', 'dbpassword');
 }
 
 sub getShowCmd {

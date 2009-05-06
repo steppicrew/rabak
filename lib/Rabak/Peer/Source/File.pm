@@ -23,12 +23,15 @@ sub new {
 }
 
 # IMPORTANT: define all used properties here, order will be used for show
-sub PropertyNames {
-    return (shift->SUPER::PropertyNames(), Rabak::Mountable->PropertyNames(), 'filter', 'exclude', 'include', 'scan_bak_dirs');
+sub propertyNames {
+    my $self= shift;
+
+    return ($self->SUPER::propertyNames(), $self->mountable()->propertyNames(), 'filter', 'exclude', 'include', 'scan_bak_dirs');
 }
 
 sub mountable {
     my $self= shift;
+
     return $self->{MOUNTABLE};
 }
 

@@ -66,7 +66,7 @@ sub newFromConf {
 }
 
 # IMPORTANT: define all used properties here, order will be used for show
-sub PropertyNames {
+sub propertyNames {
     return ('name');
 }
 
@@ -584,7 +584,7 @@ sub _sortShowKeys {
     my $self= shift;
     my @sKeys= @_;
     
-    my @sSortOrder= $self->PropertyNames();
+    my @sSortOrder= $self->propertyNames();
     my @sResult= ();
     for my $sSort (@sSortOrder) {
         for (my $i= 0; $i < scalar @sKeys; $i++) {
@@ -700,7 +700,7 @@ sub show {
         push @sResult, $self->showConfValue("$sKey.$sSubKey", $hConfShowCache);
     }
     # try to resolve all properties not defined in current object
-    for my $sSubKey ($self->PropertyNames()) {
+    for my $sSubKey ($self->propertyNames()) {
         next if $self->{VALUES}{$sSubKey};
         $self->getValue($sSubKey, undef,  $hConfShowCache->{'.'});
     }

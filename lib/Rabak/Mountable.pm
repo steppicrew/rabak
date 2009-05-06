@@ -36,7 +36,7 @@ sub new {
 }
 
 # IMPORTANT: define all used properties here, order will be used for show
-sub PropertyNames {
+sub propertyNames {
     return ('mount');
 }
 

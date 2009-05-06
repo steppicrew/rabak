@@ -53,8 +53,10 @@ sub new {
 }
 
 # IMPORTANT: define all used properties here, order will be used for show
-sub PropertyNames {
-    return ('host', 'port', 'user', 'path', 'protocol', 'identity_files', 'timeout', 'bandwidth', shift->SUPER::PropertyNames());
+sub propertyNames {
+    my $self= shift;
+
+    return ('host', 'port', 'user', 'path', 'protocol', 'identity_files', 'timeout', 'bandwidth', $self->SUPER::propertyNames());
 }
 
 sub newFromConf {
