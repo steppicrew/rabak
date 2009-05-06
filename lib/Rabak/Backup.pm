@@ -79,9 +79,8 @@ sub _getTarget {
 
 sub _getSourceValue {
     my $self= shift;
-    my $sName= shift;
     
-    return $self->_getSource()->getValue($sName);
+    return $self->_getSource()->getValue(@_);
 }
 
 sub sourcePropertyNames {
