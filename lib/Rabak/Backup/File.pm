@@ -27,7 +27,7 @@ sub new {
 sub sourcePropertyNames {
     my $self= shift;
     
-    return ($self->SUPER::propertyNames(), $self->mountable()->propertyNames(), 'filter', 'exclude', 'include', 'scan_bak_dirs');
+    return ($self->SUPER::propertyNames(@_), $self->mountable()->propertyNames(), 'filter', 'exclude', 'include', 'scan_bak_dirs');
 }
 
 sub mountable {

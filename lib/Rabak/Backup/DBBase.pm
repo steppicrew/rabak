@@ -39,7 +39,8 @@ sub DEFAULT_USER {
 
 # IMPORTANT: define all used properties here, order will be used for show
 sub sourcePropertyNames {
-    return (shift->SUPER::sourcePropertyNames(), 'dbuser', 'dbpassword');
+    my $self= shift;
+    return ($self->SUPER::sourcePropertyNames(@_), 'dbuser', 'dbpassword');
 }
 
 sub getShowCmd {

@@ -48,7 +48,7 @@ sub propertyNames {
     my $self= shift;
     
     my $oBackup= Rabak::Backup->Factory($self);
-    return ('type', $oBackup->sourcePropertyNames(), 'keep', 'path_extension', 'previous_path_extensions', 'merge_duplicates');
+    return $oBackup->sourcePropertyNames('type', $self->SUPER::propertyName(), 'keep', 'path_extension', 'previous_path_extensions', 'merge_duplicates');
 }
 
 sub getPathExtension {

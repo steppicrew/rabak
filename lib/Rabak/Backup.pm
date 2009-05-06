@@ -72,7 +72,8 @@ sub getTarget {
 }
 
 sub sourcePropertyNames {
-    return ();
+    my $self= shift;
+    return @_;
 }
 
 sub run {
