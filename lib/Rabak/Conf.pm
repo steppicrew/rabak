@@ -2,39 +2,6 @@
 
 # TODO: make verbosity levels specifyable in clear text ('error', 'warning', 'info'...)
 
-package Rabak::Conf::Value;
-
-use warnings;
-use strict;
-no warnings 'redefine';
-
-use Data::Dumper;
-use Storable qw(dclone);
-use POSIX qw(strftime);
-use Rabak::Log;
-use Data::UUID;
-
-sub new {
-    my $class = shift;
-    my $oConf= shift;
-    my $sName= shift;
-    my $sValue= shift;
-    
-    my $self= {
-        VALUE => $sValue,
-        CONF  => $oConf,
-        NAME  => $sName,
-    };
-    bless $self, $class;
-}
-
-sub value {
-};
-
-
-
-
-
 package Rabak::Conf;
 
 use warnings;
