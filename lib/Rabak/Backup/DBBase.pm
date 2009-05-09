@@ -103,7 +103,7 @@ sub _logCmd {
 # plan: build a tunnel, fetch the db, delete old baks, release tunnel
 # TODO: option dump_oids
 # TODO: support large objects (pg_dump -Fc)
-sub _backup {
+sub _run {
     my $self= shift;
     my $hMetaInfo= shift;
     

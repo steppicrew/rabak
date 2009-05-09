@@ -397,7 +397,7 @@ sub checkMount {
     return $self->mountable()->checkMount($sMountDevice, $arMountMessages);
 }
 
-sub _backup {
+sub _run {
     my $self= shift;
     my $hMetaInfo= shift;
 

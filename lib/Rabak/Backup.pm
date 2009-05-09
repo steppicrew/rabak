@@ -20,7 +20,7 @@ sub new {
     my $self= {
         SOURCE => $oSourcePeer,
         TARGET => $oTargetPeer,
-        BACKUP_DATA => undef,
+        BACKUP_RESULT => undef,
         PRETEND => $oSourcePeer->pretend(),
     };
     bless $self, $class;
@@ -93,8 +93,9 @@ sub run {
     my $hJobData= shift;
     my $oSourceDataConf= shift;
     
-    $self->_run() unless $self->_setup($hJobData, $oSourceDataConf);
-    return $self->_cleanup();
+    $_->() for $self->__buildBackupFuncs($hJobData, $oSourceDataConf);
+    
+    return $self->{BACKUP_RESULT};
 }
 
 sub _prepareBackup {
@@ -106,7 +107,6 @@ sub _prepareBackup {
 }
 sub _finishBackup {
     my $self= shift;
-    my $iBackupResult= shift;
     
     logger->setPrefix();
     $self->_getSource()->cleanupTempfiles();
@@ -116,22 +116,20 @@ sub sourceShow {
     return ();
 }
 
-sub _setup {
+sub __buildBackupFuncs {
     my $self= shift;
     my $hJobData= shift;
     my $oSourceDataConf= shift;
 
     my $oSourcePeer= $self->{SOURCE};
     my $oTargetPeer= $self->{TARGET};
+    my $sSourceName= $oSourcePeer->getName() || $oSourcePeer->getFullPath();
     
     $oSourceDataConf->setValue('time.start', Rabak::Conf->GetTimeString());
-    $oSourceDataConf->setValue('path', $oSourcePeer->getFullPath());;
+    $oSourceDataConf->setValue('path', $oSourcePeer->getFullPath());
 
-    my $sSourceName= $oSourcePeer->getName() || $oSourcePeer->getFullPath();
-    logger->info('Backup start at ' . strftime('%F %X', localtime) . ': ' . $sSourceName);
-    logger->incIndent();
-
-    # prepare target for backup
+    my @fBackup= ();
+    
     my $asSourceExts= Rabak::Job->GetAllPathExtensions($oSourcePeer);
     # TODO: may be we only need "%d" as $sBakDay?
     my $sBakDay= strftime("%Y-%m-%d", @{$hJobData->{JOB_TIME}});
@@ -174,10 +172,6 @@ sub _setup {
 
     $self->_convertBackupDirs(\@sBakBaseDirs);
 
-    $self->{BACKUP_DATA}{OLD_BACKUP_DATA_DIRS}= [map { $_ . '/data' } @sBakBaseDirs];
-    $self->{BACKUP_DATA}{BACKUP_DATA_DIR}= $sBakDataDir;
-    $self->{BACKUP_DATA}{BACKUP_META_DIR}= $sBakMetaDir;
-    
     logger->info("Backup \"$sBakDay$sSourceExt\" exists, using subset \"$sSourceSubdir\".") if $sSubSet;
 
     $oTargetPeer->mkdir($sBakDir);
@@ -191,23 +185,37 @@ sub _setup {
     my $iTransferredFiles= 0;
     my $iFailedFiles= 0;
 
-    $self->{BACKUP_DATA}{STATISTICS_CALLBACK}= sub {
+    my $fStatisticCallback= sub {
         my @sStatText= @_;
         $oSourceDataConf->setQuotedValue('stats.text', join("\n", @sStatText));
     };
-    $self->{BACKUP_DATA}{FAILED_FILE_CALLBACK}= sub { $iFailedFiles++; };
+    my $fFailedFileCallback= sub { $iFailedFiles++; };
+    my $fFileCallback;
     
-    ########################################################
-    # set cleanup chain
-    ########################################################
-    
+    logger->info('Backup start at ' . strftime('%F %X', localtime) . ': ' . $sSourceName);
+    logger->incIndent();
+    $self->{BACKUP_RESULT}= $self->_prepareBackup();
+
+    # run backup
+    push @fBackup, sub {
+        $self->{BACKUP_RESULT}= $self->_run(
+            {
+                DATA_DIR => $oTargetPeer->getPath($sBakDataDir),
+                OLD_DATA_DIRS => [map { $_ . '/data' } @sBakBaseDirs],
+                FILE_CALLBACK => $fFileCallback,
+                FAILED_FILE_CALLBACK => $fFailedFileCallback,
+                STATISTICS_CALLBACK => $fStatisticCallback,
+            },
+        );
+    } unless $self->{BACKUP_RESULT};
+
     # start finish functions with cleaning up source
-    my @fFinish= (
-        sub {$self->_finishBackup($self->{BACKUP_DATA}{BACKUP_RESULT})},
-    );
+    push @fBackup, sub {
+        $self->_finishBackup();
+    };
     
     unless ($self->_pretend()) {
-        # add finish function for inode inventory (and create per-file-callback function)
+        # add finish function for inode inventory (and set per-file-callback function)
         my $sMetaDir= Rabak::Job->GetMetaBaseDir($oTargetPeer->getUuid());
         my $sInodesDb= "$sMetaDir/inodes.db";
         my $sFilesInodeDb=  Rabak::Job->GetMetaBaseDir(
@@ -237,13 +245,13 @@ sub _setup {
             # special handling for remote targets (see idea below)
             my ($fh, $sFileListFile)= $oTargetPeer->localTempfile(SUFFIX => '.filelist.txt');
 
-            $self->{BACKUP_DATA}{FILE_CALLBACK}= sub {
+            $fFileCallback= sub {
                 my $sFileName= shift;
                 my $sFlags= shift || '';
                 print $fh "$sFlags:$sFileName\n";
             };
 
-            push @fFinish, sub {
+            push @fBackup, sub {
                 close $fh;
                 
                 $fPrepareInodeStore->();
@@ -291,12 +299,12 @@ sub _setup {
             };
             
             if ($oSourcePeer->getValue('merge_duplicates')) {
-                push @fFinish, $self->_buildDupMerge(
+                push @fBackup, $self->_buildDupMerge(
                     $oTargetPeer, \$inodeStore, \@sBakBaseDirs, $sMetaDir,
                 );
             }
 
-            push @fFinish, sub {
+            push @fBackup, sub {
                 logger->verbose("Finishing information store...");
                 logger->incIndent();
                 $inodeStore->finishInformationStore();
@@ -310,7 +318,7 @@ sub _setup {
             
             my @sInventFiles= ();
 
-            $self->{BACKUP_DATA}{FILE_CALLBACK}= sub {
+            $fFileCallback= sub {
                 # add only existant files, remember nonexistant (files may be created after logging)
                 my $sFile= shift;
                 my $sFlags= shift || '';
@@ -334,18 +342,18 @@ sub _setup {
                 return scalar @sInventFiles;
             };
             
-            push @fFinish, sub {
+            push @fBackup, sub {
                 # finish up previously nonexistant files
-                $self->{BACKUP_DATA}{FILE_CALLBACK}->();
+                $fFileCallback->();
             };
 
             if ($oSourcePeer->getValue('merge_duplicates')) {
-                push @fFinish, $self->_buildDupMerge(
+                push @fBackup, $self->_buildDupMerge(
                     $oTargetPeer, \$inodeStore, \@sBakBaseDirs, $sMetaDir,
                 );
             }
     
-            push @fFinish, sub {
+            push @fBackup, sub {
                 logger->verbose("Finishing information store...");
                 $inodeStore->finishInformationStore();
                 logger->verbose("done");
@@ -354,10 +362,10 @@ sub _setup {
     }
     
     # add finish function to log backup result
-    push @fFinish, sub {
-        if ($self->{BACKUP_DATA}{BACKUP_RESULT}) {
+    push @fBackup, sub {
+        if ($self->{BACKUP_RESULT}) {
             logger->error("Backup failed: " . $oSourcePeer->getLastError());
-            $self->{BACKUP_DATA}{BACKUP_RESULT}= 9;
+            $self->{BACKUP_RESULT}= 9;
         }
         else {
             logger->info("Done!");
@@ -365,9 +373,9 @@ sub _setup {
     };
 
     # add finish function to update $oSourceDataConf
-    push @fFinish, sub {
+    push @fBackup, sub {
         $oSourceDataConf->setQuotedValue('time.end', Rabak::Conf->GetTimeString());
-        $oSourceDataConf->setQuotedValue('result', $self->{BACKUP_DATA}{BACKUP_RESULT});
+        $oSourceDataConf->setQuotedValue('result', $self->{BACKUP_RESULT});
         $oSourceDataConf->setQuotedValue('stats.total_bytes', $iTotalBytes);
         $oSourceDataConf->setQuotedValue('stats.transferred_bytes', $iTransferredBytes);
         $oSourceDataConf->setQuotedValue('stats.total_files', $iTotalFiles);
@@ -378,8 +386,8 @@ sub _setup {
 
     unless ($self->_pretend()) {
         # add finish function to remove old backups and symlink current directory
-        push @fFinish, sub {
-            unless ($self->{BACKUP_DATA}{BACKUP_RESULT}) {
+        push @fBackup, sub {
+            unless ($self->{BACKUP_RESULT}) {
                 # remove old dirs if backup was successfully done
                 $oTargetPeer->removeOld($oSourcePeer->getValue('keep'), \@sBakBaseDirs);
             }
@@ -392,36 +400,12 @@ sub _setup {
     }
 
     # add finish function with final logging
-    push @fFinish, sub {
+    push @fBackup, sub {
         logger->decIndent();
         logger->info('Backup done at ' . strftime("%F %X", localtime) . ': ' . $sSourceName);
     };
     
-    $self->{BACKUP_DATA}{FINISH_BACKUP}= \@fFinish;
-    
-    $self->{BACKUP_DATA}{BACKUP_RESULT}= $self->_prepareBackup();
-    return $self->{BACKUP_DATA}{BACKUP_RESULT};
-}
-
-sub _run {
-    my $self= shift;
-
-    $self->{BACKUP_DATA}{BACKUP_RESULT}= $self->_backup(
-        {
-            DATA_DIR => $self->{TARGET}->getPath($self->{BACKUP_DATA}{BACKUP_DATA_DIR}),
-            OLD_DATA_DIRS => $self->{BACKUP_DATA}{OLD_BACKUP_DATA_DIRS},
-            FILE_CALLBACK => $self->{BACKUP_DATA}{FILE_CALLBACK},
-            STATISTICS_CALLBACK => $self->{BACKUP_DATA}{STATISTICS_CALLBACK},
-        },
-    );
-    return $self->{BACKUP_DATA}{BACKUP_RESULT};
-}
-
-sub _cleanup {
-    my $self= shift;
-    
-    $_->() for (@{$self->{BACKUP_DATA}{FINISH_BACKUP}});
-    return $self->{BACKUP_DATA}{BACKUP_RESULT};
+    return @fBackup;
 }
 
 sub _convertBackupDirs {
@@ -522,7 +506,6 @@ sub _writeMetaFile {
     my $sMetaFile= shift;
     my @sContent= @_;
     
-    $sMetaFile= ($self->{BACKUP_DATA}{BACKUP_META_DIR} || '.') . '/' . $sMetaFile unless $sMetaFile =~ /\//;
     $self->{TARGET}->unlink($sMetaFile);
     $self->{TARGET}->echo($sMetaFile, @sContent);
 }
