@@ -126,9 +126,6 @@ sub __buildBackupFuncs {
     my $oTargetPeer= $self->{TARGET};
     my $sSourceName= $oSourcePeer->getName() || $oSourcePeer->getFullPath();
     
-    $oSourceDataConf->setValue('time.start', Rabak::Conf->GetTimeString());
-    $oSourceDataConf->setValue('path', $oSourcePeer->getFullPath());
-
     my @fBackup= ();
     
     my $asSourceExts= Rabak::Job->GetAllPathExtensions($oSourcePeer);
@@ -166,6 +163,8 @@ sub __buildBackupFuncs {
     my $sBakDataDir= $sBakDir . '/data';
     my $sBakMetaDir= $sBakDir . '/meta';
     
+    $oSourceDataConf->setQuotedValue('time.start', Rabak::Conf->GetTimeString());
+    $oSourceDataConf->setQuotedValue('path', $oSourcePeer->getFullPath());
     $oSourceDataConf->setQuotedValue('target.fullpath', $oTargetPeer->getFullPath());
     $oSourceDataConf->setQuotedValue('target.datadir', $sBakDataDir);
     $oSourceDataConf->setQuotedValue('target.metadir', $sBakMetaDir);
@@ -407,7 +406,7 @@ sub __buildBackupFuncs {
     };
     
     # return function list and backup result as last result
-    return @fBackup, sub {$iBackupResult};
+    return @fBackup, sub { $iBackupResult };
 }
 
 sub _convertBackupDirs {
