@@ -20,7 +20,6 @@ sub new {
     my $self= {
         SOURCE => $oSourcePeer,
         TARGET => $oTargetPeer,
-        BACKUP_RESULT => undef,
         PRETEND => $oSourcePeer->pretend(),
     };
     bless $self, $class;
@@ -93,9 +92,11 @@ sub run {
     my $hJobData= shift;
     my $oSourceDataConf= shift;
     
-    $_->() for $self->__buildBackupFuncs($hJobData, $oSourceDataConf);
+    my $iResult= undef;
     
-    return $self->{BACKUP_RESULT};
+    $iResult= $_->() for $self->__buildBackupFuncs($hJobData, $oSourceDataConf);
+    
+    return $iResult;
 }
 
 sub _prepareBackup {
@@ -194,11 +195,11 @@ sub __buildBackupFuncs {
     
     logger->info('Backup start at ' . strftime('%F %X', localtime) . ': ' . $sSourceName);
     logger->incIndent();
-    $self->{BACKUP_RESULT}= $self->_prepareBackup();
+    my $iBackupResult= $self->_prepareBackup();
 
     # run backup
     push @fBackup, sub {
-        $self->{BACKUP_RESULT}= $self->_run(
+        $iBackupResult= $self->_run(
             {
                 DATA_DIR => $oTargetPeer->getPath($sBakDataDir),
                 OLD_DATA_DIRS => [map { $_ . '/data' } @sBakBaseDirs],
@@ -207,7 +208,7 @@ sub __buildBackupFuncs {
                 STATISTICS_CALLBACK => $fStatisticCallback,
             },
         );
-    } unless $self->{BACKUP_RESULT};
+    } unless $iBackupResult;
 
     # start finish functions with cleaning up source
     push @fBackup, sub {
@@ -363,9 +364,9 @@ sub __buildBackupFuncs {
     
     # add finish function to log backup result
     push @fBackup, sub {
-        if ($self->{BACKUP_RESULT}) {
+        if ($iBackupResult) {
             logger->error("Backup failed: " . $oSourcePeer->getLastError());
-            $self->{BACKUP_RESULT}= 9;
+            $iBackupResult= 9;
         }
         else {
             logger->info("Done!");
@@ -375,7 +376,7 @@ sub __buildBackupFuncs {
     # add finish function to update $oSourceDataConf
     push @fBackup, sub {
         $oSourceDataConf->setQuotedValue('time.end', Rabak::Conf->GetTimeString());
-        $oSourceDataConf->setQuotedValue('result', $self->{BACKUP_RESULT});
+        $oSourceDataConf->setQuotedValue('result', $iBackupResult);
         $oSourceDataConf->setQuotedValue('stats.total_bytes', $iTotalBytes);
         $oSourceDataConf->setQuotedValue('stats.transferred_bytes', $iTransferredBytes);
         $oSourceDataConf->setQuotedValue('stats.total_files', $iTotalFiles);
@@ -387,7 +388,7 @@ sub __buildBackupFuncs {
     unless ($self->_pretend()) {
         # add finish function to remove old backups and symlink current directory
         push @fBackup, sub {
-            unless ($self->{BACKUP_RESULT}) {
+            unless ($iBackupResult) {
                 # remove old dirs if backup was successfully done
                 $oTargetPeer->removeOld($oSourcePeer->getValue('keep'), \@sBakBaseDirs);
             }
@@ -405,7 +406,8 @@ sub __buildBackupFuncs {
         logger->info('Backup done at ' . strftime("%F %X", localtime) . ': ' . $sSourceName);
     };
     
-    return @fBackup;
+    # return function list and backup result as last result
+    return @fBackup, sub {$iBackupResult};
 }
 
 sub _convertBackupDirs {
