@@ -11,6 +11,7 @@ use Rabak::Peer::Source;
 use Rabak::Peer::Target;
 use Rabak::Backup;
 use Rabak::Version;
+use Rabak::Util;
 
 use Data::Dumper;
 use File::Spec ();
@@ -183,22 +184,13 @@ sub GetAllPathExtensions {
     ];
 }
 
-sub GetMetaBaseDir {
-    my $self= shift;
-    my $sSubDir= shift;
-    
-    my $sMetaDir= '/var/lib/rabak';
-    $sMetaDir= $ENV{HOME} . '/.rabak/meta' unless -d $sMetaDir && -w $sMetaDir;
-    $sMetaDir.= '/' . $sSubDir if defined $sSubDir;
-    return $sMetaDir if Rabak::Peer->new()->mkdir($sMetaDir);
-    return undef;
-}
-
 sub getMetaDir {
     my $self= shift;
     my $sSubDir= shift || '';
     
-    return $self->GetMetaBaseDir($self->getTargetPeer()->getUuid() . '/' . $sSubDir);
+    my $sDir= Rabak::Util->GetVlrDir() . '/' . $self->getTargetPeer()->getUuid() . '/' . $sSubDir;
+    Rabak::Peer->new()->mkdir($sDir);
+    return $sDir;
 }
 
 sub backup {
@@ -231,7 +223,7 @@ sub backup {
 
     my $oSessionDataConf= Rabak::Conf->new('*');
     $oSessionDataConf->setQuotedValue('cmdline', $self->cmdData("command_line"));
-    $oSessionDataConf->setQuotedValue('time.start', $self->GetTimeString());
+    $oSessionDataConf->setQuotedValue('time.start', Rabak::Util->GetTimeString());
     
     my $hJobData= $oTargetPeer->prepareForBackup($self->GetAllPathExtensions($self));
     $oSessionDataConf->setQuotedValue('target.uuid', $oTargetPeer->getUuid());
@@ -278,7 +270,7 @@ sub backup {
     my $fWriteSessionData= sub {
         return if $self->getSwitch('pretend');
 
-        $oSessionDataConf->setQuotedValue('time.end', $self->GetTimeString());
+        $oSessionDataConf->setQuotedValue('time.end', Rabak::Util->GetTimeString());
         my $sSessionName= 'session.'
             . $oSessionDataConf->getValue('time.start') . '.'
             . $oSessionDataConf->getValue('time.end');
@@ -315,38 +307,30 @@ sub _syncMetaDataFromTarget {
     my $oLocalPeer= Rabak::Peer->new();
 
     my $sIncludePath= '';
-    my @sOpts= ('--update', '--prune-empty-dirs', '--archive', '--hard-links');
+    my @sOpts= (
+        #           ignore empty dirs                                  copy dirlinks as dirs
+        '--update', '--prune-empty-dirs', '--archive', '--hard-links', '--copy-dirlinks',
+        '--include=/', '--include=/meta/', '--include=/meta/*/', '--include=/meta/*/**',
+        '--include=/meta/' . Rabak::Util->GetControllerUuid() . '.*',
+        '--exclude=/**',
+    );
     
     my $sTargetPath= $self->getMetaDir();
     
     logger->verbose("Syncing meta data from target to local meta dir \"$sTargetPath\"...");
     logger->incIndent();
     my $iResult= $oTargetPeer->rsync(
-        source_files => '.meta/*',
-        target_path => $sTargetPath,
+        source_files => 'meta/',
+        target_path => $self->getMetaDir(),
         target_peer => $oLocalPeer,
         opts => \@sOpts,
         log_level => logger->LOG_DEBUG_LEVEL,
     );
     logger->error(
-        "Error syncing inodes.db and session data from target: \""
+        "Error syncing from target: \""
         . $oTargetPeer->getLastError() . "\""
     ) if $oTargetPeer->getLastError();
-    
-    push @sOpts, map {$sIncludePath.= "$_/"; "--include=$sIncludePath"} split /\//, '/*/*/meta';
-    push @sOpts, '--include=/*/*/meta/*.db';
-    push @sOpts, '--exclude=/***';
-    $iResult ||= $oTargetPeer->rsync(
-        source_files => '*',
-        target_path => $sTargetPath . '/.meta',
-        target_peer => $oLocalPeer,
-        opts => \@sOpts,
-        log_level => logger->LOG_DEBUG_LEVEL,
-    );
-    logger->error(
-        "Error syncing filesinode.db data from target: \""
-        . $oTargetPeer->getLastError() . "\""
-    ) if $oTargetPeer->getLastError();
+
     logger->decIndent();
     logger->verbose('done');
     return $iResult;
@@ -359,7 +343,8 @@ sub _syncMetaDataToTarget {
     my $oTargetPeer= $self->getTargetPeer();
     my $oLocalPeer= Rabak::Peer->new();
 
-    my @sOpts= ('--update', '--archive', '--hard-links');
+    #           only if newer                            only existing  keep dir links on target
+    my @sOpts= ('--update', '--archive', '--hard-links', '--existing', '--keep-dirlinks');
     
     my $sSourcePath= $self->getMetaDir();
     
@@ -367,28 +352,16 @@ sub _syncMetaDataToTarget {
     logger->incIndent();
     my $iResult= $oLocalPeer->rsync(
         source_files => "$sSourcePath/*",
-        target_path => '.meta/',
+        target_path => '',
         target_peer => $oTargetPeer,
         opts => \@sOpts,
         log_level => logger->LOG_DEBUG_LEVEL,
     );
     logger->error(
-        "Error syncing inodes.db and session data to target: \""
+        "Error syncing data to target: \""
         . $oLocalPeer->getLastError() . "\""
     ) if $oLocalPeer->getLastError();
 
-    push @sOpts, '--existing';
-    $iResult ||= $oLocalPeer->rsync(
-        source_files => "$sSourcePath/.meta/*",
-        target_path => './',
-        target_peer => $oTargetPeer,
-        opts => \@sOpts,
-        log_level => logger->LOG_DEBUG_LEVEL,
-    );
-    logger->error(
-        "Error syncing filesinode.db data to target: \""
-        . $oLocalPeer->getLastError() . "\""
-    ) if $oLocalPeer->getLastError();
     logger->decIndent();
     logger->verbose('done');
     return $iResult;

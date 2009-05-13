@@ -676,6 +676,15 @@ sub copyLocalFileToRemote {
     return 0;
 }
 
+# create parent dirs
+sub mkParentDir {
+    my $self= shift;
+    my $sPath= $self->getPath(shift);
+    
+    $sPath=~ s/\/[^\/]*$//;
+    return $self->mkdir($sPath);
+}
+
 sub mkdir {
     my $self= shift;
     my $sPath= $self->getPath(shift);
@@ -718,6 +727,7 @@ sub symlink {
 #    my $sOrigFile= $self->getPath(shift);
     my $sOrigFile= shift;
     my $sSymLink= $self->getPath(shift);
+    $self->mkParentDir($sSymLink);
 
     return ${$self->runPerl('
             # symlink()

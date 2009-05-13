@@ -92,7 +92,7 @@ sub _ApiGetSessions {
     } unless @aJobs;
 
     my $hJobs= {};
-    my $sMetaDir= Rabak::Job->GetMetaBaseDir();
+    my $sMetaDir= Rabak::Util->GetVlrDir();
     for my $oJob (@aJobs) {
         my $oTargetPeer= $oJob->getTargetPeer();
         

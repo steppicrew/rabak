@@ -18,7 +18,7 @@ Soll:
 
 backup:
         vlrmed:meta/YYYYMMDD/[backup-uuid]/files_inode.db
-        target:meta/YYYYMMDD/[backup-uuid] -> [jobdir]/[backupdir]/meta
+        target:meta/YYYYMMDD/[backup-uuid] -> ../../../[jobdir]/[backupdir]/meta
         target:[jobdir]/[backupdir]/meta/files_inode.db
 
 backup:

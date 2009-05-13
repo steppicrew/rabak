@@ -224,7 +224,7 @@ sub _prepare {
 
 # return meta dir of Job
 sub GetMetaDir {
-    return '.meta';
+    return 'meta';
 }
 
 sub getUuid {
@@ -267,7 +267,7 @@ sub prepareForBackup {
     }
     else {
         # create new uuid and write into target's directory
-        $self->{UUID}= $self->CreateUuid();
+        $self->{UUID}= Rabak::Util->CreateUuid();
         $oDevConf->setQuotedValue('uuid', $self->{UUID});
         $oDevConf->writeToFile($sLocalDevConfFile);
         $self->copyLocalFileToRemote($sLocalDevConfFile, $sDevConfFile);

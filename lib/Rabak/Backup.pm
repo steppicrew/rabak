@@ -10,6 +10,7 @@ use strict;
 
 use Data::Dumper;
 use Rabak::Log;
+use Rabak::Util;
 use POSIX qw(strftime);
 
 sub new {
@@ -126,6 +127,16 @@ sub __buildBackupFuncs {
     my $oTargetPeer= $self->{TARGET};
     my $sSourceName= $oSourcePeer->getName() || $oSourcePeer->getFullPath();
     
+    # set some pathes and ids ("vlrm"is "/var/lib/rabak/[mediaid]")
+    my $sBackupUuid= Rabak::Util->CreateUuid();
+    my $sVlrmBase= Rabak::Util->GetVlrDir() . '/' . $oTargetPeer->getUuid();
+    my $sVlrmBakMetaDir= 'meta/' . strftime('%Y%m%d', localtime) . '/' . $sBackupUuid;
+    my $sControllerPrefix= 'meta/' . Rabak::Util->GetControllerUuid() . '.';
+
+    # create locale peer object
+    my $oVlrmPeer= Rabak::Peer->new();
+    
+    # init function list
     my @fBackup= ();
     
     my $asSourceExts= Rabak::Job->GetAllPathExtensions($oSourcePeer);
@@ -163,7 +174,7 @@ sub __buildBackupFuncs {
     my $sBakDataDir= $sBakDir . '/data';
     my $sBakMetaDir= $sBakDir . '/meta';
     
-    $oSourceDataConf->setQuotedValue('time.start', Rabak::Conf->GetTimeString());
+    $oSourceDataConf->setQuotedValue('time.start', Rabak::Util->GetTimeString());
     $oSourceDataConf->setQuotedValue('path', $oSourcePeer->getFullPath());
     $oSourceDataConf->setQuotedValue('target.fullpath', $oTargetPeer->getFullPath());
     $oSourceDataConf->setQuotedValue('target.datadir', $sBakDataDir);
@@ -174,9 +185,19 @@ sub __buildBackupFuncs {
 
     logger->info("Backup \"$sBakDay$sSourceExt\" exists, using subset \"$sSourceSubdir\".") if $sSubSet;
 
+    # create target directories
     $oTargetPeer->mkdir($sBakDir);
     $oTargetPeer->mkdir($sBakDataDir);
     $oTargetPeer->mkdir($sBakMetaDir);
+    
+    # create vlrmed dir
+    $oVlrmPeer->mkdir("$sVlrmBase/$sVlrmBakMetaDir");
+    # create symlink from (computer readable) meat dir to targets meta dir
+    my $sSymlink= $sVlrmBakMetaDir;
+    $sSymlink=~ s/\/[^\/]+$//;
+    $sSymlink=~ s/[^\/]+/../g;
+    $oTargetPeer->symlink("$sSymlink/$sBakMetaDir", $sVlrmBakMetaDir);
+    
     $self->_writeVersion($sBakDir);
     
     my $iTotalBytes= 0;
@@ -216,14 +237,11 @@ sub __buildBackupFuncs {
     
     unless ($self->_pretend()) {
         # add finish function for inode inventory (and set per-file-callback function)
-        my $sMetaDir= Rabak::Job->GetMetaBaseDir($oTargetPeer->getUuid());
-        my $sInodesDb= "$sMetaDir/inodes.db";
-        my $sFilesInodeDb=  Rabak::Job->GetMetaBaseDir(
-            $oTargetPeer->getUuid() . '/' . $oTargetPeer->GetMetaDir() . '/' . $sBakMetaDir
-        ) . '/files_inode.db';
+        my $sInodesDb= "$sVlrmBase/${sControllerPrefix}inodes.db";
+        my $sFilesInodeDb=  "$sVlrmBase/$sVlrmBakMetaDir/files_inode.db";
 
         # create files on target if they don't exist to enable syncing meta data
-        $oTargetPeer->createFile($hJobData->{JOB_META_DIR} . '/inodes.db');
+        $oTargetPeer->createFile($sControllerPrefix . 'inodes.db');
         $oTargetPeer->createFile($sBakMetaDir . '/files_inode.db');
         
         my $inodeStore;
@@ -297,12 +315,13 @@ sub __buildBackupFuncs {
                 );
                 close $fh;
             };
-            
-            if ($oSourcePeer->getValue('merge_duplicates')) {
-                push @fBackup, $self->_buildDupMerge(
-                    $oTargetPeer, \$inodeStore, \@sBakBaseDirs, $sMetaDir,
-                );
-            }
+
+# broken: @sBakBaseDirs should be a list of old backup objects            
+#            if ($oSourcePeer->getValue('merge_duplicates')) {
+#                push @fBackup, $self->_buildDupMerge(
+#                    $oTargetPeer, \$inodeStore, \@sBakBaseDirs, $sMetaDir,
+#                );
+#            }
 
             push @fBackup, sub {
                 logger->verbose("Finishing information store...");
@@ -347,11 +366,12 @@ sub __buildBackupFuncs {
                 $fFileCallback->();
             };
 
-            if ($oSourcePeer->getValue('merge_duplicates')) {
-                push @fBackup, $self->_buildDupMerge(
-                    $oTargetPeer, \$inodeStore, \@sBakBaseDirs, $sMetaDir,
-                );
-            }
+# broken: @sBakBaseDirs should be a list of old backup objects            
+#            if ($oSourcePeer->getValue('merge_duplicates')) {
+#                push @fBackup, $self->_buildDupMerge(
+#                    $oTargetPeer, \$inodeStore, \@sBakBaseDirs, $sMetaDir,
+#                );
+#            }
     
             push @fBackup, sub {
                 logger->verbose("Finishing information store...");
@@ -374,7 +394,7 @@ sub __buildBackupFuncs {
 
     # add finish function to update $oSourceDataConf
     push @fBackup, sub {
-        $oSourceDataConf->setQuotedValue('time.end', Rabak::Conf->GetTimeString());
+        $oSourceDataConf->setQuotedValue('time.end', Rabak::Util->GetTimeString());
         $oSourceDataConf->setQuotedValue('result', $iBackupResult);
         $oSourceDataConf->setQuotedValue('stats.total_bytes', $iTotalBytes);
         $oSourceDataConf->setQuotedValue('stats.transferred_bytes', $iTransferredBytes);

@@ -10,9 +10,7 @@ no warnings 'redefine';
 
 use Data::Dumper;
 use Storable qw(dclone);
-use POSIX qw(strftime);
 use Rabak::Log;
-use Data::UUID;
 
 our $iElemNo= 0;
 
@@ -743,14 +741,6 @@ sub simplifyShow {
     push @sResult, "[]";
     ## push @sResult, "[]" unless $sScope eq '';
     return \@sResult;
-}
-
-sub GetTimeString {
-    return strftime("%Y%m%d%H%M%S", gmtime);
-}
-
-sub CreateUuid {
-    return Data::UUID->new()->create_str();
 }
 
 sub getFullName {
