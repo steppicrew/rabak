@@ -1,81 +1,31 @@
 #!/usr/bin/perl
 
-package Rabak::Schema;
-use base qw/DBIx::Class::Schema/;
+use lib "../../rabak/experimental/storage";
 
-__PACKAGE__->load_namespaces();
+use Carp ();
 
-# By default this loads all the Result (Row) classes in the
-# My::Schema::Result:: namespace, and also any resultset classes in the
-# My::Schema::ResultSet:: namespace (if missing, the resultsets are
-# defaulted to be DBIx::Class::ResultSet objects). You can change the
-# result and resultset namespaces by using options to the
-# L<DBIx::Class::Schema/load_namespaces> call.
+$SIG{__WARN__} = \&Carp::cluck;
+$SIG{__DIE__} = \&Carp::cluck;
 
-# It is also possible to do the same things manually by calling
-# C<load_classes> for the Row classes and defining in those classes any
-# required resultset classes.
-
-# Next, create each of the classes you want to load as specified above:
-
-package Rabak::Schema::Result::Session;
-use base qw/DBIx::Class/;
-
-__PACKAGE__->load_components(qw/ Core /);
-__PACKAGE__->table('session.session');
-__PACKAGE__->add_columns(
-        'session_uuid'      => { 'data_type' => 'TEXT' },
-        'title'             => { 'data_type' => 'TEXT' },
-        'job_name'          => { 'data_type' => 'TEXT' },
-);
-__PACKAGE__->set_primary_key('session_uuid');
-
-
-package Rabak::Schema::Result::Backup;
-use base qw/DBIx::Class/;
-
-__PACKAGE__->load_components(qw/ Core /);
-__PACKAGE__->table('session.backup');
-__PACKAGE__->add_columns(
-        'backup_uuid' => { 'data_type' => 'TEXT' },
-        'title'             => { 'data_type' => 'TEXT' },
-        'session_uuid'      => { 'data_type' => 'TEXT' },
-);
-__PACKAGE__->set_primary_key('backup_uuid');
-
-## __PACKAGE__->has_many('albums', 'Rabak::Schema::Result::Artist', 'album_id');
-
-
-package Rabak::Schema::Result::Source;
-use base qw/DBIx::Class/;
-
-__PACKAGE__->load_components(qw/ Core /);
-__PACKAGE__->table('conf.source');
-__PACKAGE__->add_columns(
-        'source_name'       => { 'data_type' => 'TEXT' },
-        'job_name'          => { 'data_type' => 'TEXT' },
-        'url'               => { 'data_type' => 'TEXT' },
-);
-__PACKAGE__->set_primary_key('source_name');
-
-
-package main;
-
-# use Rabak::Schema;
+use Rabak::Schema;
 use Data::Dumper;
 
 my $schema = Rabak::Schema->connect("dbi:SQLite:dbname=:memory:");
-my $storage= $schema->storage;
 
-# $schema isa DBIx::Class::Storage::DBI
+# $schema->storage isa DBIx::Class::Storage::DBI
 
-$storage->dbh->do("ATTACH DATABASE 'session.db' AS session");
-#$storage->dbh->do("ATTACH DATABASE 'inodes.db' AS inodes");
-$storage->dbh->do("ATTACH DATABASE 'conf.db' AS conf");
+$schema->storage->dbh->do("ATTACH DATABASE 'session.db' AS session");
+#$schema->storage->dbh->do("ATTACH DATABASE 'inodes.db' AS inodes");
+$schema->storage->dbh->do("ATTACH DATABASE 'conf.db' AS conf");
 
-$schema->resultset('Backup')->all();
+my @backups= $schema->resultset('Backup')->all();
 
-print Dumper($storage);
+for (@backups) {
+    print $_->target_datadir, "\n";
+}
+
+
+# print Dumper($storage);
 
 __END__
 
