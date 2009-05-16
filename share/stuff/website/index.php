@@ -608,7 +608,6 @@
 
     function getContents() {
         global $sIncludePath, $sIncludePostfix;
-print $sIncludePath . "content.txt" . $sIncludePostfix . "\n";
         $sContents= file_get_contents($sIncludePath . "content.txt" . $sIncludePostfix);
 
         global $aPages, $aPagesFirstLine, $aPagesTitle, $aMenu;
