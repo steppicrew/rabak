@@ -1,4 +1,4 @@
-<?
+    <?
     // Simple CMS without name 0.1
     // (c) Copyright by Dietrich Raisin
 
@@ -608,6 +608,7 @@
 
     function getContents() {
         global $sIncludePath, $sIncludePostfix;
+print $sIncludePath . "content.txt" . $sIncludePostfix . "\n";
         $sContents= file_get_contents($sIncludePath . "content.txt" . $sIncludePostfix);
 
         global $aPages, $aPagesFirstLine, $aPagesTitle, $aMenu;
