@@ -13,8 +13,8 @@
     // Further changes are some additional "?raw=true" to URLs in this file and the CSS.
     // Good enough for now, but MUST be changed if the web site has traffic...
     if ($_SERVER["HTTP_HOST"] == "www.raisin.de") {
-        $sIncludePath= "http://github.com/steppicrew/rabak/tree/master/share/stuff/web/";
-        $sIncludePostfix= "?raw=true";
+        $sIncludePath= "http://github.com/steppicrew/rabak/raw/master/share/stuff/web/";
+        $sIncludePostfix= "";
     }
  
     $sPageName= @$_SERVER["PATH_INFO"];
