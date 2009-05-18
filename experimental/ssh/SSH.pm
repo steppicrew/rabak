@@ -5,6 +5,7 @@ use strict;
 use warnings;
 
 use IPC::Run qw(start pump finish);
+use SshStub;
 
 sub new {
     my $class = shift;
@@ -23,112 +24,49 @@ sub new {
 sub DESTROY {
     my $self = shift;
 
-    $self->{HANDLE}->finish();
+    $self->{HANDLE}->finish() if $self->{HANDLE};
 }
 
 sub __init {
     my $self = shift;
 
-    my $fSerialize = sub {
-        my $sData = shift;
-        $sData =~ s/\x00/\x01\x00/g;
-        return $sData;
-    };
+    my $fSerialize = SshStub::Serialize();
 
-    my $_sRemain= "";
-    my $fDeserialize = sub {
-        $_sRemain.= shift;
-        my ($sData, $sEscape);
-        if ($_sRemain=~ s/^(.*?)\x00\x00$//s) {
-            $sData= $1;
-            if ($_sRemain=~ s/^(.+)\n//) {
-                $sEscape= $1;
-            }
-            else {
-                $_sRemain= "\0\0$_sRemain";
-            }
-        }
-        else {
-            $sData= $_sRemain;
-            $_sRemain= $sData=~ s/\x00$// ? "\0" : "";
-        }
-        $sData =~ s/\x01\x00/\x00/g;
-        return ( $sData, $sEscape );
-    };
+    my $fDeserialize = SshStub::Deserialize();
 
-    my $fEscape = sub {
-        my $sText = shift;
-        return "\0\0$sText\n";
-    };
+    my $fEscape = SshStub::Escape();
 
-    my $fDummyStdIn   = sub { "\0" };
-    my $fCurrentStdIn = sub {
-        print '
-            use strict;
-            use warnings;
-      
-            sub serialize {
-                my $sData= shift;
-                $sData=~  s/\x00/\x01\x00/g;
-                return $sData;
-            }
-    
-            my $_sRemain= "";
-            sub deserialize {
-                $_sRemain.= shift;
-                my ($sData, $sEscape);
-                if ($_sRemain=~ s/^(.*?)\x00\x00$//s) {
-                    $sData= $1;
-                    if ($_sRemain=~ s/^(.+)\n//) {
-                        $sEscape= $1;
-                    }
-                    else {
-                        $_sRemain= "\0\0$_sRemain";
-                    }
-                }
-                else {
-                    $sData= $_sRemain;
-                    $_sRemain= $sData=~ s/\x00$// ? "\0" : "";
-                }
-                $sData =~ s/\x01\x00/\x00/g;
-                return ( $sData, $sEscape );
-            }
-            
-            sub escape {
-                my $sText= shift;
-                return "\0\0$sText\n";
-            }
-    
-            print escape("RUNNING");
-      
-            my $sLine;
-            while ($sLine= <>) {
-                
-                print serialize("running: $_");
-                print escape("EXIT 0");
-            }
-            __END__' . "\n";
-    };
+    my $fDummyStdIn = sub { undef };
+    my $fCurrentStdIn;
 
-    my $fDummyStdOut =
-      sub { print "#### UNEXPECTED OUTPUT :'", join( "', '", @_ ), "'\n" };
+    my $fDummyStdOut = sub {
+        print "#### UNEXPECTED OUTPUT: '", join( "', '", @_ ), "'\n";
+    };
+    my $fDummyStdErr = sub {
+        print "#### UNEXPECTED ERROR: '", join( "', '", @_ ), "'\n";
+    };
     my $fCurrentStdOut;
     my $fCurrentStdErr;
 
-    $self->{SET_STDIN}  = sub { $fCurrentStdIn  = shift || $fDummyStdIn };
-    $self->{SET_STDOUT} = sub { $fCurrentStdOut = shift || $fDummyStdOut };
-    $self->{SET_STDERR} = sub { $fCurrentStdErr = shift || $fDummyStdOut },;
+    $self->{SET_STDIN}  = sub { $fCurrentStdIn  = shift || $fDummyStdIn; };
+    $self->{SET_STDOUT} = sub { $fCurrentStdOut = shift || $fDummyStdOut; };
+    $self->{SET_STDERR} = sub { $fCurrentStdErr = shift || $fDummyStdErr; },;
 
     my $fStdIn = sub {
         my $sIn = $fCurrentStdIn->();
-        return $sIn if defined $sIn;
+        return $fSerialize->($sIn) if defined $sIn;
         $fCurrentStdIn = $fDummyStdIn;
-        return $fCurrentStdIn->();
+        return $fSerialize->($fCurrentStdIn->());
     };
     my $fStdOut = sub {
         for my $sText (@_) {
-            my $iExitCode = $2 if $sText =~ s/^(.*)\n\[(\d+)\]\n/$1/;
-            $fCurrentStdOut->($sText);
+            my $sEscape;
+            ($sText, $sEscape)= $fDeserialize->($sText);
+print "[$sText]" if defined $sText;
+print "[ESCAPE $sEscape]" if defined $sEscape;
+print "\n";
+            $fCurrentStdOut->($sText) if defined $sText;
+            my $iExitCode = $1 if $sEscape && $sEscape =~ /^\[(\d+)\]$/;
             next unless defined $iExitCode;
             $self->{RUNNING} = 0;
             $self->{SET_STDIN}->();
@@ -142,7 +80,15 @@ sub __init {
         $fCurrentStdErr->(@_);
     };
 
-    return start( 'perl', $fStdIn, $fStdOut, $fStdErr );
+    my $fh;
+    open $fh, 'SshStub.pm' or die "Could not open file 'SshStub.pm'!";
+    my @sScript = (<$fh>);
+    push @sScript, "\nrun();\n__END__\n";
+    $self->{SET_STDIN}->( sub { return shift @sScript; } );
+    $self->{SET_STDOUT}->();
+    $self->{SET_STDERR}->();
+    
+    return start( ['perl'], $fStdIn, $fStdOut, $fStdErr );
 }
 
 sub __run {
@@ -152,15 +98,22 @@ sub __run {
     my $h = $self->{HANDLE};
 
     while ( $self->{RUNNING} ) {
+#print "*\n";
         last unless $h->pumpable();
+#print "**\n";
         $h->pump();
+#print "***\n";
     }
     return $self->{EXIT_CODE};
 }
 
 sub run {
-    my $self = shift;
-
+    my $self  = shift;
+    my @sText = (shift);
+    $self->{SET_STDIN}->( sub  { shift @sText } );
+    $self->{SET_STDOUT}->( sub { print join('-', @_); } );
+    $self->{SET_STDERR}->( sub { print "ERROR: ", join('-', @_); } );
+    print "Result: ", $self->__run(), "\n";
 }
 
 1;
