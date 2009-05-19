@@ -1,20 +1,18 @@
-    <?
+<?
     // Simple CMS without name 0.1
     // (c) Copyright by Dietrich Raisin
 
     // License: See LICENSE file
 
-    global $aPages, $aMenu, $sRelPath, $sIncludePath, $sIncludePostfix;
+    global $aPages, $aMenu, $sRelPath, $sIncludePath;
 
     $sIncludePath= "";
-    $sIncludePostfix= "";
 
     // This is a ugly Hack to fetch content files from GitHub directly.
     // Further changes are some additional "?raw=true" to URLs in this file and the CSS.
     // Good enough for now, but MUST be changed if the web site has traffic...
-    if ($_SERVER["HTTP_HOST"] == "www.raisin.de") {
+    if (preg_match('/(www\.)?raisin\.de/', $_SERVER["HTTP_HOST"])) {
         $sIncludePath= "http://github.com/steppicrew/rabak/raw/master/share/stuff/website/";
-        $sIncludePostfix= "";
     }
  
     $sPageName= @$_SERVER["PATH_INFO"];
@@ -522,7 +520,7 @@
     }
 
     function printHtmlPage($sPageName) {
-        global $aPages, $aMenu, $sRelPath, $sIncludePath, $sIncludePostfix;
+        global $aPages, $aMenu, $sRelPath, $sIncludePath;
 
         $oPage= & new PAGE_PARSER('global');
         $oPage->parse();
@@ -572,7 +570,7 @@
         $sImg= '<img border=0 src="'.getImageUrl('head.gif').'" '.@$aSize[3].' alt="'.$sPageHeadImageText.'">';
         $sHead= getLink('index', $sImg);
 
-        $sCss= file_get_contents($sIncludePath . "screen.css" . $sIncludePostfix);
+        $sCss= file_get_contents($sIncludePath . "screen.css");
         $sCss= preg_replace("/(\burl\()/", "$1$sRelPath", $sCss);
 ?>
 <html>
@@ -607,8 +605,8 @@
     }
 
     function getContents() {
-        global $sIncludePath, $sIncludePostfix;
-        $sContents= file_get_contents($sIncludePath . "content.txt" . $sIncludePostfix);
+        global $sIncludePath;
+        $sContents= file_get_contents($sIncludePath . "content.txt");
 
         global $aPages, $aPagesFirstLine, $aPagesTitle, $aMenu;
         $aPages= array();
