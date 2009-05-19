@@ -3,6 +3,8 @@ package SshStub;
 use strict;
 use warnings;
 
+use IO::Handle;
+
 sub Serialize {
     return sub {
         my $sData= shift;
@@ -38,20 +40,28 @@ sub Escape {
     };
 }
 
+sub printOut {
+    my @sLines= @_;
+    my $io= new IO::Handle;
+    if ($io->fdopen(fileno(STDOUT),"w")) {
+        $io->printflush($_) for @sLines;
+    }
+}
+
 sub run {
     my $fSerialize   = Serialize();
     my $fDeserialize = Deserialize();
     my $fEscape      = Escape();
 
-    print $fEscape->("[0]");
+    printOut $fEscape->("[0]");
 
     while ( 1 ) {
         my $sLine = <>;
         last unless defined $sLine;
         my ( $sData, $sEscape )= $fDeserialize->($sLine);
-        print $fSerialize->("Data: [$sData]\n") if defined $sData;
-        print $fSerialize->("Escape: [$sEscape]\n") if defined $sEscape;
-        print $fEscape->("[5]") if $sData;
+        printOut $fSerialize->("Data: [$sData]") if defined $sData;
+        printOut $fSerialize->("Escape: [$sEscape]") if defined $sEscape;
+        printOut $fEscape->("[5]") if $sData;
 
         my $fh;
         open $fh, ">>out.txt";

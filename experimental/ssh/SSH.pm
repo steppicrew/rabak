@@ -3,6 +3,7 @@ package SSH;
 
 use strict;
 use warnings;
+use diagnostics;
 
 use IPC::Run qw(start pump finish);
 use SshStub;
@@ -61,6 +62,7 @@ sub __init {
     my $fStdOut = sub {
         for my $sText (@_) {
             my $sEscape;
+print quotemeta $sText, "\n";
             ($sText, $sEscape)= $fDeserialize->($sText);
 print "[$sText]" if defined $sText;
 print "[ESCAPE $sEscape]" if defined $sEscape;
