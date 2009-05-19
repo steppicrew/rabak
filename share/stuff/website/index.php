@@ -8,10 +8,9 @@
 
     $sIncludePath= "";
 
-    // This is a ugly Hack to fetch content files from GitHub directly.
-    // Further changes are some additional "?raw=true" to URLs in this file and the CSS.
+    // This is an ugly hack to fetch content files from GitHub directly.
     // Good enough for now, but MUST be changed if the web site has traffic...
-    if (preg_match('/(www\.)?raisin\.de/', $_SERVER["HTTP_HOST"])) {
+    if (preg_match('/^([\w\.]+\.)?raisin\.de$/', $_SERVER["HTTP_HOST"])) {
         $sIncludePath= "http://github.com/steppicrew/rabak/raw/master/share/stuff/website/";
     }
  
