@@ -10,20 +10,53 @@ $SIG{__DIE__} = \&Carp::cluck;
 use Rabak::Schema;
 use Data::Dumper;
 
-my $schema = Rabak::Schema->connect("dbi:SQLite:dbname=:memory:");
+sub t1 {
+    my $schema = Rabak::Schema->connect("dbi:SQLite:dbname=:memory:");
 
-# $schema->storage isa DBIx::Class::Storage::DBI
+    # $schema->storage isa DBIx::Class::Storage::DBI
 
-$schema->storage->dbh->do("ATTACH DATABASE 'session.db' AS session");
-#$schema->storage->dbh->do("ATTACH DATABASE 'inodes.db' AS inodes");
-$schema->storage->dbh->do("ATTACH DATABASE 'conf.db' AS conf");
+    $schema->storage->dbh->do("ATTACH DATABASE 'session.db' AS session");
+    $schema->storage->dbh->do("ATTACH DATABASE 'inodes.db' AS inodes");
+    $schema->storage->dbh->do("ATTACH DATABASE 'conf.db' AS conf");
 
-my @backups= $schema->resultset('Backup')->all();
+    my @backups= $schema->resultset('Backup')->all();
 
-for (@backups) {
-    print $_->target_datadir, "\n";
+    for (@backups) {
+        print $_->target_datadir, "\n";
+    }
 }
 
+sub db {
+    # conffile
+    # 
+}
+
+sub t2 {
+    # my $schema = Rabak::Schema->connect("dbi:SQLite:dbname=test.db");
+
+    my $schema = Rabak::Schema->connect("dbi:SQLite:dbname=:memory:");
+
+    # $schema->storage isa DBIx::Class::Storage::DBI
+
+    $schema->storage->dbh->do("ATTACH DATABASE 'session.db' AS session");
+    $schema->storage->dbh->do("ATTACH DATABASE 'inodes.db' AS inodes");
+    $schema->storage->dbh->do("ATTACH DATABASE 'conf.db' AS conf");
+    $schema->storage->dbh->do("ATTACH DATABASE 'test.db' AS test");
+
+return;
+
+    my @testss= $schema->deploy();
+
+    print $schema->deployment_statements(); die;
+
+    my @testss= $schema->resultset('Test')->all();
+
+    for (@tests) {
+        print $_->test_id, "\n";
+    }
+}
+
+t2();
 
 # print Dumper($storage);
 
