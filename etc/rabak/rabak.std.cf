@@ -54,17 +54,12 @@ exclude_linux =
     /mnt/
     /usr/src/
     /var/amavis/
-    /var/cache/edb/
-    /var/cache/samba/
+    /var/cache/( edb samba )/
     /var/db/pkg/
     /var/dcc/map
     /var/eix/
-    /var/lib/slocate/
-    /var/lib/clamav/
-    /var/lib/dhcp/
-    /var/lib/init.d/
-    /var/spool/cups/
-    /var/spool/postfix/
+    /var/lib/( clamav dhcp init.d slocate mysql )/
+    /var/spool/( cups postfix )/
     /var/log/
     /var/run/
     /var/tmp/
