@@ -110,7 +110,7 @@ sub printJobList {
             push @aSources, $_->getFullPath();
         }
         my $sSources= join '", "', @aSources;
-        logger->print('  ' . colored($oJob->getName(), 'bold') . ' - ' . $oJob->getValue("title")
+        logger->print('  ' . colored($oJob->getFullName(), 'bold') . ' - ' . $oJob->getValue("title")
             . ", backs up \"$sSources\" to \""
             . $oTarget->getFullPath() . "\"");
         $bFound= 1;

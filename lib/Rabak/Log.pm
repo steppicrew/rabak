@@ -88,7 +88,7 @@ sub setOpts {
     my $class= shift;
     my $hOpts= shift;
 
-    for my $sParam ('pretend', 'logging', 'verbose', 'quiet', 'name', 'email', 'color') {
+    for my $sParam ('pretend', 'logging', 'verbose', 'quiet', 'name', 'email', 'color', 'run_command') {
         my $sSwitch= 'SWITCH_' . uc($sParam);
         my $sKey= $sParam;
         
@@ -359,6 +359,8 @@ sub mailLog {
         ? "RABAK '$self->{SWITCH_NAME}': $sSubject"
         : "RABAK: $sSubject";
 
+    $self->runCommand($sSubject);
+    
     my $sFileName= $self->_getMessagesFile();
     my $fh;
     CORE::open $fh, "<$sFileName" or $fh= undef;
@@ -371,6 +373,29 @@ sub mailLog {
     my $result = $self->_mail($sSubject, $fBody);
     CORE::close $fh if defined $fh;
     return $result;
+}
+
+sub runCommand {
+    my $self= shift;
+    my $sEmailSubject= shift;
+    
+    my $sCommand= $self->{SWITCH_RUN_COMMAND};
+    return unless $sCommand;
+    
+    my %hReplaces= (
+        'S' => $sEmailSubject || '',
+        'e' => $self->_getErrorCount || 0,
+        'w' => $self->_getWarnCount || 0,
+        'n' => $self->{SWITCH_NAME} || '',
+    );
+    my $fReplace= sub {
+        my $sChar= shift;
+        return $hReplace{$sChar} if exists $hReplace{$sChar};
+        return $sChar;
+    };
+    $sCommand =~ s/%(.)/$fReplace->($1)/eg;
+
+    `$sCommand >/dev/null 2>&1`;
 }
 
 sub mailWarning {

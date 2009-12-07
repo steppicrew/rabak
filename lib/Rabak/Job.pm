@@ -55,7 +55,7 @@ sub newFromConf {
 sub propertyNames {
     my $self= shift;
 
-    return ('title', 'source', 'target', 'email', $self->SUPER::propertyNames(), 'path_extension', 'previous_path_extensions');
+    return ('title', 'source', 'target', 'email', $self->SUPER::propertyNames(), 'path_extension', 'previous_path_extensions', 'command_after');
 }
 
 sub GetJobs {
@@ -63,11 +63,13 @@ sub GetJobs {
     my $oConf= shift;
     my $sJob= shift || '*';
 
-    my @aJobs= map { $class->newFromConf($oConf->{VALUES}{$_}) } grep {
-        ref $oConf->{VALUES}{$_}
-        && defined $oConf->{VALUES}{$_}->{VALUES}{title}
-        && defined $oConf->{VALUES}{$_}->{VALUES}{source}
-        && defined $oConf->{VALUES}{$_}->{VALUES}{target}
+    my @aJobs= map { $class->newFromConf($_) } grep {
+        ref $_
+        && $_->getRawValue("title")
+        && $_->getRawValue("source")
+        && $_->getRawValue("target");
+    } map {
+        ($oConf->resolveObjects($_))[0]
     } sort keys %{ $oConf->{VALUES} };
 
     return @aJobs if $sJob eq '*';
@@ -205,6 +207,7 @@ sub backup {
     }
     $LogOpts{"Email"} = $self->getValue("email");
     $LogOpts{"Name"} = $self->getName();
+    $LogOpts{"Run_command"}= $self->getValue("command_after");
     logger->setOpts(\%LogOpts);
 
     logger->setCategory($self->getName());

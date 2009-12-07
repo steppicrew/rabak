@@ -243,11 +243,11 @@ sub getValue {
     my $sName= shift;
     my $sDefault= shift;
     my $aRefStack= shift;
-    
+
     my @sValues= $self->resolveObjects($sName, $aRefStack);
     my $sValue= $self->_joinValue(\@sValues);
     unless (defined $sValue) {
-        return $self->{NAME} if lc($sName) eq 'name';      
+        return $self->{NAME} if lc($sName) eq 'name';
         return $sDefault;
     }
     return $sDefault if ref $sValue;
@@ -335,7 +335,23 @@ sub findProperty {
     $sName= lc $sName;
 
     while (defined $oScope) {
-        my ($oProp, $oParentConf, $sKey)= $oScope->getProperty($sName);
+
+        # iterate through all sub keys and resolve value at every step
+        my @sName= split(/\./, $sName);
+        my ($oProp, $oParentConf, $sKey);
+        $oProp= $oScope;
+        while (my $sSubKey= shift @sName) {
+            ($oProp, $oParentConf, $sKey)= $oProp->getProperty($sSubKey);
+            if (@sName && !ref $oProp) {
+                $oProp= undef;
+                my @aResolvedObjects= $oParentConf->resolveObjects($sKey);
+                if (@aResolvedObjects == 1) {
+                    $oProp= shift @aResolvedObjects;
+                    $oProp= undef unless ref $oProp;
+                }
+            }
+            last unless defined $oProp
+        }
         if (defined $oProp) {
             return ($oProp, $oParentConf, $sKey) if wantarray;
             return $oProp;
