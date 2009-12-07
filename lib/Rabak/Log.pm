@@ -390,7 +390,7 @@ sub runCommand {
     );
     my $fReplace= sub {
         my $sChar= shift;
-        return $hReplace{$sChar} if exists $hReplace{$sChar};
+        return $hReplaces{$sChar} if exists $hReplaces{$sChar};
         return $sChar;
     };
     $sCommand =~ s/%(.)/$fReplace->($1)/eg;
