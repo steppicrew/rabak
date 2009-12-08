@@ -164,7 +164,7 @@ sub mountAll {
         $iResult = $oMount->mount($peer, $arMessage, $arAllMounts);
         # quit if mount failed
         # TODO: is this right for source objects?
-        last if $self->{ERROR_IS_FATAL}->($iResult);
+        last if $self->{ERROR_IS_FATAL_FUNC}->($iResult);
     }
     $self->{_MOUNT_LIST}= $arAllMounts;
 
