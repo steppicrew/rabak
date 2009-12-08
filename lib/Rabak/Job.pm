@@ -227,7 +227,7 @@ sub backup {
     my $oSessionDataConf= Rabak::Conf->new('*');
     $oSessionDataConf->setQuotedValue('cmdline', $self->cmdData("command_line"));
     $oSessionDataConf->setQuotedValue('time.start', Rabak::Util->GetTimeString());
-    
+
     my $hJobData= $oTargetPeer->prepareForBackup($self->GetAllPathExtensions($self));
     $oSessionDataConf->setQuotedValue('target.uuid', $oTargetPeer->getUuid());
 
@@ -264,7 +264,7 @@ sub backup {
                 $oSourceDataConf->setQuotedValue('error', $@);
             }
         }
-        
+
         $oSessionDataConf->setValue('sources', join ", ", map { '&' . $_->getName() } values %$hDoneSources);
 
         $iResult= scalar(@oSourcePeers) - $iSuccessCount;
