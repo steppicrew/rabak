@@ -25,7 +25,7 @@ sub new {
 
     my $self= $class->SUPER::new(@_);
     $self->{MOUNTABLE}= Rabak::Mountable->new($self, sub{shift});
-    $self->{MOUNTABLE}->setMountCheck= sub { $self->_checkMount(@_) };
+    $self->{MOUNTABLE}->setCheckMount= sub { $self->_checkMount(@_) };
 
     $self->{UUID}= undef;
 
