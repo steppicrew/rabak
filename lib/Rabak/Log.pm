@@ -354,13 +354,13 @@ sub mailLog {
     $sErrWarn.= "$iWarns warning" if $iWarns; 
     $sErrWarn.= "s" if $iWarns > 1; 
     $sSubject.= " ($sErrWarn)" if $sErrWarn;
-    
+
+    $self->runCommand($sSubject);
+
     $sSubject= defined $self->{SWITCH_NAME}
         ? "RABAK '$self->{SWITCH_NAME}': $sSubject"
         : "RABAK: $sSubject";
 
-    $self->runCommand($sSubject);
-    
     my $sFileName= $self->_getMessagesFile();
     my $fh;
     CORE::open $fh, "<$sFileName" or $fh= undef;
