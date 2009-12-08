@@ -389,14 +389,6 @@ sub _finishBackup {
     return 0;
 }
 
-sub checkMount {
-    my $self= shift;
-    my $sMountDevice= shift;
-    my $arMountMessages= shift;
-
-    return $self->mountable()->checkMount($sMountDevice, $arMountMessages);
-}
-
 sub _run {
     my $self= shift;
     my $hMetaInfo= shift;
