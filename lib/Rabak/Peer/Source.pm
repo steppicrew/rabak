@@ -84,4 +84,12 @@ sub getFullPath {
     return $self->getValue("type") . "://" . $self->SUPER::getFullPath();
 }
 
+sub checkMount {
+    my $self= shift;
+    my $sMountDevice= shift;
+    my $arMountMessages= shift;
+
+    return $self->mountable()->checkMount($sMountDevice, $arMountMessages);
+}
+
 1;
