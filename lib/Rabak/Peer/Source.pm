@@ -24,7 +24,7 @@ It provides a static method 'Factory' to create specialized source objects
 sub newFromConf {
     my $class= shift;
     my $oOrigConf= shift;
-    
+
     my $sPath= $oOrigConf->getValue("path");
     if ($sPath && $sPath=~ s/^(\w+)\:\/\///) {
         my $sType= $1;
@@ -41,7 +41,6 @@ sub newFromConf {
 
     return $class->SUPER::newFromConf($oOrigConf);
 }
-
 
 # IMPORTANT: define all used properties here, order will be used for show
 sub propertyNames {
@@ -82,14 +81,6 @@ sub show {
 sub getFullPath {
     my $self= shift;
     return $self->getValue("type") . "://" . $self->SUPER::getFullPath();
-}
-
-sub checkMount {
-    my $self= shift;
-    my $sMountDevice= shift;
-    my $arMountMessages= shift;
-
-    return $self->mountable()->checkMount($sMountDevice, $arMountMessages);
 }
 
 1;

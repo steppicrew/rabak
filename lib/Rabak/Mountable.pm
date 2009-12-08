@@ -32,6 +32,7 @@ sub new {
         PEER => $oPeer,
         PATH_IS_ABSOLUTE => 0,
         ERROR_IS_FATAL_FUNC => $fErrorIsFatal || sub {0},
+        CUSTOM_CHECK_MOUNT_FUNC => undef,
     };
 
     bless $self, $class;
@@ -90,6 +91,13 @@ sub getPath {
 #  Mount & Unmount
 # -----------------------------------------------------------------------------
 
+sub setCheckMount {
+    my $self= shift;
+    my $fCheckMount= shift;
+
+    $self->{CUSTOM_CHECK_MOUNT_FUNC}=$fCheckMount;
+}
+
 # tests if device is mounted and is a valid rabak target
 # @param $sMountDevice
 #   device to check
@@ -101,11 +109,11 @@ sub getPath {
 #   2 : device is not valid (set by overwriting method)
 #   <path>: path the device is mounted at
 #   
-sub checkMount {
+sub _checkMount {
     my $self= shift;
     my $sMountDevice= shift;
     my $arMountMessages= shift;
-    
+
     return 0 unless $sMountDevice;
 
     my $peer= $self->_getPeer();
@@ -121,6 +129,13 @@ sub checkMount {
     #     notice: the check for "type" after mount dir is because of missing delimiters if mount dir contains spaces!
     return $1 if $cur_mounts =~ /^$sqMountDevice\son\s+(\/.*)\stype\s/m;
     return 1;
+}
+
+sub checkMount {
+    my $self= shift;
+    my $sMountPath= $self->_checkMount(@_);
+    return $self->{CUSTOM_CHECK_MOUNT_FUNC}->(@_, $sMountPath) if $self->{CUSTOM_CHECK_MOUNT_FUNC};
+    return $sMountPath;
 }
 
 sub getMountObjects {
@@ -154,14 +169,14 @@ sub mountAll {
     my $peer= $self->_getPeer();
 
     my @aMounts= $self->getMountObjects();
-    
+
     # Collect all mount errors, we want to output them later
     my $iResult= 1; # defaults to mount succeeded
-    
+
     my $arAllMounts= [];
 
     for my $oMount (@aMounts) {
-        $iResult = $oMount->mount($peer, $arMessage, $arAllMounts);
+        $iResult = $oMount->mount($peer, sub {$self->checkMount(@_)}, $arMessage, $arAllMounts);
         # quit if mount failed
         # TODO: is this right for source objects?
         last if $self->{ERROR_IS_FATAL_FUNC}->($iResult);
@@ -179,7 +194,7 @@ sub getMounts {
 
 sub unmountAll {
     my $self= shift;
-    
+
     return unless $self->{_MOUNT_LIST};
 
     my @sUnmount= @{ $self->{_MOUNT_LIST} };

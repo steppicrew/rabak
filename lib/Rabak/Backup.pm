@@ -17,7 +17,7 @@ sub new {
     my $class= shift;
     my $oSourcePeer= shift;
     my $oTargetPeer= shift;
-    
+
     my $self= {
         SOURCE => $oSourcePeer,
         TARGET => $oTargetPeer,

@@ -15,36 +15,30 @@ use Rabak::Mountable;
 
 sub new {
     my $class= shift;
-    
+
     my $self= $class->SUPER::new(@_);
 
     $self->{MOUNTABLE}= Rabak::Mountable->new($self->_getSource());
-    
+
     bless $self, $class;
 }
 
 sub sourcePropertyNames {
     my $self= shift;
-    
-    return ($self->SUPER::sourcePropertyNames(@_), $self->mountable()->propertyNames(), 'filter', 'exclude', 'include', 'scan_bak_dirs');
-}
 
-sub mountable {
-    my $self= shift;
-
-    return $self->{MOUNTABLE};
+    return ($self->SUPER::sourcePropertyNames(@_), $self->{MOUNTABLE}->propertyNames(), 'filter', 'exclude', 'include', 'scan_bak_dirs');
 }
 
 # hash table for detecting references and list of all used macros in filter expansion
 sub _getFilter {
     my $self= shift;
     my $aMacroStack= shift || [];
-    
+
     my $oSourcePeer= $self->_getSource();
     my $oTargetPeer= $self->_getTarget();
 
     my $sFilter= $oSourcePeer->getRawValue('filter'); 
-    
+
     # target path is always excluded
     my $aFilter= [];
     if ($oTargetPeer && $oTargetPeer->getUserHostPort() eq $oSourcePeer->getUserHostPort()) {
@@ -326,8 +320,8 @@ sub sourceShow {
 
     # overwrite Source's SUPER class with Mountable
     my @sResult = $self->SUPER::sourceShow($hConfShowCache);
-    push @sResult, @{$self->mountable()->show($hConfShowCache)};
-    
+    push @sResult, @{$self->{MOUNTABLE}->show($hConfShowCache)};
+
     my $aMacroStack= [];
 
     my @sFilter= $self->_getFilter($aMacroStack);
@@ -338,10 +332,10 @@ sub sourceShow {
     }
     push @sResult, "", "# Referenced filters:", @sSubResult if scalar @sSubResult;
     push @sResult, "[]" unless $sLastScope eq "";
-    
+
     shift @$aMacroStack if scalar @$aMacroStack;
     push @{$hConfShowCache->{'.'}}, @$aMacroStack;
-    
+
     return @sResult unless $oSource->getSwitch("show_filter", 0);
 
     my $sBaseDir= $self->getFullPath();
@@ -373,7 +367,7 @@ sub _prepareBackup {
     $self->SUPER::_prepareBackup();
     
     my @sMountMessage;
-    my $iMountResult= $self->mountable()->mountAll(\@sMountMessage);
+    my $iMountResult= $self->{MOUNTABLE}->mountAll(\@sMountMessage);
 
     logger->log(@sMountMessage);
 
@@ -382,8 +376,8 @@ sub _prepareBackup {
 
 sub _finishBackup {
     my $self= shift;
-    
-    $self->mountable()->unmountAll();
+
+    $self->{MOUNTABLE}->unmountAll();
 
     $self->SUPER::_finishBackup();
     return 0;
@@ -580,7 +574,7 @@ sub _run {
 
 sub getPath {
     my $self= shift;
-    return $self->mountable()->getPath(@_);
+    return $self->{MOUNTABLE}->getPath(@_);
 }
 
 1;
