@@ -423,7 +423,7 @@ sub _run {
         '--stats',
         '--verbose',
         '--verbose',
-#        '--itemize-changes',
+        '--itemize-changes',
     );
 
     push @sFlags, '--dry-run' if $self->_pretend();
@@ -460,7 +460,7 @@ sub _run {
                     my $sFile= $1;
                     logger->warn($sLine);
                     $hMetaInfo->{FAILED_FILE_CALLBACK}->("$sTargetDir/$sFile") if $hMetaInfo->{FAILED_FILE_CALLBACK};
-                    
+
                     next;
                 }
                 if ($sLine =~ /^total\:/) {
