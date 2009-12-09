@@ -953,7 +953,8 @@ sub rsync {
     my $sRsyncCmd= scalar $self->ShellQuote(
         'rsync',
         @sRsyncOpts,
-        '--protect-args',
+# to be included in later versions to allow white spaces in paths - incompatible with rsync 2
+#        '--protect-args',
         (map {$sSourceDirPref . $_} @sSourceFiles),
         $sTargetDirPref . $sTargetPath,
     );
