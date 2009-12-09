@@ -423,7 +423,7 @@ sub _run {
         '--stats',
         '--verbose',
         '--verbose',
-        '--itemize-changes',
+#        '--itemize-changes',
     );
 
     push @sFlags, '--dry-run' if $self->_pretend();
