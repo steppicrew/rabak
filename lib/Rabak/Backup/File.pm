@@ -477,6 +477,9 @@ sub _run {
                     if ($sLine =~ /^\[sender\] hiding/) {
                     	next;
                     }
+                    if ($sLine =~ /^\[sender\] showing/) {
+                    	next;
+                    }
                     if ($sLine =~ /^([\>\<ch\.\*][fdLDS][ \.\+\?cstpoguax]{9})\s(.+)$/) {
                         my ($flags, $sFile) = ($1, $2);
                         my $sCallbackFlags= '';

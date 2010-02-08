@@ -129,9 +129,14 @@ sub __buildBackupFuncs {
     
     # set some pathes and ids ("vlrm"is "/var/lib/rabak/[mediaid]")
     my $sBackupUuid= Rabak::Util->CreateUuid();
-    my $sVlrmBase= Rabak::Util->GetVlrDir() . '/' . $oTargetPeer->getUuid();
+    my $sVlrmBase= Rabak::Util->GetVlrDir();
+    return () unless defined $sVlrmBase;
+    
+    $sVlrmBase.= '/' . $oTargetPeer->getUuid();
     my $sVlrmBakMetaDir= 'meta/' . strftime('%Y%m%d', localtime) . '/' . $sBackupUuid;
-    my $sControllerPrefix= 'meta/' . Rabak::Util->GetControllerUuid() . '.';
+    my $sControllerPrefix= Rabak::Util->GetControllerUuid();
+    return () unless defined $sControllerPrefix;
+    $sControllerPrefix= 'meta/' . $sControllerPrefix . '.';
 
     # create locale peer object
     my $oVlrmPeer= Rabak::Peer->new();
@@ -192,7 +197,7 @@ sub __buildBackupFuncs {
     
     # create vlrmed dir
     $oVlrmPeer->mkdir("$sVlrmBase/$sVlrmBakMetaDir");
-    # create symlink from (computer readable) meat dir to targets meta dir
+    # create symlink from (computer readable) meta dir to targets meta dir
     my $sSymlink= $sVlrmBakMetaDir;
     $sSymlink=~ s/\/[^\/]+$//;
     $sSymlink=~ s/[^\/]+/../g;
