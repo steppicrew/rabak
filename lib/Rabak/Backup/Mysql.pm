@@ -22,7 +22,7 @@ sub _getCredentials {
     my @sResult= (
         "--user=" . $self->getUser(),
     );
-    push @sResult, " --password='{{PASSWORD}}'" if defined $self->getPasswd();
+    push @sResult, '--password={{PASSWORD}}' if defined $self->getPasswd();
     return @sResult;
 }
 
@@ -51,7 +51,7 @@ sub getDumpCmd {
         '--quick',
         '--single-transaction',
     );
-    push @sResult, '--flush-logs' if $self->getValue("dbflushlogs", 1);
+    push @sResult, '--flush-logs' if $self->_getSourceValue("dbflushlogs", 1);
     push @sResult, '--databases', $sDb;
 
     return @sResult;

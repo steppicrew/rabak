@@ -25,6 +25,8 @@ sub new {
 
     my $self= $class->SUPER::new(@_);
     $self->{MOUNTABLE}= Rabak::Mountable->new($self, sub{shift});
+    $self->{MOUNTABLE}->setCheckMount(sub { $self->_checkMount(@_) });
+
     $self->{UUID}= undef;
 
     return $self;
@@ -34,12 +36,7 @@ sub new {
 sub propertyNames {
     my $self= shift;
 
-    return ($self->SUPER::propertyNames(), $self->mountable()->propertyNames(), 'group', 'discfree_threshold');
-}
-
-sub mountable {
-    my $self= shift;
-    return $self->{MOUNTABLE};
+    return ($self->SUPER::propertyNames(), $self->{MOUNTABLE}->propertyNames(), 'group', 'discfree_threshold');
 }
 
 sub _getDevConfFile {
@@ -59,17 +56,16 @@ sub _getDevConfFile {
 #   2 : device is not valid
 #   <path>: path the device is mounted at (set by SUPER)
 #   
-sub checkMount {
+sub _checkMount {
     my $self= shift;
     my $sMountDevice= shift;
     my $arMountMessages= shift;
-    
-    my $sMountPath= $self->mountable()->checkMount($sMountDevice, $arMountMessages);
-    
+    my $sMountPath= shift;
+
     return $sMountPath if $sMountPath=~ /^\d+$/;
 
     my $sTargetValue= $self->getValue("group", "");
-    
+
     my $sqTargetValue= quotemeta $sTargetValue;
     if (defined $self->getSwitch('targetvalue')) {
         $sTargetValue.= "." . $self->getSwitch('targetvalue');
@@ -195,7 +191,7 @@ sub _prepare {
     my $self= shift;
     my $asJobExts= shift;
 
-    my $mountable= $self->mountable();
+    my $mountable= $self->{MOUNTABLE};
 
     # mount all target mount objects
     my @sMountMessage= ();
@@ -289,13 +285,11 @@ sub prepareForBackup {
 
 sub finish {
     my $self= shift;
-    
+
     $self->cleanupTempfiles();
 
-    my $mountable= $self->mountable();
-
     # unmount all target mounts
-    $mountable->unmountAll();
+    $self->{MOUNTABLE}->unmountAll();
 }
 
 sub finishBackup {
@@ -388,9 +382,9 @@ sub show {
     my $hConfShowCache= shift || {};
 
     my @sSuperResult= @{$self->SUPER::show($hConfShowCache)};
-    push @sSuperResult, @{$self->mountable()->show($hConfShowCache)};
+    push @sSuperResult, @{$self->{MOUNTABLE}->show($hConfShowCache)};
     return [] unless @sSuperResult;
-    
+
     return [
         "",
         "#" . "=" x 79,
@@ -402,7 +396,7 @@ sub show {
 
 sub getPath {
     my $self= shift;
-    return $self->mountable()->getPath(@_);
+    return $self->{MOUNTABLE}->getPath(@_);
 }
 
 sub _getAllBakdirs {

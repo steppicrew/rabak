@@ -86,6 +86,7 @@ sub MountDevice2Dir {
 sub mount {
     my $self= shift;
     my $oPeer= shift;
+    my $fnCheckMount= shift;
     my $arMessage= shift || [];
     my $arUnmount= shift || [];
     
@@ -130,7 +131,7 @@ sub mount {
         push @$arMessage, Rabak::Log->logger->info("Trying to mount \"$sMountDevice\" to \"$sMountDir\"");
 
         # check if device is already mounted
-        my $sMountPath= $oPeer->checkMount($sMountDevice, \@sCurMountMessage);
+        my $sMountPath= $fnCheckMount->($sMountDevice, \@sCurMountMessage);
 
         # don't know which device to check: skip this mount (this should not happen!)
         if ($sMountPath eq "0") {
@@ -167,7 +168,7 @@ sub mount {
         }
 
         # check mount result again
-        $sMountPath= $oPeer->checkMount($sMountDevice, \@sCurMountMessage);
+        $sMountPath= $fnCheckMount->($sMountDevice, \@sCurMountMessage);
 
         # device is not mounted: try next
         if ($sMountPath eq "1") {
@@ -212,10 +213,10 @@ sub unmount {
     my $self= shift;
     my $sMountDir= shift || $self->{MOUNTPOINT};
     my $arMessages= shift;
-    
+
     my $bLogMessages= ! defined $arMessages;
     $arMessages= [] if $bLogMessages;
-    
+
     return unless $sMountDir;
 
     my $oPeer = $self->{PEER_OBJECT};
@@ -238,7 +239,7 @@ sub unmount {
             my $sResult= $oPeer->getError;
             chomp $sResult;
             $sResult =~ s/\r?\n/ - /g;
-    
+
             push @$arMessages, Rabak::Log->logger->error("Even lazy unmounting \"$sMountDir\" failed: $sResult!");
             Rabak::Log->logger->log(@$arMessages) if $bLogMessages;
             return 0;

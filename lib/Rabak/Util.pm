@@ -22,9 +22,13 @@ sub CreateUuid {
 }
 
 sub GetControllerUuid {
-    my $sControllerConfFile= GetVlrDir() . '/controller.cf';
+    my $sControllerConfFile= GetVlrDir();
     my $oDevConf;
     my $sUuid;
+
+    return undef unless defined $sControllerConfFile;
+
+    $sControllerConfFile.= '/controller.cf';
     if (-f $sControllerConfFile) {
         my $oDevConfFile= Rabak::ConfFile->new($sControllerConfFile);
         $oDevConf= $oDevConfFile->conf();
@@ -44,6 +48,7 @@ sub GetControllerUuid {
 
 sub GetVlrDir {
     my $sMetaDir= '/var/lib/rabak';
+    return $sMetaDir if Rabak::Peer->new()->mkdir($sMetaDir);
     $sMetaDir= $ENV{HOME} . '/.rabak/meta' unless -d $sMetaDir && -w $sMetaDir;
     return $sMetaDir if Rabak::Peer->new()->mkdir($sMetaDir);
     return undef;

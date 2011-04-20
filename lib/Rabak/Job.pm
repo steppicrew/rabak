@@ -190,7 +190,10 @@ sub getMetaDir {
     my $self= shift;
     my $sSubDir= shift || '';
     
-    my $sDir= Rabak::Util->GetVlrDir() . '/' . $self->getTargetPeer()->getUuid() . '/' . $sSubDir;
+    my $sDir= Rabak::Util->GetVlrDir();
+    return undef unless defined $sDir;
+    
+    $sDir.= '/' . $self->getTargetPeer()->getUuid() . '/' . $sSubDir;
     Rabak::Peer->new()->mkdir($sDir);
     return $sDir;
 }
@@ -227,7 +230,7 @@ sub backup {
     my $oSessionDataConf= Rabak::Conf->new('*');
     $oSessionDataConf->setQuotedValue('cmdline', $self->cmdData("command_line"));
     $oSessionDataConf->setQuotedValue('time.start', Rabak::Util->GetTimeString());
-    
+
     my $hJobData= $oTargetPeer->prepareForBackup($self->GetAllPathExtensions($self));
     $oSessionDataConf->setQuotedValue('target.uuid', $oTargetPeer->getUuid());
 
@@ -264,7 +267,7 @@ sub backup {
                 $oSourceDataConf->setQuotedValue('error', $@);
             }
         }
-        
+
         $oSessionDataConf->setValue('sources', join ", ", map { '&' . $_->getName() } values %$hDoneSources);
 
         $iResult= scalar(@oSourcePeers) - $iSuccessCount;
@@ -279,7 +282,7 @@ sub backup {
             . $oSessionDataConf->getValue('time.end');
         my $sMetaSubDir= $self->getFullName();
         my $sMetaDir= $self->getMetaDir($sMetaSubDir);
-        return unless $sMetaDir;
+        return unless defined $sMetaDir;
 
         my $sMetaFile= $sMetaDir . '/' . $sSessionName;
         $oSessionDataConf->writeToFile($sMetaFile);
@@ -309,22 +312,32 @@ sub _syncMetaDataFromTarget {
     my $oTargetPeer= $self->getTargetPeer();
     my $oLocalPeer= Rabak::Peer->new();
 
-    my $sIncludePath= '';
+    my $sIncludePath= '';#
+    my $sControllerUuid= Rabak::Util->GetControllerUuid();
+    unless (defined $sControllerUuid) {
+	logger->error('Undefined ControllerUuid (may be device is not mounted)');
+	return -1;
+    }
+    
     my @sOpts= (
         #           ignore empty dirs                                  copy dirlinks as dirs
         '--update', '--prune-empty-dirs', '--archive', '--hard-links', '--copy-dirlinks',
         '--include=/', '--include=/meta/', '--include=/meta/*/', '--include=/meta/*/**',
-        '--include=/meta/' . Rabak::Util->GetControllerUuid() . '.*',
+        '--include=/meta/' . $sControllerUuid . '.*',
         '--exclude=/**',
     );
     
     my $sTargetPath= $self->getMetaDir();
+    unless (defined $sTargetPath) {
+	logger->error('Could not determine MetaDir to sync meta data from');
+	return -1;
+    }
     
     logger->verbose("Syncing meta data from target to local meta dir \"$sTargetPath\"...");
     logger->incIndent();
     my $iResult= $oTargetPeer->rsync(
         source_files => 'meta/',
-        target_path => $self->getMetaDir(),
+        target_path => $sTargetPath,
         target_peer => $oLocalPeer,
         opts => \@sOpts,
         log_level => logger->LOG_DEBUG_LEVEL,
@@ -350,6 +363,10 @@ sub _syncMetaDataToTarget {
     my @sOpts= ('--update', '--archive', '--hard-links', '--existing', '--keep-dirlinks');
     
     my $sSourcePath= $self->getMetaDir();
+    unless (defined $sSourcePath) {
+	logger->error('Could not determine MetaDir to sync meta data from');
+	return -1;
+    }
     
     logger->verbose("Syncing meta data from local meta dir \"$sSourcePath\" to target...");
     logger->incIndent();
@@ -364,6 +381,25 @@ sub _syncMetaDataToTarget {
         "Error syncing data to target: \""
         . $oLocalPeer->getLastError() . "\""
     ) if $oLocalPeer->getLastError();
+    
+    # cleanup broken symlinks on targets meta dir
+    $oTargetPeer->runPerl('
+	# parse targets meta dir and remove broken symlinks
+
+	my @sDirs= ( $sMetaDir );
+	sub parseDir {
+	    my $sDir= shift;
+	    my $dir;
+	    opendir($dir, $sDir) || return;
+	    my @sFiles= map { "$sDir/$_" } grep { !/^\.\.?$/ } readdir $dir;
+	    closedir $dir;
+	    CORE::unlink $_ for grep { ! -e } @sFiles;
+	    push @sDirs, grep { -d && ! -l } @sFiles;
+	}
+	
+	my $sDir;
+	parseDir($sDir) while $sDir= shift @sDirs;
+    ', {'sMetaDir', $sSourcePath});
 
     logger->decIndent();
     logger->verbose('done');

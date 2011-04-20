@@ -80,8 +80,8 @@ sub _buildDbCmd {
     
     my $sPassword= $self->getPasswd;
     
-    my $sCommand= Rabak::Conf->ShellQuote(@sCommand);
-    $sCommand=~ s/\{\{PASSWORD\}\}/$sPassword/ if defined $sPassword;
+    @sCommand= map { s/\{\{PASSWORD\}\}/$sPassword/; $_;} @sCommand if defined $sPassword;
+    my $sCommand= Rabak::Peer->ShellQuote(@sCommand);
     return $sCommand;
 }
 
@@ -96,7 +96,7 @@ sub _logCmd {
     my $sLogPretext= shift;
     my @sCommand= @_;
     
-    logger->info($sLogPretext . ': ' . Rabak::Conf->ShellQuote(@sCommand));
+    logger->info($sLogPretext . ': ' . Rabak::Peer->ShellQuote(@sCommand));
 }
 
 # TODO
@@ -116,8 +116,8 @@ sub _run {
 
     my $i= 0;
     $self->_dbCmd($self->getShowCmd());
-    if ($self->getLastExit) {
-        logger->error("show databases command failed with: " . $oSourcePeer->getError);
+    if ($oSourcePeer->getLastExit()) {
+        logger->error("show databases command failed with: " . $oSourcePeer->getError());
         return 9;
     }
     %sValidDb= $self->parseValidDb($oSourcePeer->getLastOut);
@@ -161,7 +161,7 @@ sub _run {
         my $oDumpPeer= $oSourcePeer;
         my $sPipeCmd= "cat > '$sDestFile'";
         
-        my $sDumpCmd= $self->_buildDbCmd(@sDumpCmd) . " | " . Rabak::Conf->ShellQuote($sZipCmd);
+        my $sDumpCmd= $self->_buildDbCmd(@sDumpCmd) . " | " . Rabak::Peer->ShellQuote($sZipCmd);
 
         if ($oTargetPeer->isRemote()) {
             # if target is remote, dump on source peer and write output remotely to target
@@ -171,13 +171,13 @@ sub _run {
         elsif ($oSourcePeer->isRemote()) {
             # if target is local and soure is remote, dump over ssh and write directly to file
             $oDumpPeer= $oTargetPeer;
-            $sDumpCmd= $self->buildSshCmd($sDumpCmd);
+            $sDumpCmd= $oSourcePeer->buildSshCmd($sDumpCmd);
         }
 
         # now execute dump command on target
         unless ($self->_pretend()) {
-            $oDumpPeer->_dbCmd("$sDumpCmd | $sPipeCmd");
-            if ($oDumpPeer->getLastExit) {
+	    $oDumpPeer->runCmd("$sDumpCmd | $sPipeCmd");
+            if ($oDumpPeer->getLastExit()) {
                 my $sError= $oDumpPeer->getLastError;
                 chomp $sError;
                 logger->error("Dump failed. Skipping dump of \"$sDb\": $sError");
