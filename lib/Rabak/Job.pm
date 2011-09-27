@@ -236,6 +236,8 @@ sub backup {
 
     $iResult= $hJobData->{ERROR};
 
+    my $fWriteSessionData= undef;
+
     unless ($iResult) {
 
         $self->_syncMetaDataFromTarget();
@@ -271,27 +273,27 @@ sub backup {
         $oSessionDataConf->setValue('sources', join ", ", map { '&' . $_->getName() } values %$hDoneSources);
 
         $iResult= scalar(@oSourcePeers) - $iSuccessCount;
+
+        $fWriteSessionData= sub {
+            return if $self->getSwitch('pretend');
+
+            $oSessionDataConf->setQuotedValue('time.end', Rabak::Util->GetTimeString());
+            my $sSessionName= 'session.'
+                . $oSessionDataConf->getValue('time.start') . '.'
+                . $oSessionDataConf->getValue('time.end');
+            my $sMetaSubDir= $self->getFullName();
+            my $sMetaDir= $self->getMetaDir($sMetaSubDir);
+            return unless defined $sMetaDir;
+
+            my $sMetaFile= $sMetaDir . '/' . $sSessionName;
+            $oSessionDataConf->writeToFile($sMetaFile);
+
+            $self->_syncMetaDataToTarget();
+        };
     }
 
-    my $fWriteSessionData= sub {
-        return if $self->getSwitch('pretend');
-
-        $oSessionDataConf->setQuotedValue('time.end', Rabak::Util->GetTimeString());
-        my $sSessionName= 'session.'
-            . $oSessionDataConf->getValue('time.start') . '.'
-            . $oSessionDataConf->getValue('time.end');
-        my $sMetaSubDir= $self->getFullName();
-        my $sMetaDir= $self->getMetaDir($sMetaSubDir);
-        return unless defined $sMetaDir;
-
-        my $sMetaFile= $sMetaDir . '/' . $sSessionName;
-        $oSessionDataConf->writeToFile($sMetaFile);
-
-        $self->_syncMetaDataToTarget();
-    };
-    
     $oTargetPeer->finishBackup($hJobData, $fWriteSessionData);
-    
+
     my $sSubject= "successfully finished";
     $sSubject= "$iSuccessCount of " . scalar(@oSourcePeers) . " backups $sSubject" if $iResult;
     $sSubject= "ERROR: all backups failed" unless $iSuccessCount;
@@ -299,7 +301,7 @@ sub backup {
 
     # send admin mail
     logger->mailLog($sSubject);
-    
+
     # return number of failed backups or error code (negative)
     return $iResult;
 }

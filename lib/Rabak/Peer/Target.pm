@@ -310,13 +310,13 @@ sub finishBackup {
             @$aDf
         );
     }
-    
+
     $fCallback->() if $fCallback;
 
     $self->_closeLogging();
-    
+
     $self->finish();
-    
+
     $self->{JOB_DATA}= undef;
     return 0;
 }
