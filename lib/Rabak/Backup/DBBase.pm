@@ -21,7 +21,7 @@ sub new {
     
     my $self= $class->SUPER::new(@_);
 
-    my $sPacker= lc $self->_getSourceValue("packer");
+    my $sPacker= lc($self->_getSourceValue("packer") || '');
 
     logger->warn("Unknown packer '$sPacker'. Valid Values are: '"
         . join("', '", keys %sPackers)
