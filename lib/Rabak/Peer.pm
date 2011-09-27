@@ -932,7 +932,9 @@ sub rsync {
     }
     if ($oSshPeer) {
         my $sPort= $oSshPeer->getValue("port") || 22;
-        my $sTimeout= $oSshPeer->getValue("timeout") || 150;
+#        my $sTimeout= $oSshPeer->getValue("timeout") || 150;
+	# try "no timeout"
+        my $sTimeout= $oSshPeer->getValue("timeout") || 0;
         my $sBandwidth= $oSshPeer->getValue("bandwidth") || '';
         my @sIdentityFiles= $oSshPeer->getValue("identity_files") ? split(/\s+/, $oSshPeer->getValue("identity_files")) : undef;
 
