@@ -234,11 +234,11 @@ sub backup {
     my $hJobData= $oTargetPeer->prepareForBackup($self->GetAllPathExtensions($self));
     $oSessionDataConf->setQuotedValue('target.uuid', $oTargetPeer->getUuid());
 
-    $self->_syncMetaDataFromTarget();
-
     $iResult= $hJobData->{ERROR};
 
     unless ($iResult) {
+
+        $self->_syncMetaDataFromTarget();
 
         $oTargetPeer->initLogging($hJobData) if $self->getSwitch('logging');
 

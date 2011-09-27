@@ -127,6 +127,8 @@ sub _checkDf {
     my $sStUnit= 'K';
     $sStUnit = uc($1) if $sSpaceThreshold =~ /$iStValue\s*([gmkb\%])/i;
     my ($iDfSize, undef, $iDfAvail) = $self->getDf('-k');
+    return undef unless $iDfSize;
+
     $iDfAvail /= $iDfSize / 100 if $sStUnit eq '%';
     $iDfAvail >>= 20            if $sStUnit eq 'G';
     $iDfAvail >>= 10            if $sStUnit eq 'M';
