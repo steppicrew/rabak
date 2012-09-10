@@ -41,6 +41,7 @@ sub getProbeCmd {
 sub getDumpCmd {
     my $self= shift;
     my $sDb= shift;
+    my $sTable= shift;
 
     my @sResult= (
         'mysqldump',
@@ -53,6 +54,7 @@ sub getDumpCmd {
     );
     push @sResult, '--flush-logs' if $self->_getSourceValue("dbflushlogs", 1);
     push @sResult, '--databases', $sDb;
+    push @sResult, '--tables', $sTable if $sTable;
 
     return @sResult;
 }
@@ -66,7 +68,20 @@ sub parseValidDb {
     for (split(/\n/, $sShowResult)) {
         $sValidDb{$1}= 1 if $i++ >= 3 && /^\|\s+(.+?)\s+\|$/;
     }
+    # remove db "information_schema", because it cannot be backed up
+    delete $sValidDb{information_schema};
     return %sValidDb;
+}
+
+sub parseValidTables {
+    my $self= shift;
+    my $sShowResult= shift;
+
+    my %sValidTables= ();
+    for (split(/\n/, $sShowResult)) {
+        $sValidTables{$1}= 1 if /^CREATE TABLE \`?(\S+)\`? \(/;
+    }
+    return %sValidTables;
 }
 
 1;

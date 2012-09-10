@@ -55,8 +55,11 @@ sub getDumpCmd {
     die "This function has to be overloaded!"
 }
 
-# DETECTED UNUSED: getValidDb
-sub getValidDb {
+sub parseValidDb {
+    die "This function has to be overloaded!"
+}
+
+sub parseValidTables {
     die "This function has to be overloaded!"
 }
 
@@ -111,7 +114,6 @@ sub _run {
     my $oTargetPeer= $self->_getTarget();
 
     my %sValidDb= ();
-    my @sDb= ();
     my $bFoundOne= 0;
 
     my $i= 0;
@@ -124,26 +126,29 @@ sub _run {
 
     my $sSource= $oSourcePeer->getValue("path");
 
-    if ($sSource eq '*') {
-        @sDb= sort keys %sValidDb;
-    }
-    else {
-        for (split(/\s*,\s*/, $sSource)) {
-            unless (defined $sValidDb{$_}) {
-                logger->warn("Unknown database: \"$_\"");
-                next;
-            }
-            unshift @sDb, $_;
+    my %dbs= ();
+    foreach my $source (split(/\s*,\s*/, $sSource)) {
+        my ($db, $table)= split(/\//, $source);
+        unless (defined $sValidDb{$db}) {
+            logger->warn("Unknown database: \"$db\"");
+            next;
+        }
+        my @dbs= $db eq '*' ? keys %sValidDb : ($db);
+        foreach my $db (@dbs) {
+            $dbs{$db}= [] unless $dbs{$db};
+            push @{$dbs{$db}}, $table);
         }
     }
 
     my $sZipCmd= $self->{PACKER}{cmd};
     my $sZipExt= $self->{PACKER}{ext};
 
-    foreach my $sDb (@sDb) {
+    foreach my $sDb (sort keys %dbs) {
         my $sDestFile= $hMetaInfo->{DATA_DIR} . "/$sDb.$sZipExt";
         my @sProbeCmd= $self->getProbeCmd($sDb);
         $self->_logCmd('Running probe', @sProbeCmd);
+
+        my @sTables= (undef);
 
         unless ($self->_pretend()) {
             $self->_dbCmd(@sProbeCmd);
@@ -153,41 +158,70 @@ sub _run {
                 logger->error("Probe failed. Skipping \"$sDb\": $sError");
                 next;
             }
-        }
-
-        my @sDumpCmd= $self->getDumpCmd($sDb);
-        $self->_logCmd('Running dump', @sDumpCmd, '|', $sZipCmd);
-
-        my $oDumpPeer= $oSourcePeer;
-        my $sPipeCmd= "cat > '$sDestFile'";
-        
-        my $sDumpCmd= $self->_buildDbCmd(@sDumpCmd) . " | " . Rabak::Peer->ShellQuote($sZipCmd);
-
-        if ($oTargetPeer->isRemote()) {
-            # if target is remote, dump on source peer and write output remotely to target
-            # TODO: check if target and source are the same users on the same host
-            $sPipeCmd= $oTargetPeer->buildSshCmd($sPipeCmd);
-        }
-        elsif ($oSourcePeer->isRemote()) {
-            # if target is local and soure is remote, dump over ssh and write directly to file
-            $oDumpPeer= $oTargetPeer;
-            $sDumpCmd= $oSourcePeer->buildSshCmd($sDumpCmd);
-        }
-
-        # now execute dump command on target
-        unless ($self->_pretend()) {
-	    $oDumpPeer->runCmd("$sDumpCmd | $sPipeCmd");
-            if ($oDumpPeer->getLastExit()) {
-                my $sError= $oDumpPeer->getLastError;
-                chomp $sError;
-                logger->error("Dump failed. Skipping dump of \"$sDb\": $sError");
-                $hMetaInfo->{FAILED_FILE_CALLBACK}->("$sDestFile") if $hMetaInfo->{FAILED_FILE_CALLBACK};
-                next;
+            my %validTables= $self->_parseValidTables($oSourcePeer->getLastOut);
+            my %tablesToDump= ();
+            for my $sTable (keys %{$dbs{$sDb}}) {
+                if (!defined($sTable)) {
+                    # dump whole db
+                    %tablesToDump= undef;
+                    break;
+                }
+                if ($sTable eq '*') {
+                    # dump all tables
+                    %tablesToDump= %validTables;
+                    break;
+                }
+                if (!$validTables{$sTable}) {
+                    logger->error("Table \"$sTable\" does not exist in db \"$sDb\". Skipping.");
+                    next;
+                }
+                $tablesToDump{$sTable}= 1;
             }
-            $hMetaInfo->{FILE_CALLBACK}->($sDestFile) if $hMetaInfo->{FILE_CALLBACK};
+
+            if (%tablesToDump) {
+                @sTables= sort keys %tablesToDump;
+                $oTargetPeer->mkdir($hMetaInfo->{DATA_DIR} . "/$sDb/");
+            }
         }
 
-        $bFoundOne= 1;
+        for my $sTable (@sTables) {
+
+            my $sDestFile= defined $table ? $hMetaInfo->{DATA_DIR} . "/$sDb/$table.$sZipExt" : $hMetaInfo->{DATA_DIR} . "/$sDb.$sZipExt";
+
+            my @sDumpCmd= $self->getDumpCmd($sDb, $table);
+            $self->_logCmd('Running dump', @sDumpCmd, '|', $sZipCmd);
+
+            my $oDumpPeer= $oSourcePeer;
+            my $sPipeCmd= "cat > '$sDestFile'";
+
+            my $sDumpCmd= $self->_buildDbCmd(@sDumpCmd) . " | " . Rabak::Peer->ShellQuote($sZipCmd);
+
+            if ($oTargetPeer->isRemote()) {
+                # if target is remote, dump on source peer and write output remotely to target
+                # TODO: check if target and source are the same users on the same host
+                $sPipeCmd= $oTargetPeer->buildSshCmd($sPipeCmd);
+            }
+            elsif ($oSourcePeer->isRemote()) {
+                # if target is local and soure is remote, dump over ssh and write directly to file
+                $oDumpPeer= $oTargetPeer;
+                $sDumpCmd= $oSourcePeer->buildSshCmd($sDumpCmd);
+            }
+
+            # now execute dump command on target
+            unless ($self->_pretend()) {
+                $oDumpPeer->runCmd("$sDumpCmd | $sPipeCmd");
+                if ($oDumpPeer->getLastExit()) {
+                    my $sError= $oDumpPeer->getLastError;
+                    chomp $sError;
+                    logger->error("Dump failed. Skipping dump of \"$sDb\": $sError");
+                    $hMetaInfo->{FAILED_FILE_CALLBACK}->("$sDestFile") if $hMetaInfo->{FAILED_FILE_CALLBACK};
+                    next;
+                }
+                $hMetaInfo->{FILE_CALLBACK}->($sDestFile) if $hMetaInfo->{FILE_CALLBACK};
+            }
+
+            $bFoundOne= 1;
+        }
     }
 
     return $bFoundOne ? 0 : 9;
