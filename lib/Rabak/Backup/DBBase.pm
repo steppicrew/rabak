@@ -129,14 +129,14 @@ sub _run {
     my %dbs= ();
     foreach my $source (split(/\s*,\s*/, $sSource)) {
         my ($db, $table)= split(/\//, $source);
-        unless (defined $sValidDb{$db}) {
+        unless ($db eq '*' || defined $sValidDb{$db}) {
             logger->warn("Unknown database: \"$db\"");
             next;
         }
         my @dbs= $db eq '*' ? keys %sValidDb : ($db);
         foreach my $db (@dbs) {
             $dbs{$db}= [] unless $dbs{$db};
-            push @{$dbs{$db}}, $table);
+            push @{$dbs{$db}}, $table;
         }
     }
 
@@ -150,45 +150,43 @@ sub _run {
 
         my @sTables= (undef);
 
-        unless ($self->_pretend()) {
-            $self->_dbCmd(@sProbeCmd);
-            if ($oSourcePeer->getLastExit()) {
-                my $sError= $oSourcePeer->getLastError();
-                chomp $sError;
-                logger->error("Probe failed. Skipping \"$sDb\": $sError");
-                next;
+        $self->_dbCmd(@sProbeCmd);
+        if ($oSourcePeer->getLastExit()) {
+            my $sError= $oSourcePeer->getLastError();
+            chomp $sError;
+            logger->error("Probe failed. Skipping \"$sDb\": $sError");
+            next;
+        }
+        my %validTables= $self->parseValidTables($oSourcePeer->getLastOut);
+        my %tablesToDump= ();
+        for my $sTable (@{$dbs{$sDb}}) {
+            if (!defined($sTable)) {
+                # dump whole db
+                %tablesToDump= undef;
+                last;
             }
-            my %validTables= $self->_parseValidTables($oSourcePeer->getLastOut);
-            my %tablesToDump= ();
-            for my $sTable (keys %{$dbs{$sDb}}) {
-                if (!defined($sTable)) {
-                    # dump whole db
-                    %tablesToDump= undef;
-                    break;
-                }
-                if ($sTable eq '*') {
-                    # dump all tables
-                    %tablesToDump= %validTables;
-                    break;
-                }
-                if (!$validTables{$sTable}) {
-                    logger->error("Table \"$sTable\" does not exist in db \"$sDb\". Skipping.");
-                    next;
-                }
-                $tablesToDump{$sTable}= 1;
+            if ($sTable eq '*') {
+                # dump all tables
+                %tablesToDump= %validTables;
+                last;
             }
+            if (!$validTables{$sTable}) {
+                logger->error("Table \"$sTable\" does not exist in db \"$sDb\". Skipping.");
+                last;
+            }
+            $tablesToDump{$sTable}= 1;
+        }
 
-            if (%tablesToDump) {
-                @sTables= sort keys %tablesToDump;
-                $oTargetPeer->mkdir($hMetaInfo->{DATA_DIR} . "/$sDb/");
-            }
+        if (%tablesToDump) {
+            @sTables= sort keys %tablesToDump;
+            $oTargetPeer->mkdir($hMetaInfo->{DATA_DIR} . "/$sDb/");
         }
 
         for my $sTable (@sTables) {
 
-            my $sDestFile= defined $table ? $hMetaInfo->{DATA_DIR} . "/$sDb/$table.$sZipExt" : $hMetaInfo->{DATA_DIR} . "/$sDb.$sZipExt";
+            my $sDestFile= defined $sTable ? $hMetaInfo->{DATA_DIR} . "/$sDb/$sTable.$sZipExt" : $hMetaInfo->{DATA_DIR} . "/$sDb.$sZipExt";
 
-            my @sDumpCmd= $self->getDumpCmd($sDb, $table);
+            my @sDumpCmd= $self->getDumpCmd($sDb, $sTable);
             $self->_logCmd('Running dump', @sDumpCmd, '|', $sZipCmd);
 
             my $oDumpPeer= $oSourcePeer;

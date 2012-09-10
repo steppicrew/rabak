@@ -34,7 +34,6 @@ sub getProbeCmd {
         'pg_dump',
         '--schema-only',
         '--username=' . $self->getUser(),
-        '--file=/dev/null',
         $sDb,
     );
 }

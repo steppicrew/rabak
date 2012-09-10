@@ -35,7 +35,7 @@ sub getProbeCmd {
     my $self= shift;
     my $sDb= shift;
 
-    return ('mysqldump', '--no-data', $self->_getCredentials(), '--result-file=/dev/null', $sDb);
+    return ('mysqldump', '--no-data', $self->_getCredentials(), $sDb);
 }
 
 sub getDumpCmd {
@@ -45,12 +45,13 @@ sub getDumpCmd {
 
     my @sResult= (
         'mysqldump',
-        '--all',
+        '--create-options',
         '--extended-insert',
         '--add-drop-table',
-        '--allow-keywords'.
+        '--allow-keywords',
         '--quick',
         '--single-transaction',
+        $self->_getCredentials(),
     );
     push @sResult, '--flush-logs' if $self->_getSourceValue("dbflushlogs", 1);
     push @sResult, '--databases', $sDb;
@@ -79,7 +80,7 @@ sub parseValidTables {
 
     my %sValidTables= ();
     for (split(/\n/, $sShowResult)) {
-        $sValidTables{$1}= 1 if /^CREATE TABLE \`?(\S+)\`? \(/;
+        $sValidTables{$1}= 1 if /^CREATE TABLE \`?(\S+?)\`? \(/;
     }
     return %sValidTables;
 }
