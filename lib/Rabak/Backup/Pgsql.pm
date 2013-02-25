@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-package Rabak::Backup::Mongo;
+package Rabak::Backup::Pgsql;
 
 use warnings;
 use strict;
