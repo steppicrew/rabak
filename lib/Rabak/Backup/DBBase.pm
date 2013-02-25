@@ -162,7 +162,7 @@ sub _run {
         for my $sTable (@{$dbs{$sDb}}) {
             if (!defined($sTable)) {
                 # dump whole db
-                %tablesToDump= undef;
+                %tablesToDump= ();
                 last;
             }
             if ($sTable eq '*') {
