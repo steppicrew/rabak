@@ -11,7 +11,7 @@ use Rabak::Log;
 
 @ISA = qw(Rabak::Backup::DBBase);
 
-sub DEFAULT_USER {'root'};
+sub DEFAULT_USER {'postgres'};
 
 sub getShowCmd {
     my $self= shift;
