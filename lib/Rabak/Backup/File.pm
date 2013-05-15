@@ -434,7 +434,6 @@ sub _run {
     my @sBakDir= @{$hMetaInfo->{OLD_DATA_DIRS}};
     splice @sBakDir, $iScanBakDirs if $#sBakDir >= $iScanBakDirs;
     push @sFlags, map {'--link-dest=' . $_} @sBakDir;
-    push @sFlags, map {'--compare-dest=' . $_} @sBakDir;
 
     my $sSourceDir = $self->getPath;
 
