@@ -184,7 +184,8 @@ sub _run {
 
         for my $sTable (@sTables) {
 
-            my $sDestFile= defined $sTable ? $hMetaInfo->{DATA_DIR} . "/$sDb/$sTable.$sZipExt" : $hMetaInfo->{DATA_DIR} . "/$sDb.$sZipExt";
+            my $sDestRelFile= defined $sTable ? "/$sDb/$sTable.$sZipExt" : "/$sDb.$sZipExt";
+            my $sDestFile= $hMetaInfo->{DATA_DIR} . "$sDestRelFile";
 
             my @sDumpCmd= $self->getDumpCmd($sDb, $sTable);
             $self->_logCmd('Running dump', @sDumpCmd, '|', $sZipCmd);
@@ -214,6 +215,17 @@ sub _run {
                     logger->error("Dump failed. Skipping dump of \"$sDb\": $sError");
                     $hMetaInfo->{FAILED_FILE_CALLBACK}->("$sDestFile") if $hMetaInfo->{FAILED_FILE_CALLBACK};
                     next;
+                }
+
+                # test if last backup is identical to this one -> hard link
+                my $sLastBackupDir= $hMetaInfo->{OLD_DATA_DIRS}->[0];
+                if ($sLastBackupDir) {
+                    my $sLastFile= $sLastBackupDir . $sDestRelFile;
+                    my $sCmpCommand= "cmp -s '$sDestFile' '$sLastFile' && rm '$sDestFile' && ln '$sLastFile' '$sDestFile'";
+                    $oTargetPeer->runCmd($sCmpCommand);
+                    if (!$oTargetPeer->getLastExit()) {
+                        logger->info("File '$sDestFile' is identical with previous one. Created a hard link to '$sLastFile'")
+                    }
                 }
                 $hMetaInfo->{FILE_CALLBACK}->($sDestFile) if $hMetaInfo->{FILE_CALLBACK};
             }
