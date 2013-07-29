@@ -338,7 +338,7 @@ sub sourceShow {
 
     return @sResult unless $oSource->getSwitch("show_filter", 0);
 
-    my $sBaseDir= $self->getFullPath();
+    my $sBaseDir= $self->_getSource()->getFullPath();
     push @sResult, "", "# Expanded rsync filter (relative to '$sBaseDir'):", map {"#\t$_"} @sFilter;
     return @sResult;
 }
