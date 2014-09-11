@@ -68,7 +68,7 @@ BEGIN {
     };
     
     ($oLog->{MSG_FH}, $oLog->{MSG_FILE_NAME}) =
-        File::Temp->tempfile("rabaklog-XXXXXX", UNLINK => 1, TMPDIR => 1);
+        File::Temp::tempfile("rabaklog-XXXXXX", UNLINK => 1, TMPDIR => 1);
 
     bless $oLog, __PACKAGE__;
 }
