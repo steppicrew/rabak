@@ -288,6 +288,9 @@ sub _readFile {
                 my $sResult= $oScope->findProperty($sRef);
                 $self->_error("Could not resolve symbol '$sRef'", $sFile, $iLine, $sLine) unless defined $sResult;
                 $self->_error("'$sRef' is an object", $sFile, $iLine, $sLine) if ref $sResult;
+
+                # escape '$' to prevent warning later (will be removed in last step)
+                $sResult=~ s/\$/\\\$/g if $sResult && ! ref $sResult;
                 return $sResult;
             };
 
@@ -297,10 +300,10 @@ sub _readFile {
                 $sNewValue=~ s/(?<!\\)\$($sregIdentRef)/$f->($1)/ge ||
                 $sNewValue=~ s/(?<!\\)\$\{($sregIdentRef)\}/$f->($1)/ge
             ) {};
-            logger->warn("Unescaped '\$' in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ s/(?<!\\)\$/\\\$/;
+            logger->warn("Unescaped '\$' in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ s/(?<!\\)\$/\\\$/g;
             # TODO: what to do with multi line quotes?
-            logger->warn("Unescaped '\"' in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ s/(?<!\\)\"/\\\"/;
-            logger->warn("Unescaped \"'\" in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ s/(?<!\\)\'/\\\'/;
+            logger->warn("Unescaped '\"' in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ s/(?<!\\)\"/\\\"/g;
+            logger->warn("Unescaped \"'\" in file '$sFile', line $iLine ($sLine)") if $sNewValue=~ s/(?<!\\)\'/\\\'/g;
             $sNewValue= Rabak::Conf::SweepBackslashes($sNewValue);
         }
         $oConf->setValue($sName, $sNewValue);
