@@ -18,7 +18,7 @@ sub DEFAULT_USER {'mysql'};
 # returns credentials save for logging
 sub _getCredentials {
     my $self= shift;
-    
+
     my @sResult= (
         "--user=" . $self->getUser(),
     );
@@ -52,6 +52,7 @@ sub getDumpCmd {
         '--quick',
         '--single-transaction',
         '--skip-comments',
+        '--skip-lock-table',
         $self->_getCredentials(),
     );
     push @sResult, '--flush-logs' if $self->_getSourceValue("dbflushlogs", 1);
