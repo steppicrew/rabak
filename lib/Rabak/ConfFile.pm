@@ -249,6 +249,9 @@ sub _readFile {
         if ($bIndent) {
             $sNewValue= defined $sOldValue ? $sOldValue : '';
             $sNewValue=~ s/\n?$/\n/;
+
+            # escape '$' to prevent warning later (will be removed in last step)
+            $sNewValue=~ s/\$/\\\$/g;
             $sNewValue.= "$sValue\n";
         }
 
