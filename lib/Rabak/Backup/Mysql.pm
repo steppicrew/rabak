@@ -71,8 +71,10 @@ sub parseValidDb {
     for (split(/\n/, $sShowResult)) {
         $sValidDb{$1}= 1 if $i++ >= 3 && /^\|\s+(.+?)\s+\|$/;
     }
-    # remove db "information_schema", because it cannot be backed up
+
+    # remove dbs "information_schema" and "performance_schema", because they cannot be backed up
     delete $sValidDb{information_schema};
+    delete $sValidDb{performance_schema};
     return %sValidDb;
 }
 
