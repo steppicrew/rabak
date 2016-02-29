@@ -18,7 +18,7 @@ our %sPackers = (
 
 sub new {
     my $class= shift;
-    
+
     my $self= $class->SUPER::new(@_);
 
     my $sPacker= lc($self->_getSourceValue("packer") || '');
@@ -80,9 +80,9 @@ sub getPasswd {
 sub _buildDbCmd {
     my $self= shift;
     my @sCommand= @_;
-    
+
     my $sPassword= $self->getPasswd;
-    
+
     @sCommand= map { s/\{\{PASSWORD\}\}/$sPassword/; $_;} @sCommand if defined $sPassword;
     my $sCommand= Rabak::Peer->ShellQuote(@sCommand);
     return $sCommand;
@@ -98,7 +98,7 @@ sub _logCmd {
     my $self= shift;
     my $sLogPretext= shift;
     my @sCommand= @_;
-    
+
     logger->info($sLogPretext . ': ' . Rabak::Peer->ShellQuote(@sCommand));
 }
 
@@ -109,7 +109,7 @@ sub _logCmd {
 sub _run {
     my $self= shift;
     my $hMetaInfo= shift;
-    
+
     my $oSourcePeer= $self->_getSource();
     my $oTargetPeer= $self->_getTarget();
 

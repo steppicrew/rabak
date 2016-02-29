@@ -51,6 +51,8 @@ sub getDumpCmd {
 
     push @result, '--table=' . $sTable if $sTable;
 
+    push @result, map { '--exclude-schema=' . $_ } grep { $_ } split(/\s*,\s*/, $self->_getSourceValue("exclude_schema", ''));
+
     push @result, $sDb;
 
     return @result;
@@ -62,7 +64,7 @@ sub parseValidDb {
 
     my %sValidDb= ();
     for (split(/\n/, $sShowResult)) {
-        $sValidDb{$1}= 1 if /(\S+)/ && $1 !~ /^template\d+$/;
+        $sValidDb{$1}= 1 if /^\s*([^\s\|]+)/ && $1 !~ /^template\d+$/;
     }
     return %sValidDb;
 }
