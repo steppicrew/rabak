@@ -53,6 +53,8 @@ sub getDumpCmd {
 
     push @result, map { '--exclude-schema=' . $_ } grep { $_ } split(/\s*,\s*/, $self->_getSourceValue("exclude_schema", ''));
 
+    push @result, map { '--exclude-table=' . $_ } grep { $_ } split(/\s*,\s*/, $self->_getSourceValue("exclude_table", ''));
+
     push @result, $sDb;
 
     return @result;
