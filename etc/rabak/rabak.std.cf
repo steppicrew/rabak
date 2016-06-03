@@ -51,7 +51,9 @@ exclude_linux =
     /proc/
     /sys/
     /usr/portage/
+    /media/
     /mnt/
+    /run/
     /usr/src/
     /var/amavis/
     /var/cache/( edb samba )/
