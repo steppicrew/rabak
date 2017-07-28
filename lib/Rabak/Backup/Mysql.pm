@@ -23,7 +23,7 @@ sub _getCredentials {
         "--user=" . $self->getUser(),
     );
     push @sResult, '--password={{PASSWORD}}' if defined $self->getPasswd();
-    push @sResult, '--host', $self->_getSourceValue("dbhost") if $self->_getSourceValue("dbhost");
+    push @sResult, '--host=' . $self->_getSourceValue("dbhost") if $self->_getSourceValue("dbhost");
 
     return @sResult;
 }
