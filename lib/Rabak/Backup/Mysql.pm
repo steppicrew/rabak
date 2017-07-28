@@ -35,7 +35,11 @@ sub getProbeCmd {
     my $self= shift;
     my $sDb= shift;
 
-    return ('mysqldump', '--no-data', $self->_getCredentials(), $sDb);
+    my @sResult= ('mysqldump', '--no-data', $self->_getCredentials());
+    push @sResult, '--host', $self->_getSourceValue("dbhost") if $self->_getSourceValue("dbhost");
+    push @sResult, $sDb;
+
+    return @sResult;
 }
 
 sub getDumpCmd {
