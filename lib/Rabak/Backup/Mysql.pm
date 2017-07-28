@@ -55,6 +55,7 @@ sub getDumpCmd {
         '--skip-lock-table',
         $self->_getCredentials(),
     );
+    push @sResult, '--host', $self->_getSourceValue("dbhost") if $self->_getSourceValue("dbhost");
     push @sResult, '--flush-logs' if $self->_getSourceValue("dbflushlogs", 1);
     push @sResult, '--databases', $sDb;
     push @sResult, '--tables', $sTable if $sTable;
