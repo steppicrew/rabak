@@ -23,6 +23,8 @@ sub _getCredentials {
         "--user=" . $self->getUser(),
     );
     push @sResult, '--password={{PASSWORD}}' if defined $self->getPasswd();
+    push @sResult, '--host', $self->_getSourceValue("dbhost") if $self->_getSourceValue("dbhost");
+
     return @sResult;
 }
 
@@ -35,11 +37,7 @@ sub getProbeCmd {
     my $self= shift;
     my $sDb= shift;
 
-    my @sResult= ('mysqldump', '--no-data', $self->_getCredentials());
-    push @sResult, '--host', $self->_getSourceValue("dbhost") if $self->_getSourceValue("dbhost");
-    push @sResult, $sDb;
-
-    return @sResult;
+    return ('mysqldump', '--no-data', $self->_getCredentials(), $sDb);
 }
 
 sub getDumpCmd {
@@ -59,7 +57,6 @@ sub getDumpCmd {
         '--skip-lock-table',
         $self->_getCredentials(),
     );
-    push @sResult, '--host', $self->_getSourceValue("dbhost") if $self->_getSourceValue("dbhost");
     push @sResult, '--flush-logs' if $self->_getSourceValue("dbflushlogs", 1);
     push @sResult, '--databases', $sDb;
     push @sResult, '--tables', $sTable if $sTable;
