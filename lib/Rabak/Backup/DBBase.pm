@@ -125,9 +125,10 @@ sub _run {
     %sValidDb= $self->parseValidDb($oSourcePeer->getLastOut);
 
     my $sSource= $oSourcePeer->getValue("path");
+    my @sExcludes= split /\s+/, ($oSourcePeer->getValue("exclude") || '');
 
     my %dbs= ();
-    foreach my $source (split(/\s*,\s*/, $sSource)) {
+    foreach my $source (split(/\s+/, $sSource)) {
         my ($db, $table)= split(/\//, $source);
         unless ($db eq '*' || defined $sValidDb{$db}) {
             logger->warn("Unknown database: \"$db\"");
@@ -144,6 +145,10 @@ sub _run {
     my $sZipExt= $self->{PACKER}{ext};
 
     foreach my $sDb (sort keys %dbs) {
+    
+        # skip excluded dbs
+        next if grep { $_ eq $sDb } @sExcludes;
+
         my $sDestFile= $hMetaInfo->{DATA_DIR} . "/$sDb.$sZipExt";
         my @sProbeCmd= $self->getProbeCmd($sDb);
         $self->_logCmd('Running probe', @sProbeCmd);
