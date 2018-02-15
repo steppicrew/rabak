@@ -55,7 +55,7 @@ sub MountDir2Device {
     
     my $sFsTab= $oPeer->cat("/etc/fstab") || '';
     my $sqMountDir= quotemeta $sMountDir;
-    return $oPeer->absPath($1) if $sFsTab=~ /^(\S+)\s+$sqMountDir\s+/m;
+    return $oPeer->absPath($1) if $sFsTab=~ /^([^#\s]\S+)\s+$sqMountDir\s+/m;
     return undef; 
     
 }
