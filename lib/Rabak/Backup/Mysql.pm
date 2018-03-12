@@ -54,7 +54,7 @@ sub getDumpCmd {
         '--quick',
         '--single-transaction',
         '--skip-comments',
-        '--skip-lock-table',
+        '--skip-lock-tables',
         $self->_getCredentials(),
     );
     push @sResult, '--flush-logs' if $self->_getSourceValue("dbflushlogs", 1);
