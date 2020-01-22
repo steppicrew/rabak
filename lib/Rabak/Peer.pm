@@ -922,7 +922,7 @@ sub rsync {
 
     my $sSelfVersion= $self->getRsyncVersion();
     my $sTargetVersion= $oTargetPeer->getRsyncVersion();
-    $sCompressOption= $sSelfVersion gt '3.1' && $sTargetVersion gt '3.1' ? '--new-compress' : '--compress';
+    my $sCompressOption= $sSelfVersion gt '3.1' && $sTargetVersion gt '3.1' ? '--new-compress' : '--compress';
 
     # $oSshPeer contains ssh parameters for rsync (seen from $oRsyncPeer)
     # - is $oTargetPeer if target is remote (rsync will be run on self)
