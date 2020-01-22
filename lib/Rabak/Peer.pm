@@ -251,16 +251,6 @@ sub _savecmd {
     return $self->{LAST_RESULT}{stdout} || '';
 }
 
-sub getRsyncVersion {
-    my $self= shift;
-
-    return $self->{RSYNC_VERSION} if defined $self->{RSYNC_VERSION};
-
-    my $sFullVersion= $self->runCmd($self->ShellQuote('rabak', '--version'));
-    $self->{RSYNC_VERSION}= $sFullVersion=~ /rsync\s+version\s+(\d+\.\d+(?:\.\d+)?)\s+protocol/ ? $1 : '';
-    return $self->{RSYNC_VERSION};
-}
-
 =item runCmd($sCmd, $bPiped)
 
 Runs a command either locally or remote.
@@ -904,6 +894,17 @@ sub umount {
     my @sParams= @_;
 
     return $self->_savecmd(scalar $self->ShellQuote('umount', @sParams));
+}
+
+sub getRsyncVersion {
+    my $self= shift;
+
+    return $self->{RSYNC_VERSION} if defined $self->{RSYNC_VERSION};
+
+    my $sVersionCmd= $self->ShellQuote('rabak', '--version');
+    my $sFullVersion= $self->runCmd($sVersionCmd);
+    $self->{RSYNC_VERSION}= $sFullVersion=~ /rsync\s+version\s+(\d+\.\d+(?:\.\d+)?)\s+protocol/ ? $1 : '';
+    return $self->{RSYNC_VERSION};
 }
 
 sub rsync {
