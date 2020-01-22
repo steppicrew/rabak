@@ -901,9 +901,9 @@ sub getRsyncVersion {
 
     return $self->{RSYNC_VERSION} if defined $self->{RSYNC_VERSION};
 
-    my $sVersionCmd= $self->ShellQuote('rabak', '--version');
-    my $sFullVersion= $self->runCmd($sVersionCmd);
-    $self->{RSYNC_VERSION}= $sFullVersion=~ /rsync\s+version\s+(\d+\.\d+(?:\.\d+)?)\s+protocol/ ? $1 : '';
+    my $sVersionCmd= $self->ShellQuote('rsync', '--version');
+    $self->runCmd($sVersionCmd);
+    $self->{RSYNC_VERSION}= $self->{LAST_RESULT}{stdout}=~ /rsync\s+version\s+(\d+\.\d+(?:\.\d+)?)\s+protocol/ ? $1 : '';
     return $self->{RSYNC_VERSION};
 }
 
