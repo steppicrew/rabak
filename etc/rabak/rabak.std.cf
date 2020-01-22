@@ -56,7 +56,7 @@ exclude_linux =
     /run/
     /usr/src/
     /var/amavis/
-    /var/cache/( edb samba )/
+    /var/cache/( edb samba pacman )/
     /var/db/pkg/
     /var/dcc/map
     /var/eix/
