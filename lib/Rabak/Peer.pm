@@ -48,6 +48,7 @@ sub new {
     $self->{LOCAL_TEMPFILES}= [];
     $self->{TEMP_RT_ENV}= undef;
     $self->{PRETEND}= undef;
+    $self->{RSYNC_VERSION}= undef;
 
     bless $self, $class;
 }
@@ -248,6 +249,16 @@ sub _savecmd {
     $self->_setError($self->{LAST_RESULT}{stderr});
     $?= $self->{LAST_RESULT}{exit} || 0; # set standard exit variable
     return $self->{LAST_RESULT}{stdout} || '';
+}
+
+sub getRsyncVersion {
+    my $self= shift;
+
+    return $self->{RSYNC_VERSION} if defined $self->{RSYNC_VERSION};
+
+    my $sFullVersion= $self->runCmd($self->ShellQuote('rabak', '--version'));
+    $self->{RSYNC_VERSION}= $sFullVersion=~ /rsync\s+version\s+(\d+\.\d+(?:\.\d+)?)\s+protocol/ ? $1 : '';
+    return $self->{RSYNC_VERSION};
 }
 
 =item runCmd($sCmd, $bPiped)
@@ -908,6 +919,11 @@ sub rsync {
     # return success on empty source file list
     return 0 unless scalar @sSourceFiles;
     
+
+    my $sSelfVersion= $self->getRsyncVersion();
+    my $sTargetVersion= $oTargetPeer->getRsyncVersion();
+    $sCompressOption= $sSelfVersion gt '3.1' && $sTargetVersion gt '3.1' ? '--new-compress' : '--compress';
+
     # $oSshPeer contains ssh parameters for rsync (seen from $oRsyncPeer)
     # - is $oTargetPeer if target is remote (rsync will be run on self)
     # - is $self if target is local and source is remote (rsync will be run locally)
@@ -948,7 +964,7 @@ sub rsync {
             push @sSshCmd, '-1' if $oSshPeer->getValue('protocol') eq '1';
             push @sSshCmd, '-2' if $oSshPeer->getValue('protocol') eq '2';
         }
-        push @sRsyncOpts, '--rsh=' . $self->ShellQuote(@sSshCmd), "--timeout=$sTimeout", '--compress';
+        push @sRsyncOpts, '--rsh=' . $self->ShellQuote(@sSshCmd), "--timeout=$sTimeout", $sCompressOption;
         push @sRsyncOpts, "--bwlimit=$sBandwidth" if $sBandwidth;
     }
 
