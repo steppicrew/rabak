@@ -515,7 +515,7 @@ sub _getMetaVersion {
     return 0 unless $oTargetPeer->isFile($sMetaVersionFile);
     my $sVersion= $oTargetPeer->cat($sMetaVersionFile);
     return -1 unless defined $sVersion;
-    $sVersion=~ s/^(\S+)/$1/;
+    $sVersion=~ s/^(\S+)[\s\S]$/$1/;
     return $sVersion;
 }
 
