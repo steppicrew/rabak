@@ -50,28 +50,38 @@ sub MountDir2Device {
     my $self= shift;
     my $sMountDir= shift;
     my $oPeer= shift || Rabak::Peer::Mountable->new(undef, undef);
-    
+
     return undef unless defined $sMountDir;
-    
-    my $sFsTab= $oPeer->cat("/etc/fstab") || '';
+
     my $sqMountDir= quotemeta $sMountDir;
+    my $sFindmntCmd= $oPeer->ShellQuote('findmnt', '--evaluate', '--target', $sMountDir);
+    my $sResult= $oPeer->runCmd($sFindmntCmd);
+
+    return $oPeer->absPath($1) if /^$sqMountDir\s+(\S+)\s/m;
+
+    my $sFsTab= $oPeer->cat("/etc/fstab") || '';
     return $oPeer->absPath($1) if $sFsTab=~ /^([^#\s]\S+)\s+$sqMountDir\s+/m;
-    return undef; 
-    
+
+    return undef;
 }
 
 sub MountDevice2Dir {
     my $self= shift;
     my $sMountDevice= shift;
     my $oPeer= shift || Rabak::Peer::Mountable->new(undef, undef);
-    
+
     return undef unless defined $sMountDevice;
-    
-    my $sFsTab= $oPeer->cat("/etc/fstab") || '';
+
     my $sqMountDevice= quotemeta $sMountDevice;
+    my $sFindmntCmd= $oPeer->ShellQuote('findmnt', '--evaluate', '--source', $sMountDevice);
+    my $sResult= $oPeer->runCmd($sFindmntCmd);
+
+    return $oPeer->absPath($1) if /^(\S+)\s+$sqMountDevice\s/m;
+
+    my $sFsTab= $oPeer->cat("/etc/fstab") || '';
     return $oPeer->absPath($1) if $sFsTab=~ /^$sqMountDevice\s+(\S+)\s+/m;
-    return undef; 
-    
+
+    return undef;
 }
 
 # @param $oPeer
