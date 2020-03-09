@@ -57,7 +57,7 @@ sub MountDir2Device {
     my $sFindmntCmd= $oPeer->ShellQuote('findmnt', '--evaluate', '--target', $sMountDir);
     my $sResult= $oPeer->runCmd($sFindmntCmd);
 
-    return $oPeer->absPath($1) if /^$sqMountDir\s+(\S+)\s/m;
+    return $oPeer->absPath($1) if $sResult=~ /^$sqMountDir\s+(\S+)\s/m;
 
     my $sFsTab= $oPeer->cat("/etc/fstab") || '';
     return $oPeer->absPath($1) if $sFsTab=~ /^([^#\s]\S+)\s+$sqMountDir\s+/m;
