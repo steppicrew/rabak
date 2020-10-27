@@ -67,7 +67,7 @@ sub getUser {
     my $self= shift;
     my $sUser= $self->_getSourceValue('dbuser', $self->DEFAULT_USER());
     # simple taint
-    $sUser =~ s/[^a-z0-9_]//g;
+    $sUser =~ s/[^\w\-]//g;
     return $sUser;
 }
 
