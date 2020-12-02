@@ -1,5 +1,5 @@
 
-; Zeilen, die mit Semikolon anfangen, werden übersprungen!
+; Zeilen, die mit Semikolon anfangen, werden Uebersprungen!
 
 ; ----------------------------------------------------------------------------
 ; WEB SITE GLOBALS
@@ -16,7 +16,7 @@
 ; Keywords. Nicht mehr als 100 Zeichen!
 ##keywords   backup, rsync, Time machine, linux, windows, mac osx
 
-; Text, der erscheint, wenn man die Maus über die Kopfgrafik bewegt. Google-relevant!
+; Text, der erscheint, wenn man die Maus ueber die Kopfgrafik bewegt. Google-relevant!
 ##headimage_text   Welcome to Rabak, your new backup tool!
 
 ; ----------------------------------------------------------------------------
@@ -38,37 +38,6 @@ documentation: Docs
 developers: Developer Notes
 license: License
 links: Links
-
-; ----------------------------------------------------------------------------
-; SPIELWIESE
-; ----------------------------------------------------------------------------
-
-==test: Testseite
-
-; Link tests
-- {link peter Mehr Infos zum Skipper}
-- {link peter2 Mehr Infos zum Skipper}
-- {link http://www.bla.de Mehr Infos zum Skipper}
-- {link http://www.bla.de/aaa Mehr Infos zum Skipper}
-- {link http://www.bla.de/aaa/bbb Mehr Infos zum Skipper}
-- {link http://www.bla.de/aaa/bbb/ccc Mehr Infos zum Skipper}
-- http://www.bla.de
-
-www.bla.de/skdfhsdkjf/sdf.sdf/sdfsdf
-http://www.bla.de/skdfhsdkjf/sdf.sdf/sdfsdf
-mssssss@stankus.de
-  	
-Willkommen im Schwitzerland
-
-Geht es ihnen auch so?
-Sie sind gestresst,
-haben keine Zeit,
-in den Urlaub zu fahren
-und wünschen sich
-ein paar Stunden Erholung?
-
-Wir bieten Ihnen Ruhe und Entspannung
-
 
 ; ----------------------------------------------------------------------------
 ; STARTSEITE
@@ -106,15 +75,13 @@ There's support for file filters that hide the complexity of the rsync filters
 
 ##h1 Download Rabak
 
-##h2 Current Version
-
-{link stable/rabak-1.0-r2.tar.gz Version 1.0-r2}, released 11. Mar. 2009 ({link stable/rabak-1.0-r2.ebuild Gentoo ebuild})
-
-##h2 Snapshot on GitHub
+##h2 Current Version on GitHub
 
 {link http://www.github.com/steppicrew/rabak/tree/master Current snapshot on github.com}
 
 ##h2 Older versions
+
+{link stable/rabak-1.0-r2.tar.gz Version 1.0-r2}, released 11. Mar. 2009 ({link stable/rabak-1.0-r2.ebuild Gentoo ebuild})
 
 {link stable/rabak-1.0-r1.tar.gz Version 1.0-r1}, released 24. Nov. 2008 ({link stable/rabak-1.0-r1.ebuild Gentoo ebuild})
 
@@ -162,13 +129,10 @@ cpan -i DBD::SQLite
 
 ##h1 Install Rabak
 
-{link download Download} the current release.
-
-First extract the files in rabak's archive to a temporary directory
-and @cd@ into it:
+{link download Download} the current release and change into the new direcotry.
 ##code
-tar -xvzf rabak-<version>.tar.gz
-cd rabak-<version>
+git clone https://github.com/steppicrew/rabak.git
+cd rabak
 ##end
 
 To test Rabak, you instantly can do (provided you already have
@@ -178,11 +142,12 @@ the required external libraries installed):
 ..etc..
 ##end
 
+We recommend to use Rabak directly from this directory. If you want to install it system wide run the following commands.
+
 To install Rabak's perl library:
 ##code
 perl Makefile.PL
 make
-make test
 make install
 ##end
 
@@ -194,30 +159,30 @@ cp -rp etc/rabak /etc/
 cp -rp share /usr/share/rabak
 ##end
 
-##h2 Install Rabak on Gentoo
-
-Prepare your portage tree for overlay (if not already done) by adding the following line to your @/etc/make.conf@ file:
-##code
-PORTDIR_OVERLAY="/usr/local/portage"
-##end
-
-{link download Download} the current ebuild and copy it to @/usr/local/portage/app-backup/rabak@, create nonexistant directories.
-##code
-test -d /usr/local/portage/app-backup/rabak || mkdir -p /usr/local/portage/app-backup/rabak
-cd /usr/local/portage/app-backup/rabak/
-wget http://raisin.de/rabak/stable/rabak-<version>.ebuild
-##end
-
-Update your Manifest file:
-##code
-cd /usr/local/portage/app-backup/rabak/
-ebuild rabak-<version>.ebuild manifest
-##end
-
-And finally emerge your new rabak version:
-##code
-emerge -av rabak
-##end
+; ##h2 Install Rabak on Gentoo
+; 
+; Prepare your portage tree for overlay (if not already done) by adding the following line to your @/etc/make.conf@ file:
+; ##code
+; PORTDIR_OVERLAY="/usr/local/portage"
+; ##end
+; 
+; {link download Download} the current ebuild and copy it to @/usr/local/portage/app-backup/rabak@, create nonexistant directories.
+; ##code
+; test -d /usr/local/portage/app-backup/rabak || mkdir -p /usr/local/portage/app-backup/rabak
+; cd /usr/local/portage/app-backup/rabak/
+; wget http://raisin.de/rabak/stable/rabak-<version>.ebuild
+; ##end
+; 
+; Update your Manifest file:
+; ##code
+; cd /usr/local/portage/app-backup/rabak/
+; ebuild rabak-<version>.ebuild manifest
+; ##end
+; 
+; And finally emerge your new rabak version:
+; ##code
+; emerge -av rabak
+; ##end
 
 ; -----------------------------------------------------------------
 ; QUICK START
@@ -348,7 +313,7 @@ See {link http://www.perl.com/perl/misc/Artistic.html Perl's Artistic License}.
 
 ==hilfe: Hilfe
 
-Der Text ist in Seiten unterteilt, eine Seite fängt an mit:
+Der Text ist in Seiten unterteilt, eine Seite faengt an mit:
 
  ==seitenname
 
@@ -359,30 +324,30 @@ oder
 Wobei 'seitenname' ein eindeutiger Name sein muss. Der Titel wird im
 der Titelleiste des Fensters dargestellt.
 
-Innerhalb einer Seite können folgende Anweisungen genutzt werden:
+Innerhalb einer Seite koennen folgende Anweisungen genutzt werden:
 
  ##h1 Text
-- Seiten-Überschrift
+- Seiten-Ueberschrift
 
  ##h2 Text
-- Abschnitts-Überschrift
+- Abschnitts-Ueberschrift
 
  ##image Datei Text
 - Horizontal zentriertes Bild mit Unterschrift 'Text'. Die Unterschrift ist
   optional
 
  ##leftimage Datei Text
-- Linksbündiges Bild mit Unterschrift 'Text'. Die Unterschrift ist optional.
+- Linksbuendiges Bild mit Unterschrift 'Text'. Die Unterschrift ist optional.
   Der folgende Text umfliesst das Bild rechts.
 
  ##rightimage Datei Text
-- Rechtsbündiges Bild mit Unterschrift 'Text'. Die Unterschrift ist optional.
+- Rechtsbuendiges Bild mit Unterschrift 'Text'. Die Unterschrift ist optional.
   Der folgende Text umfliesst das Bild links.
 
 - Zeile1
 - Zeile2
-- Aufzählungen müssen mit '-' und einem Leerzeichen beginnen.
+- Aufzaehlungen muessen mit '-' und einem Leerzeichen beginnen.
 
-- TODO: Formulare erklären
-- TODO: Links erklären {link .. }
-- TODO: Fett erklären {bold .. }
+- TODO: Formulare erklaeren
+- TODO: Links erklaeren {link .. }
+- TODO: Fett erklaeren {bold .. }

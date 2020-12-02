@@ -1,6 +1,8 @@
 use 5.008008;
 use ExtUtils::Manifest qw( mkmanifest );
 use ExtUtils::MakeMaker;
+use FindBin qw/ $RealBin /;
+use lib $RealBin;
 require "lib/Rabak/Version.pm";
 
 mkmanifest();

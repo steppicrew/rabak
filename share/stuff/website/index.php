@@ -10,7 +10,7 @@
 
     // This is an ugly hack to fetch content files from GitHub directly.
     // Good enough for now, but MUST be changed if the web site has traffic...
-    if (preg_match('/^([\w\.]+\.)?raisin\.de$/', $_SERVER["HTTP_HOST"])) {
+    if (preg_match('/\.?raisin\.de$/', $_SERVER["HTTP_HOST"])) {
         $sIncludePath= "http://github.com/steppicrew/rabak/raw/master/share/stuff/website/";
     }
  
@@ -111,8 +111,11 @@
 
             // {link page .. } ersetzen
             global $aPages;
-            $sText= preg_replace("/\{link\s+$sMaskIdentifier$sMaskParam/e",
-                "isset(\$aPages['$1']) ? '<a href=\"'.getUrl('$1').'\">$2</a>' : '$2'", $sText
+            $sText= preg_replace_callback("/\{link\s+$sMaskIdentifier$sMaskParam/",
+                function ( $aMatch ) use ( $aPages ) {
+                    return isset($aPages[$aMatch[1]]) ? '<a href="' . getUrl($aMatch[1]) . '">' . $aMatch[2] . '</a>' : $aMatch[2];
+                },
+                $sText
             );
 
             // {bold page .. } ersetzen
@@ -166,7 +169,7 @@
 
         function _addFormField($sType, $sCaption= '') {
             $sFieldName= "f".count($this->aForm);
-            $oField= & new StdClass;
+            $oField= new StdClass;
             $oField->sType= $sType;
             $oField->sCaption= $sCaption;
             $oField->sValue= substr(@$_POST[$sFieldName], 0, $sType == '_textarea' ? 8000 : 200);
@@ -521,17 +524,17 @@
     function printHtmlPage($sPageName) {
         global $aPages, $aMenu, $sRelPath, $sIncludePath;
 
-        $oPage= & new PAGE_PARSER('global');
+        $oPage= new PAGE_PARSER('global');
         $oPage->parse();
 
         $aGlobalPrefs= $oPage->getPagePrefs();
 
-        $oPage= & new PAGE_PARSER($sPageName);
+        $oPage= new PAGE_PARSER($sPageName);
         $sPage= $oPage->parse();
 
         $sFormSendPageName= $oPage->getFormSendPageName();
         if ($sFormSendPageName) {
-            $oSendPage= & new PAGE_PARSER($sFormSendPageName);
+            $oSendPage= new PAGE_PARSER($sFormSendPageName);
             $sPage= $oSendPage->parse();
 
             $sFormSendEmail= $oSendPage->getFormSendEmail();
