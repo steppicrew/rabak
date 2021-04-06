@@ -55,7 +55,8 @@ sub MountDir2Device {
 
     my $sqMountDir= quotemeta $sMountDir;
     my $sFindmntCmd= $oPeer->ShellQuote('findmnt', '--evaluate', '--target', $sMountDir);
-    my $sResult= $oPeer->runCmd($sFindmntCmd);
+    $oPeer->runCmd($sFindmntCmd);
+    my $sResult= $oPeer->getLastExit() ? '' : $oPeer->getLastOut();
 
     return $oPeer->absPath($1) if $sResult=~ /^$sqMountDir\s+(\S+)\s/m;
 
@@ -74,9 +75,10 @@ sub MountDevice2Dir {
 
     my $sqMountDevice= quotemeta $sMountDevice;
     my $sFindmntCmd= $oPeer->ShellQuote('findmnt', '--evaluate', '--source', $sMountDevice);
-    my $sResult= $oPeer->runCmd($sFindmntCmd);
+    $oPeer->runCmd($sFindmntCmd);
+    my $sResult= $oPeer->getLastExit() ? '' : $oPeer->getLastOut();
 
-    return $oPeer->absPath($1) if /^(\S+)\s+$sqMountDevice\s/m;
+    return $oPeer->absPath($1) if $sResult=~ /^(\S+)\s+$sqMountDevice\s/m;
 
     my $sFsTab= $oPeer->cat("/etc/fstab") || '';
     return $oPeer->absPath($1) if $sFsTab=~ /^$sqMountDevice\s+(\S+)\s+/m;
