@@ -14,7 +14,7 @@ use Rabak::InodeStore;
 use File::Find;
 use Data::Dumper;
 use Fcntl ':mode';
-use Digest::SHA1;
+use Digest::SHA;
 use Cwd;
 
 sub new {
@@ -115,7 +115,7 @@ sub calcDigest {
         eval {
             my $fh= undef;
             if (open $fh, '<', $sFileName) {
-                $sDigest= Digest::SHA1->new()->addfile($fh)->b64digest;
+                $sDigest= Digest::SHA->new()->addfile($fh)->b64digest;
                 close $fh;
             }
             $self->{STATS}{digest_calc}++;

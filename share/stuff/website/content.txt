@@ -114,10 +114,10 @@ cpan -i IPC::Run
 cpan -i Getopt::Long
 ##end
 
-To use dupemerge, you will need the *Digest::SHA1* and *DBD::SQLite* perl modules.
+To use dupemerge, you will need the *Digest::SHA* and *DBD::SQLite* perl modules.
 To install it do:
 ##code
-cpan -i Digest::SHA1
+cpan -i Digest::SHA
 cpan -i DBD::SQLite
 ##end
 

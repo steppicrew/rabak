@@ -10,7 +10,7 @@ use warnings;
 #use File::Find;
 #use Data::Dumper;
 #use Fcntl ':mode';
-#use Digest::SHA1;
+#use Digest::SHA;
 #use Cwd;
 
 use Rabak::Trap;

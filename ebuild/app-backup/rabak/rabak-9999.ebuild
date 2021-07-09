@@ -25,7 +25,7 @@ RDEPEND=">=dev-lang/perl-5.8.2
         dev-perl/Data-UUID
         dev-perl/IPC-Run
         dev-perl/MailTools
-        dev-perl/Digest-SHA1
+        dev-perl/Digest-SHA
         dev-perl/DBD-SQLite
         >=virtual/perl-Getopt-Long-2.36"
 

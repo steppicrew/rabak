@@ -37,8 +37,8 @@ cpan -i IPC::Run
 cpan -i Getopt::Long
 cpan -i Data::UUID
 
-To use dupmerge, you will need the Digest::SHA1 and DBD::SQLite perl modules. To install it do:
-cpan -i Digest::SHA1
+To use dupmerge, you will need the Digest::SHA and DBD::SQLite perl modules. To install it do:
+cpan -i Digest::SHA
 cpan -i DBD::SQLite
 
 
