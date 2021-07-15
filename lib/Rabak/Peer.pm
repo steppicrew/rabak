@@ -925,6 +925,9 @@ sub rsync {
     my $sTargetVersion= $oTargetPeer->getRsyncVersion();
     my $sCompressOption= $sSelfVersion gt '3.1' && $sTargetVersion gt '3.1' ? '--new-compress' : '--compress';
 
+    # if we already have a specific compress options do not add our guessed parameter
+    $sCompressOption= undef if grep { /^\-\-(?:(?:new|old)\-)?compress$/ } @sRsyncOpts;
+
     # $oSshPeer contains ssh parameters for rsync (seen from $oRsyncPeer)
     # - is $oTargetPeer if target is remote (rsync will be run on self)
     # - is $self if target is local and source is remote (rsync will be run locally)
@@ -965,7 +968,8 @@ sub rsync {
             push @sSshCmd, '-1' if $oSshPeer->getValue('protocol') eq '1';
             push @sSshCmd, '-2' if $oSshPeer->getValue('protocol') eq '2';
         }
-        push @sRsyncOpts, '--rsh=' . $self->ShellQuote(@sSshCmd), "--timeout=$sTimeout", $sCompressOption;
+        push @sRsyncOpts, '--rsh=' . $self->ShellQuote(@sSshCmd), "--timeout=$sTimeout";
+        push @sRsyncOpts, $sCompressOption if $sCompressOption;
         push @sRsyncOpts, "--bwlimit=$sBandwidth" if $sBandwidth;
     }
 
