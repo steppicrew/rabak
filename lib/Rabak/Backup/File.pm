@@ -395,7 +395,7 @@ sub _run {
 
     # Unused: my $sJob= $self->getValue('name');
 
-    my @sRsyncOpts = $oSourcePeer->resolveObjects('rsync_opts') || ();
+    my @sRsyncOpts = $oSourcePeer->resolveObjects('rsync_opts');
 
     # Write filter rules to temp file:
     my ($fhwRules, $sRulesFile)= $oSourcePeer->localTempfile(SUFFIX => '.filter');
