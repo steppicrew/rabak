@@ -41,6 +41,9 @@ To use dupmerge, you will need the Digest::SHA and DBD::SQLite perl modules. To 
 cpan -i Digest::SHA
 cpan -i DBD::SQLite
 
+For Debian:
+  apt install libipc-run-perl data-uuid
+
 
 Installation
 ============
