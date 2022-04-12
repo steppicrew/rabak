@@ -42,7 +42,7 @@ cpan -i Digest::SHA
 cpan -i DBD::SQLite
 
 For Debian:
-  apt install libipc-run-perl data-uuid
+  apt install libipc-run-perl libdata-uuid-perl libemail-sender-perl rsync
 
 
 Installation
