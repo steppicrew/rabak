@@ -160,6 +160,8 @@ sub removeOld {
     my @sBakDir= @$aOldBackupDirs;
     my $sqPath= quotemeta $self->getPath();
     my $iCount= 0;
+    my $iTotal= 0;
+    my $iTotalNotEmpty= 0;
     foreach my $sDir (@sBakDir) {
         $sDir= $self->getPath($sDir);
         unless ($sDir=~ /^$sqPath/) {
@@ -168,8 +170,12 @@ sub removeOld {
         }
         # remove directories only
         next unless $self->isDir($sDir);
+
+        $iTotal++;
+
         # skip first $iKeep nonempty directories
         if ($self->glob("$sDir/*")) {
+            $iTotalNotEmpty++;
             next if $iKeep-- > 0;
         }
         logger->verbose("Removing \"$sDir\"");
@@ -186,7 +192,7 @@ sub removeOld {
         $self->unlink($sInodeDb) if $self->isFile($sInodeDb);
     }
     logger->decIndent();
-    logger->info("Number of removed backups: $iCount");
+    logger->info("Number of removed backups: $iCount of $iTotalNotEmpty");
 }
 
 sub _prepare {
