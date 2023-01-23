@@ -174,7 +174,7 @@ sub removeOld {
         $iTotal++;
 
         # skip first $iKeep nonempty directories
-        if ($self->glob("$sDir/*")) {
+        if ($self->glob("$sDir/data/*")) {
             $iTotalNotEmpty++;
             next if $iKeep-- > 0;
         }
