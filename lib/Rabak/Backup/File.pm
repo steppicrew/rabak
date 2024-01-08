@@ -475,10 +475,13 @@ sub _run {
                     # skip directory lines
                     next if $sLine =~ /^cd/;
                     if ($sLine =~ /^\[sender\] hiding/) {
-                    	next;
+                        next;
                     }
                     if ($sLine =~ /^\[sender\] showing/) {
-                    	next;
+                        next;
+                    }
+                    if ($sLine =~ /^\[(?:sender|receiver|generator)\] expand file_list pointer array to/) {
+                        next;
                     }
                     if ($sLine =~ /^([\>\<ch\.\*][fdLDS][ \.\+\?cstpoguax]{9})\s(.+)$/) {
                         my ($flags, $sFile) = ($1, $2);
