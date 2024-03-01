@@ -162,7 +162,8 @@ sub _run {
             logger->error("Probe failed. Skipping \"$sDb\": $sError");
             next;
         }
-        my %validTables= $self->parseValidTables($oSourcePeer->getLastOut);
+        my $sProbeResult = $oSourcePeer->getLastOut;
+        my %validTables= $self->parseValidTables($sProbeResult);
         my %tablesToDump= ();
         for my $sTable (@{$dbs{$sDb}}) {
             if (!defined($sTable)) {
@@ -184,7 +185,10 @@ sub _run {
 
         if (%tablesToDump) {
             @sTables= sort keys %tablesToDump;
-            $oTargetPeer->mkdir($hMetaInfo->{DATA_DIR} . "/$sDb/");
+            unless ($self->_pretend()) {
+                $oTargetPeer->mkdir($hMetaInfo->{DATA_DIR} . "/$sDb/");
+                $oTargetPeer->echo($hMetaInfo->{DATA_DIR} . "/$sDb.schema", $sProbeResult);
+            }
         }
 
         for my $sTable (@sTables) {
