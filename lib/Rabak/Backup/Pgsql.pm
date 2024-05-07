@@ -33,6 +33,7 @@ sub getProbeCmd {
     return (
         'pg_dump',
         '--schema-only',
+        '--clean',
         '--username=' . $self->getUser(),
         $sDb,
     );
@@ -45,11 +46,15 @@ sub getDumpCmd {
 
     my @result= (
         'pg_dump',
-        '--clean',
         '--username=' . $self->getUser(),
     );
 
-    push @result, '--table=' . $sTable if $sTable;
+    if ($sTable) {
+        push @result, '--table=' . $sTable, '--data-only';
+    }
+    else {
+        push @result, '--clean';
+    }
 
     push @result, map { '--exclude-schema=' . $_ } grep { $_ } split(/\s*,\s*/, $self->_getSourceValue("exclude_schema", ''));
 
