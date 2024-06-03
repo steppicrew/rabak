@@ -483,7 +483,7 @@ sub _run {
                     if ($sLine =~ /^\[(?:sender|receiver|generator)\] expand file_list pointer array to/) {
                         next;
                     }
-                    if ($sLine =~ /^\[(?:sender|receiver|generator)\] risking (?:file|directory) .* because of pattern ) {
+                    if ($sLine =~ /^\[(?:sender|receiver|generator)\] risking (?:file|directory) .* because of pattern/) {
                         next;
                     }
                     if ($sLine =~ /^([\>\<ch\.\*][fdLDS][ \.\+\?cstpoguax]{9})\s(.+)$/) {
