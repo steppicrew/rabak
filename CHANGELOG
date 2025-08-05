@@ -1,3 +1,11 @@
+rabak-1.2
+- removed unused code
+- fixed duplicate option '-i'
+
+rabak-1.1-r3
+- many changes
+- I forgot to update the CHANGELOG
+
 rabak-1.0rc6
 - better macro expansion
 - new filter handling for rsync
