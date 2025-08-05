@@ -10,7 +10,6 @@ use Rabak::Log;
 use Rabak::Mountable;
 use Rabak::ConfFile;
 use Rabak::InodeCache;
-use Rabak::DupMerge;
 use Rabak::Version;
 use Rabak::Peer;
 use POSIX qw(strftime);

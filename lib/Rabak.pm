@@ -2,8 +2,6 @@
 
 package Rabak;
 
-# PRE ALPHA CODE!
-
 use warnings;
 use strict;
 

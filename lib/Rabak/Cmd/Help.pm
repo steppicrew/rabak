@@ -19,12 +19,9 @@ sub getOptions {
 
 sub GetAllCommands {
     return sort(
-#        'admin',
         'backup',
         'conf',
         'doc',
-#        'dot',
-        'dupmerge',
         'help',
         'version',
     );

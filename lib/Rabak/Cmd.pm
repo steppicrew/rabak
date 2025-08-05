@@ -17,7 +17,6 @@ use warnings;
 sub GetGlobalOptions {
     return {
         "conf" =>               [ "c", "=s", "<file>",  "Use <file> for configuration" ],
-        "i" =>                  [ "",  "=s", "<value>", "Save on device with targetgroup value <value> (Depricated. Don't use!)" ],
         "pretend" =>            [ "p", "",  "",         "Pretend (don't do anything, just tell what would happen)" ],
         "quiet" =>              [ "q", "",  "",         "Be quiet" ],
         "verbose" =>            [ "v", "+",  "",        "Be verbose (May be specified more than once to increase verbosity)" ],

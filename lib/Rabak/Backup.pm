@@ -322,13 +322,6 @@ sub __buildBackupFuncs {
                     close $fh;
                 };
 
-# broken: @sBakBaseDirs should be a list of old backup objects            
-#                if ($oSourcePeer->getValue('merge_duplicates')) {
-#                    push @fBackup, $self->_buildDupMerge(
-#                        $oTargetPeer, \$inodeStore, \@sBakBaseDirs, $sMetaDir,
-#                    );
-#                }
-
                 push @fBackup, sub {
                     logger->verbose("Finishing information store...");
                     logger->incIndent();
@@ -372,13 +365,6 @@ sub __buildBackupFuncs {
                     $fFileCallback->();
                 };
 
-# broken: @sBakBaseDirs should be a list of old backup objects            
-#                if ($oSourcePeer->getValue('merge_duplicates')) {
-#                    push @fBackup, $self->_buildDupMerge(
-#                        $oTargetPeer, \$inodeStore, \@sBakBaseDirs, $sMetaDir,
-#                    );
-#                }
-    
                 push @fBackup, sub {
                     logger->verbose("Finishing information store...");
                     $inodeStore->finishInformationStore();
@@ -465,38 +451,6 @@ sub _convertBackupDirs {
             logger->info("Converted backup directory from version \"$sOldMetaVersion\" to \"$sMetaVersion\".");
         }
     }
-}
-
-sub _buildDupMerge {
-    my $self= shift;
-    my $oTargetPeer= shift;
-    my $refInodeStore= shift;
-    my $aBakBaseDirs= shift;
-    my $sMetaDir= shift;
-
-    return sub {
-        logger->info("Start merging duplicates...");
-        logger->incIndent();
-        logger->verbose("Adding old backup dirs...");
-        logger->incIndent();
-        for my $sBakBaseDir (@$aBakBaseDirs) {
-            my $sFilesInodeDb= $sMetaDir . '/' . $oTargetPeer->GetMetaDir() ."/$sBakBaseDir/meta/files_inode.db";
-            my $sDataDir= $oTargetPeer->getPath($sBakBaseDir . '/data');
-            next unless $oTargetPeer->isFile($sFilesInodeDb) && $oTargetPeer->isDir($sDataDir);
-            logger->verbose("Adding \"$sDataDir\".");
-            ${$refInodeStore}->addDirectory($sDataDir, $sFilesInodeDb);
-        }
-        logger->decIndent();
-        logger->verbose("done");
-
-        my $dupMerge= Rabak::DupMerge->new({
-            INODE_CACHE => ${$refInodeStore},
-        });
-        $dupMerge->dupMerge($oTargetPeer);
-
-        logger->decIndent();
-        logger->info("done");
-    };
 }
 
 sub _getMetaVersionFile {
