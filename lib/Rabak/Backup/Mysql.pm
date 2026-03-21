@@ -30,7 +30,7 @@ sub _getCredentials {
 
 sub getShowCmd {
     my $self= shift;
-    return ('mysql', '-e', 'SHOW DATABASES;', $self->_getCredentials());
+    return ('mysql', '-t', '-e', 'SHOW DATABASES;', $self->_getCredentials());
 }
 
 sub getProbeCmd {
