@@ -119,15 +119,29 @@ sub _checkMount {
     my $peer= $self->_getPeer();
 
     # if absPath fails try original mount device (eg. samba shares)
-    $sMountDevice= $peer->absPath($sMountDevice) || $sMountDevice;
+    my $sAbsMountDevice= $peer->absPath($sMountDevice) || $sMountDevice;
 
     my $sqMountDevice= quotemeta $sMountDevice;
+    my $sqAbsMountDevice= quotemeta $sAbsMountDevice;
 
     my $cur_mounts= $peer->mount;
+
     # TODO:
     #     check for "mount" outputs different from '/dev/XXX on /mount/dir type ...' on other systems
     #     notice: the check for "type" after mount dir is because of missing delimiters if mount dir contains spaces!
     return $1 if $cur_mounts =~ /^$sqMountDevice\son\s+(\/.*)\stype\s/m;
+
+    # Try again with absolute path (to prevent mixups with sym links)
+    return $1 if $cur_mounts =~ /^$sqAbsMountDevice\son\s+(\/.*)\stype\s/m;
+
+    # Try resolving device name by resolving all mounted device as last resort
+    foreach my $sLine (split(/\n/, $cur_mounts)) {
+        next unless $sLine=~ /^(\S+)\s+on\s+(\/.*)\s+type\s+/;
+        my ($sDevice, $sDir)= ($1, $2);
+        $sDevice= $peer->absPath($sDevice);
+        return $sDir if $sDevice eq $sAbsMountDevice;
+    }
+
     return 1;
 }
 
